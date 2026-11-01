@@ -91,10 +91,12 @@ export function ChatHeader({
               hitSlop={{ top: 6, left: 6, right: 6 }}
               onPress={onOpenSessionMenu}
               style={({ pressed }) => [styles.headerSessionAnchor, pressed && styles.headerSessionAnchorPressed]}>
-              <Text maxFontSizeMultiplier={1.5} numberOfLines={1} className={cn("text-foreground")} style={[styles.headerTitle]} variant="title">{selectedSession?.title || t('chat:header.untitledChat')}</Text>
+              <View className={cn(stylesClasses.headerCopy)}>
+                <Text maxFontSizeMultiplier={1.5} numberOfLines={1} className={cn("text-foreground")} style={[styles.headerTitle]} variant="title">{selectedSession?.title || t('chat:header.untitledChat')}</Text>
+                <ChatWorkspaceContext compact={slim} />
+              </View>
               <MaterialCommunityIcons name="chevron-down" size={20} color={palette.muted} />
             </Pressable>
-            <ChatWorkspaceContext compact={slim} />
           </View>
         </View><View className={cn(stylesClasses.headerActions)}>
           <Button accessibilityLabel={t('chat:header.newChat')} onPress={onCreateSession} variant="ghost" size="icon"><Icon name={"plus"} size={24} /></Button>

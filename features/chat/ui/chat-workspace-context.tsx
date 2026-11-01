@@ -1,8 +1,6 @@
 import { cn } from '@/shared/ui/cn';
-import { StyleSheet, Text } from 'react-native';
+import { Text } from '@/shared/ui/text';
 import { useTranslation } from 'react-i18next';
-
-import { Fonts } from '@/shared/ui/theme/theme';
 
 import { useProjectCheckouts } from '@/features/projects/index';
 
@@ -22,15 +20,12 @@ export function ChatWorkspaceContext({ compact = false }: { compact?: boolean })
       maxFontSizeMultiplier={1.5}
       numberOfLines={1}
       ellipsizeMode="tail"
-      className={cn(compact && stylesClasses.contextCompact, "text-muted-foreground")} style={[styles.context]}>
+      className={cn(compact && stylesClasses.contextCompact, "text-muted-foreground")}
+      variant="label">
       {context}
     </Text>
   );
 }
-
-const styles = StyleSheet.create({
-  context: { fontFamily: Fonts.sans, fontSize: 11.5, marginTop: 1 }
-});
 
 const stylesClasses = {
   "contextCompact": "text-[10.5px]"

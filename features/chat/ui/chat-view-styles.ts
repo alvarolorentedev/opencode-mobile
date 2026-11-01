@@ -5,7 +5,7 @@ import { Fonts } from '@/shared/ui/theme/theme';
 export const styles = StyleSheet.create({
   header: { elevation: 0 },
   headerTitle: { flexShrink: 1, fontFamily: Fonts.display, fontWeight: '700' },
-  headerSessionAnchor: { alignItems: 'center', alignSelf: 'stretch', borderRadius: 10, flexDirection: 'row', gap: 8, minHeight: 30, paddingRight: 4 },
+  headerSessionAnchor: { alignItems: 'center', alignSelf: 'stretch', borderRadius: 10, flexDirection: 'row', gap: 8, justifyContent: 'center', marginRight: 8, minHeight: 48, paddingRight: 4 },
   headerSessionAnchorPressed: { opacity: 0.82 },
   changesChip: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', alignItems: 'center', gap: 12, borderRadius: 999, minHeight: 44, maxWidth: '100%', paddingHorizontal: 18, paddingVertical: 10 },
   jumpToLatestWrap: { position: 'absolute', left: 0, right: 0, bottom: 12, alignItems: 'center', zIndex: 3 },
@@ -51,6 +51,7 @@ export const stylesClasses = {
   "composerModelSummary": "flex-1 min-w-0",
   "composerPrimaryButton": "m-0 w-11 h-11 rounded-full self-center",
   "headerMain": "flex-1 min-w-0 self-stretch justify-center",
+  "headerCopy": "flex-1 min-w-0",
   "headerSessionTextWrap": "flex-1 min-w-0",
   "headerActions": "flex-row items-center shrink-0",
   "usageProvider": "border rounded-[14px] gap-2 p-3",
