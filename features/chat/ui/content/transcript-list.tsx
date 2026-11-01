@@ -15,7 +15,7 @@ import { AppState, View, type NativeScrollEvent, type NativeSyntheticEvent } fro
 import { TranscriptMessage } from '@/features/chat/ui/chat-cards';
 import { ActivityGroupRow } from '@/features/chat/ui/cards/activity-group';
 import { styles, slimStyles, stylesClasses } from '@/features/chat/ui/chat-view-styles';
-import { getCurrentTurnActivityKey, STARTER_PROMPT_KEYS } from '@/features/chat/ui/chat-view-utils';
+import { getCurrentTurnActivityKey, getEntryModelLabel, STARTER_PROMPT_KEYS } from '@/features/chat/ui/chat-view-utils';
 import { TranscriptSkeleton } from '@/features/chat/ui/content/transcript-skeleton';
 import { Colors } from '@/shared/ui/theme/theme';
 import type { TranscriptEntry } from '@/shared/presentation/format';
@@ -72,6 +72,7 @@ type TranscriptListProps = {
   isBootstrappingChat: boolean;
   isLoadingOlderMessages: boolean;
   isRefreshingMessages: boolean;
+  modelLabels?: ReadonlyMap<string, string>;
   onCopyMessage: (entry: TranscriptEntry) => void;
   onForkMessage: (entry: TranscriptEntry) => void;
   onLoadOlderMessages: () => void;
@@ -101,6 +102,7 @@ export function TranscriptList({
   isBootstrappingChat,
   isLoadingOlderMessages,
   isRefreshingMessages,
+  modelLabels,
   onCopyMessage,
   onForkMessage,
   onLoadOlderMessages,
@@ -234,7 +236,7 @@ export function TranscriptList({
   // While the session runs, the current turn's newest activity run remains the
   // visible progress anchor even after its own tools complete.
   const lastActivityKey = useMemo(() => getCurrentTurnActivityKey(transcriptRows), [transcriptRows]);
-  const extraData = useMemo(() => ({ activityStatusLabel, copiedMessageId, speakingMessageId, activityRunning, lastActivityKey }), [activityStatusLabel, copiedMessageId, speakingMessageId, activityRunning, lastActivityKey]);
+  const extraData = useMemo(() => ({ activityStatusLabel, copiedMessageId, speakingMessageId, activityRunning, lastActivityKey, modelLabels }), [activityStatusLabel, copiedMessageId, speakingMessageId, activityRunning, lastActivityKey, modelLabels]);
 
   return (
     <View className={cn(stylesClasses.transcriptContainer)}>
@@ -308,6 +310,7 @@ export function TranscriptList({
               entry={entry}
               flat={flatTranscript}
               fontSize={transcriptFontSize}
+              modelLabel={getEntryModelLabel(entry, modelLabels)}
               slim={slim}
               onCopy={onCopyMessage}
               onFork={entry.role === 'user' ? onForkMessage : undefined}

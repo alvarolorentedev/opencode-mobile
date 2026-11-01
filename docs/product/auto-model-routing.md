@@ -89,6 +89,9 @@ rewritten during a slow or incomplete capability refresh.
 - Composer: an `Auto-routing` row in the model picker. Selecting an explicit
   model disables routing. The row is only shown when the selected classifier is
   available.
+- Replies: each assistant bubble shows the model recorded on that message, so
+  the routed model remains visible after the session switches for a later turn.
+  The label uses the catalog model name and falls back to the raw model ID.
 - Settings → AI & providers: classifier mode, on-device pack status/download/
   remove, OpenCode classifier model and probe, per-tier model mapping, and the
   long-chat cache guard.

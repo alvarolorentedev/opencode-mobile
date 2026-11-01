@@ -112,6 +112,9 @@ export function toTranscriptEntry(record: SessionMessageRecord): TranscriptEntry
     }
   });
 
+  const model = record.info.role === 'assistant' && record.info.providerID && record.info.modelID
+    ? { providerID: record.info.providerID, modelID: record.info.modelID }
+    : undefined;
   const entry: TranscriptEntry = {
     id: record.info.id,
     role: record.info.role,
@@ -119,6 +122,7 @@ export function toTranscriptEntry(record: SessionMessageRecord): TranscriptEntry
     text: textBlocks.join('\n\n').trim(),
     details,
     error: getMessageError(record),
+    ...(model ? { model } : {}),
   };
   transcriptEntryCache.set(record, entry);
   return entry;

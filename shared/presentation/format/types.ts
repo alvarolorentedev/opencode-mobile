@@ -43,4 +43,7 @@ export type TranscriptEntry = {
   text: string;
   details: TranscriptDetail[];
   error?: string;
+  // The model that produced an assistant message. Auto-routing switches the
+  // session model per turn, so this is the only per-reply record of the choice.
+  model?: { providerID: string; modelID: string };
 };
