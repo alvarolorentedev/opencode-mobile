@@ -16,7 +16,9 @@
 }
 
 - (void)updateSecurityOptionsInStream:(NSStream *)stream {
-  [stream setProperty:(__bridge id)kCFStreamSocketSecurityLevelTLSv12
+  // Enforce TLS 1.2 with the same value the default SRSecurityPolicy uses.
+  // There is no kCFStreamSocketSecurityLevel* C symbol for it, only this string.
+  [stream setProperty:(__bridge id)CFSTR("kCFStreamSocketSecurityLevelTLSv1_2")
                forKey:(__bridge id)kCFStreamPropertySocketSecurityLevel];
   NSDictionary *options = @{(id)kCFStreamSSLValidatesCertificateChain: @NO};
   [stream setProperty:options
