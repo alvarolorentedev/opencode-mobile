@@ -45,8 +45,11 @@ public final class OpencodeTlsModule: Module {
     }
 
     AsyncFunction("probe") { (origin: String, pem: String?, promise: Promise) in
+      // Resolve through the non-sending Any? overload: the result dictionary
+      // is built off-thread and must not cross task isolation as `sending`.
       TlsProbe.probe(origin: origin, pem: pem) { result in
-        promise.resolve(result)
+        let value: Any = result
+        promise.resolve(value)
       }
     }
   }

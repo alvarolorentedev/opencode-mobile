@@ -1,0 +1,3 @@
+- Connect to self-hosted servers with per-connection custom CA trust, plus local-first diagnostics with optional Grafana Cloud export.
+- Image attachments now open in a full-screen viewer with pinch zoom, double-tap zoom and save/share; other previews share the same action.
+- Steadier chat, projects and voice: independent accordions, worktree filtering, recognizer recovery, and Expo SDK 58 stability fixes.
