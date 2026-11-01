@@ -10,8 +10,9 @@ const { withAndroidAppConfig } = require('./config/plugins/android.cjs') as {
   ) => ExpoConfig;
 };
 // eslint-disable-next-line @typescript-eslint/no-require-imports
-const { withoutPushEntitlement } = require('./config/plugins/ios.cjs') as {
+const { withoutPushEntitlement, withIOSLiveActivities } = require('./config/plugins/ios.cjs') as {
   withoutPushEntitlement: (config: ExpoConfig) => ExpoConfig;
+  withIOSLiveActivities: (config: ExpoConfig) => ExpoConfig;
 };
 
 function env(name: string) {
@@ -23,6 +24,9 @@ const appVariant = env('EXPO_APP_VARIANT') ?? 'production';
 const isDevelopmentVariant = appVariant === 'development';
 const isFossVariant = appVariant === 'foss' || env('EXPO_PUBLIC_FOSS') === '1';
 const isE2EMode = env('EXPO_PUBLIC_E2E_MODE') === '1';
+// Local-only experimental surface. Ordinary store builds keep the current
+// provisioning/targets until the opt-in implementation is device-validated.
+const enableIOSLiveActivities = env('EXPO_IOS_LIVE_ACTIVITIES') === '1' && !isE2EMode && !isFossVariant;
 const e2eServerUrl = env('EXPO_PUBLIC_E2E_SERVER_URL');
 // Free Apple "Personal Team" accounts cannot provision the Push Notifications
 // capability, so `expo-notifications`'s aps-environment entitlement blocks
@@ -91,7 +95,9 @@ const config: ExpoConfig = {
   version: '1.0.119',
   orientation: 'default',
   icon: './assets/images/icon.png',
-  scheme: 'opencodemobile',
+  // Give test Live Activity taps an unambiguous route when the official app is
+  // installed alongside this fork; retain the normal scheme for existing links.
+  scheme: enableIOSLiveActivities ? ['opencodemobile-activities', 'opencodemobile'] : 'opencodemobile',
   userInterfaceStyle: 'automatic',
   android: {
     package: androidPackage,
@@ -126,6 +132,7 @@ const config: ExpoConfig = {
     // expo-notifications to run after it and strip the entitlement it sets.
     ...(disablePushEntitlement ? [withoutPushEntitlement as unknown as string] : []),
     'expo-notifications',
+    ...(enableIOSLiveActivities ? [withIOSLiveActivities as unknown as string] : []),
     'expo-background-task',
     'expo-web-browser',
     [
@@ -235,6 +242,7 @@ const config: ExpoConfig = {
     e2eMode: isE2EMode,
     e2eServerUrl,
     foss: isFossVariant,
+    iosLiveActivities: enableIOSLiveActivities,
     updates: {
       enabled: !isDevelopmentVariant && !isFossVariant && !isE2EMode,
       testing: isDevelopmentVariant && isE2EMode,

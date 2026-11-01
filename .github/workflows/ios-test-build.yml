@@ -1,0 +1,99 @@
+name: iOS unsigned test build
+
+# Experimental feature-scope build, not a release or store upload (ADR 0023).
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - feat/ios-live-activities
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ios-unsigned-test-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  validate:
+    # Automatic feature-branch builds are for forks, never upstream/community PRs.
+    if: github.event_name == 'workflow_dispatch' || github.repository != 'alvarolorentedev/opencode-mobile'
+    uses: ./.github/workflows/ci.yml
+    with:
+      mode: smoke
+      ref: ${{ github.sha }}
+
+  ios-test:
+    needs: validate
+    runs-on: macos-26
+    timeout-minutes: 90
+    env:
+      CI: 'true'
+      EXPO_NO_TELEMETRY: '1'
+      EXPO_APP_VARIANT: production
+      EXPO_IOS_LIVE_ACTIVITIES: '1'
+      EXPO_IOS_DISABLE_PUSH_ENTITLEMENT: '1'
+      EXPO_IOS_BUNDLE_ID: app.yuv41.opencodemobile.liveactivitytest
+      IOS_UNSIGNED_TEST_BUILD: '1'
+      DEVELOPER_DIR: /Applications/Xcode_26.6.app/Contents/Developer
+
+    steps:
+      - name: Checkout validated commit
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Record native toolchain
+        run: |
+          set -euo pipefail
+          mkdir -p ios-build/logs
+          { xcodebuild -version; xcodebuild -showsdks; node --version; npm --version; pod --version; } 2>&1 | tee ios-build/logs/toolchain.log
+
+      - name: Install locked dependencies and pinned native prebuilts
+        run: |
+          set -euo pipefail
+          npm ci 2>&1 | tee ios-build/logs/npm-ci.log
+          # npm's dependency install-script policy can skip llama.rn's postinstall.
+          # Its pinned downloader verifies manifest checksums and reuses existing artifacts.
+          node node_modules/llama.rn/install/download-native-artifacts.js 2>&1 | tee ios-build/logs/llama-prebuilts.log
+          test -d node_modules/llama.rn/ios/rnllama.xcframework
+
+      - name: Prebuild and archive unsigned iPhoneOS Release test IPA
+        run: |
+          set -euo pipefail
+          node scripts/build-ios-release.mjs 2>&1 | tee ios-build/logs/build.log
+
+      - name: Upload unsigned test IPA
+        uses: actions/upload-artifact@v4
+        with:
+          name: ios-live-activity-unsigned-test
+          path: |
+            ios-build/*.ipa
+            ios-build/SHA256SUMS.txt
+            ios-build/UNSIGNED-TEST-BUILD.txt
+          if-no-files-found: error
+          retention-days: 3
+          compression-level: 0
+
+      - name: Upload native build diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ios-live-activity-build-diagnostics
+          path: |
+            ios-build/logs/
+            ios-build/unsigned-test.xcresult/
+            ios/Podfile.lock
+          if-no-files-found: warn
+          retention-days: 3
+
+      - name: Explain unsigned test artifact
+        run: |
+          echo 'Unsigned iPhoneOS Release test IPA with embedded JS and Live Activity extension. Requires signing/provisioning before installation; not a TestFlight/App Store release.' >> "$GITHUB_STEP_SUMMARY"

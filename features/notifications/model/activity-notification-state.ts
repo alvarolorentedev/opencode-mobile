@@ -15,6 +15,7 @@ export type SessionActivity = {
   active: boolean;
   state: 'thinking' | 'needsInput' | 'retrying' | 'queued' | 'finished' | 'failed' | 'stopped';
   tool?: string;
+  runId?: string;
 };
 
 export function getSessionActivities(snapshot: ActivitySnapshot): SessionActivity[] {
@@ -41,8 +42,14 @@ export function getSessionActivities(snapshot: ActivitySnapshot): SessionActivit
     const latest = records.filter((record) => record.info.role === 'assistant').at(-1);
     const runningTool = records.flatMap((record) => record.parts).findLast((part) => part.type === 'tool' && part.state.status === 'running');
     const error = latest?.info.role === 'assistant' ? latest.info.error : undefined;
+    // Only the root's prompt identifies the run. Child messages and successive
+    // assistant steps must not turn ordinary progress into a new activity cycle.
+    const rootMessage = [...(snapshot.messages[id] ?? [])]
+      .sort((a, b) => a.info.time.created - b.info.time.created).at(-1)?.info;
+    const runId = rootMessage?.role === 'user' ? rootMessage.id : rootMessage?.parentID;
     return {
       session, active: blocked || retrying || busy || queued,
+      ...(runId ? { runId } : {}),
       state: blocked ? 'needsInput' : retrying ? 'retrying' : busy ? 'thinking' : queued ? 'queued'
         : error?.name === 'MessageAbortedError' ? 'stopped' : error ? 'failed' : 'finished',
       tool: busy && runningTool?.type === 'tool' ? getToolTitle(runningTool).replace(/\s+/g, ' ').slice(0, 100) : undefined,

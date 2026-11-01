@@ -1,7 +1,8 @@
 // App-wide workspace registry, connection focus, and persistence.
 // See docs/architecture/state-and-data.md#state-ownership-overview.
 import { getProfileHeaders } from '@/shared/storage/connection-headers';
-import { findProfileByConnectionScope, type ConnectionProfile } from '@/shared/contracts/connection-profiles';
+import type { ConnectionProfile } from '@/shared/contracts/connection-profiles';
+import { findByConnectionReference } from '@/shared/platform/private-connection-reference';
 import { getProfilePassword, loadConnectionProfiles } from '@/shared/storage/connection-profiles';
 import { getConnectionScope, getConnectionUiScope } from '@/shared/contracts/connection-scope';
 import { defaultConnectionSettings } from '@/shared/protocol/opencode/client';
@@ -103,9 +104,11 @@ export function WorkspaceProvider({ children }: PropsWithChildren) {
   const inspect = useCallback(async (target: WorkspaceTarget) => { await ensure(target); setInspectionTarget(target); }, [ensure]);
   const openSession = useCallback(async (target: SessionDeepLinkTarget, signal?: AbortSignal) => {
     try {
-      let entry: Pick<ConnectionRecord, 'id' | 'projects' | 'enabled'> | undefined = target.connectionScope ? connections.find((value) => getConnectionScope(value.settings) === target.connectionScope) : connections.find((value) => value.id === focus?.connectionId);
+      let entry: Pick<ConnectionRecord, 'id' | 'projects' | 'enabled'> | undefined = target.connectionScope
+        ? await findByConnectionReference(connections, target.connectionScope, (value) => getConnectionScope(value.settings))
+        : connections.find((value) => value.id === focus?.connectionId);
       if (!entry && target.connectionScope) {
-        const profile = findProfileByConnectionScope(await loadConnectionProfiles(), target.connectionScope);
+        const profile = await findByConnectionReference(await loadConnectionProfiles(), target.connectionScope, getConnectionScope);
         if (!profile) throw new Error('The saved connection for this session is not available.');
         const [password, headers] = await Promise.all([getProfilePassword(profile.id), getProfileHeaders(profile.id)]);
         if (signal?.aborted) throw new Error('This session link was cancelled.');

@@ -12,4 +12,15 @@ describe('session link', () => {
     expect(buildSessionLink({ sessionId: 's1', projectPath: '/repo', connectionScope: 'scope' }))
       .toBe('opencodemobile://session/s1?project=%2Frepo&connectionScope=scope');
   });
+
+  it('supports a configured test-app scheme without changing the route payload', () => {
+    expect(buildSessionLink({ sessionId: 's1', projectPath: '/repo', connectionScope: 'opaque' }, 'opencodemobile-activities'))
+      .toBe('opencodemobile-activities://session/s1?project=%2Frepo&connectionScope=opaque');
+  });
+
+  it('rejects URLs or injected delimiters as schemes', () => {
+    for (const scheme of ['https://server.example', 'app?secret', 'app/other', '']) {
+      expect(() => buildSessionLink({ sessionId: 's1', projectPath: '/repo', connectionScope: 'opaque' }, scheme)).toThrow('Invalid app URL scheme.');
+    }
+  });
 });

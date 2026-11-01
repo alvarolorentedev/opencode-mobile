@@ -5,20 +5,23 @@ import { useActivityNotifications } from '@/features/notifications/state/use-act
 import { readActivitySnapshot } from '@/features/notifications/services/activity-service';
 
 const h = vi.hoisted(() => ({
-  runtime: undefined as any, listener: undefined as any, appState: 'active',
+  runtime: undefined as any, listener: undefined as any, appState: 'active', platform: 'android',
   snapshot: undefined as any, granted: true, updates: [] as any[], dismissed: undefined as string | undefined,
   scope: undefined as string | undefined, tracked: [] as any[], cleared: [] as any[],
   attention: [] as any[], resolved: [] as string[],
-  read: vi.fn(), stop: vi.fn(), build: vi.fn(),
+  read: vi.fn(), stop: vi.fn(), build: vi.fn(), permissions: vi.fn(),
+  register: vi.fn(), ready: vi.fn(), release: vi.fn(),
 }));
 vi.mock('react', () => Object.fromEntries(['useRef', 'useLayoutEffect', 'useEffect', 'useCallback'].map((key) => [key, (...args: any[]) => h.runtime.react[key](...args)])));
-vi.mock('react-native', () => ({ AppState: {
+vi.mock('react-native', () => ({ Platform: { get OS() { return h.platform; } }, AppState: {
   get currentState() { return h.appState; },
   addEventListener: (_: string, listener: any) => { h.listener = listener; return { remove() { h.listener = undefined; } }; },
 } }));
-vi.mock('expo-notifications', () => ({ getPermissionsAsync: async () => ({ granted: h.granted }) }));
+vi.mock('expo-notifications', () => ({ getPermissionsAsync: () => h.permissions() }));
 vi.mock('@/shared/platform/activity-notifications', () => ({
   activityNotifications: { stop: () => h.stop() },
+  registerActivityNotificationScope: (scope: string) => { h.register(scope); return h.release; },
+  markActivityNotificationScopeReady: (...args: any[]) => h.ready(...args),
   stopActivityNotification: () => { h.scope = undefined; return h.stop(); },
   updateActivityNotification: async (input: any) => { h.updates.push(input); return input.key !== h.dismissed; },
 }));
@@ -50,9 +53,11 @@ function props() {
 }
 
 beforeEach(() => {
-  h.runtime = hookRuntime(); h.appState = 'active'; h.granted = true; h.dismissed = undefined;
+  h.runtime = hookRuntime(); h.appState = 'active'; h.platform = 'android'; h.granted = true; h.dismissed = undefined;
+  h.permissions.mockReset().mockImplementation(async () => ({ granted: h.granted }));
   h.updates = []; h.tracked = []; h.cleared = []; h.attention = []; h.resolved = []; h.stop.mockReset().mockResolvedValue(undefined); h.build.mockReset();
   h.snapshot = snapshot(); h.read.mockReset();
+  h.register.mockReset(); h.ready.mockReset(); h.release.mockReset().mockResolvedValue(undefined);
   for (const [key, value] of Object.entries(h.runtime.globals)) vi.stubGlobal(key, value);
 });
 afterEach(() => { h.runtime.unmount(); vi.unstubAllGlobals(); vi.restoreAllMocks(); });
@@ -84,10 +89,25 @@ describe('activity selection', () => {
     expect(getSessionActivities(state)[0].tool).toBe('Reading files');
     expect(JSON.stringify(getSessionActivities(state))).not.toContain('private output');
   });
+
+  it('anchors a root run to its latest user or assistant parent, never a child or assistant step id', () => {
+    const state = snapshot(['one', 'child']); state.sessions[1].parentID = 'one';
+    state.messages.one = [{ info: { id: 'prompt-1', role: 'user', time: { created: 1 } }, parts: [] }] as any;
+    state.messages.child = [{ info: { id: 'child-prompt', role: 'user', time: { created: 100 } }, parts: [] }] as any;
+    expect(getSessionActivities(state)[0].runId).toBe('prompt-1');
+    state.messages.one!.push({ info: { id: 'step-1', role: 'assistant', parentID: 'prompt-1', time: { created: 2 } }, parts: [] } as any);
+    expect(getSessionActivities(state)[0].runId).toBe('prompt-1');
+    state.messages.one = [{ info: { id: 'step-2', role: 'assistant', parentID: 'prompt-1', time: { created: 3 } }, parts: [] }] as any;
+    expect(getSessionActivities(state)[0].runId).toBe('prompt-1');
+    state.messages.one!.push({ info: { id: 'prompt-2', role: 'user', time: { created: 4 } }, parts: [] } as any);
+    expect(getSessionActivities(state)[0].runId).toBe('prompt-2');
+    state.messages.one = [assistant()];
+    expect(getSessionActivities(state)[0].runId).toBeUndefined();
+  });
 });
 
 describe('provider observer', () => {
-  async function mount() {
+  async function mount(overrides: Record<string, unknown> = {}) {
     // Exercise the actual service too, with deterministic SDK clients.
     h.read.mockImplementation(async () => ({ sessions: h.snapshot.sessions, statuses: h.snapshot.statuses }));
     h.build.mockImplementation(() => ({
@@ -96,10 +116,128 @@ describe('provider observer', () => {
       messages: async (id: string) => h.snapshot.messages[id] ?? [],
       promptInbox: { list: async (id: string) => h.snapshot.queued.has(id) ? [{ id: 'queued' }] : [] },
     }));
-    h.runtime.mount(useActivityNotifications, props());
+    h.runtime.mount(useActivityNotifications, { ...props(), ...overrides });
     await h.runtime.settle();
   }
   async function poll() { h.runtime.fire(5000); await h.runtime.settle(); }
+
+  it('uses the iOS capability without alert permission and leaves completion records to their owner', async () => {
+    h.platform = 'ios'; h.granted = false;
+    await mount();
+    expect(h.permissions).not.toHaveBeenCalled();
+    expect(h.updates.at(-1)).toMatchObject({ phase: 'thinking', action: '', count: 1 });
+    h.snapshot.statuses.one = { type: 'idle' }; await poll();
+    expect(h.updates.at(-1)).toMatchObject({ phase: 'finished', active: false });
+    expect(h.cleared).toHaveLength(0);
+  });
+
+  it('registers before the first iOS read and reconciles verified idle startup without clearing completion data', async () => {
+    h.platform = 'ios'; h.snapshot.statuses.one = { type: 'idle' };
+    await mount();
+    expect(h.register).toHaveBeenCalledWith('scope');
+    expect(h.register.mock.invocationCallOrder[0]).toBeLessThan(h.read.mock.invocationCallOrder[0]);
+    expect(h.ready).toHaveBeenCalledWith('scope', expect.any(Function));
+    expect(h.stop).toHaveBeenCalledOnce(); expect(h.updates).toHaveLength(0);
+    expect(h.cleared).toHaveLength(0);
+    h.runtime.unmount(); expect(h.release).toHaveBeenCalledOnce();
+  });
+
+  it('does not claim readiness or idle when the initial iOS snapshot fails', async () => {
+    h.platform = 'ios'; await mount();
+    h.runtime.unmount(); h.runtime = hookRuntime();
+    for (const [key, value] of Object.entries(h.runtime.globals)) vi.stubGlobal(key, value);
+    h.ready.mockClear(); h.stop.mockClear(); h.updates = [];
+    h.read.mockRejectedValueOnce(new Error('offline'));
+    vi.spyOn(console, 'warn').mockImplementation(() => {});
+    h.runtime.mount(useActivityNotifications, props()); await h.runtime.settle();
+    expect(h.ready).toHaveBeenCalledWith('scope');
+    expect(h.ready.mock.calls.every((call) => call[1] === undefined)).toBe(true);
+    expect(h.stop).not.toHaveBeenCalled(); expect(h.updates).toHaveLength(0);
+  });
+
+  it('publishes all active root anchors with a predicate invalidated by lifecycle and owner replacement', async () => {
+    h.platform = 'ios'; h.snapshot = snapshot(['one', 'new']);
+    h.snapshot.messages.one = [{ info: { id: 'prompt-1', role: 'user', time: { created: 1 } }, parts: [] }] as any;
+    h.snapshot.messages.new = [{ info: { id: 'step-1', role: 'assistant', parentID: 'prompt-2', time: { created: 2 } }, parts: [] }] as any;
+    await mount();
+    const first = h.updates.at(-1);
+    expect(first.work).toEqual([{ sessionId: 'one', runId: 'prompt-1' }, { sessionId: 'new', runId: 'prompt-2' }]);
+    expect(first.isCurrent()).toBe(true);
+    h.appState = 'background'; h.listener('background');
+    h.appState = 'active'; h.listener('active');
+    expect(first.isCurrent()).toBe(false);
+    await h.runtime.settle();
+    const resumed = h.updates.at(-1); expect(resumed.isCurrent()).toBe(true);
+    h.runtime.update({ catalogClient: {}, connectionScope: 'other' });
+    expect(resumed.isCurrent()).toBe(false); await h.runtime.settle();
+    expect(h.release).toHaveBeenCalledOnce();
+  });
+
+  it('does not observe V1 or unknown contracts on iOS', async () => {
+    h.platform = 'ios'; await mount({ contract: 'v1' });
+    expect(h.read).not.toHaveBeenCalled(); expect(h.permissions).not.toHaveBeenCalled();
+    h.appState = 'background';
+    h.runtime.value({ type: 'permission.asked', data: { sessionID: 'one' } });
+    await h.runtime.settle();
+    expect(h.attention).toHaveLength(0); expect(h.updates).toHaveLength(0);
+    h.runtime.update({ contract: undefined }); await h.runtime.settle();
+    expect(h.read).not.toHaveBeenCalled();
+  });
+
+  it('retains iOS completion tracking when native declines a surface and never discovers work in background', async () => {
+    h.platform = 'ios'; h.appState = 'background'; await mount();
+    expect(h.read).not.toHaveBeenCalled(); expect(h.updates).toHaveLength(0);
+    h.appState = 'active'; h.listener('active'); await h.runtime.settle();
+    h.dismissed = h.updates.at(-1).key;
+    await poll();
+    expect(h.tracked).toHaveLength(1); expect(h.cleared).toHaveLength(0);
+    h.appState = 'background'; h.listener('background');
+    expect(h.runtime.countTimers(20000)).toBe(0);
+    h.appState = 'active'; h.listener('active'); await h.runtime.settle();
+    expect(h.tracked).toHaveLength(1); expect(h.cleared).toHaveLength(0);
+  });
+
+  it('pauses iOS timers and ignores late foreground reads until a fresh resume snapshot', async () => {
+    h.platform = 'ios'; await mount();
+    const slow = deferred(); h.read.mockImplementationOnce(() => slow.promise);
+    h.runtime.fire(5000);
+    h.runtime.value({ type: 'question.asked' });
+    h.appState = 'background'; h.listener('background');
+    const updates = h.updates.length;
+    slow.resolve({ sessions: [], statuses: {} }); await h.runtime.settle();
+    expect(h.updates).toHaveLength(updates); expect(h.cleared).toHaveLength(0);
+    expect(h.runtime.countTimers(5000)).toBe(0); expect(h.runtime.countTimers(20000)).toBe(0);
+    expect(h.runtime.countTimers(250)).toBe(0);
+    const reads = h.read.mock.calls.length;
+    h.runtime.value({ type: 'question.asked' }); h.runtime.fire(250); await h.runtime.settle();
+    expect(h.read).toHaveBeenCalledTimes(reads);
+    h.appState = 'active'; h.listener('active'); await h.runtime.settle();
+    expect(h.updates.at(-1)).toMatchObject({ phase: 'thinking', active: true });
+    expect(h.runtime.countTimers(5000)).toBe(1);
+  });
+
+  it('does not reuse a snapshot spanning an iOS background/foreground transition', async () => {
+    h.platform = 'ios'; await mount();
+    const slow = deferred(); h.read.mockImplementationOnce(() => slow.promise);
+    h.runtime.fire(5000);
+    h.appState = 'background'; h.listener('background');
+    h.appState = 'active'; h.listener('active');
+    slow.resolve({ sessions: [], statuses: {} }); await h.runtime.settle();
+    expect(h.updates.every((update) => update.active)).toBe(true);
+    expect(h.updates.at(-1).phase).toBe('thinking');
+    expect(h.runtime.countTimers(5000)).toBe(1);
+  });
+
+  it('drops late iOS snapshots after a scope/auth owner replacement', async () => {
+    h.platform = 'ios'; await mount();
+    const slow = deferred(); h.read.mockImplementationOnce(() => slow.promise);
+    h.runtime.fire(5000);
+    h.runtime.update({ catalogClient: {}, connectionScope: 'other' }); await h.runtime.settle();
+    const updates = h.updates.length;
+    slow.resolve({ sessions: [], statuses: {} }); await h.runtime.settle();
+    expect(h.updates).toHaveLength(updates); expect(h.cleared).toHaveLength(0);
+    expect(h.updates.at(-1).connectionScope).toBe('other');
+  });
 
   it('tracks all server tasks, continues while locked, and publishes one silent result', async () => {
     h.snapshot = snapshot(['one', 'new']); h.snapshot.sessions[1].directory = '/another-project';

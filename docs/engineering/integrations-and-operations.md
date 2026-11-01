@@ -168,6 +168,11 @@ Important current rule:
 - iOS background delivery is best effort only: a suspended app can only be woken
   opportunistically, so completion notifications arrive when the app next runs or
   the system schedules the background task, never on a fixed schedule
+- Experimental local iOS Live Activities reuse `modules/opencode-activity` when
+  `EXPO_IOS_LIVE_ACTIVITIES=1`. A CNG plugin generates the ActivityKit extension
+  without an App Group. Only generic localized status/counts reach the Lock
+  Screen; backgrounding marks it paused/stale and does not extend network life.
+  Completion notifications remain independent. See [ADR 0023](../adr/0023-opt-in-local-ios-live-activities.md).
 
 ### Quick Actions
 
@@ -513,7 +518,7 @@ Android has the richest current support for:
 
 ### iOS
 
-iOS is supported by Expo/React Native setup, but some operational tooling in the repo is Android-focused. Voice and TTS behavior are still explicitly supported. Launcher quick actions are supported; home/Lock Screen widgets and Live Activities are deferred (see [iOS widget parity](../product/parity/ios-widget.md)).
+iOS is supported by Expo/React Native setup, but some operational tooling in the repo is Android-focused. Voice and TTS behavior are explicitly supported. Launcher quick actions are supported; home/Lock Screen widgets remain deferred, while local Live Activities are experimental and opt-in (see [iOS widget parity](../product/parity/ios-widget.md)).
 
 ### Session Deep Links
 

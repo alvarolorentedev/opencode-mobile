@@ -145,6 +145,36 @@ npm run build:ios:local
 - The signed IPA is attached to the GitHub Release. No manual iOS workflow dispatch is required
 - App Store production submission and phased release remain separate manual store-console actions
 
+### Experimental Live Activity test IPA
+
+The opt-in local Live Activity is described in [iOS parity](../product/parity/ios-widget.md)
+and [ADR 0023](../adr/0023-opt-in-local-ios-live-activities.md). The optional
+`.github/workflows/ios-test-build.yml` workflow reuses the ordinary smoke CI gate,
+then builds on a GitHub-hosted Mac. It enables the experimental feature and uses
+the existing Personal Team push-entitlement opt-out and a distinct test bundle
+identifier. No Apple signing secrets, release tag, version bump, or store upload
+are involved. Ordinary signed release builds are unchanged.
+
+After a successful run, download the `ios-live-activity-unsigned-test` artifact
+and extract `opencode-mobile-unsigned-test.ipa`. This is a real device Release
+build with embedded JavaScript and the Live Activity extension, but it is
+**unsigned**, not directly installable through Safari/Files or TestFlight.
+
+For personal testing, a signing/install tool such as
+[Sideloadly](https://sideloadly.io/) on Windows or macOS can re-sign an IPA for
+your iPhone using your Apple account. Follow its current prerequisites, connect
+and trust the phone, retain the Live Activity app extension, and enable Developer
+Mode/trust the developer profile when iOS requests it. Never put your Apple ID
+password or 2FA codes in the repository, CI secrets, or chat. Free provisioning
+normally expires after seven days and has App ID/app-count limits. Actual
+extension provisioning and installation still require device validation.
+
+Paid Apple Developer membership allows properly provisioned Ad Hoc or TestFlight
+distribution through the existing release process once your own identifiers,
+certificates/profiles, and App Store Connect configuration are supplied. The
+unsigned test workflow is not a signing service. Adding a signed installation
+does not add the separate APNs sender needed for continuous background progress.
+
 ### Testing
 
 - `npm run test:ci:static` runs lint, app type-checking, the typed-test

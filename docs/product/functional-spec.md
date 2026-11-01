@@ -855,6 +855,13 @@ Parity implication:
   completion behavior is unchanged. Live activity requires a rebuilt
   native app and is disabled on web, Expo Go, and E2E runs.
 - a rewrite should preserve both in-app completion flushing and background completion checking
+- Experimental iOS builds with `EXPO_IOS_LIVE_ACTIVITIES=1` show one aggregate,
+  V2-only Live Activity using the same connection-owned observations. The Lock
+  Screen/Dynamic Island show generic localized status, counts, and elapsed time;
+  private titles and tool/request/reply text are omitted. Taps route into the app
+  for all actions. Backgrounding marks it paused/stale, and verified foreground
+  observations resume updates. Ordinary completion notifications are not suppressed.
+  See [iOS parity](./parity/ios-widget.md) for limitations and device acceptance.
 
 ## Android inbound sharing
 
@@ -911,7 +918,8 @@ Android home widgets:
   from snapshots and all placed widgets; titles/counts/status remain.
 - Gallery labels/descriptions are English-only; rendered widget copy is translated.
 
-iOS widgets and Live Activities remain [deferred](./parity/ios-widget.md).
+iOS home/Lock Screen widgets remain deferred; local-only Live Activities are
+[experimental and opt-in](./parity/ios-widget.md).
 
 ## Persistence Requirements
 
