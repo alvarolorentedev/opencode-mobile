@@ -169,12 +169,11 @@ create form. No fetch or protocol logic lives here.
 
 Responsibility:
 
-- show configured providers
-- tap a configured provider chip to reopen login or replace its API key
-- allow adding unconfigured providers
+- show configured providers once as expandable rows; each header shows the selected model count, a chevron, and a remove action
+- allow adding providers, including another account for an already-configured provider
 - allow removing configured provider credentials
-- on OpenCode 2, list a provider's labeled accounts, mark the active account, switch accounts, remove an account, or add another account
-- show models grouped by provider in independent accordions; each header shows the selected count and a chevron, and several providers can stay expanded together
+- expanding a provider reveals its OpenCode 2 labeled accounts (active account marked, switch or remove) and its models
+- several providers can stay expanded together
 - allow toggling enabled model IDs
 
 #### `AutoModelSection`

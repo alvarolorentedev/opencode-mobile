@@ -122,6 +122,15 @@
   },
   "composer": {
     "chooseAssistantMode": "Choose assistant mode",
+    "agentDescriptions": {
+      "build": "Default agent that edits files and runs tools.",
+      "plan": "Read-only agent for exploring and planning.",
+      "general": "General-purpose agent for research and multi-step tasks.",
+      "explore": "Fast, read-only agent for exploring the codebase.",
+      "summary": "Maintenance agent that summarizes conversations.",
+      "title": "Maintenance agent that generates chat titles.",
+      "compaction": "Maintenance agent that compacts long context."
+    },
     "autoApproveEnabled": "Auto-approve",
     "askPermission": "Ask before actions",
     "conversationMode": "Conversation mode",

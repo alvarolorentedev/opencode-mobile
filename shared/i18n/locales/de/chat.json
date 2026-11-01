@@ -122,6 +122,15 @@
   },
   "composer": {
     "chooseAssistantMode": "Assistentenmodus wählen",
+    "agentDescriptions": {
+      "build": "Standard-Agent, der Dateien bearbeitet und Tools ausführt.",
+      "plan": "Nur-Lese-Agent zum Erkunden und Planen.",
+      "general": "Allgemeiner Agent für Recherchen und mehrstufige Aufgaben.",
+      "explore": "Schnelle, schreibgeschützte Erkundung der Codebasis.",
+      "summary": "Wartungsagent, der Unterhaltungen zusammenfasst.",
+      "title": "Wartungsagent, der Chat-Titel erzeugt.",
+      "compaction": "Wartungsagent, der langen Kontext komprimiert."
+    },
     "autoApproveEnabled": "Automatisch freigeben",
     "askPermission": "Vor Aktionen fragen",
     "conversationMode": "Konversationsmodus",

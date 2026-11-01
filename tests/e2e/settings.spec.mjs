@@ -48,7 +48,7 @@ test('settings can configure an additional provider against the fake server @smo
   await page.getByPlaceholder('Paste your API key').fill('sk-test-openrouter');
   await page.getByTestId('settings-provider-save-button').click();
   await expect(page.getByText('Configure OpenRouter')).not.toBeVisible({ timeout: 15_000 });
-  await expect(page.getByRole('radio', { name: 'OpenRouter', exact: true }).or(page.getByRole('button', { name: 'OpenRouter', exact: true }))).toBeVisible();
+  await expect(page.getByRole('button', { name: /OpenRouter [0-9]+ of/ })).toBeVisible();
 });
 
 test('V1 providers retain API-key login alongside OAuth metadata', async ({ page, request }) => {

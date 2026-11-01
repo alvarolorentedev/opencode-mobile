@@ -54,13 +54,13 @@ export function AiDefaultsSection({
   providerAuthMethodsById,
 }: AiDefaultsSectionProps) {
   const { t } = useTranslation();
-  const configuredModels = availableModels.filter((model) => configuredProviders.some((provider) => provider.id === model.providerID));
-  const configuredProviderModels = configuredProviders
-    .map((provider) => ({
-      provider,
-      models: configuredModels.filter((model) => model.providerID === provider.id),
-    }))
-    .filter((entry) => entry.models.length > 0);
+  // Every configured provider keeps its accordion row, even without models, so
+  // its credentials stay removable.
+  const providerModels = configuredProviders.map((provider) => ({
+    provider,
+    models: availableModels.filter((model) => model.providerID === provider.id),
+  }));
+  const configuredModels = providerModels.flatMap((entry) => entry.models);
   const addableProviders = getAddableProviders(availableProviders, providerAuthMethodsById, contract);
 
   return (
@@ -101,50 +101,56 @@ export function AiDefaultsSection({
         </View>
 
         </SettingTarget>
-        <View className={cn(stylesClasses.chipWrap)}>
-          {configuredProviders.map((provider) => (
-            <View key={provider.id} className="flex-row items-center"><Button onPress={() => onStartProviderConfiguration(provider.id)} variant="secondary" size="sm">{(({ size, color }) => renderProviderIcon(provider.id, size, color))({ size: 18, color: palette.tint })}<Text>{getProviderCopy(provider.id, provider.label, t).label}</Text></Button><Button variant="ghost" size="icon" accessibilityLabel={t('settings:providers.removeCredentials', { provider: getProviderCopy(provider.id, provider.label, t).label })} onPress={() => onRemoveProvider(provider.id)}><Icon name="close" /></Button></View>
-          ))}
-        </View>
-        {configuredProviders.some((provider) => provider.accounts && provider.accounts.length > 0) ? (
-          <View className={cn(stylesClasses.accountsGroup)}>
-            <Text className={cn("text-foreground")} variant="description">{t('settings:providers.accounts')}</Text>
-            {configuredProviders.filter((provider) => provider.accounts && provider.accounts.length > 0).map((provider) => (
-              <View key={provider.id} className={cn(stylesClasses.accountProviderGroup)}>
-                <Text className={cn("text-muted-foreground")} variant="label">{getProviderCopy(provider.id, provider.label, t).label}</Text>
-                <View className={cn(stylesClasses.chipWrap)}>
-                  {(provider.accounts || []).map((account) => (
-                    <View key={account.id} className="flex-row items-center"><Button onPress={() => {
-                        if (!account.active) onActivateProviderAccount(account.id);
-                      }} variant="secondary" size="sm" accessibilityState={{ selected: account.active }}><Icon name={account.active ? 'check' : account.method === 'oauth' ? 'account-key' : 'key-variant'} size={18} /><Text>{account.label}</Text></Button><Button variant="ghost" size="icon" accessibilityLabel={t('settings:providers.removeAccount')} onPress={() => onRemoveProviderAccount(account.id)}><Icon name="close" /></Button></View>
-                  ))}
-                </View>
-              </View>
-            ))}
-          </View>
-        ) : null}
         {availableProviders.length === 0 ? <FieldDescription  invalid={false}>{t('settings:providers.connectFirst')}</FieldDescription> : null}
         {availableProviders.length > 0 && configuredProviders.length === 0 ? (
           <FieldDescription  invalid={false}>{t('settings:providers.configureAtLeastOne')}</FieldDescription>
         ) : null}
         <View className={cn(stylesClasses.modelListSection)}>
-            {configuredProviderModels.map(({ provider, models }) => {
+            {providerModels.map(({ provider, models }) => {
+              const accounts = provider.accounts ?? [];
               const selectedCount = models.filter((model) => enabledModelIds.has(model.id)).length;
               const expanded = expandedProviderIds.has(provider.id);
+              const providerLabel = getProviderCopy(provider.id, provider.label, t).label;
 
               return (
                 <Collapsible key={provider.id} open={expanded}><ListRow
-                  title={getProviderCopy(provider.id, provider.label, t).label}
-                  description={t('settings:providers.selectedCount', { selected: selectedCount, total: models.length })}
+                  title={providerLabel}
+                  description={models.length > 0 ? t('settings:providers.selectedCount', { selected: selectedCount, total: models.length }) : undefined}
                   left={() => (
                     <View className={cn(stylesClasses.providerAccordionIconWrap, "bg-surface-alt border-border")}>
                       {renderProviderIcon(provider.id, 20, palette.tint)}
                     </View>
                   )}
-                  right={() => <Icon name={expanded ? 'chevron-up' : 'chevron-down'} size={20} color={palette.muted} />}
+                  right={() => (
+                    <View className={cn(stylesClasses.providerActions)}>
+                      <Button
+                        accessibilityLabel={t('settings:providers.removeCredentials', { provider: providerLabel })}
+                        onPress={(event) => {
+                          event.stopPropagation();
+                          onRemoveProvider(provider.id);
+                        }}
+                        size="icon"
+                        variant="ghost">
+                        <Icon name="close" />
+                      </Button>
+                      <Icon name={expanded ? 'chevron-up' : 'chevron-down'} size={20} color={palette.muted} />
+                    </View>
+                  )}
                   className={cn(stylesClasses.providerAccordion, "bg-background border-border")}
                   titleStyle={{ color: palette.text }}
                   descriptionStyle={{ color: palette.muted }} accessibilityState={{ expanded }} onPress={() => onToggleProvider(provider.id)} /><CollapsibleContent>
+                  {accounts.length > 0 ? (
+                    <View className={cn(stylesClasses.accountsGroup)}>
+                      <Text className={cn("text-muted-foreground")} variant="label">{t('settings:providers.accounts')}</Text>
+                      <View className={cn(stylesClasses.chipWrap)}>
+                        {accounts.map((account) => (
+                          <View key={account.id} className="flex-row items-center"><Button onPress={() => {
+                              if (!account.active) onActivateProviderAccount(account.id);
+                            }} variant="secondary" size="sm" accessibilityState={{ selected: account.active }}><Icon name={account.active ? 'check' : account.method === 'oauth' ? 'account-key' : 'key-variant'} size={18} /><Text>{account.label}</Text></Button><Button variant="ghost" size="icon" accessibilityLabel={t('settings:providers.removeAccount')} onPress={() => onRemoveProviderAccount(account.id)}><Icon name="close" /></Button></View>
+                        ))}
+                      </View>
+                    </View>
+                  ) : null}
                   {models.map((model) => {
                     const checked = enabledModelIds.has(model.id);
 
@@ -170,10 +176,10 @@ const stylesClasses = {
   "section": "gap-3.5 pb-2",
   "providerHeader": "flex-row items-center justify-between gap-3",
   "chipWrap": "flex-row flex-wrap gap-2",
-  "accountsGroup": "gap-2.5",
-  "accountProviderGroup": "gap-1.5",
+  "accountsGroup": "gap-2.5 pl-4 pr-2 pb-2",
   "modelListSection": "gap-2.5",
   "providerAccordion": "rounded-[14px] border overflow-hidden mb-2.5",
   "providerAccordionIconWrap": "w-9.5 h-9.5 rounded-[12px] border items-center justify-center ml-1 mr-2",
+  "providerActions": "flex-row items-center gap-1",
   "modelListItem": "pl-4 pr-2"
 } as const;
