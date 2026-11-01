@@ -68,7 +68,9 @@ certificate.
 
 The native module is `modules/opencode-tls/`: Android installs a host-aware
 `SSLSocketFactory` and `X509ExtendedTrustManager` through the existing OkHttp
-hooks; iOS installs a host-scoped `NSURLProtocol` and `SRSecurityPolicy`. A
+hooks; iOS installs a host-scoped `NSURLProtocol` and `SRSecurityPolicy`. Expo's
+fetch configuration provider is registered synchronously on the main thread
+before JavaScript requests begin, as its setter is main-actor isolated. A
 certificate failure is a distinct, non-retryable connection failure with an
 actionable message. See [ADR 0021](../adr/0021-per-connection-custom-ca.md).
 
