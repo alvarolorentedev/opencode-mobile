@@ -850,8 +850,8 @@
     "title": "扩展",
     "description": "管理此服务器的 MCP 服务器、插件、技能和斜杠命令。",
     "scope": {
-      "project": "项目",
-      "general": "通用"
+      "project": "此项目",
+      "general": "所有项目"
     },
     "scopeDescription": {
       "project": "这些扩展仅适用于 {{project}}。",
@@ -965,7 +965,78 @@
     },
     "generalConfirmTitle": "编辑全局配置",
     "generalConfirmMessage": "这会更改此服务器上所有项目的配置。系统会先创建备份。\n\n{{path}}",
-    "generalConfirmAction": "继续"
+    "generalConfirmAction": "继续",
+    "editor": {
+      "discardTitle": "放弃更改？",
+      "discardHint": "未保存的更改将丢失。",
+      "discard": "放弃更改",
+      "back": "返回扩展",
+      "setup": "设置",
+      "instructions": "指令",
+      "advanced": "高级",
+      "storage": "存储格式",
+      "inheritModel": "继承模型",
+      "inheritModelHint": "让 OpenCode 选择模型。",
+      "customModel": "自定义模型 ID",
+      "customModelHint": "此模型在高级设置中配置，其配置将被保留。",
+      "noModels": "没有已配置的模型。请在 AI 与提供商中设置提供商，或在高级设置中输入自定义模型 ID。",
+      "availability": "可用于",
+      "custom": "自定义",
+      "inherited": "已继承",
+      "inheritPermissions": "继承服务器的权限规则。",
+      "rulesHint": "规则按现有顺序计算。删除所有规则将恢复继承。",
+      "ruleAction": "操作",
+      "ruleResource": "资源模式",
+      "ruleEffect": "决定",
+      "ask": "询问",
+      "allow": "允许",
+      "deny": "拒绝",
+      "addRule": "添加规则",
+      "legacyRules": "此配置使用自定义或旧版规则。请编辑源代码以保留其格式。",
+      "source": "权限源代码",
+      "sourceHint": "编辑完整的 SKILL.md 文件。使用表单字段时会保留未知的前置元数据。",
+      "editSource": "编辑源代码",
+      "useFields": "使用表单字段",
+      "autoinvoke": "自动调用",
+      "autoinvokeHint": "允许模型自动发现此技能。",
+      "connectionType": "连接类型",
+      "executable": "可执行文件",
+      "argumentsHint": "在服务器上运行。请分别输入每个参数，无需 shell 引号。",
+      "argument": "参数 {{number}}",
+      "removeArgument": "删除参数 {{number}}",
+      "addArgument": "添加参数",
+      "pluginHint": "输入软件包，例如 @scope/plugin@1.0.0，或服务器本地路径，例如 ./plugins/example.js。",
+      "configDetails": "配置详情",
+      "mode": {
+        "primary": "主聊天",
+        "subagent": "其他代理",
+        "all": "两者"
+      },
+      "modeHint": {
+        "primary": "可在主聊天中选择。",
+        "subagent": "由其他代理调用以执行特定任务。",
+        "all": "可在聊天中使用，也可供其他代理调用。"
+      },
+      "mcpType": {
+        "remote": "远程服务器",
+        "local": "服务器上的命令"
+      },
+      "mcpStatus": {
+        "connected": "已连接",
+        "disabled": "已断开",
+        "pending": "正在连接…",
+        "failed": "失败",
+        "needs_auth": "需要登录",
+        "needs_client_registration": "需要注册客户端"
+      }
+    },
+    "source": {
+      "general": "所有项目",
+      "project": "此项目",
+      "inherited": "已继承",
+      "runtime": "运行时",
+      "system": "系统"
+    }
   },
   "modelRouting": {
     "title": "自动模型路由",

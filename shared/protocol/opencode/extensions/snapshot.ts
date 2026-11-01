@@ -272,6 +272,7 @@ function agentRows(input: BuildInput) {
       description: parsed?.description,
       mode: parsed?.mode ?? (legacyMode ? 'primary' : undefined),
       model: parsed?.model,
+      modelComplex: parsed?.modelComplex,
       permissions: parsed?.permissions,
       permissionsText: parsed?.permissionsText,
       permissionsKey: parsed?.permissionsKey,

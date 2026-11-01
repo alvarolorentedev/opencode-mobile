@@ -156,7 +156,10 @@ export function setMcpServer(
   if (mode === 'add' && readMcpServers(parsed)[name]) {
     throw new ConfigEditError('already-exists', `MCP server "${name}" already exists.`);
   }
-  return edit(text, ['mcp', 'servers', name], toConfigMcp(config));
+  const previous = readMcpServers(parsed)[name];
+  const next = mode === 'edit' ? { ...previous, ...toConfigMcp(config) } : toConfigMcp(config);
+  if (mode === 'edit' && config.enabled === undefined && previous?.disabled !== undefined) next.disabled = previous.disabled as boolean;
+  return edit(text, ['mcp', 'servers', name], next);
 }
 
 export function removeMcpServer(text: string, name: string) {
@@ -241,11 +244,16 @@ export function setAgent(text: string, draft: ExtensionAgentDraft) {
   if (description) next.description = description;
   else delete next.description;
   const model = draft.model?.trim();
-  if (model) next.model = model;
+  const previousModel = previous.model;
+  const selection = previousModel && typeof previousModel === 'object' && !Array.isArray(previousModel) ? previousModel as Record<string, unknown> : undefined;
+  const previousLabel = selection ? `${selection.providerID}/${selection.model}${selection.variant ? `#${selection.variant}` : ''}` : previousModel;
+  if (model) next.model = model === previousLabel ? previousModel : model;
   else delete next.model;
-  const permissions = parsePermissionJson(draft.permissions ?? '');
-  if (permissions) next.permissions = permissions;
-  else delete next.permissions;
+  if ((draft.permissions ?? '').trim() !== (previous.permissions === undefined ? '' : JSON.stringify(previous.permissions, null, 2))) {
+    const permissions = parsePermissionJson(draft.permissions ?? '');
+    if (permissions) next.permissions = permissions;
+    else delete next.permissions;
+  }
   const validation = agentDefinitionSchema.safeParse(next);
   if (!validation.success) throw new ConfigEditError('unsupported-shape', validation.error.issues[0]?.message || 'Invalid agent definition.');
   return edit(text, ['agents', name], next);

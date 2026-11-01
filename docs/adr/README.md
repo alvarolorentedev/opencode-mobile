@@ -74,6 +74,8 @@ coverage, and documentation links.
 | [0021](0021-per-connection-custom-ca.md) | Per-connection custom CA trust | Accepted |
 | [0022](0022-markdown-first-extension-definitions.md) | Markdown-first agent and command definitions with JSONC compatibility | Accepted |
 
+| [0023](0023-focused-extension-editors.md) | Focused extension editors with structured authoring | Accepted |
+
 ## Template
 
 Use [template.md](template.md). Keep the front matter fields (`Status`, `Date`,

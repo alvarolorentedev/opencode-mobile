@@ -850,8 +850,8 @@
     "title": "Extensiones",
     "description": "Gestiona servidores MCP, plugins, habilidades y comandos de barra para este servidor.",
     "scope": {
-      "project": "Proyecto",
-      "general": "General"
+      "project": "Este proyecto",
+      "general": "Todos los proyectos"
     },
     "scopeDescription": {
       "project": "Estas extensiones solo se aplican a {{project}}.",
@@ -965,7 +965,78 @@
     },
     "generalConfirmTitle": "Editar configuración global",
     "generalConfirmMessage": "Esto cambia la configuración de todos los proyectos de este servidor. Antes se creará una copia de seguridad.\n\n{{path}}",
-    "generalConfirmAction": "Continuar"
+    "generalConfirmAction": "Continuar",
+    "editor": {
+      "discardTitle": "¿Descartar cambios?",
+      "discardHint": "Se perderán los cambios sin guardar.",
+      "discard": "Descartar cambios",
+      "back": "Volver a extensiones",
+      "setup": "Configuración",
+      "instructions": "Instrucciones",
+      "advanced": "Avanzado",
+      "storage": "Formato de almacenamiento",
+      "inheritModel": "Heredar modelo",
+      "inheritModelHint": "Dejar que OpenCode elija el modelo.",
+      "customModel": "ID de modelo personalizado",
+      "customModelHint": "Este modelo se configura en Avanzado. Su configuración se conserva.",
+      "noModels": "No hay modelos configurados. Configura un proveedor en IA y proveedores o introduce un ID de modelo en Avanzado.",
+      "availability": "Disponible para",
+      "custom": "Personalizado",
+      "inherited": "Heredado",
+      "inheritPermissions": "Heredar las reglas de permisos del servidor.",
+      "rulesHint": "Las reglas se evalúan en su orden actual. Eliminarlas todas restablece la herencia.",
+      "ruleAction": "Acción",
+      "ruleResource": "Patrón de recurso",
+      "ruleEffect": "Decisión",
+      "ask": "Preguntar",
+      "allow": "Permitir",
+      "deny": "Denegar",
+      "addRule": "Añadir regla",
+      "legacyRules": "Esta configuración usa reglas personalizadas o antiguas. Edita el código fuente para conservar su formato.",
+      "source": "Código fuente de permisos",
+      "sourceHint": "Edita el archivo SKILL.md completo. Los campos desconocidos se conservan al usar los controles.",
+      "editSource": "Editar código fuente",
+      "useFields": "Usar controles",
+      "autoinvoke": "Invocación automática",
+      "autoinvokeHint": "Permitir que el modelo descubra esta habilidad automáticamente.",
+      "connectionType": "Tipo de conexión",
+      "executable": "Ejecutable",
+      "argumentsHint": "Se ejecuta en el servidor. Introduce cada argumento por separado, sin comillas de shell.",
+      "argument": "Argumento {{number}}",
+      "removeArgument": "Eliminar argumento {{number}}",
+      "addArgument": "Añadir argumento",
+      "pluginHint": "Introduce un paquete como @scope/plugin@1.0.0 o una ruta del servidor como ./plugins/example.js.",
+      "configDetails": "Detalles de configuración",
+      "mode": {
+        "primary": "Chat principal",
+        "subagent": "Otros agentes",
+        "all": "Ambos"
+      },
+      "modeHint": {
+        "primary": "Se puede elegir en el chat principal.",
+        "subagent": "Otro agente lo llama para tareas concretas.",
+        "all": "Disponible en el chat y para otros agentes."
+      },
+      "mcpType": {
+        "remote": "Servidor remoto",
+        "local": "Comando en el servidor"
+      },
+      "mcpStatus": {
+        "connected": "Conectado",
+        "disabled": "Desconectado",
+        "pending": "Conectando…",
+        "failed": "Error",
+        "needs_auth": "Se requiere iniciar sesión",
+        "needs_client_registration": "Se requiere registrar el cliente"
+      }
+    },
+    "source": {
+      "general": "Todos los proyectos",
+      "project": "Este proyecto",
+      "inherited": "Heredado",
+      "runtime": "En ejecución",
+      "system": "Sistema"
+    }
   },
   "modelRouting": {
     "title": "Enrutamiento automático de modelos",

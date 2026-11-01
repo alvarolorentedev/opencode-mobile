@@ -850,8 +850,8 @@
     "title": "Erweiterungen",
     "description": "Verwalte MCP-Server, Plugins, Fähigkeiten und Slash-Befehle für diesen Server.",
     "scope": {
-      "project": "Projekt",
-      "general": "Allgemein"
+      "project": "Dieses Projekt",
+      "general": "Alle Projekte"
     },
     "scopeDescription": {
       "project": "Diese Erweiterungen gelten nur für {{project}}.",
@@ -965,7 +965,78 @@
     },
     "generalConfirmTitle": "Globale Konfiguration bearbeiten",
     "generalConfirmMessage": "Dies ändert die Konfiguration für alle Projekte auf diesem Server. Zuvor wird eine Sicherung erstellt.\n\n{{path}}",
-    "generalConfirmAction": "Weiter"
+    "generalConfirmAction": "Weiter",
+    "editor": {
+      "discardTitle": "Änderungen verwerfen?",
+      "discardHint": "Nicht gespeicherte Änderungen gehen verloren.",
+      "discard": "Änderungen verwerfen",
+      "back": "Zurück zu Erweiterungen",
+      "setup": "Einrichtung",
+      "instructions": "Anweisungen",
+      "advanced": "Erweitert",
+      "storage": "Speicherformat",
+      "inheritModel": "Modell erben",
+      "inheritModelHint": "OpenCode das Modell auswählen lassen.",
+      "customModel": "Benutzerdefinierte Modell-ID",
+      "customModelHint": "Dieses Modell wird unter Erweitert konfiguriert. Seine Konfiguration bleibt erhalten.",
+      "noModels": "Keine konfigurierten Modelle. Richte einen Anbieter unter KI und Anbieter ein oder gib unter Erweitert eine Modell-ID ein.",
+      "availability": "Verfügbar für",
+      "custom": "Benutzerdefiniert",
+      "inherited": "Geerbt",
+      "inheritPermissions": "Berechtigungsregeln des Servers erben.",
+      "rulesHint": "Regeln werden in ihrer bisherigen Reihenfolge ausgewertet. Ohne Regeln werden die Serverregeln geerbt.",
+      "ruleAction": "Aktion",
+      "ruleResource": "Ressourcenmuster",
+      "ruleEffect": "Entscheidung",
+      "ask": "Nachfragen",
+      "allow": "Erlauben",
+      "deny": "Verweigern",
+      "addRule": "Regel hinzufügen",
+      "legacyRules": "Diese Konfiguration verwendet benutzerdefinierte oder ältere Regeln. Bearbeite den Quelltext, um das Format zu erhalten.",
+      "source": "Berechtigungsquelltext",
+      "sourceHint": "Bearbeite die gesamte SKILL.md-Datei. Unbekannte Felder bleiben bei Verwendung der Eingabefelder erhalten.",
+      "editSource": "Quelltext bearbeiten",
+      "useFields": "Eingabefelder verwenden",
+      "autoinvoke": "Automatischer Aufruf",
+      "autoinvokeHint": "Dem Modell erlauben, diese Fähigkeit automatisch zu entdecken.",
+      "connectionType": "Verbindungstyp",
+      "executable": "Ausführbare Datei",
+      "argumentsHint": "Wird auf dem Server ausgeführt. Jedes Argument einzeln und ohne Shell-Anführungszeichen eingeben.",
+      "argument": "Argument {{number}}",
+      "removeArgument": "Argument {{number}} entfernen",
+      "addArgument": "Argument hinzufügen",
+      "pluginHint": "Gib ein Paket wie @scope/plugin@1.0.0 oder einen Serverpfad wie ./plugins/example.js ein.",
+      "configDetails": "Konfigurationsdetails",
+      "mode": {
+        "primary": "Hauptchat",
+        "subagent": "Andere Agenten",
+        "all": "Beides"
+      },
+      "modeHint": {
+        "primary": "Im Hauptchat auswählbar.",
+        "subagent": "Von einem anderen Agenten für gezielte Aufgaben aufgerufen.",
+        "all": "Im Chat und für andere Agenten verfügbar."
+      },
+      "mcpType": {
+        "remote": "Remote-Server",
+        "local": "Befehl auf dem Server"
+      },
+      "mcpStatus": {
+        "connected": "Verbunden",
+        "disabled": "Getrennt",
+        "pending": "Verbindung wird hergestellt…",
+        "failed": "Fehlgeschlagen",
+        "needs_auth": "Anmeldung erforderlich",
+        "needs_client_registration": "Clientregistrierung erforderlich"
+      }
+    },
+    "source": {
+      "general": "Alle Projekte",
+      "project": "Dieses Projekt",
+      "inherited": "Geerbt",
+      "runtime": "Laufzeit",
+      "system": "System"
+    }
   },
   "modelRouting": {
     "title": "Automatisches Modell-Routing",
