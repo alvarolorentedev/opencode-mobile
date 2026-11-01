@@ -511,7 +511,7 @@
     }
   },
   "diagnostics": {
-    "title": "Diagnósticos do servidor",
+    "title": "Diagnósticos",
     "server": "Servidor",
     "openCodeVersion": "OpenCode {{version}}",
     "healthUnavailable": "Endpoint de integridade indisponível",

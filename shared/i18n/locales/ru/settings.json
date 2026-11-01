@@ -511,7 +511,7 @@
     }
   },
   "diagnostics": {
-    "title": "Диагностика сервера",
+    "title": "Диагностика",
     "server": "Сервер",
     "openCodeVersion": "OpenCode {{version}}",
     "healthUnavailable": "Эндпоинт состояния недоступен",

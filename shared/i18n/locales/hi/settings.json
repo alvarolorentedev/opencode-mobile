@@ -511,7 +511,7 @@
     }
   },
   "diagnostics": {
-    "title": "सर्वर निदान",
+    "title": "निदान",
     "server": "सर्वर",
     "openCodeVersion": "OpenCode {{version}}",
     "healthUnavailable": "हेल्थ एंडपॉइंट अनुपलब्ध",

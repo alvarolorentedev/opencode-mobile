@@ -511,7 +511,7 @@
     }
   },
   "diagnostics": {
-    "title": "Server diagnostics",
+    "title": "Diagnostics",
     "server": "Server",
     "openCodeVersion": "OpenCode {{version}}",
     "healthUnavailable": "Health endpoint unavailable",

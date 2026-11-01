@@ -128,7 +128,7 @@ Back remain alternatives to dragging.
 Home order is App preferences, Connections, Selected server. App preferences
 contains Appearance, Chat & responses, Voice & audio, Notifications, Language,
 and About & support. Connection management and Cloud Link have their own group.
-AI & providers, Extensions, Approvals and Server diagnostics use the independent
+AI & providers, Extensions, Approvals and Diagnostics use the independent
 inspection target. Server selection is made once on Settings home when multiple
 servers exist; server category sheets show a read-only context caption instead
 of repeating the selector, and preserve project selection where applicable.

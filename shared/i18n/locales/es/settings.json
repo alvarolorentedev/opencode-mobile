@@ -511,7 +511,7 @@
     }
   },
   "diagnostics": {
-    "title": "Diagnósticos del servidor",
+    "title": "Diagnósticos",
     "server": "Servidor",
     "openCodeVersion": "OpenCode {{version}}",
     "healthUnavailable": "Punto de conexión de estado no disponible",

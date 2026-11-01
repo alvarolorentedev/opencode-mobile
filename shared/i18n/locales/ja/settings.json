@@ -511,7 +511,7 @@
     }
   },
   "diagnostics": {
-    "title": "サーバー診断",
+    "title": "診断",
     "server": "サーバー",
     "openCodeVersion": "OpenCode {{version}}",
     "healthUnavailable": "ヘルスエンドポイントを利用できません",

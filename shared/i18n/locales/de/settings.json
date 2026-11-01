@@ -511,7 +511,7 @@
     }
   },
   "diagnostics": {
-    "title": "Serverdiagnose",
+    "title": "Diagnose",
     "server": "Server",
     "openCodeVersion": "OpenCode {{version}}",
     "healthUnavailable": "Health-Endpunkt nicht verfügbar",

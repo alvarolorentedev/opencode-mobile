@@ -511,7 +511,7 @@
     }
   },
   "diagnostics": {
-    "title": "Diagnostics du serveur",
+    "title": "Diagnostics",
     "server": "Serveur",
     "openCodeVersion": "OpenCode {{version}}",
     "healthUnavailable": "Point de contrôle d'état indisponible",

@@ -511,7 +511,7 @@
     }
   },
   "diagnostics": {
-    "title": "服务器诊断",
+    "title": "诊断",
     "server": "服务器",
     "openCodeVersion": "OpenCode {{version}}",
     "healthUnavailable": "健康检查端点不可用",

@@ -399,7 +399,7 @@ If summarization fails, the session simply remains untitled.
 Settings follows the [design system](../design/design-system.md). Home shows App preferences
 (Appearance, Chat & responses, Voice & audio, Notifications, Language, About &
 support), Connections (Connection and eligible Cloud Link), then Selected server
-(AI & providers, Extensions, Approvals, Server diagnostics). Every category opens
+(AI & providers, Extensions, Approvals, Diagnostics). Every category opens
 in the existing content-sized sheet; longer content scrolls below its fixed
 Close header. Connection and provider forms retain their keyboard-safe surfaces.
 Server and project selectors list only connected servers; disconnected,
@@ -963,7 +963,7 @@ Any reimplementation should preserve these functional outcomes:
 - experimental worktree creation/removal
 - MCP lifecycle/configuration/OAuth management
 - ticket-authenticated interactive PTYs with xterm, bounded scrollback, resize, and acknowledged reconnect
-- server diagnostics
+- diagnostics
 - provider discovery and auth configuration from server metadata
 - enabled-model filtering separate from model selection
 - auto-approve writing back to server permissions config
