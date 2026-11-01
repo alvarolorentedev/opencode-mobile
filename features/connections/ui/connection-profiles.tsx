@@ -45,7 +45,7 @@ export function ConnectionProfiles({ palette, onManageConnect, onPair }: { palet
   const registry = useWorkspaces();
   const presentation = useWorkspacePresentation();
   const { settings, connection, connect, updateSettings, connectSetup, connectionProfiles } = useConnection();
-  const { profiles, refresh, connect: connectProfile, passwordForEditing, headersForEditing, certificateForEditing, save, remove } = connectionProfiles;
+  const { profiles, refresh, connect: connectProfile, passwordForEditing, headersForEditing, certificateForEditing, save, remove, signIn } = connectionProfiles;
   const [error, setError] = useState<string>();
   const [expandedKey, setExpandedKey] = useState<string>();
   const [switchingProfileId, setSwitchingProfileId] = useState<string>();
@@ -82,6 +82,37 @@ export function ConnectionProfiles({ palette, onManageConnect, onPair }: { palet
   async function handleEditProfile(profile: ConnectionProfile) {
     const [password, headers, certificate] = await Promise.all([passwordForEditing(profile.id), headersForEditing(profile.id), certificateForEditing(profile.id)]);
     setDialog({ mode: 'edit-profile', profile, password, headers, certificate });
+  }
+
+  // Signing in is a browser round trip; it is only ever started from an
+  // explicit tap, never from a background poll.
+  async function handleSignInProfile(profile: ConnectionProfile) {
+    if (!profile.oidc || switchingProfileId) return;
+    setSwitchingProfileId(profile.id);
+    try {
+      await signIn({ serverUrl: profile.serverUrl, username: profile.username, oidc: profile.oidc });
+      const id = getConnectionUiScope(profile);
+      setError(undefined);
+      if (registry.connections.find((entry) => entry.id === id)?.enabled) await registry.retry(id);
+    } catch (reason) {
+      setError(getErrorMessage(reason));
+    } finally {
+      setSwitchingProfileId(undefined);
+    }
+  }
+
+  async function handleSignInCurrent() {
+    if (!settings.oidc || switchingProfileId) return;
+    setSwitchingProfileId(CURRENT_CONNECTION_KEY);
+    try {
+      await signIn({ serverUrl: settings.serverUrl, username: settings.username, oidc: settings.oidc });
+      setError(undefined);
+      await connect();
+    } catch (reason) {
+      setError(getErrorMessage(reason));
+    } finally {
+      setSwitchingProfileId(undefined);
+    }
   }
 
   function handleDelete(profile: ConnectionProfile) {
@@ -128,7 +159,7 @@ export function ConnectionProfiles({ palette, onManageConnect, onPair }: { palet
     }
 
     // Editing the current, not-yet-saved connection only touches live settings.
-    updateSettings({ serverUrl: values.serverUrl, username: values.username, password: values.password, headers: values.headers, certificate: values.certificate });
+    updateSettings({ serverUrl: values.serverUrl, username: values.username, password: values.password, headers: values.headers, certificate: values.certificate, oidc: values.oidc });
     setDialog(undefined);
   }
 
@@ -196,6 +227,7 @@ export function ConnectionProfiles({ palette, onManageConnect, onPair }: { palet
         <>
           <Button testID="connection-reconnect" disabled={isReconnecting || !settings.serverUrl.trim()} onPress={() => void connect()} variant="default">{isReconnecting ? <Spinner size="small" /> : null}<Text>{t('common:actions.reconnect')}</Text></Button>
           <Button testID="connection-edit-current" onPress={() => setDialog({ mode: 'edit-current' })} variant="outline"><Text>{t('common:actions.edit')}</Text></Button>
+          {settings.oidc ? <Button testID="connection-oidc-sign-in-current" disabled={Boolean(switchingProfileId)} onPress={() => void handleSignInCurrent()} variant="outline"><Text>{t('settings:connection.oidc.signIn')}</Text></Button> : null}
         </>
       ),
       body: (
@@ -219,6 +251,9 @@ export function ConnectionProfiles({ palette, onManageConnect, onPair }: { palet
     const manageOrEdit = profile.connect
       ? onManageConnect ? <Button onPress={() => manageConnect(profile)} variant="outline"><Text>{t('settings:connect.manage')}</Text></Button> : null
       : <Button testID={`connection-edit-${profile.id}`} onPress={() => void handleEditProfile(profile).catch((reason) => setError(getErrorMessage(reason)))} variant="outline"><Text>{t('common:actions.edit')}</Text></Button>;
+    const oidcSignIn = profile.oidc
+      ? <Button testID={`connection-oidc-sign-in-${profile.id}`} disabled={Boolean(switchingProfileId) || isSwitching} onPress={() => void handleSignInProfile(profile)} variant="outline"><Text>{t('settings:connection.oidc.signIn')}</Text></Button>
+      : null;
     rows.push(renderRow({
       rowKey: profile.id,
       testIDKey: profile.id,
@@ -232,11 +267,13 @@ export function ConnectionProfiles({ palette, onManageConnect, onPair }: { palet
           <Button testID="connection-reconnect" disabled={isReconnecting || isSwitching} onPress={() => void registry.retry(id).catch((reason) => setError(String(reason)))} variant="default">{isReconnecting ? <Spinner size="small" /> : null}<Text>{t('common:actions.reconnect')}</Text></Button>
           <Button testID={`connection-disconnect-${profile.id}`} onPress={() => void registry.disconnect(id).catch((reason) => setError(String(reason)))} variant="ghost"><Text>{t('common:actions.disconnect')}</Text></Button>
           {manageOrEdit}
+          {oidcSignIn}
         </>
       ) : (
         <>
           <Button testID={`connection-connect-${profile.id}`} disabled={Boolean(switchingProfileId) || isSwitching} onPress={() => void handleConnect(profile)} variant="default">{isSwitching ? <Spinner size="small" /> : null}<Text>{t('common:actions.connect')}</Text></Button>
           {manageOrEdit}
+          {oidcSignIn}
           <Button testID={`connection-delete-${profile.id}`} onPress={() => handleDelete(profile)} variant="ghost"><Text className={cn("text-destructive")} >{t('common:actions.delete')}</Text></Button>
         </>
       ),
@@ -277,6 +314,7 @@ export function ConnectionProfiles({ palette, onManageConnect, onPair }: { palet
             password: settings.password,
             headers: settings.headers ?? {},
             certificate: settings.certificate,
+            oidc: settings.oidc,
           } : {
             name: dialog.profile.name,
             serverUrl: dialog.profile.serverUrl,
@@ -284,6 +322,7 @@ export function ConnectionProfiles({ palette, onManageConnect, onPair }: { palet
             password: dialog.password,
             headers: dialog.headers,
             certificate: dialog.certificate,
+            oidc: dialog.profile.oidc,
           }}
           onSubmit={handleDialogSubmit}
           onDismiss={() => { addedProfileId.current = undefined; setDialog(undefined); }}

@@ -1,3 +1,4 @@
+import { Buffer } from 'node:buffer';
 import { readFileSync, existsSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { runInNewContext } from 'node:vm';
@@ -15,6 +16,22 @@ export async function loadTs(relative, imports = {}, globals = {}) {
   resolved.expo ??= { requireOptionalNativeModule: () => null, requireNativeModule: () => null };
   resolved['expo-constants'] ??= { __esModule: true, default: { expoConfig: { extra: {} } } };
   resolved['react-native'] ??= { Platform: { OS: 'web' } };
+  // Pure encoding helpers used by shared contracts; the VM loader has no module
+  // resolution for package internals, so provide the same API the app imports.
+  resolved['@scure/base'] ??= {
+    base64: {
+      encode: (bytes) => Buffer.from(bytes).toString('base64'),
+      decode: (value) => new Uint8Array(Buffer.from(value, 'base64')),
+    },
+    base64url: {
+      encode: (bytes) => Buffer.from(bytes).toString('base64url'),
+      decode: (value) => new Uint8Array(Buffer.from(value, 'base64url')),
+    },
+    base64urlnopad: {
+      encode: (bytes) => Buffer.from(bytes).toString('base64url').replace(/=+$/, ''),
+      decode: (value) => new Uint8Array(Buffer.from(value, 'base64url')),
+    },
+  };
   resolved['expo-crypto'] ??= {
     AESEncryptionKey: {
       generate: async () => ({ encoded: async () => 'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=', bytes: async () => new Uint8Array(32) }),

@@ -104,7 +104,14 @@
       "certificateUntrusted": "The server certificate is not trusted. Import the CA certificate for this server.",
       "certificateExpired": "The server certificate has expired.",
       "certificateHostnameMismatch": "The server certificate does not match this address.",
-      "certificateInvalid": "The server certificate could not be validated."
+      "certificateInvalid": "The server certificate could not be validated.",
+      "oidcIssuer": "Saisissez une URL d'émetteur OpenID Connect valide.",
+      "oidcClientId": "Saisissez l'ID client enregistré pour cette application.",
+      "oidcScopes": "Utilisez des portées séparées par des espaces et des caractères imprimables.",
+      "oidcRedirectUri": "Saisissez une URI de redirection valide.",
+      "oidcSignIn": "Reconnectez-vous avec OpenID Connect pour utiliser ce serveur.",
+      "oidcSignInFailed": "La connexion OpenID Connect a échoué. Vérifiez l'émetteur et l'ID client.",
+      "oidcTokenHeader": "Saisissez un nom d'en-tête valide autre que Authorization."
     },
     "setup": {
       "step": "Étape {{step}} sur 2",
@@ -168,6 +175,29 @@
         "invalid": "This is not a valid X.509 certificate.",
         "read": "Could not read the selected certificate.",
         "notTrusted": "The imported certificate does not trust this server."
+      }
+    },
+    "oidc": {
+      "enable": "Utiliser OpenID Connect",
+      "hint": "Connectez-vous via votre fournisseur plutôt qu'avec un mot de passe du serveur.",
+      "issuer": "URL de l'émetteur",
+      "issuerHint": "L'identifiant de l'émetteur, par exemple https://login.example.com/realms/main.",
+      "clientId": "ID client",
+      "scopes": "Portées",
+      "scopesHint": "Séparées par des espaces. Gardez offline_access pour que la session se renouvelle sans rouvrir le navigateur.",
+      "tokenHeader": "En-tête du jeton",
+      "tokenHeaderHint": "Le jeton d'accès brut est envoyé dans cet en-tête. Laissez vide pour X-Auth-Request-Access-Token. Si un mot de passe est défini, Authorization conserve l'authentification Basic.",
+      "redirectUri": "URI de redirection",
+      "redirectHint": "Enregistrez cette URI exacte chez votre fournisseur : {{uri}}",
+      "signIn": "Se connecter",
+      "signInAgain": "Se reconnecter",
+      "cancelled": "La connexion a été annulée.",
+      "status": {
+        "unknown": "Pas encore connecté.",
+        "signed-in": "Connecté. Le jeton se renouvelle automatiquement.",
+        "expired": "La session a expiré. Reconnectez-vous.",
+        "signed-out": "Connectez-vous pour autoriser ce serveur.",
+        "signing-in": "En attente du navigateur…"
       }
     }
   },

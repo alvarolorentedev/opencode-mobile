@@ -1,10 +1,10 @@
-import { base64 } from '@scure/base';
 import { fetch as expoFetch } from 'expo/fetch';
 
 import { recordBytes, recordRequest } from '@/shared/network/data-usage';
 import { recordRequestStart } from '@/shared/network/request-stats';
 import { telemetry } from '@/shared/observability/client';
 import { getConnectCredentialError } from '@/shared/contracts/cloud-link';
+import { resolveAuthorizedHeaders, refreshOidcAuthorization } from '@/shared/protocol/opencode/client/authorization';
 import { classifyConnectionFailure } from '@/shared/protocol/opencode/client/errors';
 import { classifyHttpOperation } from '@/shared/protocol/opencode/client/operation';
 import { joinUrlPath } from '@/shared/contracts/server-url';
@@ -13,27 +13,9 @@ import { fetchWithReadDeadline } from '@/shared/protocol/opencode/client/read-de
 import { getRequestTimeout, shouldRetryRead } from '@/shared/protocol/opencode/client/request-policy';
 import { ensureConnectionTrust } from '@/shared/platform/tls-trust';
 
-export function createAuthHeader(settings: OpencodeConnectionSettings) {
-  const password = settings.password;
-  if (!password) {
-    return undefined;
-  }
-
-  const username = settings.username.trim() || 'opencode';
-  return `Basic ${base64.encode(new TextEncoder().encode(`${username}:${password}`))}`;
-}
-
-export function getRequestHeaders(settings: OpencodeConnectionSettings) {
-  const authHeader = createAuthHeader(settings);
-  // Custom gateway headers apply to every request for this connection. Basic
-  // auth is generated last: `authorization` is rejected by header validation, so
-  // this only guarantees the app-owned value always wins.
-  const headers = {
-    ...(settings.headers ?? {}),
-    ...(authHeader ? { Authorization: authHeader } : {}),
-  };
-  return Object.keys(headers).length ? headers : undefined;
-}
+// Re-exported for existing importers; the implementation lives with the other
+// credential rules so OpenID Connect and basic auth cannot diverge.
+export { createAuthHeader, getRequestHeaders, withOidcAuthorization } from '@/shared/protocol/opencode/client/authorization';
 
 function abortableDelay(ms: number, signal?: AbortSignal) {
   return new Promise<void>((resolve, reject) => {
@@ -121,12 +103,39 @@ async function fetchConnectionInner(input: RequestInfo | URL, init?: RequestInit
   const signal = init?.signal ?? (typeof input === 'object' && 'signal' in input ? input.signal : undefined);
   const timeoutMs = getRequestTimeout(url, method);
   const startedAt = Date.now();
+  // Only a request without a body, or with a string body, can be replayed after
+  // a token refresh. Streams and FormData have already been consumed; a Request
+  // object also carries its own body, so it is only replayable when it is a
+  // read.
+  const inputMethod = typeof input === 'object' && 'method' in input ? input.method : undefined;
+  const replayableBody = (init?.body === undefined || init?.body === null || typeof init.body === 'string')
+    && (!inputMethod || /^(GET|HEAD)$/i.test(inputMethod) || init?.body !== undefined);
+  let requestInit: RequestInit | undefined = settings?.oidc
+    ? { ...init, headers: await resolveAuthorizedHeaders(settings, init?.headers) }
+    : init;
+  let reauthorized = false;
 
   for (let attempt = 0; ; attempt += 1) {
     if (lifetimeSignal?.aborted) throw new Error('OpenCode read canceled.');
     const finishStats = recordRequestStart();
     try {
-      const response = await performFetch(transport, input, init, settings, timeoutMs, lifetimeSignal);
+      const response = await performFetch(transport, input, requestInit, settings, timeoutMs, lifetimeSignal);
+      // An expired or revoked access token is renewed once. A dead refresh
+      // token throws the sign-in-required error, which stops automatic retries
+      // and surfaces the "Sign in again" action.
+      if (settings?.oidc && !reauthorized && (response.status === 401 || response.status === 403)) {
+        reauthorized = true;
+        await refreshOidcAuthorization(settings);
+        if (!replayableBody) {
+          finishStats({ status: response.status });
+          return response;
+        }
+        telemetry.counter('http.retry', 1, { operation, reason: 'oidc' });
+        await response.body?.cancel().catch(() => undefined);
+        requestInit = { ...init, headers: await resolveAuthorizedHeaders(settings, init?.headers) };
+        finishStats({ status: response.status, retried: true });
+        continue;
+      }
       if (shouldRetryRead({ method, url, attempt, elapsedMs: Date.now() - startedAt, status: response.status })) {
         telemetry.counter('http.retry', 1, { operation });
         finishStats({ status: response.status, retried: true });

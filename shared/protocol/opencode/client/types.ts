@@ -5,6 +5,7 @@ import Constants from 'expo-constants';
 
 import type { ConnectMetadata } from '@/shared/contracts/cloud-link';
 import type { ConnectionCertificate } from '@/shared/contracts/connection-certificate';
+import type { ConnectionOidc } from '@/shared/contracts/connection-oidc';
 import type { ProviderAuthValues } from '@/shared/protocol/opencode/types';
 import type { PromptInboxApi } from '@/shared/protocol/opencode/prompt-inbox';
 
@@ -77,6 +78,10 @@ export type OpencodeConnectionSettings = {
   // Per-connection custom CA/self-signed trust. Runtime only: the encrypted
   // certificate store owns persistence.
   certificate?: ConnectionCertificate;
+  // Per-connection OpenID Connect authorization (public client + PKCE). The
+  // issuer/client id are non-secret profile metadata; tokens live in the
+  // encrypted OIDC store, never in this object.
+  oidc?: ConnectionOidc;
   connect?: ConnectMetadata;
 };
 

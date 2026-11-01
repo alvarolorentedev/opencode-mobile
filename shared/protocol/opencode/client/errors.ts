@@ -28,7 +28,7 @@ function describeError(error: unknown) {
 }
 
 const TUNNEL_STARTUP_PATTERN = /\b1033\b|cloudflare error 1033/i;
-const AUTH_PATTERN = /credentials were rejected|credentials expired|credentials are missing|invalid cloud link profile|pair this device again|authentication required|unauthorized/i;
+const AUTH_PATTERN = /credentials were rejected|credentials expired|credentials are missing|invalid cloud link profile|pair this device again|authentication required|unauthorized|sign in with openid connect|openid connect (?:authentication|sign-in)/i;
 const ENTITLEMENT_PATTERN = /no active subscription|access was denied[^]*?(?:subscription|entitlement)|cloud link entitlement|entitlement/i;
 const CERTIFICATE_PATTERN = /certificate|(?:^|[^a-z])(?:TLS|SSL|CERT)(?:[^a-z]|$)|NSURLErrorDomain.*-120[0-6]\b|trust anchor/i;
 const UNSAFE_URL_PATTERN = /invalid.*url|unsafe.*url/i;
@@ -82,6 +82,8 @@ function fallbackTranslate(key: string, options: Record<string, unknown> = {}) {
     case 'settings:connection.errors.certificateExpired': return 'The server certificate has expired.';
     case 'settings:connection.errors.certificateHostnameMismatch': return 'The server certificate does not match this address.';
     case 'settings:connection.errors.certificateInvalid': return 'The server certificate could not be validated.';
+    case 'settings:connection.errors.oidcSignIn': return 'Sign in with OpenID Connect again to use this server.';
+    case 'settings:connection.errors.oidcFailed': return 'OpenID Connect authorization failed. Check the issuer and client ID.';
     case 'settings:connection.errors.notApi': return `The server at ${options.url} did not return an OpenCode API response.${options.apiHint}${options.versionHint}`;
     case 'settings:connection.errors.endpointNotFound': return `OpenCode endpoint not found at ${options.url}.${options.apiHint}${options.versionHint}`;
     case 'settings:connection.errors.webPage': return `The server at ${options.url} returned a web page instead of the OpenCode API.${options.apiHint}${options.versionHint}`;
@@ -122,6 +124,14 @@ export function getConnectionErrorMessage(error: unknown, serverUrl: string, tra
 
   if (/\b1033\b/.test(message)) {
     return tr('settings:connection.errors.tunnelStarting');
+  }
+
+  // OpenID Connect failures are translated for the UI; the thrown message keeps
+  // the provider detail for telemetry.
+  if (/openid connect/i.test(message)) {
+    return /sign in|rejected|expired/i.test(message)
+      ? tr('settings:connection.errors.oidcSignIn')
+      : tr('settings:connection.errors.oidcFailed');
   }
 
   if (/unsupported.?content.?type|malformed.?response/i.test(message)) {

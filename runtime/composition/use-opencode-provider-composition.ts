@@ -3,7 +3,8 @@ import type { OpencodeEvent } from '@/shared/protocol/opencode/events';
 import { emptySharedInput } from '@/features/sharing/runtime';
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef } from 'react';
 
-import { buildClient, getRequestHeaders } from '@/shared/protocol/opencode/client';
+import { buildClient, getRequestHeaders, withOidcAuthorizationObject } from '@/shared/protocol/opencode/client';
+import { useOidcAccessToken } from '@/shared/auth/oidc/use-oidc-access-token';
 import { getActiveSessions , MAX_ACTIVE_SESSIONS , useConnectionLinkActions , usePermissionRulesState , useSessionActions } from '@/features/sessions/runtime';
 import { useConnectionRuntime } from '@/runtime/connections/connection-runtime';
 import { CURRENT_ONBOARDING_VERSION, isOnboardingComplete } from '@/features/onboarding/runtime';
@@ -112,7 +113,15 @@ export function useOpencodeProviderComposition(input: WorkspaceRuntimeInput) {
   }, [refreshInboxMessages, state.currentSessionId]);
   // Memoized so the terminal reconnect effect only runs when headers actually
   // change, not on every render (getRequestHeaders returns a new object).
-  const terminalHeaders = useMemo(() => getRequestHeaders(state.settings), [state.settings]);
+  // OpenID Connect servers also need the current bearer token on the WebSocket
+  // upgrade; the hook renews it silently and re-renders on a new token.
+  const oidcAccessToken = useOidcAccessToken(state.settings, state.settings.oidc);
+  const terminalHeaders = useMemo(
+    () => state.settings.oidc && oidcAccessToken
+      ? withOidcAuthorizationObject(getRequestHeaders(state.settings), oidcAccessToken, state.settings.oidc)
+      : getRequestHeaders(state.settings),
+    [state.settings, oidcAccessToken],
+  );
   const terminal = useTerminalState({
     enabled: input.connection.enabled,
     ...domain,

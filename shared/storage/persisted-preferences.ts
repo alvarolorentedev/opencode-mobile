@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { ACCENT_COLORS, THEME_MODES } from '@/shared/ui/theme/appearance';
 import type { OpencodeConnectionSettings } from '@/shared/protocol/opencode/client';
 import { parseConnectMetadata } from '@/shared/contracts/cloud-link';
+import { parseConnectionOidc } from '@/shared/contracts/connection-oidc';
 import { stripServerUrlCredentials } from '@/shared/contracts/server-url';
 import { normalizeWakePhrase } from '@/shared/platform/voice/wake-phrase';
 import { normalizeLocalCommandModel, normalizeLocalWakePhrase } from '@/shared/platform/voice/local-wake-word/types';
@@ -14,6 +15,7 @@ const ConnectionSettingsSchema = z.object({
   username: z.string().optional(),
   directory: z.string().optional(),
   password: z.string().optional(),
+  oidc: z.unknown().optional(),
   connect: z.unknown().optional(),
 });
 
@@ -27,6 +29,10 @@ export function parseConnectionSettings(raw: string): Partial<OpencodeConnection
     if (value[key] !== undefined) settings[key] = value[key];
   }
   if (settings.serverUrl) settings.serverUrl = stripServerUrlCredentials(settings.serverUrl);
+  if (value.oidc !== undefined) {
+    const oidc = parseConnectionOidc(value.oidc);
+    if (oidc) settings.oidc = oidc;
+  }
   if (value.connect !== undefined) {
     const connect = parseConnectMetadata(value.connect);
     if (!connect || connect.deviceId !== settings.username?.trim()) throw new Error('Invalid Cloud Link identity.');

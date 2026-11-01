@@ -18,6 +18,7 @@ import { useNotificationRoute } from '@/features/notifications/index';
 import { useQuickActionRoute } from '@/features/sessions/index';
 import { useSystemColorScheme } from '@/shared/ui/theme/use-system-color-scheme';
 import { ingestRecordedJsError, installGlobalErrorHandler } from '@/shared/platform/error-reporting';
+import { setSystemPath } from '@/shared/platform/system-path';
 import { initializeObservability, observability, preferencesFromChatPreferences } from '@/shared/observability';
 import { installObservabilityLifecycle } from '@/shared/observability/lifecycle';
 import '@/shared/i18n/index';
@@ -130,12 +131,21 @@ function AppearanceHost() {
         <ThemeProvider value={navigationTheme}>
           <RootNavigator />
           <UpdateHost />
+          <SystemPathHost />
           <StatusBar style={scheme === 'dark' ? 'light' : 'dark'} />
           <PortalHost />
         </ThemeProvider>
 
     </AppearanceProvider>
   );
+}
+
+// Records the visible route so the OpenID Connect browser callback returns to
+// the screen that started sign-in instead of an unmatched deep link.
+function SystemPathHost() {
+  const pathname = usePathname();
+  useEffect(() => { setSystemPath(pathname); }, [pathname]);
+  return null;
 }
 
 function UpdateHost() {

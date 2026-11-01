@@ -487,6 +487,10 @@ independent of onboarding completion. See [Cloud Link pilot](../product/cloud-li
   Manual-connection custom request headers for gateways. Stores the active and per-profile maps in SecureStore, validates names/values, rejects app-owned/transport headers, and provides the canonical comparison used by connect keys and change detection. Resolution carries these headers with the connection password.
 - `shared/storage/connection-password.ts`
   Active connection password in SecureStore, including legacy plaintext migration.
+- `shared/storage/connection-oidc.ts`
+  Encrypted OpenID Connect token sets (AES-256-GCM with the key in SecureStore), keyed by connection scope plus issuer and client ID.
+- `shared/auth/oidc/`
+  Authorization Code + PKCE: discovery-document validation, PKCE/state generation, the system-browser round trip, token exchange and refresh, the process-wide session table with single-flight renewal, and the non-interactive access-token hook used by the terminal.
 - `features/notifications/model/notification-pending.ts`
   Explicit non-secret pending-notification DTO, parsing, and composite keying.
 

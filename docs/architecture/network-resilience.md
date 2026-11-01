@@ -72,6 +72,38 @@ hooks; iOS installs a host-scoped `NSURLProtocol` and `SRSecurityPolicy`. A
 certificate failure is a distinct, non-retryable connection failure with an
 actionable message. See [ADR 0021](../adr/0021-per-connection-custom-ca.md).
 
+### OpenID Connect authorization
+
+A manual connection can instead authenticate with an OpenID Connect provider.
+The connection form stores the issuer, client ID, scopes and an optional redirect
+URI override; the redirect URI defaults to `opencodemobile://oidc-callback`
+(`Linking.createURL('oidc-callback')`) and is shown so it can be registered with
+the provider. Providers are limited to public clients using Authorization Code +
+PKCE (S256). See [ADR 0023](../adr/0023-oidc-pkce-connection-authorization.md).
+
+- Sign-in opens the system browser (`expo-web-browser`), never the in-app WebView.
+  The verifier and state stay in process memory; only the code returns.
+  `app/+native-intent.ts` routes the callback back to the route that started
+  sign-in, so the connection form survives the browser round trip.
+- `shared/auth/oidc/discovery.ts` fetches `/.well-known/openid-configuration`
+  and rejects a document whose `issuer` does not match the configured value.
+- Tokens are refreshed 60 s before expiry and once after a 401/403.
+  `shared/protocol/opencode/client/authorization.ts` resolves the bearer token
+  immediately before each request, so no token is baked into a cached client.
+  A replay after a refresh is limited to requests with no body or a string body.
+- A failed refresh clears the session. The connection reports an auth failure
+  and the connection screen offers `Sign in`/`Sign in again`; the app never opens
+  a browser without a tap. `probeConnection` reports
+  `openid-sign-in-required` so the setup form keeps its options instead of
+  claiming the server is unreachable.
+- The access and refresh tokens are AES-256-GCM encrypted with a key in
+  SecureStore and the ciphertext in AsyncStorage, keyed by connection scope,
+  issuer and client ID. The OIDC block itself is non-secret profile metadata.
+- The terminal WebSocket upgrade uses the same bearer token through a
+  non-interactive token snapshot that refreshes when the session table changes.
+- Web builds cannot intercept the redirect; sign-in reports an explicit
+  unsupported error there.
+
 ## Realtime and polling
 
 `runtime/realtime/use-opencode-realtime.ts` keeps SSE primary and polling as a safety

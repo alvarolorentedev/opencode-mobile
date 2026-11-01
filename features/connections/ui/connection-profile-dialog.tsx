@@ -11,7 +11,7 @@ import { Text } from '@/shared/ui/text';
 import { FieldDescription } from '@/shared/ui/text-field';
 import { Spinner } from '@/shared/ui/spinner';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { KeyboardAvoidingView, ScrollView, StyleSheet, View } from 'react-native';
 
@@ -22,11 +22,15 @@ import { usePalette } from '@/shared/ui/theme/use-palette';
 
 import { MAX_CONNECTION_HEADERS, parseConnectionHeaders } from '@/shared/contracts/connection-headers';
 import type { CertificateFailureReason, ConnectionCertificate } from '@/shared/contracts/connection-certificate';
+import { OIDC_DEFAULT_SCOPES, OIDC_DEFAULT_TOKEN_HEADER, OIDC_REDIRECT_PATH, toConnectionOidc, type ConnectionOidc } from '@/shared/contracts/connection-oidc';
 import type { ConnectionProbeResult } from '@/shared/protocol/opencode/client';
 import { getServerHostname } from '@/shared/contracts/server-url';
 import { connectionOrigin, isTlsTrustSupported } from '@/shared/platform/tls-trust';
+import { createURL } from '@/shared/platform/linking';
+import { isOidcAuthError } from '@/shared/auth/oidc/errors';
 import { useConnection } from '@/features/connections/context';
 import { ConnectionCertificateField } from '@/features/connections/ui/connection-certificate-field';
+import { ConnectionOidcFields, type OidcFieldStatus, type OidcFormValue } from '@/features/connections/ui/connection-oidc-fields';
 
 export type ConnectionProfileFormValues = {
   name: string;
@@ -35,6 +39,7 @@ export type ConnectionProfileFormValues = {
   password: string;
   headers: Record<string, string>;
   certificate?: ConnectionCertificate;
+  oidc?: ConnectionOidc;
 };
 
 function certificateErrorKey(reason: CertificateFailureReason) {
@@ -62,7 +67,18 @@ export function ConnectionProfileDialog({ title, submitLabel, showName = true, i
   const { connectionProfiles } = useConnection();
   const palette = usePalette();
   const form = useForm<ConnectionDraft>({ resolver: zodResolver(connectionSchema), shouldUnregister: false,
-    defaultValues: { name: initial?.name ?? '', serverUrl: initial?.serverUrl ?? '', username: initial?.username ?? '', password: initial?.password ?? '', headers: Object.entries(initial?.headers ?? {}).map(([name, value]) => ({ name, value })) },
+    defaultValues: {
+      name: initial?.name ?? '', serverUrl: initial?.serverUrl ?? '', username: initial?.username ?? '', password: initial?.password ?? '',
+      headers: Object.entries(initial?.headers ?? {}).map(([name, value]) => ({ name, value })),
+      oidc: {
+        enabled: Boolean(initial?.oidc),
+        issuer: initial?.oidc?.issuer ?? '',
+        clientId: initial?.oidc?.clientId ?? '',
+        scopes: initial?.oidc?.scopes ?? OIDC_DEFAULT_SCOPES,
+        tokenHeader: initial?.oidc?.tokenHeader ?? OIDC_DEFAULT_TOKEN_HEADER,
+        redirectUri: initial?.oidc?.redirectUri ?? '',
+      },
+    },
     mode: 'onSubmit', reValidateMode: 'onChange',
   });
   const { field: { value: name, onChange: setName, onBlur: nameBlur, ref: nameRef } } = useController({ control: form.control, name: 'name' });
@@ -71,6 +87,11 @@ export function ConnectionProfileDialog({ title, submitLabel, showName = true, i
   const { field: { value: password, onChange: setPassword, onBlur: passwordBlur, ref: passwordRef } } = useController({ control: form.control, name: 'password' });
   const { fields: headers, append, remove } = useFieldArray({ control: form.control, name: 'headers' });
   const headerValues = useWatch({ control: form.control, name: 'headers' });
+  const oidcValue = useWatch({ control: form.control, name: 'oidc' }) as OidcFormValue;
+  const oidcIdentityKey = [oidcValue.enabled, oidcValue.issuer, oidcValue.clientId, oidcValue.redirectUri, serverUrl, username].join('\n');
+  const [oidcSession, setOidcSession] = useState<{ key: string; status: OidcFieldStatus }>({ key: '', status: 'unknown' });
+  const [oidcError, setOidcError] = useState<string>();
+  const defaultRedirectUri = useMemo(() => createURL(OIDC_REDIRECT_PATH), []);
   const [headersOpen, setHeadersOpen] = useState(headers.length > 0);
   const [showHeaderValues, setShowHeaderValues] = useState(false);
   const [step, setStep] = useState<'address' | 'details'>('address');
@@ -80,7 +101,7 @@ export function ConnectionProfileDialog({ title, submitLabel, showName = true, i
   const [certificate, setCertificate] = useState<ConnectionCertificate | undefined>(initial?.certificate);
   const [certificateError, setCertificateError] = useState<string>();
   const [error, setError] = useState<string>();
-  const [busy, setBusy] = useState<'probe' | 'save'>();
+  const [busy, setBusy] = useState<'probe' | 'save' | 'signin'>();
   const working = useRef(false);
   const request = useRef(0);
   const controller = useRef<AbortController | undefined>(undefined);
@@ -117,6 +138,67 @@ export function ConnectionProfileDialog({ title, submitLabel, showName = true, i
   }
   function removeHeader(index: number) { remove(index); setError(undefined); }
 
+  function updateOidc(patch: Partial<OidcFormValue>) {
+    if (patch.enabled !== undefined) form.setValue('oidc.enabled', patch.enabled, { shouldDirty: true });
+    if (patch.issuer !== undefined) form.setValue('oidc.issuer', patch.issuer, { shouldDirty: true });
+    if (patch.clientId !== undefined) form.setValue('oidc.clientId', patch.clientId, { shouldDirty: true });
+    if (patch.scopes !== undefined) form.setValue('oidc.scopes', patch.scopes, { shouldDirty: true });
+    if (patch.tokenHeader !== undefined) form.setValue('oidc.tokenHeader', patch.tokenHeader, { shouldDirty: true });
+    if (patch.redirectUri !== undefined) form.setValue('oidc.redirectUri', patch.redirectUri, { shouldDirty: true });
+    setOidcError(undefined);
+    setError(undefined);
+  }
+
+  // Shows whether this device already holds a usable session, and refreshes
+  // that answer when the provider settings change. The effect only stores the
+  // result it fetched for one key; a stale answer never paints for a different
+  // issuer.
+  useEffect(() => {
+    const oidc = oidcValue.enabled ? toConnectionOidc(oidcValue) : undefined;
+    if (!oidc || !serverUrl.trim()) return;
+    let cancelled = false;
+    const key = oidcIdentityKey;
+    void connectionProfiles.oidcStatus({ serverUrl: serverUrl.trim(), username: username.trim(), oidc })
+      .then((status) => { if (!cancelled) setOidcSession({ key, status }); })
+      .catch(() => { if (!cancelled) setOidcSession({ key, status: 'unknown' }); });
+    return () => { cancelled = true; };
+    // The key string covers every value the session lookup depends on.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [oidcIdentityKey]);
+  const oidcStatus: OidcFieldStatus = oidcSession.key === oidcIdentityKey ? oidcSession.status : 'unknown';
+
+  async function performSignIn() {
+    if (busy) return;
+    const oidc = toConnectionOidc(oidcValue);
+    if (!oidc) {
+      setOidcError(t(oidcValue.issuer.trim() ? 'settings:connection.errors.oidcClientId' : 'settings:connection.errors.oidcIssuer'));
+      return;
+    }
+    if (!serverUrl.trim()) {
+      setOidcError(t('settings:connection.errors.serverUrl'));
+      return;
+    }
+    const key = oidcIdentityKey;
+    const current = ++request.current;
+    controller.current = new AbortController();
+    setBusy('signin');
+    setOidcError(undefined);
+    setOidcSession({ key, status: 'signing-in' });
+    try {
+      await connectionProfiles.signIn({ serverUrl: serverUrl.trim(), username: username.trim(), oidc }, controller.current.signal);
+      if (current !== request.current) return;
+      setOidcSession({ key, status: 'signed-in' });
+    } catch (reason) {
+      if (current !== request.current) return;
+      setOidcSession({ key, status: 'signed-out' });
+      setOidcError(isOidcAuthError(reason) && reason.code === 'sign-in-cancelled'
+        ? t('settings:connection.oidc.cancelled')
+        : t('settings:connection.errors.oidcSignInFailed'));
+    } finally {
+      if (current === request.current) setBusy(undefined);
+    }
+  }
+
   async function perform(operation: 'probe' | 'save') {
     if (working.current) return;
     working.current = true;
@@ -128,13 +210,15 @@ export function ConnectionProfileDialog({ title, submitLabel, showName = true, i
     }
     const parsedHeaders = parseConnectionHeaders(form.getValues('headers'));
     if (parsedHeaders.error) return;
+    const oidc = oidcValue.enabled ? toConnectionOidc(oidcValue) : undefined;
+    if (oidcValue.enabled && !oidc) return;
     working.current = true;
     setBusy(operation);
     setError(undefined);
     const current = ++request.current;
     controller.current = new AbortController();
     try {
-      const values = { name: name.trim(), serverUrl: serverUrl.trim(), username: username.trim(), password, headers: parsedHeaders.headers ?? {}, certificate };
+      const values = { name: name.trim(), serverUrl: serverUrl.trim(), username: username.trim(), password, headers: parsedHeaders.headers ?? {}, certificate, ...(oidc ? { oidc } : {}) };
       const result = await connectionProfiles.probe(values, controller.current.signal);
       if (current !== request.current) return;
       setProbe(result);
@@ -149,6 +233,7 @@ export function ConnectionProfileDialog({ title, submitLabel, showName = true, i
           : t(certificateErrorKey(result.reason)));
       }
       if (operation === 'probe') { setStep('details'); return; }
+      if (result.status === 'openid-sign-in-required') throw new Error(t('settings:connection.errors.oidcSignIn'));
       if (result.status === 'authentication-required') throw new Error(t('settings:connection.setup.credentialsRejected'));
       await onSubmit(values);
     } catch (reason) {
@@ -186,6 +271,16 @@ export function ConnectionProfileDialog({ title, submitLabel, showName = true, i
             {!v2 && (v1 || customUsername) ? <SettingField label={t('settings:connection.fields.username')} testID="connection-profile-username-input" ref={usernameRef} onBlur={usernameBlur} value={username} onChangeText={setUsername} disabled={Boolean(busy)} autoCapitalize="none" autoCorrect={false} placeholder="opencode"></SettingField> : null}
             <SettingField label={t('settings:connection.fields.password')} testID="connection-profile-password-input" ref={passwordRef} onBlur={passwordBlur} value={password} onChangeText={setPassword} secureTextEntry={!showPassword} disabled={Boolean(busy)} autoCapitalize="none" autoCorrect={false} endAdornment={<Button onPress={() => setShowPassword((value) => !value)} accessibilityLabel={t(showPassword ? 'settings:connection.setup.hidePassword' : 'settings:connection.setup.showPassword')} variant="ghost" size="icon"><Icon name={showPassword ? 'eye-off' : 'eye'} size={24} /></Button>}></SettingField>
             <Text className={cn("text-muted-foreground")}>{t('settings:connection.setup.passwordHint')}</Text>
+            <ConnectionOidcFields
+              value={oidcValue}
+              status={oidcStatus}
+              error={oidcError}
+              defaultRedirectUri={defaultRedirectUri}
+              disabled={Boolean(busy)}
+              palette={palette}
+              onChange={updateOidc}
+              onSignIn={() => void performSignIn()}
+            />
             <Button testID="connection-profile-headers-toggle" disabled={Boolean(busy)} onPress={() => setHeadersOpen((value) => !value)} variant="ghost" className={cn(stylesClasses.left)} ><Icon name={headersOpen ? 'chevron-up' : 'chevron-down'} size={20} /><Text>{t('settings:connection.headers.title')}</Text></Button>
             {headersOpen ? <>
               <Text className={cn("text-muted-foreground")}>{t('settings:connection.headers.hint')}</Text>
@@ -208,7 +303,7 @@ export function ConnectionProfileDialog({ title, submitLabel, showName = true, i
               <Text className={cn("text-muted-foreground")}>{t('settings:connection.setup.nameHint')}</Text>
             </> : null}
           </>}
-          <FieldDescription testID="connection-profile-error" nativeID="connection-profile-validation" accessibilityLiveRegion="polite" invalid={true} hidden={!Boolean(error || form.formState.errors.serverUrl || form.formState.errors.headers)}>{error ?? (form.formState.errors.serverUrl?.message ? t(form.formState.errors.serverUrl.message) : form.formState.errors.headers?.message ? t(form.formState.errors.headers.message) : undefined)}</FieldDescription>
+          <FieldDescription testID="connection-profile-error" nativeID="connection-profile-validation" accessibilityLiveRegion="polite" invalid={true} hidden={!Boolean(error || form.formState.errors.serverUrl || form.formState.errors.headers || form.formState.errors.oidc)}>{error ?? (form.formState.errors.serverUrl?.message ? t(form.formState.errors.serverUrl.message) : form.formState.errors.headers?.message ? t(form.formState.errors.headers.message) : form.formState.errors.oidc?.message ? t(form.formState.errors.oidc.message) : undefined)}</FieldDescription>
         </ScrollView>
         <View className={cn(stylesClasses.actions)} style={[{ backgroundColor: palette.surface, borderTopColor: palette.border, paddingBottom: Math.max(insets.bottom, 12) }]}>
           <Button testID="connection-profile-save-cancel" disabled={locked} onPress={back} variant="ghost"><Text>{t(step === 'details' ? 'common:actions.back' : 'common:actions.cancel')}</Text></Button>
