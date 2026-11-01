@@ -21,6 +21,7 @@ import {
   putManagedService,
 } from '@/shared/protocol/opencode/client/management-api';
 
+vi.mock('react-native', () => ({ Platform: { OS: 'web' } }));
 const h = vi.hoisted(() => ({ credentialError: undefined as string | undefined }));
 vi.mock('@/shared/contracts/cloud-link', () => ({ getConnectCredentialError: () => h.credentialError }));
 vi.mock('@/shared/network/data-usage', () => ({ recordBytes: vi.fn(), recordRequest: vi.fn() }));

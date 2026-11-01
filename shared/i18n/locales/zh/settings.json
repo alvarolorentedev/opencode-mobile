@@ -100,7 +100,11 @@
       "endpointNotFound": "在 {{url}} 未找到 OpenCode 端点。{{apiHint}}{{versionHint}}",
       "webPage": "{{url}} 的服务器返回了网页而不是 OpenCode API。{{apiHint}}{{versionHint}}",
       "apiHint": " 如果此地址提供 Web UI，请改用其 API 基础 URL，通常是 {{url}}/api。",
-      "versionHint": " 此应用支持 OpenCode 1.x 和 2.x 服务器；请检查 API 基础 URL。"
+      "versionHint": " This app requires OpenCode 2; verify the API base URL is correct.",
+      "certificateUntrusted": "The server certificate is not trusted. Import the CA certificate for this server.",
+      "certificateExpired": "The server certificate has expired.",
+      "certificateHostnameMismatch": "The server certificate does not match this address.",
+      "certificateInvalid": "The server certificate could not be validated."
     },
     "setup": {
       "step": "第 {{step}} 步，共 2 步",
@@ -141,7 +145,31 @@
       "showValues": "显示值",
       "hideValues": "隐藏值"
     },
-    "reconnectSuccess": "已连接到 {{url}}。"
+    "reconnectSuccess": "已连接到 {{url}}。",
+    "certificate": {
+      "title": "Private CA certificate",
+      "hint": "Optional. Only this connection will trust this certificate. Use a CA certificate, or a self-signed/server certificate to pin the exact certificate.",
+      "import": "Import certificate",
+      "replace": "Replace",
+      "remove": "Remove",
+      "issuer": "Issuer: {{issuer}}",
+      "expires": "Expires: {{date}}",
+      "fingerprint": "SHA-256: {{fingerprint}}",
+      "chain": "Includes {{count}} certificates",
+      "pinnedWarning": "Trust is tied to this exact certificate. Import a new one when the server certificate is renewed.",
+      "kind": {
+        "ca": "CA certificate",
+        "selfSigned": "Self-signed certificate",
+        "server": "Server certificate"
+      },
+      "errors": {
+        "expired": "This certificate has expired.",
+        "tooLarge": "The certificate file is too large.",
+        "invalid": "This is not a valid X.509 certificate.",
+        "read": "Could not read the selected certificate.",
+        "notTrusted": "The imported certificate does not trust this server."
+      }
+    }
   },
   "providers": {
     "accounts": "账户",

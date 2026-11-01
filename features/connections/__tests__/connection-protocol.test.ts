@@ -8,6 +8,7 @@ import { parseLocalPairing, resolveLocalPairing } from '@/shared/protocol/openco
 import * as readDeadline from '@/shared/protocol/opencode/client/read-deadline';
 import { loadTs } from '../../../tests/helpers/runtime.mjs';
 
+vi.mock('react-native', () => ({ Platform: { OS: 'web' } }));
 vi.mock('@/shared/protocol/opencode/client/types', () => ({ defaultConnectionSettings: { serverUrl: 'http://127.0.0.1:4096' } }));
 vi.mock('@/shared/protocol/opencode/client/fetch', () => ({
   fetchConnection: vi.fn(),

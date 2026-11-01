@@ -6,7 +6,7 @@ import { parseConnectionSettings, parseChatPreferences } from '@/shared/storage/
 import type { ConnectionRecord, WorkspaceTarget } from '@/shared/contracts/workspace';
 
 export const WORKSPACES_STORAGE_KEY = 'opencode-mobile.workspaces';
-export type StoredConnection = Pick<ConnectionRecord, 'id' | 'name' | 'enabled' | 'preferences' | 'projects'> & { settings: Omit<OpencodeConnectionSettings, 'password' | 'headers'> };
+export type StoredConnection = Pick<ConnectionRecord, 'id' | 'name' | 'enabled' | 'preferences' | 'projects'> & { settings: Omit<OpencodeConnectionSettings, 'password' | 'headers' | 'certificate'> };
 export type StoredWorkspaces = { version: 1; connections: StoredConnection[]; focus?: WorkspaceTarget };
 const object = (value: unknown): value is Record<string, unknown> => !!value && typeof value === 'object' && !Array.isArray(value);
 export function parseWorkspaces(raw: string): StoredWorkspaces {

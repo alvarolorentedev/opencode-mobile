@@ -6,6 +6,12 @@ Settings sections, connection and Cloud Link surfaces, provider configuration, a
 
 `connection-method-chooser.tsx` renders the shared Scan QR code (local network),
 Manual, and Cloud Link choices in that order, plus a learn-more link.
+The manual profile form also renders `ConnectionCertificateField` on native
+platforms: an optional PEM/DER CA or self-signed certificate scoped to the
+server's `host:port`, with subject, issuer, expiry, SHA-256 fingerprint,
+replace/remove, and a pinned-certificate warning for non-CA anchors. The field
+is hidden for Cloud Link and when the server is detected as OpenCode 1.
+
 `connection-setup-form.tsx` composes the chooser with two independent flows for
 onboarding and returning from pairing: the scan choice opens the camera-only
 `connection-scan-flow`, and Manual opens the manual profile form.

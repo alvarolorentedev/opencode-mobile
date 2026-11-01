@@ -312,7 +312,17 @@ a visible Google recognizer before surfacing a retryable error. Limits remain:
   other OEM recognizers; the browser suite cannot exercise native speech
   services
 
-## 12. Vendored sherpa-onnx patch
+## 12. Custom CA trust limits
+
+Per-connection custom CA trust is native-only. Web and the browser E2E harness
+never expose the certificate control. OpenCode 1 connections and Cloud Link keep
+system trust by design. `expo-file-system` downloads bypass the custom trust;
+API reads, SSE, attachments through `expo/fetch`, and terminal WebSockets are
+covered. Revocation/OCSP is not checked. Non-CA/self-signed anchors pin the exact
+certificate and require re-import on renewal. Native trust behavior needs
+physical-device or simulator validation; CI cannot prove it.
+
+## 13. Vendored sherpa-onnx patch
 
 `@siteed/sherpa-onnx.rn` is pinned to `1.3.1` and patched through
 `patches/@siteed+sherpa-onnx.rn+1.3.1.patch`. Do not bump the package without

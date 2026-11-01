@@ -194,8 +194,11 @@ fixed forward with a new version and tag.
 
 Web checks do not establish native frame rate, launch latency, battery use,
 memory, physical-device keyboard behavior, camera or microphone permission
-flows, screen-reader acceptance, real App Store/Play purchases, or full-screen
-terminal compatibility. Use [voice validation](../voice-validation.md) for
+flows, screen-reader acceptance, real App Store/Play purchases, full-screen
+terminal compatibility, or native TLS trust. Custom CA/self-signed certificate
+support must be validated on Android and iOS devices or simulators against a
+local HTTPS server, including API, SSE, terminal WebSocket and background
+notification reads. Use [voice validation](../voice-validation.md) for
 voice-device checks and [known gaps](../known-gaps.md) for deferred work.
 Changes under `tests/e2e/` or `tests/fake-opencode/` require explicit human
 validation even when every automated check passes.

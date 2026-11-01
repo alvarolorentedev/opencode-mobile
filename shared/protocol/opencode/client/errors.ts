@@ -1,3 +1,4 @@
+import type { CertificateFailureReason } from '@/shared/contracts/connection-certificate';
 import { normalizeServerUrl } from '@/shared/contracts/server-url';
 
 export type ConnectionFailureKind =
@@ -7,6 +8,7 @@ export type ConnectionFailureKind =
   | 'entitlement'
   | 'tunnel-startup'
   | 'server-incompatible'
+  | 'certificate'
   | 'unknown';
 
 function describeError(error: unknown) {
@@ -28,7 +30,8 @@ function describeError(error: unknown) {
 const TUNNEL_STARTUP_PATTERN = /\b1033\b|cloudflare error 1033/i;
 const AUTH_PATTERN = /credentials were rejected|credentials expired|credentials are missing|invalid cloud link profile|pair this device again|authentication required|unauthorized/i;
 const ENTITLEMENT_PATTERN = /no active subscription|access was denied[^]*?(?:subscription|entitlement)|cloud link entitlement|entitlement/i;
-const INSECURE_PATTERN = /certificate|(?:^|[^a-z])(?:TLS|SSL|CERT)(?:[^a-z]|$)|NSURLErrorDomain.*-120[0-6]\b|invalid.*url|unsafe.*url/i;
+const CERTIFICATE_PATTERN = /certificate|(?:^|[^a-z])(?:TLS|SSL|CERT)(?:[^a-z]|$)|NSURLErrorDomain.*-120[0-6]\b|trust anchor/i;
+const UNSAFE_URL_PATTERN = /invalid.*url|unsafe.*url/i;
 const INCOMPATIBLE_PATTERN = /unsupported.?content.?type|malformed.?response|text\/html|not supported by this version|unexpectedstatus|endpoint not found/i;
 const OFFLINE_PATTERN = /\b(?:ENETUNREACH|ENETDOWN|ENETRESET|ECONNREFUSED)\b|network is unreachable|not connected to the internet|internet connection appears to be offline|\boffline\b|NSURLErrorDomain.*-1009\b/i;
 const TIMEOUT_PATTERN = /\b(?:ENOTFOUND|EAI_AGAIN|ETIMEDOUT|ESOCKETTIMEDOUT|ECONNRESET|EPIPE)\b|(?:unable|failed|could not) to resolve host|name or service not known|nodename nor servname|DNS.*(?:resolution|lookup|failed)|(?:connection|request|connect) timed? ?out|connection reset|NSURLErrorDomain.*(?:-1001|-1003|-1005|-1006)\b/i;
@@ -44,7 +47,8 @@ export function classifyConnectionFailure(error: unknown): ConnectionFailureKind
   if (AUTH_PATTERN.test(message)) return 'auth';
   if (ENTITLEMENT_PATTERN.test(message)) return 'entitlement';
   // Generic fetch failures can conceal certificate failures. Never retry them.
-  if (INSECURE_PATTERN.test(message)) return 'unknown';
+  if (CERTIFICATE_PATTERN.test(message)) return 'certificate';
+  if (UNSAFE_URL_PATTERN.test(message)) return 'unknown';
   if (INCOMPATIBLE_PATTERN.test(message)) return 'server-incompatible';
   if (OFFLINE_PATTERN.test(message)) return 'offline';
   if (TIMEOUT_PATTERN.test(message)) return 'timeout';
@@ -52,7 +56,7 @@ export function classifyConnectionFailure(error: unknown): ConnectionFailureKind
 }
 
 export function isRetryableConnectionFailure(kind: ConnectionFailureKind) {
-  return kind !== 'auth' && kind !== 'entitlement' && kind !== 'server-incompatible';
+  return kind !== 'auth' && kind !== 'entitlement' && kind !== 'server-incompatible' && kind !== 'certificate';
 }
 
 export function isAuthConnectionFailure(kind: ConnectionFailureKind) {
@@ -74,12 +78,26 @@ function fallbackTranslate(key: string, options: Record<string, unknown> = {}) {
     case 'settings:connection.errors.invalidUrl': return 'Enter a complete server URL, such as http://192.168.1.10:4096.';
     case 'settings:connection.errors.generic': return 'Something went wrong while talking to OpenCode.';
     case 'settings:connection.errors.tunnelStarting': return 'The Cloudflare tunnel is still starting (Error 1033). Retry shortly.';
+    case 'settings:connection.errors.certificateUntrusted': return 'The server certificate is not trusted. Import the CA certificate for this server.';
+    case 'settings:connection.errors.certificateExpired': return 'The server certificate has expired.';
+    case 'settings:connection.errors.certificateHostnameMismatch': return 'The server certificate does not match this address.';
+    case 'settings:connection.errors.certificateInvalid': return 'The server certificate could not be validated.';
     case 'settings:connection.errors.notApi': return `The server at ${options.url} did not return an OpenCode API response.${options.apiHint}${options.versionHint}`;
     case 'settings:connection.errors.endpointNotFound': return `OpenCode endpoint not found at ${options.url}.${options.apiHint}${options.versionHint}`;
     case 'settings:connection.errors.webPage': return `The server at ${options.url} returned a web page instead of the OpenCode API.${options.apiHint}${options.versionHint}`;
     case 'settings:connection.errors.apiHint': return ` If this address serves a web UI, use its API base URL instead, usually ${options.url}/api.`;
     case 'settings:connection.errors.versionHint': return ' This app supports OpenCode 1.x and 2.x servers; verify the API base URL is correct.';
     default: return key;
+  }
+}
+
+export function getCertificateErrorMessage(reason: CertificateFailureReason, translate?: ConnectionErrorTranslator) {
+  const tr = translate ?? fallbackTranslate;
+  switch (reason) {
+    case 'expired': return tr('settings:connection.errors.certificateExpired');
+    case 'hostname-mismatch': return tr('settings:connection.errors.certificateHostnameMismatch');
+    case 'invalid': return tr('settings:connection.errors.certificateInvalid');
+    default: return tr('settings:connection.errors.certificateUntrusted');
   }
 }
 

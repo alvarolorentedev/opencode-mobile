@@ -71,6 +71,7 @@ coverage, and documentation links.
 | [0018](0018-tag-driven-release-pipeline.md) | Tag-driven release pipeline with static artifact verification | Accepted |
 | [0019](0019-arm64-only-android-releases.md) | ARM64-only Android release artifacts | Accepted |
 | [0020](0020-local-first-observability-and-otlp.md) | Local-first observability with opt-in OTLP export | Accepted |
+| [0021](0021-per-connection-custom-ca.md) | Per-connection custom CA trust | Accepted |
 
 ## Template
 

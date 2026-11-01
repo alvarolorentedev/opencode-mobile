@@ -47,6 +47,18 @@ describe('connection profiles', () => {
         counter += 1;
         return '00000000-0000-4000-8000-' + String(counter).padStart(12, '0');
       }
+      export class AESEncryptionKey {
+        static async generate() { return new AESEncryptionKey(); }
+        static async import() { return new AESEncryptionKey(); }
+        async encoded() { return 'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA='; }
+        async bytes() { return new Uint8Array(32); }
+      }
+      export class AESSealedData {
+        static fromCombined() { return new AESSealedData(); }
+        async combined() { return ''; }
+      }
+      export async function aesEncryptAsync() { return new AESSealedData(); }
+      export async function aesDecryptAsync() { return new Uint8Array(); }
     `)}`;
 
     const base64Uri = `data:text/javascript,${encodeURIComponent(

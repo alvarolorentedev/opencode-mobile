@@ -37,10 +37,11 @@ describe('connection failure classification', () => {
     expect(classifyConnectionFailure(new Error('unsupported content type'))).toBe('server-incompatible');
   });
 
-  it('keeps ambiguous and security failures in the non-retryable unknown bucket', () => {
+  it('separates certificate failures from ambiguous transport failures', () => {
     expect(classifyConnectionFailure(new Error('fetch failed'))).toBe('unknown');
     expect(classifyConnectionFailure(new Error('Network request failed'))).toBe('unknown');
-    expect(classifyConnectionFailure(new Error('certificate expired'))).toBe('unknown');
+    expect(classifyConnectionFailure(new Error('certificate expired'))).toBe('certificate');
+    expect(classifyConnectionFailure(new Error('Trust anchor for certification path not found'))).toBe('certificate');
     expect(classifyConnectionFailure(new Error('Invalid server URL.'))).toBe('unknown');
     const cyclic: { cause?: unknown } = {};
     cyclic.cause = cyclic;
@@ -58,6 +59,8 @@ describe('connection failure classification', () => {
     }
     expect(isRetryableConnectionFailure('server-incompatible')).toBe(false);
     expect(isAuthConnectionFailure('server-incompatible')).toBe(false);
+    expect(isRetryableConnectionFailure('certificate')).toBe(false);
+    expect(isAuthConnectionFailure('certificate')).toBe(false);
   });
 
   it('keeps the Cloud Link startup gate behavior unchanged', () => {

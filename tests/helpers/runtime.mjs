@@ -9,6 +9,31 @@ export async function loadTs(relative, imports = {}, globals = {}) {
   if (Array.isArray(relative)) return Object.assign({}, ...await Promise.all(relative.map((file) => loadTs(file, imports, globals))));
   const root = fileURLToPath(new URL('../../', import.meta.url));
   const resolved = { ...imports };
+  // Native modules are not available in the VM loader. Suites that need
+  // behavior provide their own stand-ins; these defaults only keep unrelated
+  // modules importable.
+  resolved.expo ??= { requireOptionalNativeModule: () => null, requireNativeModule: () => null };
+  resolved['expo-constants'] ??= { __esModule: true, default: { expoConfig: { extra: {} } } };
+  resolved['react-native'] ??= { Platform: { OS: 'web' } };
+  resolved['expo-crypto'] ??= {
+    AESEncryptionKey: {
+      generate: async () => ({ encoded: async () => 'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=', bytes: async () => new Uint8Array(32) }),
+      import: async () => ({ encoded: async () => 'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=', bytes: async () => new Uint8Array(32) }),
+    },
+    AESSealedData: { fromCombined: () => ({}) },
+    aesEncryptAsync: async () => ({ combined: async () => '' }),
+    aesDecryptAsync: async () => new Uint8Array(),
+  };
+  resolved['@react-native-async-storage/async-storage'] ??= {
+    __esModule: true,
+    default: { getItem: async () => null, setItem: async () => {}, removeItem: async () => {} },
+  };
+  resolved['expo-secure-store'] ??= {
+    getItemAsync: async () => null,
+    setItemAsync: async () => {},
+    deleteItemAsync: async () => {},
+    AFTER_FIRST_UNLOCK_THIS_DEVICE_ONLY: 0,
+  };
   if (imports.react) {
     resolved['@/features/ai/services/capabilities-snapshot'] ??= { clearCapabilitiesSnapshots: async () => {} };
     resolved['@/shared/protocol/services/session-service'] ??= {};

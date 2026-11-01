@@ -100,7 +100,11 @@
       "endpointNotFound": "OpenCode-Endpunkt unter {{url}} nicht gefunden.{{apiHint}}{{versionHint}}",
       "webPage": "Der Server unter {{url}} hat eine Webseite statt der OpenCode-API zurückgegeben.{{apiHint}}{{versionHint}}",
       "apiHint": " Wenn diese Adresse eine Weboberfläche bereitstellt, verwende stattdessen die API-Basis-URL, normalerweise {{url}}/api.",
-      "versionHint": " Diese App unterstützt OpenCode 1.x- und 2.x-Server; prüfe die API-Basis-URL."
+      "versionHint": " This app requires OpenCode 2; verify the API base URL is correct.",
+      "certificateUntrusted": "The server certificate is not trusted. Import the CA certificate for this server.",
+      "certificateExpired": "The server certificate has expired.",
+      "certificateHostnameMismatch": "The server certificate does not match this address.",
+      "certificateInvalid": "The server certificate could not be validated."
     },
     "setup": {
       "step": "Schritt {{step}} von 2",
@@ -141,7 +145,31 @@
       "showValues": "Werte anzeigen",
       "hideValues": "Werte ausblenden"
     },
-    "reconnectSuccess": "Verbunden mit {{url}}."
+    "reconnectSuccess": "Verbunden mit {{url}}.",
+    "certificate": {
+      "title": "Private CA certificate",
+      "hint": "Optional. Only this connection will trust this certificate. Use a CA certificate, or a self-signed/server certificate to pin the exact certificate.",
+      "import": "Import certificate",
+      "replace": "Replace",
+      "remove": "Remove",
+      "issuer": "Issuer: {{issuer}}",
+      "expires": "Expires: {{date}}",
+      "fingerprint": "SHA-256: {{fingerprint}}",
+      "chain": "Includes {{count}} certificates",
+      "pinnedWarning": "Trust is tied to this exact certificate. Import a new one when the server certificate is renewed.",
+      "kind": {
+        "ca": "CA certificate",
+        "selfSigned": "Self-signed certificate",
+        "server": "Server certificate"
+      },
+      "errors": {
+        "expired": "This certificate has expired.",
+        "tooLarge": "The certificate file is too large.",
+        "invalid": "This is not a valid X.509 certificate.",
+        "read": "Could not read the selected certificate.",
+        "notTrusted": "The imported certificate does not trust this server."
+      }
+    }
   },
   "providers": {
     "accounts": "Konten",

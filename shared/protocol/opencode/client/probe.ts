@@ -1,10 +1,13 @@
 import { fetchConnection, getRequestHeaders } from '@/shared/protocol/opencode/client/fetch';
 import { joinUrlPath, normalizeServerUrl } from '@/shared/contracts/server-url';
+import type { CertificateFailureReason } from '@/shared/contracts/connection-certificate';
+import { isCertificateFailureReason, isTlsTrustSupported, probeConnectionTrust, withTemporaryTrust } from '@/shared/platform/tls-trust';
 import type { OpencodeConnectionSettings, ServerContract } from '@/shared/protocol/opencode/client/types';
 
 export type ContractProbeResult = { contract: ServerContract; version?: string };
 export type ConnectionProbeResult =
   | ({ status: 'detected' } & ContractProbeResult)
+  | { status: 'certificate'; reason: CertificateFailureReason }
   | { status: 'authentication-required' | 'unreachable' | 'unknown' };
 
 async function probeJson(origin: string, pathPrefix: string, path: string, settings: OpencodeConnectionSettings, signal?: AbortSignal) {
@@ -33,7 +36,7 @@ async function probeJson(origin: string, pathPrefix: string, path: string, setti
   }
 }
 
-export async function probeConnection(settings: OpencodeConnectionSettings, signal?: AbortSignal): Promise<ConnectionProbeResult> {
+async function probeV2(settings: OpencodeConnectionSettings, signal?: AbortSignal): Promise<ConnectionProbeResult> {
   const base = normalizeServerUrl(settings.serverUrl);
   if (!base.valid) {
     return { status: 'unknown' };
@@ -75,7 +78,22 @@ export async function probeConnection(settings: OpencodeConnectionSettings, sign
   }
 
   if (responses.some((response) => response?.status === 401 || response?.status === 403)) return { status: 'authentication-required' };
+
+  // RN's global fetch collapses TLS failures into a generic network error. When
+  // the HTTP probe cannot reach an HTTPS server, ask the native trust layer
+  // whether the certificate, rather than the network, is the problem.
+  if (base.origin.startsWith('https:') && isTlsTrustSupported()) {
+    const tls = await probeConnectionTrust(settings);
+    if (!tls.ok && isCertificateFailureReason(tls.reason)) {
+      return { status: 'certificate', reason: tls.reason };
+    }
+  }
+
   return { status: responses.every((response) => !response) ? 'unreachable' : 'unknown' };
+}
+
+export function probeConnection(settings: OpencodeConnectionSettings, signal?: AbortSignal): Promise<ConnectionProbeResult> {
+  return withTemporaryTrust(settings, () => probeV2(settings, signal));
 }
 
 export async function detectServerContract(settings: OpencodeConnectionSettings, signal?: AbortSignal): Promise<ContractProbeResult> {

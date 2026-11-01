@@ -100,7 +100,11 @@
       "endpointNotFound": "Эндпоинт OpenCode не найден по адресу {{url}}.{{apiHint}}{{versionHint}}",
       "webPage": "Сервер по адресу {{url}} вернул веб-страницу вместо API OpenCode.{{apiHint}}{{versionHint}}",
       "apiHint": " Если по этому адресу открывается веб-интерфейс, используйте его базовый URL API, обычно {{url}}/api.",
-      "versionHint": " Приложение поддерживает серверы OpenCode 1.x и 2.x; проверьте правильность базового URL API."
+      "versionHint": " This app requires OpenCode 2; verify the API base URL is correct.",
+      "certificateUntrusted": "The server certificate is not trusted. Import the CA certificate for this server.",
+      "certificateExpired": "The server certificate has expired.",
+      "certificateHostnameMismatch": "The server certificate does not match this address.",
+      "certificateInvalid": "The server certificate could not be validated."
     },
     "setup": {
       "step": "Шаг {{step}} из 2",
@@ -141,7 +145,31 @@
       "showValues": "Показать значения",
       "hideValues": "Скрыть значения"
     },
-    "reconnectSuccess": "Подключено к {{url}}."
+    "reconnectSuccess": "Подключено к {{url}}.",
+    "certificate": {
+      "title": "Private CA certificate",
+      "hint": "Optional. Only this connection will trust this certificate. Use a CA certificate, or a self-signed/server certificate to pin the exact certificate.",
+      "import": "Import certificate",
+      "replace": "Replace",
+      "remove": "Remove",
+      "issuer": "Issuer: {{issuer}}",
+      "expires": "Expires: {{date}}",
+      "fingerprint": "SHA-256: {{fingerprint}}",
+      "chain": "Includes {{count}} certificates",
+      "pinnedWarning": "Trust is tied to this exact certificate. Import a new one when the server certificate is renewed.",
+      "kind": {
+        "ca": "CA certificate",
+        "selfSigned": "Self-signed certificate",
+        "server": "Server certificate"
+      },
+      "errors": {
+        "expired": "This certificate has expired.",
+        "tooLarge": "The certificate file is too large.",
+        "invalid": "This is not a valid X.509 certificate.",
+        "read": "Could not read the selected certificate.",
+        "notTrusted": "The imported certificate does not trust this server."
+      }
+    }
   },
   "providers": {
     "accounts": "Аккаунты",

@@ -79,10 +79,10 @@ export function WorkspaceProvider({ children }: PropsWithChildren) {
   const connectSetup = useConnectState({ controlPlaneUrl: shell.controlPlaneUrl, setControlPlaneUrl: shell.setControlPlaneUrl,
     switchConnection, disconnect: disconnectProfile, isHydrated, activeMachineId: settings.connect?.machineId,
     beforeProfileRefresh, migrateConnectConnectionScope, profiles, setProfiles, onProfileRefreshed: profileRefreshed, isActiveProfile });
-  const profileSaved = useCallback((profile: ConnectionProfile, secrets: { password: string; headers: Record<string, string> }, previous?: ConnectionProfile) => {
+  const profileSaved = useCallback((profile: ConnectionProfile, secrets: { password: string; headers: Record<string, string>; certificate?: import('@/shared/contracts/connection-certificate').ConnectionCertificate }, previous?: ConnectionProfile) => {
     const id = getConnectionUiScope(previous ?? profile);
     change((current) => current.map((entry) => entry.id === id ? { ...entry, name: profile.name } : entry));
-    updateWorkspaceSettings(id, { serverUrl: profile.serverUrl, username: profile.username, connect: profile.connect, password: secrets.password, headers: secrets.headers, directory: '' });
+    updateWorkspaceSettings(id, { serverUrl: profile.serverUrl, username: profile.username, connect: profile.connect, password: secrets.password, headers: secrets.headers, certificate: secrets.certificate, directory: '' });
   }, [change, updateWorkspaceSettings]);
   const removeConnection = useCallback(async (id: string) => {
     await removeWorkspaceConnection(id);

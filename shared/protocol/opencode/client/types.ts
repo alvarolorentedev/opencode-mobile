@@ -4,6 +4,7 @@ import type { V2Context } from '@/shared/protocol/opencode/v2/shared';
 import Constants from 'expo-constants';
 
 import type { ConnectMetadata } from '@/shared/contracts/cloud-link';
+import type { ConnectionCertificate } from '@/shared/contracts/connection-certificate';
 import type { ProviderAuthValues } from '@/shared/protocol/opencode/types';
 import type { PromptInboxApi } from '@/shared/protocol/opencode/prompt-inbox';
 
@@ -73,6 +74,9 @@ export type OpencodeConnectionSettings = {
   // Per-connection custom request headers (gateway/service-token credentials).
   // Runtime only: persistence stores them in SecureStore, never AsyncStorage.
   headers?: Record<string, string>;
+  // Per-connection custom CA/self-signed trust. Runtime only: the encrypted
+  // certificate store owns persistence.
+  certificate?: ConnectionCertificate;
   connect?: ConnectMetadata;
 };
 

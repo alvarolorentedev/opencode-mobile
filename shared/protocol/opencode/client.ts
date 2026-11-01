@@ -12,8 +12,8 @@ export { getNormalizedServerUrl, isValidServerUrl, getServerBase } from '@/share
 export { getRequestHeaders, createPrefixFetch } from '@/shared/protocol/opencode/client/fetch';
 export { DEFAULT_SERVICES_PORT, MAX_MANAGED_SERVICES, buildServiceShareUrl, formatServiceAddress, getServicePortOptions, prepareServiceDraft, type ManagedService, type ServiceDraft, type ServiceDraftErrors, type ServiceInput, type ServiceManagementVersion, type ServicePortOption } from '@/shared/contracts/service-management';
 export { ServiceManagementError, deleteManagedService, getServiceManagementVersion, listManagedServices, putManagedService } from '@/shared/protocol/opencode/client/management-api';
-export { getConnectionError, isContractMismatchError, isRetryableCloudLinkStartupError, classifyConnectionFailure, isAuthConnectionFailure, type ConnectionFailureKind } from '@/shared/protocol/opencode/client/errors';
-export { detectServerContract, type ConnectionProbeResult } from '@/shared/protocol/opencode/client/probe';
+export { getConnectionError, getCertificateErrorMessage, isContractMismatchError, isRetryableCloudLinkStartupError, classifyConnectionFailure, isAuthConnectionFailure, type ConnectionFailureKind } from '@/shared/protocol/opencode/client/errors';
+export { probeConnection, detectServerContract, type ConnectionProbeResult } from '@/shared/protocol/opencode/client/probe';
 export { listPendingInteractions, replyToPendingPermission, replyToPendingQuestion, rejectPendingQuestion, listSavedPermissionRules, removeSavedPermissionRule } from '@/shared/protocol/opencode/client/interactions';
 
 const readFactories = new WeakMap<ScopedOpencodeClient, (signal: AbortSignal) => ScopedOpencodeClient>();

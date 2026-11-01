@@ -28,7 +28,7 @@ const CURRENT_CONNECTION_KEY = 'current';
 
 type DialogState =
   | { mode: 'add' }
-  | { mode: 'edit-profile'; profile: ConnectionProfile; password: string; headers: Record<string, string> }
+  | { mode: 'edit-profile'; profile: ConnectionProfile; password: string; headers: Record<string, string>; certificate?: import('@/shared/contracts/connection-certificate').ConnectionCertificate }
   | { mode: 'edit-current' };
 
 function connectionHost(serverUrl: string) {
@@ -45,7 +45,7 @@ export function ConnectionProfiles({ palette, onManageConnect, onPair }: { palet
   const registry = useWorkspaces();
   const presentation = useWorkspacePresentation();
   const { settings, connection, connect, updateSettings, connectSetup, connectionProfiles } = useConnection();
-  const { profiles, refresh, connect: connectProfile, passwordForEditing, headersForEditing, save, remove } = connectionProfiles;
+  const { profiles, refresh, connect: connectProfile, passwordForEditing, headersForEditing, certificateForEditing, save, remove } = connectionProfiles;
   const [error, setError] = useState<string>();
   const [expandedKey, setExpandedKey] = useState<string>();
   const [switchingProfileId, setSwitchingProfileId] = useState<string>();
@@ -80,8 +80,8 @@ export function ConnectionProfiles({ palette, onManageConnect, onPair }: { palet
   }
 
   async function handleEditProfile(profile: ConnectionProfile) {
-    const [password, headers] = await Promise.all([passwordForEditing(profile.id), headersForEditing(profile.id)]);
-    setDialog({ mode: 'edit-profile', profile, password, headers });
+    const [password, headers, certificate] = await Promise.all([passwordForEditing(profile.id), headersForEditing(profile.id), certificateForEditing(profile.id)]);
+    setDialog({ mode: 'edit-profile', profile, password, headers, certificate });
   }
 
   function handleDelete(profile: ConnectionProfile) {
@@ -128,7 +128,7 @@ export function ConnectionProfiles({ palette, onManageConnect, onPair }: { palet
     }
 
     // Editing the current, not-yet-saved connection only touches live settings.
-    updateSettings({ serverUrl: values.serverUrl, username: values.username, password: values.password, headers: values.headers });
+    updateSettings({ serverUrl: values.serverUrl, username: values.username, password: values.password, headers: values.headers, certificate: values.certificate });
     setDialog(undefined);
   }
 
@@ -276,12 +276,14 @@ export function ConnectionProfiles({ palette, onManageConnect, onPair }: { palet
             username: settings.username,
             password: settings.password,
             headers: settings.headers ?? {},
+            certificate: settings.certificate,
           } : {
             name: dialog.profile.name,
             serverUrl: dialog.profile.serverUrl,
             username: dialog.profile.username,
             password: dialog.password,
             headers: dialog.headers,
+            certificate: dialog.certificate,
           }}
           onSubmit={handleDialogSubmit}
           onDismiss={() => { addedProfileId.current = undefined; setDialog(undefined); }}

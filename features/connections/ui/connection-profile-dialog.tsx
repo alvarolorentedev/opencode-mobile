@@ -21,9 +21,12 @@ import { useUpdateBlocker } from '@/runtime/ui';
 import { usePalette } from '@/shared/ui/theme/use-palette';
 
 import { MAX_CONNECTION_HEADERS, parseConnectionHeaders } from '@/shared/contracts/connection-headers';
+import type { CertificateFailureReason, ConnectionCertificate } from '@/shared/contracts/connection-certificate';
 import type { ConnectionProbeResult } from '@/shared/protocol/opencode/client';
 import { getServerHostname } from '@/shared/contracts/server-url';
+import { connectionOrigin, isTlsTrustSupported } from '@/shared/platform/tls-trust';
 import { useConnection } from '@/features/connections/context';
+import { ConnectionCertificateField } from '@/features/connections/ui/connection-certificate-field';
 
 export type ConnectionProfileFormValues = {
   name: string;
@@ -31,7 +34,15 @@ export type ConnectionProfileFormValues = {
   username: string;
   password: string;
   headers: Record<string, string>;
+  certificate?: ConnectionCertificate;
 };
+
+function certificateErrorKey(reason: CertificateFailureReason) {
+  if (reason === 'expired') return 'settings:connection.errors.certificateExpired';
+  if (reason === 'hostname-mismatch') return 'settings:connection.errors.certificateHostnameMismatch';
+  if (reason === 'invalid') return 'settings:connection.errors.certificateInvalid';
+  return 'settings:connection.errors.certificateUntrusted';
+}
 
 // The form owns presentation; probing and profile persistence stay in the
 // provider. Local QR setup lives in its own flow (`connection-scan-flow.tsx`)
@@ -66,6 +77,8 @@ export function ConnectionProfileDialog({ title, submitLabel, showName = true, i
   const [probe, setProbe] = useState<ConnectionProbeResult>();
   const [customUsername, setCustomUsername] = useState(Boolean(initial?.username));
   const [showPassword, setShowPassword] = useState(false);
+  const [certificate, setCertificate] = useState<ConnectionCertificate | undefined>(initial?.certificate);
+  const [certificateError, setCertificateError] = useState<string>();
   const [error, setError] = useState<string>();
   const [busy, setBusy] = useState<'probe' | 'save'>();
   const working = useRef(false);
@@ -76,6 +89,9 @@ export function ConnectionProfileDialog({ title, submitLabel, showName = true, i
   const locked = busy === 'save';
   const v1 = probe?.status === 'detected' && probe.contract === 'v1';
   const v2 = probe?.status === 'detected' && probe.contract === 'v2';
+  // Custom CA trust is a V2 feature. V1 connections keep their existing
+  // system-trust behavior and never persist an imported certificate.
+  const certificateSupported = isTlsTrustSupported() && !v1 && /^https:\/\//i.test(serverUrl.trim());
 
   function back() {
     request.current += 1;
@@ -118,11 +134,20 @@ export function ConnectionProfileDialog({ title, submitLabel, showName = true, i
     const current = ++request.current;
     controller.current = new AbortController();
     try {
-      const values = { name: name.trim(), serverUrl: serverUrl.trim(), username: username.trim(), password, headers: parsedHeaders.headers ?? {} };
+      const values = { name: name.trim(), serverUrl: serverUrl.trim(), username: username.trim(), password, headers: parsedHeaders.headers ?? {}, certificate };
       const result = await connectionProfiles.probe(values, controller.current.signal);
       if (current !== request.current) return;
       setProbe(result);
+      if (result.status === 'detected' && result.contract === 'v1') {
+        setCertificate(undefined);
+        setCertificateError(undefined);
+      }
       if (result.status === 'unreachable') throw new Error(t('settings:connection.setup.unreachable'));
+      if (result.status === 'certificate') {
+        throw new Error(certificate
+          ? t('settings:connection.certificate.errors.notTrusted')
+          : t(certificateErrorKey(result.reason)));
+      }
       if (operation === 'probe') { setStep('details'); return; }
       if (result.status === 'authentication-required') throw new Error(t('settings:connection.setup.credentialsRejected'));
       await onSubmit(values);
@@ -143,7 +168,14 @@ export function ConnectionProfileDialog({ title, submitLabel, showName = true, i
           <Text  variant="display">{t(step === 'address' ? 'settings:connection.setup.addressTitle' : 'settings:connection.setup.detailsTitle')}</Text>
           {step === 'address' ? <>
             <Text className={cn("text-muted-foreground")}>{t('settings:connection.setup.addressHint')}</Text>
-            <SettingField label={t('settings:connection.fields.serverUrl')} testID="connection-profile-url-input" invalid={Boolean(form.formState.errors.serverUrl)} aria-describedby={form.formState.errors.serverUrl ? "connection-profile-validation" : undefined} ref={urlRef} onBlur={urlBlur} value={serverUrl} onChangeText={(value) => { setServerUrl(value); setProbe(undefined); setError(undefined); }} disabled={Boolean(busy)} autoFocus autoCapitalize="none" autoCorrect={false} keyboardType="url" placeholder="http://192.168.1.10:49374"></SettingField>
+            <SettingField label={t('settings:connection.fields.serverUrl')} testID="connection-profile-url-input" invalid={Boolean(form.formState.errors.serverUrl)} aria-describedby={form.formState.errors.serverUrl ? "connection-profile-validation" : undefined} ref={urlRef} onBlur={urlBlur} value={serverUrl} onChangeText={(value) => {
+              if (connectionOrigin(value) !== connectionOrigin(serverUrl)) {
+                setCertificate(undefined);
+                setCertificateError(undefined);
+              }
+              setServerUrl(value); setProbe(undefined); setError(undefined);
+            }} disabled={Boolean(busy)} autoFocus autoCapitalize="none" autoCorrect={false} keyboardType="url" placeholder="http://192.168.1.10:49374"></SettingField>
+            {certificateSupported ? <ConnectionCertificateField certificate={certificate} disabled={Boolean(busy)} error={certificateError} onChange={setCertificate} onError={setCertificateError} /> : null}
           </> : <>
             <View className={cn(stylesClasses.addressRow)}>
               <Text className={cn(stylesClasses.address)} numberOfLines={2}>{serverUrl}</Text>

@@ -57,6 +57,21 @@ worse than surfacing the failure.
 failures, timeouts, retries, and the last status. Settings → Diagnostics shows
 p50/p95 plus today's data usage. It stores no URLs, bodies, or credentials.
 
+### Transport trust
+
+Manual connections use system trust by default. A certificate imported on the
+connection screen is an additive anchor scoped to that connection's `host:port`.
+It applies to API reads, SSE, and the terminal WebSocket. Cloud Link, update
+checks, and unrelated hosts keep normal system trust. OpenCode 1 connections
+keep their existing system-trust behavior and never persist an imported
+certificate.
+
+The native module is `modules/opencode-tls/`: Android installs a host-aware
+`SSLSocketFactory` and `X509ExtendedTrustManager` through the existing OkHttp
+hooks; iOS installs a host-scoped `NSURLProtocol` and `SRSecurityPolicy`. A
+certificate failure is a distinct, non-retryable connection failure with an
+actionable message. See [ADR 0021](../adr/0021-per-connection-custom-ca.md).
+
 ## Realtime and polling
 
 `runtime/realtime/use-opencode-realtime.ts` keeps SSE primary and polling as a safety

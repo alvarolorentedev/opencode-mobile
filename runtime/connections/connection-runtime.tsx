@@ -1,7 +1,8 @@
 import { getConnectCredentialError } from '@/shared/contracts/cloud-link';
 import { getConnectionScope } from '@/shared/contracts/connection-scope';
 import { telemetry } from '@/shared/observability/client';
-import { buildClient, classifyConnectionFailure, detectServerContract, getConnectionError, isContractMismatchError, isRetryableCloudLinkStartupError, type ConnectionFailureKind, type OpencodeConnectionSettings, type ServerContract } from '@/shared/protocol/opencode/client';
+import { buildClient, classifyConnectionFailure, detectServerContract, getCertificateErrorMessage, getConnectionError, isContractMismatchError, isRetryableCloudLinkStartupError, type ConnectionFailureKind, type OpencodeConnectionSettings, type ServerContract } from '@/shared/protocol/opencode/client';
+import { isCertificateFailureReason, isTlsTrustSupported, probeConnectionTrust } from '@/shared/platform/tls-trust';
 import { getNormalizedServerUrl, isValidServerUrl } from '@/shared/contracts/server-url';
 import { isServerConnectedEvent, serverDataResources } from '@/shared/protocol/opencode/server-data-events';
 import { useQueryClient } from '@tanstack/react-query';
@@ -81,7 +82,16 @@ export function useConnectionLifecycle(entry: ConnectionRecord, setup: ConnectSe
         throw failure;
       } catch (error) {
         if (!current()) return latest.current.state.connection;
-        const connection: ConnectionState = { status: 'error', kind: classifyConnectionFailure(error), message: getConnectionError(settings.serverUrl, error, t), checkedAt: Date.now(), retryableStartup: Boolean(settings.connect) && isRetryableCloudLinkStartupError(error) };
+        let kind = classifyConnectionFailure(error);
+        let message = getConnectionError(settings.serverUrl, error, t);
+        if ((kind === 'unknown' || kind === 'certificate') && settings.serverUrl.startsWith('https:') && isTlsTrustSupported()) {
+          const tls = await probeConnectionTrust(settings);
+          if (!tls.ok && isCertificateFailureReason(tls.reason)) {
+            kind = 'certificate';
+            message = getCertificateErrorMessage(tls.reason, t);
+          }
+        }
+        const connection: ConnectionState = { status: 'error', kind, message, checkedAt: Date.now(), retryableStartup: Boolean(settings.connect) && isRetryableCloudLinkStartupError(error) };
         telemetry.histogram('connection.duration', Math.max(0, Date.now() - startedAt), 'ms', { kind: connectionKind });
         telemetry.counter('connection.result', 1, { kind: connectionKind, outcome: 'failure', failureKind: connection.kind });
         telemetry.warn('connection.failed', { kind: connectionKind, failureKind: connection.kind, retryable: connection.retryableStartup });

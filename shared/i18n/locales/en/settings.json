@@ -100,7 +100,11 @@
       "endpointNotFound": "OpenCode endpoint not found at {{url}}.{{apiHint}}{{versionHint}}",
       "webPage": "The server at {{url}} returned a web page instead of the OpenCode API.{{apiHint}}{{versionHint}}",
       "apiHint": " If this address serves a web UI, use its API base URL instead, usually {{url}}/api.",
-      "versionHint": " This app supports OpenCode 1.x and 2.x servers; verify the API base URL is correct."
+      "versionHint": " This app requires OpenCode 2; verify the API base URL is correct.",
+      "certificateUntrusted": "The server certificate is not trusted. Import the CA certificate for this server.",
+      "certificateExpired": "The server certificate has expired.",
+      "certificateHostnameMismatch": "The server certificate does not match this address.",
+      "certificateInvalid": "The server certificate could not be validated."
     },
     "setup": {
       "step": "Step {{step}} of 2",
@@ -141,7 +145,31 @@
       "showValues": "Show values",
       "hideValues": "Hide values"
     },
-    "reconnectSuccess": "Connected to {{url}}."
+    "reconnectSuccess": "Connected to {{url}}.",
+    "certificate": {
+      "title": "Private CA certificate",
+      "hint": "Optional. Only this connection will trust this certificate. Use a CA certificate, or a self-signed/server certificate to pin the exact certificate.",
+      "import": "Import certificate",
+      "replace": "Replace",
+      "remove": "Remove",
+      "issuer": "Issuer: {{issuer}}",
+      "expires": "Expires: {{date}}",
+      "fingerprint": "SHA-256: {{fingerprint}}",
+      "chain": "Includes {{count}} certificates",
+      "pinnedWarning": "Trust is tied to this exact certificate. Import a new one when the server certificate is renewed.",
+      "kind": {
+        "ca": "CA certificate",
+        "selfSigned": "Self-signed certificate",
+        "server": "Server certificate"
+      },
+      "errors": {
+        "expired": "This certificate has expired.",
+        "tooLarge": "The certificate file is too large.",
+        "invalid": "This is not a valid X.509 certificate.",
+        "read": "Could not read the selected certificate.",
+        "notTrusted": "The imported certificate does not trust this server."
+      }
+    }
   },
   "providers": {
     "accounts": "Accounts",

@@ -1,0 +1,108 @@
+import ExpoModulesCore
+import Foundation
+import ObjectiveC
+import Security
+import SocketRocket
+
+public final class OpencodeTlsModule: Module {
+  public func definition() -> ModuleDefinition {
+    Name("OpencodeTls")
+
+    OnCreate {
+      Self.installURLSessionProvider()
+      Self.installExpoFetchProvider()
+      Self.installWebSocketProvider()
+    }
+
+    AsyncFunction("importCertificate") { (input: String, promise: Promise) in
+      do {
+        let parsed = try CertificateParser.parseBase64(input)
+        promise.resolve([
+          "pem": parsed.pem,
+          "fingerprint": parsed.fingerprint,
+          "subject": parsed.subject,
+          "issuer": parsed.issuer,
+          "notBefore": parsed.notBefore,
+          "notAfter": parsed.notAfter,
+          "kind": parsed.kind,
+          "count": parsed.count,
+        ])
+      } catch {
+        promise.reject("ERR_CERTIFICATE", error.localizedDescription, error)
+      }
+    }
+
+    AsyncFunction("setTrustAnchors") { (origin: String, pems: [String], promise: Promise) in
+      do {
+        try TrustStore.set(origin: origin, pems: pems)
+        promise.resolve(nil)
+      } catch {
+        promise.reject("ERR_CERTIFICATE", error.localizedDescription, error)
+      }
+    }
+
+    AsyncFunction("clearTrustAnchors") { (origin: String) in
+      TrustStore.clear(origin: origin)
+    }
+
+    AsyncFunction("probe") { (origin: String, pem: String?, promise: Promise) in
+      TlsProbe.probe(origin: origin, pem: pem) { result in
+        promise.resolve(result)
+      }
+    }
+  }
+
+  private static func configuration() -> URLSessionConfiguration {
+    let configuration = URLSessionConfiguration.default
+    configuration.httpShouldSetCookies = true
+    configuration.httpCookieAcceptPolicy = .always
+    configuration.httpCookieStorage = .shared
+    var protocols = configuration.protocolClasses ?? []
+    protocols.insert(OpencodeTlsURLProtocol.self, at: 0)
+    configuration.protocolClasses = protocols
+    return configuration
+  }
+
+  private static func installURLSessionProvider() {
+    typealias Provider = @convention(block) () -> URLSessionConfiguration?
+    typealias Setter = @convention(c) (Provider?) -> Void
+    guard let symbol = dlsym(UnsafeMutableRawPointer(bitPattern: -2), "RCTSetCustomNSURLSessionConfigurationProvider") else {
+      return
+    }
+    let setter = unsafeBitCast(symbol, to: Setter.self)
+    let provider: Provider = { OpencodeTlsModule.configuration() }
+    setter(provider)
+  }
+
+  private static func installExpoFetchProvider() {
+    typealias Provider = @convention(block) () -> URLSessionConfiguration?
+    typealias Setter = @convention(c) (AnyObject, Selector, AnyObject?) -> Void
+    guard let cls = NSClassFromString("EXFetchCustomExtension") else { return }
+    let selector = NSSelectorFromString("setCustomURLSessionConfigurationProvider:")
+    guard let method = class_getClassMethod(cls, selector) else { return }
+    let setter = unsafeBitCast(method_getImplementation(method), to: Setter.self)
+    let provider: Provider = { OpencodeTlsModule.configuration() }
+    setter(cls, selector, provider as AnyObject)
+  }
+
+  private static func installWebSocketProvider() {
+    typealias Provider = @convention(block) (URLRequest) -> SRWebSocket?
+    typealias Setter = @convention(c) (Provider?) -> Void
+    guard let symbol = dlsym(UnsafeMutableRawPointer(bitPattern: -2), "RCTSetCustomSRWebSocketProvider") else {
+      return
+    }
+    let setter = unsafeBitCast(symbol, to: Setter.self)
+    let provider: Provider = { request in
+      guard let url = request.url, let host = url.host else { return nil }
+      let origin = TrustStore.originKey(host: host, port: url.port ?? 443)
+      let certificates = TrustStore.certificates(for: origin)
+      guard !certificates.isEmpty else { return nil }
+      let policy = OpencodeTlsSecurityPolicy(origin: origin, certificates: certificates)
+      let protocols = request.value(forHTTPHeaderField: "Sec-WebSocket-Protocol")?
+        .split(separator: ",")
+        .map { $0.trimmingCharacters(in: .whitespaces) }
+      return SRWebSocket(urlRequest: request, protocols: protocols, securityPolicy: policy)
+    }
+    setter(provider)
+  }
+}

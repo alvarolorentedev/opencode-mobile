@@ -48,6 +48,8 @@ async function form(onSubmit = vi.fn()) {
     "@/shared/ui/theme/use-color-scheme": { useColorScheme: () => 'light' },
     "@/shared/ui/theme/use-palette": { usePalette: () => ({}) },
     "@/shared/contracts/server-url": { isValidServerUrl: () => true, getServerHostname: () => '192.168.1.10' },
+    "@/shared/platform/tls-trust": { isTlsTrustSupported: () => false, connectionOrigin: () => undefined },
+    "@/features/connections/state/use-connection-certificate": { useConnectionCertificate: () => ({ supported: false, busy: false, error: undefined, pick: async () => undefined, clearError: () => {} }) },
     "@/features/connections/context": { useConnection: () => ({ connectionProfiles: { probe } }) }
   }, { Error });
   const onDismiss = vi.fn();

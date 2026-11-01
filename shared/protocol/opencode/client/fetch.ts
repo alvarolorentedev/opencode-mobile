@@ -11,6 +11,7 @@ import { joinUrlPath } from '@/shared/contracts/server-url';
 import type { OpencodeConnectionSettings } from '@/shared/protocol/opencode/client/types';
 import { fetchWithReadDeadline } from '@/shared/protocol/opencode/client/read-deadline';
 import { getRequestTimeout, shouldRetryRead } from '@/shared/protocol/opencode/client/request-policy';
+import { ensureConnectionTrust } from '@/shared/platform/tls-trust';
 
 export function createAuthHeader(settings: OpencodeConnectionSettings) {
   const password = settings.password;
@@ -109,6 +110,7 @@ async function fetchConnectionInner(input: RequestInfo | URL, init?: RequestInit
     const error = getConnectCredentialError(settings.connect, settings.password);
     if (error) throw new Error(error);
   }
+  if (settings?.certificate) await ensureConnectionTrust(settings);
   // RN's XHR ignores redirect rejection. Use Expo for Cloud Link and one-use
   // local pairing requests; other manual connections retain their transport.
   const transport = settings?.connect || init?.redirect === 'error'

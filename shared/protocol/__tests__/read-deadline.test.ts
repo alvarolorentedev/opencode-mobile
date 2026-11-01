@@ -7,6 +7,7 @@ import { coalesceRead } from '@/shared/protocol/opencode/in-flight';
 import { normalizeServerUrl } from '@/shared/contracts/server-url';
 import { deferred } from '../../../tests/helpers/runtime.mjs';
 
+vi.mock('react-native', () => ({ Platform: { OS: 'web' } }));
 const counters = vi.hoisted(() => ({ recordBytes: vi.fn(), recordRequest: vi.fn() }));
 vi.mock('@/shared/network/data-usage', () => counters);
 vi.mock('@/shared/contracts/cloud-link', () => ({ getConnectCredentialError: () => undefined }));

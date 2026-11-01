@@ -6,6 +6,8 @@ import { Platform } from 'react-native';
 import { parseWorkspaces, WORKSPACES_STORAGE_KEY } from '@/shared/storage/workspace-storage';
 import { getConnectionPassword } from '@/shared/storage/connection-password';
 import { getProfileHeaders, getConnectionHeaders } from '@/shared/storage/connection-headers';
+import { getConnectionCertificate, getProfileCertificate } from '@/shared/storage/connection-certificates';
+import type { ConnectionCertificate } from '@/shared/contracts/connection-certificate';
 import type { ConnectionHeaders } from '@/shared/contracts/connection-headers';
 import { getConnectCredentialError, parseConnectMetadata, type ConnectMetadata } from '@/shared/contracts/cloud-link';
 import { getConnectTestSecret, setConnectTestSecret } from '@/shared/storage/cloud-link';
@@ -98,7 +100,7 @@ async function writeSanitizedProfiles(profiles: ConnectionProfile[]) {
  * pending record instead of dropping it or borrowing another connection's
  * password. Gateway headers travel with the same resolution.
  */
-export async function resolveConnectionCredentials(identity: ConnectionIdentity): Promise<{ password: string; headers: ConnectionHeaders; connect?: ConnectMetadata } | undefined> {
+export async function resolveConnectionCredentials(identity: ConnectionIdentity): Promise<{ password: string; headers: ConnectionHeaders; certificate?: ConnectionCertificate; connect?: ConnectMetadata } | undefined> {
   if (!identity.serverUrl.trim() || !isValidServerUrl(identity.serverUrl)) return undefined;
   const connectionScope = getConnectionScope(identity);
   // Background notifications and widget actions honor explicit disconnects too.
@@ -112,8 +114,8 @@ export async function resolveConnectionCredentials(identity: ConnectionIdentity)
     const profile = findProfileByConnectionScope(profiles, connectionScope);
     if (profile) {
       if (getConnectCredentialError(profile.connect, 'present')) return undefined;
-      const [password, headers] = await Promise.all([getProfilePassword(profile.id), getProfileHeaders(profile.id)]);
-      return getConnectCredentialError(profile.connect, password) ? undefined : { password, headers, ...(profile.connect ? { connect: profile.connect } : {}) };
+      const [password, headers, certificate] = await Promise.all([getProfilePassword(profile.id), getProfileHeaders(profile.id), getProfileCertificate(profile.id)]);
+      return getConnectCredentialError(profile.connect, password) ? undefined : { password, headers, ...(certificate ? { certificate } : {}), ...(profile.connect ? { connect: profile.connect } : {}) };
     }
   } catch {
     // Fall through to the active connection.
@@ -129,10 +131,10 @@ export async function resolveConnectionCredentials(identity: ConnectionIdentity)
       username: typeof settings.username === 'string' ? settings.username : '',
     });
     if (activeScope !== connectionScope) return undefined;
-    const [password, headers] = await Promise.all([getConnectionPassword(), getConnectionHeaders()]);
+    const [password, headers, certificate] = await Promise.all([getConnectionPassword(), getConnectionHeaders(), getConnectionCertificate()]);
     const connect = parseConnectMetadata(settings.connect);
     if (settings.connect !== undefined && (!connect || getConnectCredentialError(connect, password))) return undefined;
-    return { password: password || '', headers, ...(connect ? { connect } : {}) };
+    return { password: password || '', headers, ...(certificate ? { certificate } : {}), ...(connect ? { connect } : {}) };
   } catch {
     return undefined;
   }
