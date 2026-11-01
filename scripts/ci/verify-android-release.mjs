@@ -180,12 +180,14 @@ function checkApk(apk, expected) {
   if (verifyResult.status !== 0) {
     fail(`${apk}: apksigner verification failed:\n${combinedOutput.trim()}`);
   }
-  const certMatch = combinedOutput.match(/Signer #1 certificate SHA-256 digest:\s*([0-9a-f:]+)/i);
+  // Newer build-tools label v2/v3 signers as "V2 Signer:"/"V3 Signer:"
+  // instead of the legacy "Signer #1" numbering; accept both.
+  const certMatch = combinedOutput.match(/(?:Signer #\d+|V\d(?:\.\d)? Signer): certificate SHA-256 digest:\s*([0-9a-f:\s]+)/i);
   if (!certMatch) {
     const excerpt = combinedOutput.split('\n').slice(0, 20).join('\n');
     fail(`${apk}: could not read signing certificate. apksigner output:\n${excerpt}`);
   }
-  const cert = certMatch[1].replace(/:/g, '').toLowerCase();
+  const cert = certMatch[1].replace(/[:\s]/g, '').toLowerCase();
   if (!expected.certSha256) fail('Missing --cert-sha256; release signing identity must be pinned');
   if (cert !== expected.certSha256.replace(/:/g, '').toLowerCase()) {
     fail(`${apk}: signing certificate ${cert} does not match ANDROID_CERT_SHA256`);

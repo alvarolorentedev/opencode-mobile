@@ -27,7 +27,7 @@ public final class OpencodeTlsModule: Module {
           "count": parsed.count,
         ])
       } catch {
-        promise.reject("ERR_CERTIFICATE", error.localizedDescription, error)
+        promise.reject("ERR_CERTIFICATE", error.localizedDescription)
       }
     }
 
@@ -36,7 +36,7 @@ public final class OpencodeTlsModule: Module {
         try TrustStore.set(origin: origin, pems: pems)
         promise.resolve(nil)
       } catch {
-        promise.reject("ERR_CERTIFICATE", error.localizedDescription, error)
+        promise.reject("ERR_CERTIFICATE", error.localizedDescription)
       }
     }
 

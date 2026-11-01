@@ -2,7 +2,7 @@ import Foundation
 import Security
 
 enum TrustStore {
-  private static var anchors: [String: [SecCertificate]] = [:]
+  private nonisolated(unsafe) static var anchors: [String: [SecCertificate]] = [:]
   private static let lock = NSLock()
 
   static func originKey(host: String, port: Int) -> String {
