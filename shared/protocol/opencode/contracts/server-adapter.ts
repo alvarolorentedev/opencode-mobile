@@ -60,6 +60,8 @@ export type ServerAdapter = {
     configEntries: () => Promise<ConfigEntry[]>;
     plugins: () => Promise<RawPluginInfo[]>;
     skills: () => Promise<RawSkillInfo[]>;
+    commands: () => Promise<{ name: string; description?: string }[]>;
+    agents: () => Promise<import('@/shared/protocol/opencode/extensions/types').RawAgentInfo[]>;
     readText: (path: string) => Promise<string | undefined>;
     writeText: (path: string, content: string) => Promise<void>;
     runShell: (root: string, command: string) => Promise<ShellResult>;
@@ -147,6 +149,14 @@ export function createServerAdapter(client: ScopedOpencodeClient): ServerAdapter
     skills: async () => {
       if (compatibility) throw new Error('Extensions management requires OpenCode 2.');
       return (await client.api!.skill.list(location)).data as RawSkillInfo[];
+    },
+    commands: async () => {
+      if (compatibility) throw new Error('Extensions management requires OpenCode 2.');
+      return (await client.api!.command.list(location)).data;
+    },
+    agents: async () => {
+      if (compatibility) throw new Error('Extensions management requires OpenCode 2.');
+      return (await client.api!.agent.list(location)).data;
     },
     readText: async (path: string) => {
       if (compatibility) throw new Error('Extensions management requires OpenCode 2.');

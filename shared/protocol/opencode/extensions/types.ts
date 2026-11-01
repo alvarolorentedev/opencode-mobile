@@ -36,6 +36,7 @@ export type ConfigInfo = {
   };
   plugins?: unknown[];
   commands?: Record<string, unknown>;
+  agents?: Record<string, unknown>;
   [key: string]: unknown;
 };
 
@@ -72,6 +73,8 @@ export type ExtensionSkillRow = {
   removable: boolean;
 };
 
+export type ExtensionDefinitionOrigin = 'config' | 'file' | 'server';
+
 export type ExtensionCommandRow = {
   key: string;
   name: string;
@@ -79,7 +82,39 @@ export type ExtensionCommandRow = {
   template?: string;
   definition?: Record<string, unknown>;
   source: ExtensionSource;
+  origin: ExtensionDefinitionOrigin;
+  path?: string;
+  content?: string;
   editable: boolean;
+  removable: boolean;
+  shadowedBy?: string;
+  readOnlyReason?: string;
+};
+
+export type ExtensionAgentMode = 'primary' | 'subagent' | 'all';
+
+export type ExtensionAgentRow = {
+  key: string;
+  id: string;
+  name: string;
+  description?: string;
+  mode?: ExtensionAgentMode;
+  model?: string;
+  permissions?: unknown;
+  permissionsText?: string;
+  permissionsKey?: 'permission' | 'permissions';
+  permissionsFormat: 'yaml' | 'json';
+  instructions?: string;
+  definition?: Record<string, unknown>;
+  source: ExtensionSource;
+  origin: ExtensionDefinitionOrigin;
+  path?: string;
+  content?: string;
+  advancedFrontmatter?: string;
+  editable: boolean;
+  removable: boolean;
+  shadowedBy?: string;
+  readOnlyReason?: string;
 };
 
 export type ExtensionRows = {
@@ -87,11 +122,25 @@ export type ExtensionRows = {
   plugins: ExtensionPluginRow[];
   skills: ExtensionSkillRow[];
   commands: ExtensionCommandRow[];
+  agents: ExtensionAgentRow[];
+};
+
+export type ExtensionMarkdownTarget = {
+  scope: ExtensionScope;
+  kind: 'agents' | 'commands';
+  root: string;
+  scopeRoot: string;
+  exists: boolean;
+  safety: ExtensionSafety;
 };
 
 export type ExtensionScopeSnapshot = {
   target?: ConfigTarget;
   safety: ExtensionSafety;
+  markdown: {
+    agents: ExtensionMarkdownTarget;
+    commands: ExtensionMarkdownTarget;
+  };
   items: ExtensionRows;
   shared: ExtensionRows;
 };
@@ -99,6 +148,10 @@ export type ExtensionScopeSnapshot = {
 export type ExtensionSnapshot = {
   general: ExtensionScopeSnapshot;
   project: ExtensionScopeSnapshot;
+  errors: {
+    agents?: string;
+    commands?: string;
+  };
   loadedAt: number;
 };
 
@@ -123,10 +176,24 @@ export type RawSkillInfo = {
   content: string;
 };
 
+export type ExtensionFormat = 'markdown' | 'jsonc';
+
 export type ExtensionCommandDraft = {
   name: string;
   description?: string;
   template: string;
+  format?: ExtensionFormat;
+};
+
+export type ExtensionAgentDraft = {
+  id: string;
+  description?: string;
+  mode: ExtensionAgentMode;
+  model?: string;
+  permissions?: string;
+  instructions: string;
+  advancedFrontmatter?: string;
+  format?: ExtensionFormat;
 };
 
 export type ExtensionSkillDraft = {
@@ -135,4 +202,26 @@ export type ExtensionSkillDraft = {
   description?: string;
   instructions: string;
   autoinvoke?: boolean;
+};
+
+export type ExtensionMarkdownFile = {
+  kind: 'agents' | 'commands';
+  scope: ExtensionScope;
+  root: string;
+  name: string;
+  path: string;
+  content?: string;
+  symlink: boolean;
+  error?: string;
+};
+
+export type RawAgentInfo = {
+  id: string;
+  name?: string;
+  description?: string;
+  mode?: ExtensionAgentMode;
+  hidden?: boolean;
+  model?: { id: string; providerID: string; variant?: string };
+  permissions?: unknown;
+  system?: string;
 };

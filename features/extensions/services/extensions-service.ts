@@ -1,12 +1,14 @@
 import type { ScopedOpencodeClient } from '@/shared/protocol/opencode/client';
 import { createServerAdapter } from '@/shared/protocol/opencode/contracts/server-adapter';
-import { addPlugin as addPluginText, createConfigText, parseConfigText, pluginTarget, readCommands, readMcpServers, readPlugins, removeCommand as removeCommandText, removeMcpServer as removeMcpServerText, removePlugin as removePluginText, setCommand, setMcpServer } from '@/shared/protocol/opencode/extensions/jsonc';
-import { isInside, isSystemConfigPath, isWindowsPath, parentPath, pathKey, resolveGlobalConfigRoot, selectConfigTarget, shellQuote } from '@/shared/protocol/opencode/extensions/scope';
-import { assertSkillId, isEditableSkillPath, skillDocument, skillFile, skillTrashPath, trashRoot } from '@/shared/protocol/opencode/extensions/skills';
+import { addPlugin as addPluginText, createConfigText, parseConfigText, pluginTarget, readMcpServers, readPlugins, removeMcpServer as removeMcpServerText, removePlugin as removePluginText, setMcpServer } from '@/shared/protocol/opencode/extensions/jsonc';
+import { isInside, isSystemConfigPath, isWindowsPath, parentPath, pathKey, resolveGlobalConfigRoot, selectConfigTarget, shellQuote, trashRoot } from '@/shared/protocol/opencode/extensions/scope';
+import { assertSkillId, isEditableSkillPath, skillDocument, skillFile, skillTrashPath } from '@/shared/protocol/opencode/extensions/skills';
+import { markdownRoots } from '@/shared/protocol/opencode/extensions/markdown';
 import { buildExtensionRows, splitRows } from '@/shared/protocol/opencode/extensions/snapshot';
 import { configBackupPath, restoreConfigBackup, writeConfigTransaction, type TransactionIo } from '@/shared/protocol/opencode/extensions/transaction';
-import type { ConfigTarget, ExtensionCommandDraft, ExtensionCommandRow, ExtensionMcpRow, ExtensionPluginRow, ExtensionSafety, ExtensionScope, ExtensionScopeSnapshot, ExtensionSkillDraft, ExtensionSkillRow, ExtensionSnapshot } from '@/shared/protocol/opencode/extensions/types';
-import type { McpLocalConfig, McpRemoteConfig } from '@/shared/protocol/opencode/types';
+import { buildMarkdownTarget, discoverMarkdownFiles } from '@/features/extensions/services/markdown-files';
+import type { ConfigTarget, ExtensionMarkdownFile, ExtensionMcpRow, ExtensionPluginRow, ExtensionSafety, ExtensionScope, ExtensionScopeSnapshot, ExtensionSkillDraft, ExtensionSkillRow, ExtensionSnapshot, RawAgentInfo } from '@/shared/protocol/opencode/extensions/types';
+import type { Command, McpLocalConfig, McpRemoteConfig } from '@/shared/protocol/opencode/types';
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -103,7 +105,7 @@ async function buildTarget({
   return { target, safety };
 }
 
-export type ExtensionSources = { entries: import('@/shared/protocol/opencode/extensions/types').ConfigEntry[]; plugins: import('@/shared/protocol/opencode/extensions/types').RawPluginInfo[]; skills: import('@/shared/protocol/opencode/extensions/types').RawSkillInfo[]; commands: import('@/shared/protocol/opencode/types').Command[]; mcpStatuses: Record<string, import('@/shared/protocol/opencode/types').McpStatus> };
+export type ExtensionSources = { entries: import('@/shared/protocol/opencode/extensions/types').ConfigEntry[]; plugins: import('@/shared/protocol/opencode/extensions/types').RawPluginInfo[]; skills: import('@/shared/protocol/opencode/extensions/types').RawSkillInfo[]; mcpStatuses: Record<string, import('@/shared/protocol/opencode/types').McpStatus> };
 export async function inspectExtensions(client: ScopedOpencodeClient, entries: ExtensionSources['entries']) {
   if (client.__opencode.contract !== 'v2') throw new Error('Extensions management requires OpenCode 2.');
   const ext = createServerAdapter(client).extensions;
@@ -117,12 +119,53 @@ export async function inspectExtensions(client: ScopedOpencodeClient, entries: E
     buildTarget({ ext, base: projectBase, projectRoot, shellAvailable, windows }),
     buildTarget({ ext, base: generalBase, projectRoot, shellAvailable, windows }),
   ]);
-
-  return { generalTarget, projectTarget, globalRoot, projectRoot, loadedAt: Date.now() };
+  const [projectAgents, generalAgents, projectCommands, generalCommands] = await Promise.all([
+    buildMarkdownTarget({ ext, root: markdownRoots(projectRoot, 'project', 'agents')[0].root, scope: 'project', kind: 'agents', projectRoot, shellAvailable }),
+    globalRoot ? buildMarkdownTarget({ ext, root: markdownRoots(globalRoot, 'general', 'agents')[0].root, scope: 'general', kind: 'agents', projectRoot, shellAvailable }) : undefined,
+    buildMarkdownTarget({ ext, root: markdownRoots(projectRoot, 'project', 'commands')[0].root, scope: 'project', kind: 'commands', projectRoot, shellAvailable }),
+    globalRoot ? buildMarkdownTarget({ ext, root: markdownRoots(globalRoot, 'general', 'commands')[0].root, scope: 'general', kind: 'commands', projectRoot, shellAvailable }) : undefined,
+  ]);
+  const [agentsResult, commandsResult] = await Promise.allSettled([ext.agents(), ext.commands()]);
+  const agents = agentsResult.status === 'fulfilled' ? agentsResult.value : ([] as RawAgentInfo[]);
+  const commands = commandsResult.status === 'fulfilled' ? commandsResult.value : ([] as Command[]);
+  const [projectAgentFiles, generalAgentFiles, projectCommandFiles, generalCommandFiles] = await Promise.all([
+    discoverMarkdownFiles({ ext, projectRoot, scope: 'project', kind: 'agents', targets: projectAgents }),
+    globalRoot && generalAgents ? discoverMarkdownFiles({ ext, projectRoot, globalRoot, scope: 'general', kind: 'agents', targets: generalAgents }) : Promise.resolve([]),
+    discoverMarkdownFiles({ ext, projectRoot, scope: 'project', kind: 'commands', targets: projectCommands }),
+    globalRoot && generalCommands ? discoverMarkdownFiles({ ext, projectRoot, globalRoot, scope: 'general', kind: 'commands', targets: generalCommands }) : Promise.resolve([]),
+  ]);
+  const agentFiles: ExtensionMarkdownFile[] = [...projectAgentFiles, ...generalAgentFiles];
+  const commandFiles: ExtensionMarkdownFile[] = [...projectCommandFiles, ...generalCommandFiles];
+  return {
+    generalTarget,
+    projectTarget,
+    generalMarkdown: { agents: generalAgents, commands: generalCommands },
+    projectMarkdown: { agents: projectAgents, commands: projectCommands },
+    globalRoot,
+    projectRoot,
+    agents,
+    commands,
+    agentFiles,
+    commandFiles,
+    errors: {
+      agents: agentsResult.status === 'rejected' ? errorMessage(agentsResult.reason, 'Agent discovery failed.') : undefined,
+      commands: commandsResult.status === 'rejected' ? errorMessage(commandsResult.reason, 'Command discovery failed.') : undefined,
+    },
+    loadedAt: Date.now(),
+  };
 }
+
+function errorMessage(value: unknown, fallback: string) {
+  return value instanceof Error ? value.message : fallback;
+}
+
 export function extensionSnapshot(sources: ExtensionSources, inspection: Awaited<ReturnType<typeof inspectExtensions>>): ExtensionSnapshot {
-  const { entries, plugins, skills, commands, mcpStatuses } = sources;
-  const { generalTarget, projectTarget, globalRoot, projectRoot, loadedAt } = inspection;
+  const { entries, plugins, skills, mcpStatuses } = sources;
+  const { generalTarget, projectTarget, generalMarkdown, projectMarkdown, globalRoot, projectRoot, agents, commands, agentFiles, commandFiles, errors, loadedAt } = inspection;
+  const generalAgents = generalMarkdown.agents;
+  const generalCommands = generalMarkdown.commands;
+  const projectAgents = projectMarkdown.agents;
+  const projectCommands = projectMarkdown.commands;
   const rows = buildExtensionRows({
     entries,
     projectRoot: projectRoot || undefined,
@@ -131,27 +174,58 @@ export function extensionSnapshot(sources: ExtensionSources, inspection: Awaited
     plugins,
     skills,
     commands,
+    agents,
+    commandFiles,
+    agentFiles,
     generalWritable: generalTarget.safety.writable,
     projectWritable: projectTarget.safety.writable,
+    generalAgentWritable: Boolean(generalAgents?.safety.writable),
+    projectAgentWritable: projectAgents.safety.writable,
+    generalCommandWritable: Boolean(generalCommands?.safety.writable),
+    projectCommandWritable: projectCommands.safety.writable,
   });
   const generalRows = splitRows(rows, 'general');
   const projectRows = splitRows(rows, 'project');
   const general: ExtensionScopeSnapshot = {
     target: generalTarget.target,
     safety: generalTarget.safety,
+    markdown: {
+      agents: generalAgents ?? missingMarkdownTarget('general', 'agents', globalRoot),
+      commands: generalCommands ?? missingMarkdownTarget('general', 'commands', globalRoot),
+    },
     items: generalRows.items,
     shared: generalRows.shared,
   };
   const project: ExtensionScopeSnapshot = {
     target: projectTarget.target,
     safety: projectTarget.safety,
+    markdown: { agents: projectAgents, commands: projectCommands },
     items: projectRows.items,
     shared: projectRows.shared,
   };
-  return { general, project, loadedAt };
+  return { general, project, errors, loadedAt };
 }
 
-function scopeSnapshot(snapshot: ExtensionSnapshot, scope: ExtensionScope) {
+function missingMarkdownTarget(scope: ExtensionScope, kind: 'agents' | 'commands', root?: string): import('@/shared/protocol/opencode/extensions/types').ExtensionMarkdownTarget {
+  return {
+    scope,
+    kind,
+    root: root || '',
+    scopeRoot: scope === 'project' ? root || '' : parentPath(root || ''),
+    exists: false,
+    safety: {
+      writable: false,
+      reason: 'No writable configuration directory was found.',
+      shellAvailable: false,
+      atomicRename: false,
+      windows: false,
+      system: false,
+      symlink: false,
+    },
+  };
+}
+
+export function scopeSnapshot(snapshot: ExtensionSnapshot, scope: ExtensionScope) {
   return scope === 'general' ? snapshot.general : snapshot.project;
 }
 
@@ -196,7 +270,7 @@ async function rollback(client: ScopedOpencodeClient, target: ConfigTarget, back
   }
 }
 
-async function mutateConfig(client: ScopedOpencodeClient, snapshot: ExtensionSnapshot, scope: ExtensionScope, mutate: (text: string) => string, verify?: (config: Record<string, unknown>) => boolean) {
+export async function mutateConfig(client: ScopedOpencodeClient, snapshot: ExtensionSnapshot, scope: ExtensionScope, mutate: (text: string) => string, verify?: (config: Record<string, unknown>) => boolean, after?: () => Promise<void>) {
   const target = targetFor(snapshot, scope);
   const ext = createServerAdapter(client).extensions;
   const current = await ext.readText(target.path);
@@ -204,6 +278,7 @@ async function mutateConfig(client: ScopedOpencodeClient, snapshot: ExtensionSna
   const result = await writeConfigTransaction({ io: txIo(ext), root: target.root, target: target.path, content: next });
   try {
     await waitForConfig(client, target.path, verify);
+    await after?.();
   } catch (error) {
     await rollback(client, target, result.backupPath).catch(() => undefined);
     throw error;
@@ -241,24 +316,6 @@ export async function removePlugin(client: ScopedOpencodeClient, snapshot: Exten
   const row = findRow(scopeSnapshot(snapshot, scope).items.plugins, scope, (item) => item.target === target || item.label === target);
   if (!row?.target) throw new Error('This plugin is shared or not defined in the selected scope.');
   await mutateConfig(client, snapshot, scope, (text) => removePluginText(text, row.target!), (next) => !readPlugins(next).some((entry) => pluginTarget(entry) === row.target));
-}
-
-export async function saveCommand(client: ScopedOpencodeClient, snapshot: ExtensionSnapshot, scope: ExtensionScope, draft: ExtensionCommandDraft, previousName?: string) {
-  const existing = findAnyRow<ExtensionCommandRow>(snapshot, scope, 'commands', (item) => item.name === (previousName ?? draft.name));
-  if (existing && existing.source !== scope) throw new Error('A command with this name is shared or file-based.');
-  if (!existing && findAnyRow<ExtensionCommandRow>(snapshot, scope, 'commands', (item) => item.name === draft.name && item.source !== scope)) {
-    throw new Error('A command with this name is already defined by a file or another scope.');
-  }
-  await mutateConfig(client, snapshot, scope, (text) => {
-    const next = previousName && previousName !== draft.name ? removeCommandText(text, previousName) : text;
-    return setCommand(next, draft);
-  }, (next) => Boolean(readCommands(next)[draft.name.trim()]));
-}
-
-export async function removeCommand(client: ScopedOpencodeClient, snapshot: ExtensionSnapshot, scope: ExtensionScope, name: string) {
-  const row = findRow(scopeSnapshot(snapshot, scope).items.commands, scope, (item) => item.name === name);
-  if (!row) throw new Error('This command is shared or not defined in the selected scope.');
-  await mutateConfig(client, snapshot, scope, (text) => removeCommandText(text, name), (next) => !readCommands(next)[name]);
 }
 
 async function waitForSkill(client: ScopedOpencodeClient, id: string, present: boolean) {

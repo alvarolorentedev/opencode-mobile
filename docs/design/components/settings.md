@@ -364,9 +364,10 @@ Main relevant props:
 
 #### Responsibility
 
-- render the V2-only Extensions surface with General/Project scope, MCP/plugin/skill/command tabs, shared/read-only rows, and inline add/edit forms
-- hide system-managed shared rows (built-in plugins, embedded skills, built-in commands) from the plugin, skill, and command tabs
-- show the exact target config path, safety state, and last-backup recovery action
+- render the V2-only Extensions surface with General/Project scope, MCP/plugin/agent/skill/command tabs, shared/read-only rows, and inline add/edit forms
+- hide system-managed shared rows (built-in plugins, embedded skills, built-in commands, built-in agents) from the plugin, agent, skill, and command tabs
+- show the exact target config path, Markdown agent/command directories, safety state, and last-backup recovery action
+- show Markdown/JSONC origin badges, overridden JSONC rows, and the Markdown-default storage choice for new definitions
 - delegate every mutation and refresh to `useExtensions()`; never fetch or persist config itself
 - keep only form drafts, selected scope/tab, editing state, and local action feedback
 - reuse the MCP authentication dialog and keep MCP runtime lifecycle actions in the existing MCP domain

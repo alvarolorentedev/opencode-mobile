@@ -9,7 +9,7 @@ import { createTerminalFixture } from './terminal.mjs';
 
 import { createSessionHelpers } from './session-helpers.mjs';
 import { createStateStore, getNow, resolveProject, resolveProjectDirectory } from './state.mjs';
-import { configEntries, extensionCommands, extensionPlugins, extensionSkills, readExtensionFile, runFakeShell, shellInfo, writeExtensionFile } from './extensions.mjs';
+import { configEntries, extensionAgents, extensionCommands, extensionPlugins, extensionSkills, readExtensionFile, runFakeShell, shellInfo, writeExtensionFile } from './extensions.mjs';
 
 const port = Number.parseInt(process.env.FAKE_OPENCODE_PORT || '4096', 10);
 const scenarioName = process.env.FAKE_OPENCODE_SCENARIO || 'happy-path';
@@ -537,14 +537,8 @@ const server = http.createServer(async (req, res) => {
     }
 
     if (req.method === 'GET' && pathname === '/api/agent') {
-      sendJson(res, 200, {
-        location: location(),
-        data: [
-          { id: 'build', name: 'build', mode: 'primary', hidden: false, permissions: [] },
-          { id: 'general', name: 'general', mode: 'all', hidden: false, permissions: [], description: 'Delegate a focused task.' },
-          { id: 'explore', name: 'explore', mode: 'subagent', hidden: false, permissions: [], description: 'Search the codebase.' },
-        ],
-      });
+      const directory = requestUrl.searchParams.get('location[directory]') || state.project.canonical;
+      sendJson(res, 200, { location: location(), data: extensionAgents(state, directory) });
       return;
     }
 

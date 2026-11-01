@@ -859,6 +859,9 @@
     },
     "safety": {
       "writable": "可写。更改会先备份，然后以原子方式替换。",
+      "markdownAgents": "Agents directory: {{path}}",
+      "markdownCommands": "Commands directory: {{path}}",
+      "missing": "not available",
       "readOnly": "只读",
       "target": "配置文件：{{path}}",
       "backup": "上次备份：{{path}}",
@@ -868,6 +871,7 @@
     "tabs": {
       "mcp": "MCP",
       "plugins": "插件",
+      "agents": "Agents",
       "skills": "技能",
       "commands": "命令"
     },
@@ -915,7 +919,49 @@
       "template": "模板",
       "templateHint": "使用 $ARGUMENTS 或 $1、$2 表示参数。模板中的 Shell 块会在服务器上运行。",
       "empty": "此范围内没有命令。",
-      "removeMessage": "从此范围移除命令“/{{name}}”？"
+      "removeMessage": "从此范围移除命令“/{{name}}”？",
+      "markdownHint": "New commands are saved as Markdown files.",
+      "jsoncHint": "This command is saved in opencode.jsonc."
+    },
+    "format": {
+      "markdown": "Markdown",
+      "jsonc": "JSONC"
+    },
+    "origin": {
+      "config": "JSONC",
+      "file": "Markdown",
+      "server": "Server",
+      "shadowed": "Overridden by a Markdown file"
+    },
+    "agents": {
+      "addTitle": "Add agent",
+      "editTitle": "Edit {{name}}",
+      "id": "Agent name",
+      "descriptionLabel": "Description",
+      "modeValue": "Mode: {{mode}}",
+      "modeLabel": "Agent mode",
+      "model": "Model",
+      "modelValue": "Model: {{model}}",
+      "permissions": "Permissions",
+      "permissionsValue": "Permissions:\n{{value}}",
+      "instructions": "Instructions",
+      "advanced": "Advanced frontmatter",
+      "advancedHint": "YAML fields other than description, mode, model, and permissions. They are preserved when you save.",
+      "markdownHint": "Saved to .opencode/agents as Markdown.",
+      "jsoncHint": "Saved in opencode.jsonc under agents.",
+      "empty": "No agents in this scope.",
+      "view": "View",
+      "add": "Create agent",
+      "none": "None",
+      "inherited": "Inherited",
+      "configDefined": "Defined in opencode.jsonc",
+      "noDescription": "No description",
+      "removeMessage": "Remove agent \"{{name}}\" from this scope?",
+      "mode": {
+        "primary": "Primary",
+        "subagent": "Subagent",
+        "all": "All"
+      }
     },
     "generalConfirmTitle": "编辑全局配置",
     "generalConfirmMessage": "这会更改此服务器上所有项目的配置。系统会先创建备份。\n\n{{path}}",

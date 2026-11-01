@@ -20,7 +20,7 @@ Related: [ADR 0015](../adr/0015-feature-oriented-implementation.md) · [State an
 | `features/chat/` | Composer, prompt lifecycle, transcript, diffs, usage and todo ledgers |
 | `features/cloud-link/` | Subscription, pairing, machine access and connector services |
 | `features/connections/` | Connection setup/profiles, retry and diagnostics presentation |
-| `features/extensions/` | MCP, plugin, skill and command management |
+| `features/extensions/` | MCP, plugin, agent, skill and command management |
 | `features/notifications/` | Completion tracking, monitoring and activity coordination |
 | `features/onboarding/` | Setup navigation and completion |
 | `features/projects/` | Project catalog, files, worktrees and file clipboard |

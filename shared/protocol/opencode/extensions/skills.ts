@@ -1,4 +1,4 @@
-import { isInside, joinPath } from '@/shared/protocol/opencode/extensions/scope';
+import { isInside, joinPath, trashRoot } from '@/shared/protocol/opencode/extensions/scope';
 import type { ExtensionScope, ExtensionSkillDraft } from '@/shared/protocol/opencode/extensions/types';
 
 export function assertSkillId(value: string) {
@@ -19,10 +19,6 @@ export function skillDirectory(root: string, scope: ExtensionScope, id: string) 
 
 export function skillFile(root: string, scope: ExtensionScope, id: string) {
   return joinPath(skillDirectory(root, scope, id), 'SKILL.md');
-}
-
-export function trashRoot(root: string) {
-  return joinPath(root, '.opencode-mobile-trash');
 }
 
 export function skillTrashPath(root: string, id: string, stamp: number) {

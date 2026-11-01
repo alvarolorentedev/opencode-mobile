@@ -1,7 +1,8 @@
 import type { Command, McpStatus } from '@/shared/protocol/opencode/types';
-import { pluginTarget, readCommands, readMcpServers, readPlugins } from '@/shared/protocol/opencode/extensions/jsonc';
+import { pluginTarget, readAgents, readCommands, readMcpServers, readPlugins } from '@/shared/protocol/opencode/extensions/jsonc';
 import { configDocuments, sourceForPath } from '@/shared/protocol/opencode/extensions/scope';
-import type { ConfigEntry, ExtensionCommandRow, ExtensionMcpRow, ExtensionPluginRow, ExtensionRows, ExtensionSkillRow, RawPluginInfo, RawSkillInfo } from '@/shared/protocol/opencode/extensions/types';
+import { parseAgentMarkdown, parseCommandMarkdown } from '@/shared/protocol/opencode/extensions/markdown';
+import type { ConfigEntry, ExtensionAgentRow, ExtensionCommandRow, ExtensionMarkdownFile, ExtensionMcpRow, ExtensionPluginRow, ExtensionRows, ExtensionSkillRow, RawAgentInfo, RawPluginInfo, RawSkillInfo } from '@/shared/protocol/opencode/extensions/types';
 
 type BuildInput = {
   entries: ConfigEntry[];
@@ -11,8 +12,15 @@ type BuildInput = {
   plugins: RawPluginInfo[];
   skills: RawSkillInfo[];
   commands: Command[];
+  agents: RawAgentInfo[];
+  commandFiles: ExtensionMarkdownFile[];
+  agentFiles: ExtensionMarkdownFile[];
   generalWritable: boolean;
   projectWritable: boolean;
+  generalAgentWritable: boolean;
+  projectAgentWritable: boolean;
+  generalCommandWritable: boolean;
+  projectCommandWritable: boolean;
 };
 
 /**
@@ -145,35 +153,160 @@ function skillRows({ skills, projectRoot, globalRoot, generalWritable, projectWr
   return byLabel([...byKey.values()], (row) => row.name || row.id);
 }
 
-function commandRows({ entries, projectRoot, globalRoot, commands, generalWritable, projectWritable }: BuildInput) {
+const BUILTIN_AGENTS = new Set(['build', 'plan', 'general', 'explore', 'compaction', 'title', 'summary']);
+
+function modelLabel(value: Record<string, unknown>) {
+  const model = value.model;
+  if (typeof model === 'string') return model;
+  if (!model || typeof model !== 'object' || Array.isArray(model)) return undefined;
+  const selection = model as Record<string, unknown>;
+  if (typeof selection.providerID !== 'string' || typeof selection.model !== 'string') return undefined;
+  return `${selection.providerID}/${selection.model}${typeof selection.variant === 'string' ? `#${selection.variant}` : ''}`;
+}
+
+function commandRows(input: BuildInput) {
+  const { entries, projectRoot, globalRoot, commands, commandFiles, generalWritable, projectWritable, generalCommandWritable, projectCommandWritable } = input;
   const rows = new Map<string, ExtensionCommandRow>();
+  const filesByName = new Map(commandFiles.map((file) => [`${file.scope}:${file.name}`, file]));
   for (const document of configDocuments(entries)) {
     const source = sourceForPath(document.path, projectRoot, globalRoot);
     const definitions = readCommands(document.info as Record<string, unknown>);
     for (const [name, definition] of Object.entries(definitions)) {
       const value = definition && typeof definition === 'object' ? definition as Record<string, unknown> : {};
-      rows.set(`${source}:${name}`, {
+      const shadow = filesByName.get(`${source}:${name}`);
+      rows.set(`config:${source}:${name}`, {
         key: `config:${source}:${name}`,
         name,
         description: typeof value.description === 'string' ? value.description : undefined,
         template: typeof value.template === 'string' ? value.template : undefined,
         definition: value,
         source,
-        editable: sourceWritable(source, generalWritable, projectWritable),
+        origin: 'config',
+        editable: !shadow && sourceWritable(source, generalWritable, projectWritable),
+        removable: sourceWritable(source, generalWritable, projectWritable),
+        shadowedBy: shadow?.path,
+        readOnlyReason: shadow ? 'A Markdown command overrides this configuration entry.' : undefined,
       });
     }
   }
+  const duplicateFiles = new Map<string, number>();
+  for (const file of commandFiles) duplicateFiles.set(`${file.scope}:${file.name}`, (duplicateFiles.get(`${file.scope}:${file.name}`) ?? 0) + 1);
+  for (const file of commandFiles) {
+    const parsed = file.content === undefined ? undefined : parseCommandMarkdown(file.content);
+    const duplicate = (duplicateFiles.get(`${file.scope}:${file.name}`) ?? 0) > 1;
+    const writable = file.scope === 'project' ? projectCommandWritable : generalCommandWritable;
+    const reason = file.error || parsed?.error || (duplicate ? 'Multiple Markdown files define this command.' : file.symlink ? 'The command file is a symbolic link.' : undefined);
+    rows.set(`file:${file.scope}:${file.name}:${file.path}`, {
+      key: `file:${file.scope}:${file.name}:${file.path}`,
+      name: file.name,
+      description: parsed?.description,
+      template: parsed?.instructions,
+      source: file.scope,
+      origin: 'file',
+      path: file.path,
+      content: file.content,
+      editable: Boolean(writable) && !reason,
+      removable: Boolean(writable) && !reason,
+      readOnlyReason: reason,
+    });
+  }
   for (const command of commands) {
     if ([...rows.values()].some((row) => row.name === command.name)) continue;
-    rows.set(`file:${command.name}`, {
-      key: `file:${command.name}`,
+    rows.set(`server:${command.name}`, {
+      key: `server:${command.name}`,
       name: command.name,
       description: command.description,
       source: isBuiltinCommand(command) ? 'system' : 'inherited',
+      origin: 'server',
       editable: false,
+      removable: false,
     });
   }
   return byLabel([...rows.values()], (row) => row.name);
+}
+
+function agentRows(input: BuildInput) {
+  const { entries, projectRoot, globalRoot, agents, agentFiles, generalWritable, projectWritable, generalAgentWritable, projectAgentWritable } = input;
+  const rows = new Map<string, ExtensionAgentRow>();
+  const filesByName = new Map(agentFiles.map((file) => [`${file.scope}:${file.name}`, file]));
+  for (const document of configDocuments(entries)) {
+    const source = sourceForPath(document.path, projectRoot, globalRoot);
+    const definitions = readAgents(document.info as Record<string, unknown>);
+    for (const [id, definition] of Object.entries(definitions)) {
+      const value = definition && typeof definition === 'object' ? definition as Record<string, unknown> : {};
+      const shadow = filesByName.get(`${source}:${id}`);
+      const permissions = value.permissions;
+      rows.set(`config:${source}:${id}`, {
+        key: `config:${source}:${id}`,
+        id,
+        name: id,
+        description: typeof value.description === 'string' ? value.description : undefined,
+        mode: value.mode === 'primary' || value.mode === 'subagent' || value.mode === 'all' ? value.mode : undefined,
+        model: modelLabel(value),
+        permissions,
+        permissionsText: permissions === undefined ? '' : JSON.stringify(permissions, null, 2),
+        permissionsFormat: 'json',
+        instructions: typeof value.system === 'string' ? value.system : undefined,
+        definition: value,
+        source,
+        origin: 'config',
+        editable: !shadow && sourceWritable(source, generalWritable, projectWritable),
+        removable: sourceWritable(source, generalWritable, projectWritable),
+        shadowedBy: shadow?.path,
+        readOnlyReason: shadow ? 'A Markdown agent overrides this configuration entry.' : undefined,
+      });
+    }
+  }
+  const duplicateFiles = new Map<string, number>();
+  for (const file of agentFiles) duplicateFiles.set(`${file.scope}:${file.name}`, (duplicateFiles.get(`${file.scope}:${file.name}`) ?? 0) + 1);
+  for (const file of agentFiles) {
+    const parsed = file.content === undefined ? undefined : parseAgentMarkdown(file.content);
+    const duplicate = (duplicateFiles.get(`${file.scope}:${file.name}`) ?? 0) > 1;
+    const writable = file.scope === 'project' ? projectAgentWritable : generalAgentWritable;
+    const legacyMode = /\/modes?\//.test(file.path.replace(/\\/g, '/'));
+    const reason = file.error || parsed?.error || (duplicate ? 'Multiple Markdown files define this agent.' : file.symlink ? 'The agent file is a symbolic link.' : legacyMode ? 'Legacy mode directories are read-only in the app.' : undefined);
+    rows.set(`file:${file.scope}:${file.name}:${file.path}`, {
+      key: `file:${file.scope}:${file.name}:${file.path}`,
+      id: file.name,
+      name: file.name,
+      description: parsed?.description,
+      mode: parsed?.mode ?? (legacyMode ? 'primary' : undefined),
+      model: parsed?.model,
+      permissions: parsed?.permissions,
+      permissionsText: parsed?.permissionsText,
+      permissionsKey: parsed?.permissionsKey,
+      permissionsFormat: 'yaml',
+      instructions: parsed?.instructions,
+      source: file.scope,
+      origin: 'file',
+      path: file.path,
+      content: file.content,
+      advancedFrontmatter: parsed?.advancedFrontmatter,
+      editable: Boolean(writable) && !reason,
+      removable: Boolean(writable) && !reason,
+      readOnlyReason: reason,
+    });
+  }
+  for (const agent of agents) {
+    if ([...rows.values()].some((row) => row.id === agent.id)) continue;
+    rows.set(`server:${agent.id}`, {
+      key: `server:${agent.id}`,
+      id: agent.id,
+      name: agent.name || agent.id,
+      description: agent.description,
+      mode: agent.mode,
+      model: agent.model ? `${agent.model.providerID}/${agent.model.id}${agent.model.variant ? `#${agent.model.variant}` : ''}` : undefined,
+      permissions: agent.permissions,
+      permissionsText: agent.permissions === undefined ? '' : JSON.stringify(agent.permissions, null, 2),
+      permissionsFormat: 'json',
+      instructions: agent.system,
+      source: BUILTIN_AGENTS.has(agent.id) ? 'system' : 'inherited',
+      origin: 'server',
+      editable: false,
+      removable: false,
+    });
+  }
+  return byLabel([...rows.values()], (row) => row.name || row.id);
 }
 
 export function buildExtensionRows(input: BuildInput): ExtensionRows {
@@ -182,6 +315,7 @@ export function buildExtensionRows(input: BuildInput): ExtensionRows {
     plugins: pluginRows(input),
     skills: skillRows(input),
     commands: commandRows(input),
+    agents: agentRows(input),
   };
 }
 
@@ -198,12 +332,14 @@ export function splitRows(rows: ExtensionRows, scope: 'general' | 'project'): { 
       plugins: rows.plugins.filter(own),
       skills: rows.skills.filter(own),
       commands: rows.commands.filter(own),
+      agents: rows.agents.filter(own),
     },
     shared: {
       mcp: rows.mcp.filter(shared),
       plugins: rows.plugins.filter(shared),
       skills: rows.skills.filter(shared),
       commands: rows.commands.filter(shared),
+      agents: rows.agents.filter(shared),
     },
   };
 }

@@ -1,5 +1,6 @@
 import path from 'node:path';
 import { parse } from 'jsonc-parser/lib/umd/main.js';
+import { parseDocument } from 'yaml';
 
 const GLOBAL_CONFIG = 'opencode.jsonc';
 const PROJECT_CONFIG = 'opencode.jsonc';
@@ -27,13 +28,32 @@ export function createExtensionState(state) {
   files.set(path.posix.join(root, GLOBAL_CONFIG), configText(state.config));
   files.set(path.posix.join(project, '.opencode/skills/opencode/SKILL.md'), '---\nname: opencode\ndescription: Use this skill for any question about OpenCode.\n---\n\nOpenCode skill fixture.\n');
   files.set(path.posix.join(project, '.opencode/skills/report/SKILL.md'), '---\nname: report\ndescription: Use when the user wants to report an OpenCode issue.\n---\n\nReport skill fixture.\n');
+  const directories = new Set([root, project, path.posix.join(project, '.opencode'), path.posix.join(root, 'skills'), path.posix.join(project, '.opencode/skills')]);
   return {
     root,
     project,
     files,
+    directories,
+    symlinks: new Set(),
     baseCommands: [{ name: 'review', description: 'Review code' }],
     nextShellId: 1,
   };
+}
+
+function markdown(text) {
+  const match = String(text || '').match(/^(?:\uFEFF)?---\r?\n([\s\S]*?)\r?\n---(?:\r?\n|$)/);
+  if (!match) return { data: {}, body: String(text || '') };
+  try {
+    const doc = parseDocument(match[1], { schema: 'core', uniqueKeys: true });
+    if (doc.errors.length) return { data: {}, body: String(text || '') };
+    return { data: (doc.toJS({ maxAliasCount: 0 }) || {}), body: String(text || '').slice(match[0].length) };
+  } catch {
+    return { data: {}, body: String(text || '') };
+  }
+}
+
+function markdownName(root, file) {
+  return file.slice(root.length + 1).replace(/\.md$/, '').replaceAll('\\', '/');
 }
 
 function readText(state, file) {
@@ -103,10 +123,88 @@ export function extensionCommands(state, directory) {
   const { global, project, inProject } = configForScope(state, directory);
   const rows = new Map(state.extensions.baseCommands.map((command) => [command.name, command]));
   for (const [name, command] of Object.entries(commandMap(global))) rows.set(name, { name, description: command?.description });
+  const applyFiles = (root) => {
+    for (const [file, content] of state.extensions.files) {
+      if (!file.startsWith(`${root}/`) || !file.endsWith('.md')) continue;
+      const name = markdownName(root, file);
+      const parsed = markdown(content);
+      rows.set(name, { name, description: parsed.data.description, template: parsed.body.trim() });
+    }
+  };
+  applyFiles(path.posix.join(state.extensions.root, 'command'));
+  applyFiles(path.posix.join(state.extensions.root, 'commands'));
   if (inProject) {
     for (const [name, command] of Object.entries(commandMap(project))) rows.set(name, { name, description: command?.description });
   }
+  applyFiles(path.posix.join(state.extensions.project, '.opencode/command'));
+  applyFiles(path.posix.join(state.extensions.project, '.opencode/commands'));
   return [...rows.values()].sort((a, b) => a.name.localeCompare(b.name));
+}
+
+export function extensionAgents(state, directory) {
+  const { global, project, inProject } = configForScope(state, directory);
+  const rows = new Map();
+  const builtins = [
+    { id: 'build', name: 'build', mode: 'primary', hidden: false, permissions: [] },
+    { id: 'general', name: 'general', mode: 'all', hidden: false, permissions: [], description: 'Delegate a focused task.' },
+    { id: 'explore', name: 'explore', mode: 'subagent', hidden: false, permissions: [], description: 'Search the codebase.' },
+  ];
+  for (const row of builtins) rows.set(row.id, row);
+  const applyConfig = (config) => {
+    const agents = config?.agents && typeof config.agents === 'object' && !Array.isArray(config.agents) ? config.agents : {};
+    for (const [id, value] of Object.entries(agents)) {
+      const current = rows.get(id) || { id, name: id, mode: 'all', hidden: false, permissions: [] };
+      rows.set(id, {
+        ...current,
+        ...(typeof value?.description === 'string' ? { description: value.description } : {}),
+        ...(value?.mode ? { mode: value.mode } : {}),
+        ...(typeof value?.hidden === 'boolean' ? { hidden: value.hidden } : {}),
+        ...(value?.system !== undefined ? { system: value.system } : {}),
+        ...(value?.permissions !== undefined ? { permissions: value.permissions } : {}),
+        ...(value?.model ? { model: normalizeModel(value.model) } : {}),
+      });
+    }
+  };
+  const applyFiles = (root, recursive) => {
+    for (const [file, content] of state.extensions.files) {
+      if (!file.startsWith(`${root}/`) || !file.endsWith('.md')) continue;
+      const relative = file.slice(root.length + 1);
+      if (!recursive && relative.includes('/')) continue;
+      const id = markdownName(root, file);
+      const parsed = markdown(content);
+      rows.set(id, {
+        id,
+        name: id,
+        mode: 'primary',
+        hidden: false,
+        permissions: [],
+        ...(parsed.data.description ? { description: parsed.data.description } : {}),
+        ...(parsed.data.mode ? { mode: parsed.data.mode } : {}),
+        ...(parsed.data.model ? { model: normalizeModel(parsed.data.model) } : {}),
+        system: parsed.body.trim(),
+      });
+    }
+  };
+  applyConfig(global);
+  for (const dir of ['agents', 'agent', 'modes', 'mode']) applyFiles(path.posix.join(state.extensions.root, dir), dir === 'agents' || dir === 'agent');
+  if (inProject) {
+    applyConfig(project);
+    for (const dir of ['agents', 'agent', 'modes', 'mode']) applyFiles(path.posix.join(state.extensions.project, '.opencode', dir), dir === 'agents' || dir === 'agent');
+  }
+  return [...rows.values()].sort((a, b) => a.id.localeCompare(b.id));
+}
+
+function normalizeModel(value) {
+  if (typeof value === 'string') {
+    const [providerID, rest] = value.split('/');
+    if (!providerID || !rest) return undefined;
+    const [id, variant] = rest.split('#');
+    return { providerID, id, ...(variant ? { variant } : {}) };
+  }
+  if (value && typeof value === 'object' && typeof value.providerID === 'string' && typeof value.model === 'string') {
+    return { providerID: value.providerID, id: value.model, ...(value.variant ? { variant: value.variant } : {}) };
+  }
+  return undefined;
 }
 
 export function extensionPlugins(state, directory) {
@@ -140,6 +238,12 @@ function updateRuntimeMcp(state) {
 
 export function writeExtensionFile(state, file, content) {
   state.extensions.files.set(file, content);
+  let parent = path.posix.dirname(file);
+  while (parent && parent !== '/') {
+    state.extensions.directories.add(parent);
+    if (parent === state.extensions.root || parent === state.extensions.project) break;
+    parent = path.posix.dirname(parent);
+  }
   if (file.endsWith(GLOBAL_CONFIG) || file.endsWith(PROJECT_CONFIG)) updateRuntimeMcp(state);
 }
 
@@ -159,11 +263,26 @@ export function runFakeShell(state, root, command) {
   if (command.startsWith('test ')) {
     const option = command.split(' ')[1];
     const file = values[0];
-    const exists = state.extensions.files.has(file);
+    const directory = state.extensions.directories.has(file) || [...state.extensions.files.keys()].some((item) => item.startsWith(`${file}/`));
+    const exists = state.extensions.files.has(file) || directory || state.extensions.symlinks.has(file);
     if (option === '-e' || option === '-r') return exists ? ok() : fail();
-    if (option === '-w') return ok();
-    if (option === '-L') return fail();
+    if (option === '-d') return directory ? ok() : fail();
+    if (option === '-f') return state.extensions.files.has(file) ? ok() : fail();
+    if (option === '-w' || option === '-x') return ok();
+    if (option === '-L') return state.extensions.symlinks.has(file) ? ok() : fail();
     return fail();
+  }
+  if (command.startsWith('find ')) {
+    const root = values[0];
+    if (!state.extensions.directories.has(root) && ![...state.extensions.files.keys()].some((item) => item.startsWith(`${root}/`))) return fail('No such directory');
+    const type = command.match(/-type (f|l)/)?.[1];
+    const markdownOnly = command.includes("-name '*.md'");
+    const entries = [...state.extensions.files.keys()]
+      .filter((file) => file.startsWith(`${root}/`))
+      .filter((file) => !markdownOnly || file.endsWith('.md'))
+      .filter((file) => type === 'l' ? state.extensions.symlinks.has(file) : type === 'f' ? !state.extensions.symlinks.has(file) : true)
+      .sort();
+    return ok(entries.join('\n') + (entries.length ? '\n' : ''));
   }
   if (command.startsWith('cat ')) {
     const value = state.extensions.files.get(values[0]);
@@ -194,9 +313,21 @@ export function runFakeShell(state, root, command) {
     if (destination.endsWith(GLOBAL_CONFIG) || destination.endsWith(PROJECT_CONFIG) || destination.endsWith('SKILL.md')) updateRuntimeMcp(state);
     return ok();
   }
-  if (command.startsWith('chmod ') || command.startsWith('mkdir ')) return ok();
+  if (command.startsWith('chmod ')) return ok();
+  if (command.startsWith('mkdir ')) {
+    let parent = values[0];
+    while (parent && parent !== '/') {
+      state.extensions.directories.add(parent);
+      parent = path.posix.dirname(parent);
+    }
+    return ok();
+  }
   if (command.startsWith('rm ')) {
     state.extensions.files.delete(values[0]);
+    for (const file of [...state.extensions.files.keys()]) {
+      if (file.startsWith(`${values[0]}/`)) state.extensions.files.delete(file);
+    }
+    state.extensions.directories.delete(values[0]);
     return ok();
   }
   return fail(`Unsupported fake shell command: ${command}`);

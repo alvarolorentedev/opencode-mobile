@@ -859,6 +859,9 @@
     },
     "safety": {
       "writable": "Beschreibbar. Änderungen werden gesichert und atomar ersetzt.",
+      "markdownAgents": "Agents directory: {{path}}",
+      "markdownCommands": "Commands directory: {{path}}",
+      "missing": "not available",
       "readOnly": "Nur lesen",
       "target": "Konfigurationsdatei: {{path}}",
       "backup": "Letzte Sicherung: {{path}}",
@@ -868,6 +871,7 @@
     "tabs": {
       "mcp": "MCPs",
       "plugins": "Plugins",
+      "agents": "Agents",
       "skills": "Fähigkeiten",
       "commands": "Befehle"
     },
@@ -915,7 +919,49 @@
       "template": "Vorlage",
       "templateHint": "Verwende $ARGUMENTS oder $1, $2 für Argumente. Shell-Blöcke in Vorlagen werden auf dem Server ausgeführt.",
       "empty": "Keine Befehle in diesem Bereich.",
-      "removeMessage": "Befehl „/{{name}}“ aus diesem Bereich entfernen?"
+      "removeMessage": "Befehl „/{{name}}“ aus diesem Bereich entfernen?",
+      "markdownHint": "New commands are saved as Markdown files.",
+      "jsoncHint": "This command is saved in opencode.jsonc."
+    },
+    "format": {
+      "markdown": "Markdown",
+      "jsonc": "JSONC"
+    },
+    "origin": {
+      "config": "JSONC",
+      "file": "Markdown",
+      "server": "Server",
+      "shadowed": "Overridden by a Markdown file"
+    },
+    "agents": {
+      "addTitle": "Add agent",
+      "editTitle": "Edit {{name}}",
+      "id": "Agent name",
+      "descriptionLabel": "Description",
+      "modeValue": "Mode: {{mode}}",
+      "modeLabel": "Agent mode",
+      "model": "Model",
+      "modelValue": "Model: {{model}}",
+      "permissions": "Permissions",
+      "permissionsValue": "Permissions:\n{{value}}",
+      "instructions": "Instructions",
+      "advanced": "Advanced frontmatter",
+      "advancedHint": "YAML fields other than description, mode, model, and permissions. They are preserved when you save.",
+      "markdownHint": "Saved to .opencode/agents as Markdown.",
+      "jsoncHint": "Saved in opencode.jsonc under agents.",
+      "empty": "No agents in this scope.",
+      "view": "View",
+      "add": "Create agent",
+      "none": "None",
+      "inherited": "Inherited",
+      "configDefined": "Defined in opencode.jsonc",
+      "noDescription": "No description",
+      "removeMessage": "Remove agent \"{{name}}\" from this scope?",
+      "mode": {
+        "primary": "Primary",
+        "subagent": "Subagent",
+        "all": "All"
+      }
     },
     "generalConfirmTitle": "Globale Konfiguration bearbeiten",
     "generalConfirmMessage": "Dies ändert die Konfiguration für alle Projekte auf diesem Server. Zuvor wird eine Sicherung erstellt.\n\n{{path}}",

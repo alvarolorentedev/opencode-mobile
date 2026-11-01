@@ -21,6 +21,6 @@ describe('form validation boundaries', () => {
   it('rejects malformed MCP commands and blank command templates', () => {
     expect(mcpSchema.safeParse({ name: 'local', type: 'local', target: '{}' }).success).toBe(false);
     expect(mcpSchema.safeParse({ name: 'local', type: 'local', target: '["npx", "server"]' }).success).toBe(true);
-    expect(commandSchema.safeParse({ name: 'run', description: '', template: '  ' }).success).toBe(false);
+    expect(commandSchema.safeParse({ name: 'run', description: '', template: '  ', format: 'markdown' }).success).toBe(false);
   });
 });

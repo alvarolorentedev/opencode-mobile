@@ -2,13 +2,14 @@ import { useCallback, useMemo, useRef, useState } from 'react';
 
 import { getErrorMessage } from '@/shared/utilities/error-message';
 import type { ScopedOpencodeClient } from '@/shared/protocol/opencode/client';
-import type { ExtensionCommandDraft, ExtensionScope, ExtensionSkillDraft, ExtensionSkillRow, ExtensionSnapshot } from '@/shared/protocol/opencode/extensions/types';
+import type { ExtensionAgentDraft, ExtensionAgentRow, ExtensionCommandDraft, ExtensionCommandRow, ExtensionScope, ExtensionSkillDraft, ExtensionSkillRow, ExtensionSnapshot } from '@/shared/protocol/opencode/extensions/types';
 import type { McpLocalConfig, McpRemoteConfig } from '@/shared/protocol/opencode/types';
-import { commandsOptions, configurationOptions, skillsOptions } from '@/shared/server-data/catalogs';
+import { configurationOptions, skillsOptions } from '@/shared/server-data/catalogs';
 import { useQueryActivity, useQueryIdentity } from '@/shared/server-data/client';
 import { extensionInspectionOptions, pluginsOptions } from '@/features/extensions/services/queries/extensions';
 import { mcpOptions } from '@/shared/server-data/diagnostics';
-import { addMcpServer, addPlugin, createSkill, extensionSnapshot, removeCommand, removeMcpServer, removePlugin, removeSkill, restoreConfig, saveCommand, updateMcpServer, updateSkill } from '@/features/extensions/services/extensions-service';
+import { addMcpServer, addPlugin, createSkill, extensionSnapshot, removeMcpServer, removePlugin, removeSkill, restoreConfig, updateMcpServer, updateSkill } from '@/features/extensions/services/extensions-service';
+import { removeAgent, removeCommand, saveAgent, saveCommand } from '@/features/extensions/services/definitions-service';
 import { useQueries, useQueryClient } from '@tanstack/react-query';
 
 type ExtensionsInput = {
@@ -26,14 +27,14 @@ export function useExtensionsState({
   const [requested, setRequested] = useState(false);
   const subscribed = active && requested;
   const [configuration] = useQueries({ queries: [configurationOptions(identity, client)].filter(() => subscribed) });
-  const [commands] = useQueries({ queries: [commandsOptions(identity, client)].filter(() => subscribed) });
   const [skills] = useQueries({ queries: [skillsOptions(identity, client)].filter(() => subscribed) });
   const [plugins] = useQueries({ queries: [pluginsOptions(identity, client)].filter(() => subscribed) });
   const [mcp] = useQueries({ queries: [mcpOptions(identity, client)].filter(() => subscribed) });
   const [inspection] = useQueries({ queries: [extensionInspectionOptions(identity, client)].filter(() => subscribed) });
-  const snapshot = useMemo(() => configuration?.data?.entries && skills?.data?.details && inspection?.data
-    ? extensionSnapshot({ entries: configuration?.data.entries, skills: skills?.data.details, commands: commands?.data ?? [], plugins: plugins?.data ?? [], mcpStatuses: mcp?.data ?? {} }, inspection?.data)
-    : undefined, [configuration?.data, skills?.data, commands?.data, plugins?.data, mcp?.data, inspection?.data]);
+  const inspectionData = inspection?.data;
+  const snapshot = useMemo(() => configuration?.data?.entries && skills?.data?.details && inspectionData
+    ? extensionSnapshot({ entries: configuration?.data?.entries, skills: skills?.data?.details, plugins: plugins?.data ?? [], mcpStatuses: mcp?.data ?? {} }, inspectionData)
+    : undefined, [configuration?.data, skills?.data, plugins?.data, mcp?.data, inspectionData]);
   const [busy, setBusy] = useState<string>();
   const [error, setError] = useState<string>();
   const busyRef = useRef<string | undefined>(undefined);
@@ -43,7 +44,6 @@ export function useExtensionsState({
     await Promise.all([
       cache.fetchQuery({ ...configurationOptions(identity, client), staleTime: 0 }),
       cache.fetchQuery({ ...skillsOptions(identity, client), staleTime: 0 }),
-      cache.fetchQuery({ ...commandsOptions(identity, client), staleTime: 0 }),
       cache.fetchQuery({ ...pluginsOptions(identity, client), staleTime: 0 }),
       cache.fetchQuery(mcpOptions(identity, client)),
     ]);
@@ -88,10 +88,14 @@ export function useExtensionsState({
       run('add-plugin', (current) => addPlugin(client, current, scope, target)),
     removePlugin: (scope: ExtensionScope, target: string) =>
       run('remove-plugin', (current) => removePlugin(client, current, scope, target)),
-    saveCommand: (scope: ExtensionScope, draft: ExtensionCommandDraft, previousName?: string) =>
-      run('save-command', (current) => saveCommand(client, current, scope, draft, previousName)),
-    removeCommand: (scope: ExtensionScope, name: string) =>
-      run('remove-command', (current) => removeCommand(client, current, scope, name)),
+    saveCommand: (scope: ExtensionScope, draft: ExtensionCommandDraft, previous?: ExtensionCommandRow) =>
+      run('save-command', (current) => saveCommand(client, current, scope, draft, previous)),
+    removeCommand: (scope: ExtensionScope, row: ExtensionCommandRow) =>
+      run('remove-command', (current) => removeCommand(client, current, scope, row)),
+    saveAgent: (scope: ExtensionScope, draft: ExtensionAgentDraft, previous?: ExtensionAgentRow) =>
+      run('save-agent', (current) => saveAgent(client, current, scope, draft, previous)),
+    removeAgent: (scope: ExtensionScope, row: ExtensionAgentRow) =>
+      run('remove-agent', (current) => removeAgent(client, current, scope, row)),
     createSkill: (scope: ExtensionScope, draft: ExtensionSkillDraft) =>
       run('create-skill', (current) => createSkill(client, current, scope, draft)),
     updateSkill: (scope: ExtensionScope, row: ExtensionSkillRow, content: string) =>

@@ -1,7 +1,9 @@
 import { applyEdits, modify, parse, type ParseError } from 'jsonc-parser/lib/esm/main.js';
 
 import type { McpLocalConfig, McpRemoteConfig } from '@/shared/protocol/opencode/types';
-import type { ExtensionCommandDraft } from '@/shared/protocol/opencode/extensions/types';
+import type { ExtensionAgentDraft, ExtensionCommandDraft } from '@/shared/protocol/opencode/extensions/types';
+import { agentDefinitionSchema, commandDefinitionSchema, parsePermissionJson } from '@/shared/protocol/opencode/extensions/contract';
+import { assertDefinitionName } from '@/shared/protocol/opencode/extensions/scope';
 
 export type ConfigEditErrorCode =
   | 'invalid-jsonc'
@@ -64,10 +66,19 @@ export function assertMcpName(name: string) {
 }
 
 export function assertCommandName(name: string) {
-  if (!/^[a-z0-9][a-z0-9._/-]*$/i.test(name) || name.startsWith('/') || name.endsWith('/')) {
+  const value = assertDefinitionName(name, 'Commands');
+  if (!/^[a-z0-9][a-z0-9._/-]*$/i.test(value) || value.startsWith('/') || value.endsWith('/')) {
     throw new ConfigEditError('invalid-name', 'Commands need a name such as review or team/review.');
   }
-  return name;
+  return value;
+}
+
+export function assertAgentName(name: string) {
+  const value = assertDefinitionName(name, 'Agents');
+  if (!/^[a-z0-9][a-z0-9._/-]*$/i.test(value) || value.startsWith('/') || value.endsWith('/')) {
+    throw new ConfigEditError('invalid-name', 'Agents need a name such as review or team/reviewer.');
+  }
+  return value;
 }
 
 export function pluginTarget(entry: unknown): string | undefined {
@@ -96,6 +107,12 @@ export function readCommands(config: Record<string, unknown>) {
   const commands = config.commands;
   if (!commands || typeof commands !== 'object' || Array.isArray(commands)) return {} as Record<string, Record<string, unknown>>;
   return commands as Record<string, Record<string, unknown>>;
+}
+
+export function readAgents(config: Record<string, unknown>) {
+  const agents = config.agents;
+  if (!agents || typeof agents !== 'object' || Array.isArray(agents)) return {} as Record<string, Record<string, unknown>>;
+  return agents as Record<string, Record<string, unknown>>;
 }
 
 function edit(text: string, path: (string | number)[], value: unknown) {
@@ -203,7 +220,48 @@ export function setCommand(text: string, draft: ExtensionCommandDraft) {
   const description = draft.description?.trim();
   if (description) next.description = description;
   else delete next.description;
+  const validation = commandDefinitionSchema.safeParse(next);
+  if (!validation.success) throw new ConfigEditError('unsupported-shape', validation.error.issues[0]?.message || 'Invalid command definition.');
   return edit(text, ['commands', name], next);
+}
+
+export function setAgent(text: string, draft: ExtensionAgentDraft) {
+  const name = assertAgentName(draft.id.trim());
+  const instructions = draft.instructions.trim();
+  if (!instructions) throw new ConfigEditError('invalid-name', 'Enter the agent instructions.');
+  const parsed = parseConfigText(text);
+  assertModernShape(parsed, 'agent', 'agents');
+  if (parsed.agents !== undefined && (!parsed.agents || typeof parsed.agents !== 'object' || Array.isArray(parsed.agents))) {
+    throw new ConfigEditError('unsupported-shape', 'The "agents" configuration is not an object.');
+  }
+  const agents = readAgents(parsed);
+  const previous = agents[name] && typeof agents[name] === 'object' ? agents[name] as Record<string, unknown> : {};
+  const next: Record<string, unknown> = { ...previous, system: instructions, mode: draft.mode };
+  const description = draft.description?.trim();
+  if (description) next.description = description;
+  else delete next.description;
+  const model = draft.model?.trim();
+  if (model) next.model = model;
+  else delete next.model;
+  const permissions = parsePermissionJson(draft.permissions ?? '');
+  if (permissions) next.permissions = permissions;
+  else delete next.permissions;
+  const validation = agentDefinitionSchema.safeParse(next);
+  if (!validation.success) throw new ConfigEditError('unsupported-shape', validation.error.issues[0]?.message || 'Invalid agent definition.');
+  return edit(text, ['agents', name], next);
+}
+
+export function removeAgent(text: string, name: string) {
+  assertAgentName(name);
+  const parsed = parseConfigText(text);
+  assertModernShape(parsed, 'agent', 'agents');
+  if (parsed.agents !== undefined && (!parsed.agents || typeof parsed.agents !== 'object' || Array.isArray(parsed.agents))) {
+    throw new ConfigEditError('unsupported-shape', 'The "agents" configuration is not an object.');
+  }
+  if (!readAgents(parsed)[name]) {
+    throw new ConfigEditError('not-found', `Agent "${name}" is not defined in this configuration.`);
+  }
+  return edit(text, ['agents', name], undefined);
 }
 
 export function removeCommand(text: string, name: string) {

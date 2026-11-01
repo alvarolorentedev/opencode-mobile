@@ -5,7 +5,7 @@ and [feature boundaries](../../docs/architecture/feature-boundaries.md).
 
 ## Implement here
 
-This feature owns MCP/plugin/skill/command inventories and serialized mutations.
+This feature owns MCP/plugin/agent/skill/command inventories and serialized mutations.
 Use ui/ for rendering/local interaction, state/ for domain hooks/actions,
 services/ for aggregation/persistence adapters, model/ for pure rules/types,
 and __tests__/ for existing owned Vitest coverage. Create no empty scaffolding.

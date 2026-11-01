@@ -17,6 +17,9 @@ export type ConfigTransactionOptions = {
   root: string;
   target: string;
   content: string;
+  /** undefined skips the check, null requires the target to be new, a string requires an exact match. */
+  expected?: string | null;
+  validate?: (content: string) => void;
 };
 
 export type ConfigTransactionResult = {
@@ -66,12 +69,21 @@ async function restore(io: TransactionIo, root: string, target: string, backup: 
  * never opened for writing, so a failed write cannot truncate the live file.
  * A backup is written before the atomic rename and is reused by the rollback.
  */
-export async function writeConfigTransaction({ io, root, target, content }: ConfigTransactionOptions): Promise<ConfigTransactionResult> {
+export async function writeConfigTransaction({ io, root, target, content, expected, validate }: ConfigTransactionOptions): Promise<ConfigTransactionResult> {
   const current = await io.read(target);
+  if (expected !== undefined) {
+    const matches = expected === null ? current === undefined : current === expected;
+    if (!matches) {
+      throw new ConfigTransactionError(expected === null
+        ? 'The file already exists. Refresh and try again.'
+        : 'The file changed while it was being edited. Nothing was written.');
+    }
+  }
   const backup = current === undefined ? undefined : configBackupPath(target);
   const temp = tempPath(target);
 
   try {
+    validate?.(content);
     if (current !== undefined) {
       await shellChecked(io, root, `cp -p ${shellQuote(target)} ${shellQuote(temp)}`, 'prepare');
     }
@@ -82,6 +94,7 @@ export async function writeConfigTransaction({ io, root, target, content }: Conf
     if ((await io.read(temp)) !== content) {
       throw new ConfigTransactionError('The temporary configuration file did not verify.');
     }
+    validate?.(content);
 
     const latest = await io.read(target);
     if (latest !== current) {

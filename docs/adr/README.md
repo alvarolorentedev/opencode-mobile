@@ -72,6 +72,7 @@ coverage, and documentation links.
 | [0019](0019-arm64-only-android-releases.md) | ARM64-only Android release artifacts | Accepted |
 | [0020](0020-local-first-observability-and-otlp.md) | Local-first observability with opt-in OTLP export | Accepted |
 | [0021](0021-per-connection-custom-ca.md) | Per-connection custom CA trust | Accepted |
+| [0022](0022-markdown-first-extension-definitions.md) | Markdown-first agent and command definitions with JSONC compatibility | Accepted |
 
 ## Template
 

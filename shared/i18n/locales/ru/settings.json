@@ -859,6 +859,9 @@
     },
     "safety": {
       "writable": "Доступно для записи. Изменения сохраняются в резервную копию и заменяются атомарно.",
+      "markdownAgents": "Agents directory: {{path}}",
+      "markdownCommands": "Commands directory: {{path}}",
+      "missing": "not available",
       "readOnly": "Только чтение",
       "target": "Файл конфигурации: {{path}}",
       "backup": "Последняя резервная копия: {{path}}",
@@ -868,6 +871,7 @@
     "tabs": {
       "mcp": "MCP",
       "plugins": "Плагины",
+      "agents": "Agents",
       "skills": "Навыки",
       "commands": "Команды"
     },
@@ -915,7 +919,49 @@
       "template": "Шаблон",
       "templateHint": "Используйте $ARGUMENTS или $1, $2 для аргументов. Блоки оболочки в шаблонах выполняются на сервере.",
       "empty": "В этой области нет команд.",
-      "removeMessage": "Удалить команду «/{{name}}» из этой области?"
+      "removeMessage": "Удалить команду «/{{name}}» из этой области?",
+      "markdownHint": "New commands are saved as Markdown files.",
+      "jsoncHint": "This command is saved in opencode.jsonc."
+    },
+    "format": {
+      "markdown": "Markdown",
+      "jsonc": "JSONC"
+    },
+    "origin": {
+      "config": "JSONC",
+      "file": "Markdown",
+      "server": "Server",
+      "shadowed": "Overridden by a Markdown file"
+    },
+    "agents": {
+      "addTitle": "Add agent",
+      "editTitle": "Edit {{name}}",
+      "id": "Agent name",
+      "descriptionLabel": "Description",
+      "modeValue": "Mode: {{mode}}",
+      "modeLabel": "Agent mode",
+      "model": "Model",
+      "modelValue": "Model: {{model}}",
+      "permissions": "Permissions",
+      "permissionsValue": "Permissions:\n{{value}}",
+      "instructions": "Instructions",
+      "advanced": "Advanced frontmatter",
+      "advancedHint": "YAML fields other than description, mode, model, and permissions. They are preserved when you save.",
+      "markdownHint": "Saved to .opencode/agents as Markdown.",
+      "jsoncHint": "Saved in opencode.jsonc under agents.",
+      "empty": "No agents in this scope.",
+      "view": "View",
+      "add": "Create agent",
+      "none": "None",
+      "inherited": "Inherited",
+      "configDefined": "Defined in opencode.jsonc",
+      "noDescription": "No description",
+      "removeMessage": "Remove agent \"{{name}}\" from this scope?",
+      "mode": {
+        "primary": "Primary",
+        "subagent": "Subagent",
+        "all": "All"
+      }
     },
     "generalConfirmTitle": "Изменить глобальную конфигурацию",
     "generalConfirmMessage": "Это изменит конфигурацию для всех проектов на этом сервере. Сначала будет создана резервная копия.\n\n{{path}}",

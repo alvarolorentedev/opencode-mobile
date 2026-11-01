@@ -436,6 +436,18 @@ try {
   assert(v2Listed.tokens.input === 1200 && v2Listed.cost > 0, 'V2 session usage did not accumulate');
   assert(v2Listed.model?.id === 'openai/gpt-4.1-mini', 'V2 session list dropped the model');
   assert((await v2request('/api/skill')).data.some((skill) => skill.id === 'opencode' && skill.description), 'V2 skill discovery missing');
+  const projectDirectory = '/workspace/demo-project';
+  const mdCommandPath = `${projectDirectory}/.opencode/commands/md-test.md`;
+  await v2request(`/api/experimental/fs/write?path=${encodeURIComponent(mdCommandPath)}&location[directory]=${encodeURIComponent(projectDirectory)}`, { method: 'POST', body: '---\ndescription: Markdown command\n---\n\nMarkdown $ARGUMENTS.\n', headers: { 'Content-Type': 'text/plain' } });
+  assert((await v2request(`/api/command?location[directory]=${encodeURIComponent(projectDirectory)}`)).data.some((command) => command.name === 'md-test' && command.description === 'Markdown command'), 'V2 Markdown command discovery missing');
+  const mdAgentPath = `${projectDirectory}/.opencode/agents/md-agent.md`;
+  await v2request(`/api/experimental/fs/write?path=${encodeURIComponent(mdAgentPath)}&location[directory]=${encodeURIComponent(projectDirectory)}`, { method: 'POST', body: '---\ndescription: Markdown agent\nmode: subagent\nmodel: openai/gpt-4.1-mini\n---\n\nReview safely.\n', headers: { 'Content-Type': 'text/plain' } });
+  assert((await v2request(`/api/agent?location[directory]=${encodeURIComponent(projectDirectory)}`)).data.some((agent) => agent.id === 'md-agent' && agent.description === 'Markdown agent' && agent.system === 'Review safely.'), 'V2 Markdown agent discovery missing');
+  const found = await v2request(`/api/shell?location[directory]=${encodeURIComponent(projectDirectory)}`, json('POST', { command: `find '${projectDirectory}/.opencode/agents' -name '*.md' -type f`, cwd: projectDirectory }));
+  const foundInfo = await v2request(`/api/shell/${found.data.id}?location[directory]=${encodeURIComponent(projectDirectory)}`);
+  const foundOutput = await v2request(`/api/shell/${found.data.id}/output?location[directory]=${encodeURIComponent(projectDirectory)}`);
+  assert(foundInfo.data.status === 'exited' && foundOutput.data.output.includes('md-agent.md'), 'Fake shell find must expose Markdown agents');
+
   assert((await v2request('/api/reference')).data.some((reference) => reference.name === 'docs' && reference.path === 'README.md'), 'V2 reference discovery missing');
 
   // A first page must never look like the complete workspace list.

@@ -198,7 +198,7 @@ Primary fields:
 - `vcsInfo`
 - `worktrees`
 - `mcpStatuses`
-- `extensions` (in-memory scoped extension snapshot: target config paths, safety state, MCP/plugin/skill/command rows, and shared items)
+- `extensions` (in-memory scoped extension snapshot: target config paths, Markdown targets, safety state, MCP/plugin/agent/skill/command rows, and shared items)
 - `diagnostics`
 - `chatPreferences`
 

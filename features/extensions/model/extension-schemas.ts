@@ -1,5 +1,7 @@
 import { z } from 'zod';
 import { assertSkillId } from '@/shared/protocol/opencode/extensions/skills';
+import { assertAgentName } from '@/shared/protocol/opencode/extensions/jsonc';
+import { modelSelectionSchema } from '@/shared/protocol/opencode/extensions/contract';
 import { slugifySkillId } from '@/shared/contracts/skill-id';
 
 const required = z.string().refine((value) => Boolean(value.trim()), 'common:validation.required');
@@ -15,8 +17,28 @@ export const skillSchema = z.object({ id: z.string(), name: z.string(), descript
   try { assertSkillId(draft.id.trim() || slugifySkillId(draft.name)); }
   catch { context.addIssue({ code: 'custom', path: ['id'], message: 'common:validation.invalid' }); }
 });
-export const commandSchema = z.object({ name: required, description: z.string(), template: required });
+export const commandSchema = z.object({ name: required, description: z.string(), template: required, format: z.enum(['markdown', 'jsonc']) });
+export const agentSchema = z.object({
+  id: required,
+  description: z.string(),
+  mode: z.enum(['primary', 'subagent', 'all']),
+  model: z.string(),
+  permissions: z.string(),
+  instructions: required,
+  advancedFrontmatter: z.string(),
+  format: z.enum(['markdown', 'jsonc']),
+}).superRefine((draft, context) => {
+  try { assertAgentName(draft.id.trim()); }
+  catch { context.addIssue({ code: 'custom', path: ['id'], message: 'common:validation.invalid' }); }
+  if (draft.model.trim() && !modelSelectionSchema.safeParse(draft.model.trim()).success) {
+    context.addIssue({ code: 'custom', path: ['model'], message: 'common:validation.invalid' });
+  }
+  if (draft.advancedFrontmatter.includes('---')) {
+    context.addIssue({ code: 'custom', path: ['advancedFrontmatter'], message: 'common:validation.invalid' });
+  }
+});
 
 export type McpDraft = z.infer<typeof mcpSchema>;
 export type SkillDraft = z.infer<typeof skillSchema>;
 export type CommandDraft = z.infer<typeof commandSchema>;
+export type AgentDraft = z.infer<typeof agentSchema>;

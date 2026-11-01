@@ -2,7 +2,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/shared/ui/tabs';
 import { cn } from '@/shared/ui/cn';
 import { useForm, useController } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { mcpSchema, skillSchema, commandSchema, type McpDraft, type SkillDraft, type CommandDraft } from '@/features/extensions/model/extension-schemas';
+import { mcpSchema, skillSchema, commandSchema, agentSchema, type McpDraft, type SkillDraft, type CommandDraft, type AgentDraft } from '@/features/extensions/model/extension-schemas';
 import { SettingField } from '@/shared/ui/settings/setting-rows';
 import { Text } from '@/shared/ui/text';
 import { Button } from '@/shared/ui/button';
@@ -23,11 +23,11 @@ import { useConfirmation } from '@/shared/ui/use-confirmation';
 import { getErrorMessage } from '@/shared/utilities/error-message';
 import { slugifySkillId } from '@/shared/contracts/skill-id';
 import { visibleSharedRows } from '@/shared/presentation/extension-rows';
-import type { ExtensionScope, ExtensionSkillRow, ExtensionSnapshot } from '@/shared/protocol/opencode/extensions/types';
+import type { ExtensionAgentRow, ExtensionCommandRow, ExtensionScope, ExtensionSkillRow, ExtensionSnapshot } from '@/shared/protocol/opencode/extensions/types';
 import { useExtensions, useMcp } from '@/features/extensions/context';
 import { useProjects } from '@/features/projects/context';
 
-type Tab = 'mcp' | 'plugins' | 'skills' | 'commands';
+type Tab = 'mcp' | 'plugins' | 'agents' | 'skills' | 'commands';
 
 function SafetyCard({ data, scope, onRestore, busy }: { data: ExtensionSnapshot[ExtensionScope]; scope: ExtensionScope; onRestore: () => void; busy: boolean }) {
   const { t } = useTranslation();
@@ -37,6 +37,8 @@ function SafetyCard({ data, scope, onRestore, busy }: { data: ExtensionSnapshot[
       <Text className={cn("text-foreground")} variant="description">{t(`settings:extensions.scope.${scope}`)}</Text>
       <Text style={{ color: data.safety.writable ? palette.tint : palette.muted }} variant="label">{data.safety.writable ? t('settings:extensions.safety.writable') : `${t('settings:extensions.safety.readOnly')}: ${data.safety.reason}`}</Text>
       {data.target ? <Text selectable className={cn("text-muted-foreground")} variant="label">{t('settings:extensions.safety.target', { path: data.target.path })}</Text> : null}
+      <Text selectable className={cn("text-muted-foreground")} variant="label">{t('settings:extensions.safety.markdownAgents', { path: data.markdown.agents.root || t('settings:extensions.safety.missing') })}</Text>
+      <Text selectable className={cn("text-muted-foreground")} variant="label">{t('settings:extensions.safety.markdownCommands', { path: data.markdown.commands.root || t('settings:extensions.safety.missing') })}</Text>
       {data.safety.backupPath ? <Text selectable className={cn("text-muted-foreground")} variant="label">{t('settings:extensions.safety.backup', { path: data.safety.backupPath })}</Text> : null}
       {data.safety.backupPath ? <Button disabled={busy} onPress={onRestore} variant="ghost"><Text>{t('settings:extensions.safety.restore')}</Text></Button> : null}
     </View>
@@ -65,10 +67,11 @@ export function ExtensionsSection() {
   const { extensions } = useExtensions();
   const [scope, setScope] = useState<ExtensionScope>(activeProjectPath ? 'project' : 'general');
   const target = useSettingsTarget();
-  const [tab, setTab] = useState<Tab>(() => (['plugins', 'skills', 'commands'] as const).find((entry) => target?.group?.startsWith(`extensions-${entry}`)) ?? 'mcp');
+  const [tab, setTab] = useState<Tab>(() => (['plugins', 'agents', 'skills', 'commands'] as const).find((entry) => target?.group?.startsWith(`extensions-${entry}`)) ?? 'mcp');
   const mcpForm = useForm<McpDraft>({ resolver: zodResolver(mcpSchema), defaultValues: { name: '', target: '', type: target?.group === 'extensions-mcp-remote' ? 'remote' : 'local' }, mode: 'onSubmit', reValidateMode: 'onChange' });
   const skillForm = useForm<SkillDraft>({ resolver: zodResolver(skillSchema), defaultValues: { id: '', name: '', description: '', instructions: '', autoinvoke: true }, mode: 'onSubmit', reValidateMode: 'onChange' });
-  const commandForm = useForm<CommandDraft>({ resolver: zodResolver(commandSchema), defaultValues: { name: '', description: '', template: '' }, mode: 'onSubmit', reValidateMode: 'onChange' });
+  const commandForm = useForm<CommandDraft>({ resolver: zodResolver(commandSchema), defaultValues: { name: '', description: '', template: '', format: 'markdown' }, mode: 'onSubmit', reValidateMode: 'onChange' });
+  const agentForm = useForm<AgentDraft>({ resolver: zodResolver(agentSchema), defaultValues: { id: '', description: '', mode: 'subagent', model: '', permissions: '', instructions: '', advancedFrontmatter: '', format: 'markdown' }, mode: 'onSubmit', reValidateMode: 'onChange' });
   const [generalConfirmed, setGeneralConfirmed] = useState(false);
   const [mcpBusy, setMcpBusy] = useState<string>();
   const [actionError, setActionError] = useState<string>();
@@ -86,7 +89,19 @@ export function ExtensionsSection() {
   const { field: { value: commandName, onChange: setCommandName, ref: commandNameRef, onBlur: commandNameBlur } } = useController({ control: commandForm.control, name: 'name' });
   const { field: { value: commandDescription, onChange: setCommandDescription, ref: commandDescriptionRef, onBlur: commandDescriptionBlur } } = useController({ control: commandForm.control, name: 'description' });
   const { field: { value: commandTemplate, onChange: setCommandTemplate, ref: commandTemplateRef, onBlur: commandTemplateBlur } } = useController({ control: commandForm.control, name: 'template' });
-  const [editingCommand, setEditingCommand] = useState<string>();
+  const { field: { value: commandFormat, onChange: setCommandFormat } } = useController({ control: commandForm.control, name: 'format' });
+  const [editingCommand, setEditingCommand] = useState<ExtensionCommandRow>();
+  const { field: { value: agentId, onChange: setAgentId, ref: agentIdRef, onBlur: agentIdBlur } } = useController({ control: agentForm.control, name: 'id' });
+  const { field: { value: agentDescription, onChange: setAgentDescription, ref: agentDescriptionRef, onBlur: agentDescriptionBlur } } = useController({ control: agentForm.control, name: 'description' });
+  const { field: { value: agentMode, onChange: setAgentMode } } = useController({ control: agentForm.control, name: 'mode' });
+  const { field: { value: agentModel, onChange: setAgentModel, ref: agentModelRef, onBlur: agentModelBlur } } = useController({ control: agentForm.control, name: 'model' });
+  const { field: { value: agentPermissions, onChange: setAgentPermissions, ref: agentPermissionsRef, onBlur: agentPermissionsBlur } } = useController({ control: agentForm.control, name: 'permissions' });
+  const { field: { value: agentInstructions, onChange: setAgentInstructions, ref: agentInstructionsRef, onBlur: agentInstructionsBlur } } = useController({ control: agentForm.control, name: 'instructions' });
+  const { field: { value: agentAdvanced, onChange: setAgentAdvanced, ref: agentAdvancedRef, onBlur: agentAdvancedBlur } } = useController({ control: agentForm.control, name: 'advancedFrontmatter' });
+  const { field: { value: agentFormat, onChange: setAgentFormat } } = useController({ control: agentForm.control, name: 'format' });
+  const [viewingAgent, setViewingAgent] = useState<ExtensionAgentRow>();
+  const [editingAgent, setEditingAgent] = useState<ExtensionAgentRow>();
+  const [agentFormOpen, setAgentFormOpen] = useState(false);
   const authentication = useMcpAuthentication(mcp.mcpOAuth, palette);
   const effectiveScope: ExtensionScope = scope === 'project' && !activeProjectPath ? 'general' : scope;
   const data = extensions.snapshot?.[effectiveScope];
@@ -96,11 +111,12 @@ export function ExtensionsSection() {
   useEffect(() => { void refreshExtensions().catch(() => undefined); }, [refreshExtensions]);
 
   function clearForms() {
-    mcpForm.clearErrors(); skillForm.clearErrors(); commandForm.clearErrors();
+    mcpForm.clearErrors(); skillForm.clearErrors(); commandForm.clearErrors(); agentForm.clearErrors();
     setActionError(undefined);
     setMcpName(''); setMcpTarget(''); setPluginTarget('');
     setSkillId(''); setSkillName(''); setSkillDescription(''); setSkillInstructions(''); setEditingSkill(undefined); setSkillContent('');
-    setCommandName(''); setCommandDescription(''); setCommandTemplate(''); setEditingCommand(undefined);
+    setCommandName(''); setCommandDescription(''); setCommandTemplate(''); setCommandFormat('markdown'); setEditingCommand(undefined);
+    setAgentId(''); setAgentDescription(''); setAgentMode('subagent'); setAgentModel(''); setAgentPermissions(''); setAgentInstructions(''); setAgentAdvanced(''); setAgentFormat('markdown'); setEditingAgent(undefined); setViewingAgent(undefined); setAgentFormOpen(false);
   }
 
   function changeScope(next: string) {
@@ -172,7 +188,37 @@ export function ExtensionsSection() {
       name: commandName.trim(),
       description: commandDescription,
       template: commandTemplate,
-    }, editingCommand).then(() => { setCommandName(''); setCommandDescription(''); setCommandTemplate(''); setEditingCommand(undefined); }).catch(() => undefined); });
+      format: commandFormat,
+    }, editingCommand).then(() => { setCommandName(''); setCommandDescription(''); setCommandTemplate(''); setCommandFormat('markdown'); setEditingCommand(undefined); }).catch(() => undefined); });
+  }
+
+  async function submitAgent() {
+    if (!await agentForm.trigger()) return;
+    if (!agentId.trim() || !agentInstructions.trim()) return;
+    confirmScope(() => { void extensions.saveAgent(effectiveScope, {
+      id: agentId.trim(),
+      description: agentDescription,
+      mode: agentMode,
+      model: agentModel,
+      permissions: agentPermissions,
+      instructions: agentInstructions,
+      advancedFrontmatter: agentAdvanced,
+      format: agentFormat,
+    }, editingAgent).then(() => { setAgentId(''); setAgentDescription(''); setAgentMode('subagent'); setAgentModel(''); setAgentPermissions(''); setAgentInstructions(''); setAgentAdvanced(''); setAgentFormat('markdown'); setEditingAgent(undefined); setAgentFormOpen(false); }).catch(() => undefined); });
+  }
+
+  function editAgent(row: ExtensionAgentRow) {
+    setViewingAgent(undefined);
+    setEditingAgent(row);
+    setAgentFormOpen(true);
+    setAgentId(row.id);
+    setAgentDescription(row.description || '');
+    setAgentMode(row.mode || 'all');
+    setAgentModel(row.model || '');
+    setAgentPermissions(row.permissionsText || '');
+    setAgentInstructions(row.instructions || '');
+    setAgentAdvanced(row.advancedFrontmatter || '');
+    setAgentFormat(row.origin === 'config' ? 'jsonc' : 'markdown');
   }
 
   function remove(title: string, message: string, action: () => void) {
@@ -182,6 +228,7 @@ export function ExtensionsSection() {
   const tabs: { key: Tab; label: string }[] = [
     { key: 'mcp', label: t('settings:extensions.tabs.mcp') },
     { key: 'plugins', label: t('settings:extensions.tabs.plugins') },
+    { key: 'agents', label: t('settings:extensions.tabs.agents') },
     { key: 'skills', label: t('settings:extensions.tabs.skills') },
     { key: 'commands', label: t('settings:extensions.tabs.commands') },
   ];
@@ -196,7 +243,7 @@ export function ExtensionsSection() {
           { value: 'general', label: t('settings:extensions.scope.general') },
         ]).map((option) => <ToggleGroupItem key={option.value} value={option.value} disabled={'disabled' in option && option.disabled === true}><Text>{option.label}</Text></ToggleGroupItem>)}</ToggleGroup>
       {extensions.error ? <FieldDescription testID="extensions-error" invalid={true}>{extensions.error}</FieldDescription> : null}
-      {[mcpForm, skillForm, commandForm].flatMap((form) => Object.values(form.formState.errors)).map((error, index) => error?.message ? <FieldDescription key={index} invalid>{t(String(error.message))}</FieldDescription> : null)}
+      {[mcpForm, skillForm, commandForm, agentForm].flatMap((form) => Object.values(form.formState.errors)).map((error, index) => error?.message ? <FieldDescription key={index} invalid>{t(String(error.message))}</FieldDescription> : null)}
       {actionError ? <FieldDescription testID="extensions-action-error" invalid={true}>{actionError}</FieldDescription> : null}
       {data ? <SafetyCard data={data} scope={effectiveScope} busy={busy} onRestore={() => remove(t('settings:extensions.safety.restore'), t('settings:extensions.safety.restoreMessage'), () => { void extensions.restoreBackup(effectiveScope).catch(() => undefined); })} /> : <Spinner className={cn(stylesClasses.loading)} />}
       <TabsList className={cn(stylesClasses.tabs)}>{tabs.map((item) => <TabsTrigger key={item.key} value={item.key}><Text>{item.label}</Text></TabsTrigger>)}</TabsList>
@@ -246,6 +293,64 @@ export function ExtensionsSection() {
         </View>
       ) : null}
 
+      {tab === 'agents' ? (
+        <View className={cn(stylesClasses.section)}>
+          {extensions.snapshot?.errors.agents ? <FieldDescription testID="extensions-agents-error" invalid={true}>{extensions.snapshot.errors.agents}</FieldDescription> : null}
+          {viewingAgent ? <>
+            <Text variant="title">{viewingAgent.name}</Text>
+            <Text selectable variant="label">{viewingAgent.path || viewingAgent.readOnlyReason || t('settings:extensions.agents.configDefined')}</Text>
+            <Text selectable variant="description">{viewingAgent.description || t('settings:extensions.agents.noDescription')}</Text>
+            <Text selectable variant="label">{t('settings:extensions.agents.modeValue', { mode: viewingAgent.mode || t('settings:extensions.agents.inherited') })}</Text>
+            <Text selectable variant="label">{t('settings:extensions.agents.modelValue', { model: viewingAgent.model || t('settings:extensions.agents.inherited') })}</Text>
+            <Text selectable variant="label">{t('settings:extensions.agents.permissionsValue', { value: viewingAgent.permissionsText || t('settings:extensions.agents.none') })}</Text>
+            <Text selectable variant="description">{viewingAgent.instructions || ''}</Text>
+            <View className={cn(stylesClasses.actions)}>
+              {viewingAgent.editable ? <Button disabled={busy} onPress={() => editAgent(viewingAgent)} variant="default"><Text>{t('common:actions.edit')}</Text></Button> : null}
+              <Button disabled={busy} onPress={() => setViewingAgent(undefined)} variant="ghost"><Text>{t('common:actions.cancel')}</Text></Button>
+            </View>
+          </> : editingAgent || agentFormOpen ? <>
+            <Text variant="title">{editingAgent ? t('settings:extensions.agents.editTitle', { name: editingAgent.name }) : t('settings:extensions.agents.addTitle')}</Text>
+            <SettingField testID="settings-extension-agent-id" label={t('settings:extensions.agents.id')} ref={agentIdRef} onBlur={agentIdBlur} value={agentId} onChangeText={setAgentId} autoCapitalize="none" autoCorrect={false}></SettingField>
+            <SettingField testID="settings-extension-agent-description" label={t('settings:extensions.agents.descriptionLabel')} ref={agentDescriptionRef} onBlur={agentDescriptionBlur} value={agentDescription} onChangeText={setAgentDescription}></SettingField>
+            <ToggleGroup type="single" value={agentMode} onValueChange={(value) => { if (value) setAgentMode(value as AgentDraft['mode']); }} className="flex-row flex-wrap">
+              {(['primary', 'subagent', 'all'] as const).map((mode) => <ToggleGroupItem key={mode} value={mode}><Text>{t(`settings:extensions.agents.mode.${mode}`)}</Text></ToggleGroupItem>)}
+            </ToggleGroup>
+            <SettingField testID="settings-extension-agent-model" label={t('settings:extensions.agents.model')} placeholder="provider/model" ref={agentModelRef} onBlur={agentModelBlur} value={agentModel} onChangeText={setAgentModel} autoCapitalize="none" autoCorrect={false}></SettingField>
+            <SettingField testID="settings-extension-agent-permissions" multiline numberOfLines={4} label={t('settings:extensions.agents.permissions')} ref={agentPermissionsRef} onBlur={agentPermissionsBlur} value={agentPermissions} onChangeText={setAgentPermissions} autoCapitalize="none" autoCorrect={false}></SettingField>
+            <SettingField testID="settings-extension-agent-instructions" multiline numberOfLines={8} label={t('settings:extensions.agents.instructions')} ref={agentInstructionsRef} onBlur={agentInstructionsBlur} value={agentInstructions} onChangeText={setAgentInstructions}></SettingField>
+            {agentFormat === 'markdown' ? <>
+              <SettingField testID="settings-extension-agent-advanced" multiline numberOfLines={4} label={t('settings:extensions.agents.advanced')} ref={agentAdvancedRef} onBlur={agentAdvancedBlur} value={agentAdvanced} onChangeText={setAgentAdvanced} autoCapitalize="none" autoCorrect={false}></SettingField>
+              <FieldDescription invalid={false}>{t('settings:extensions.agents.advancedHint')}</FieldDescription>
+            </> : null}
+            {!editingAgent ? <ToggleGroup type="single" value={agentFormat} onValueChange={(value) => { if (value) setAgentFormat(value as 'markdown' | 'jsonc'); }} className="flex-row flex-wrap">
+              <ToggleGroupItem value="markdown"><Text>{t('settings:extensions.format.markdown')}</Text></ToggleGroupItem>
+              <ToggleGroupItem value="jsonc"><Text>{t('settings:extensions.format.jsonc')}</Text></ToggleGroupItem>
+            </ToggleGroup> : null}
+            <FieldDescription invalid={false}>{t(agentFormat === 'markdown' ? 'settings:extensions.agents.markdownHint' : 'settings:extensions.agents.jsoncHint')}</FieldDescription>
+            <View className={cn(stylesClasses.actions)}>
+              <Button testID="settings-extension-agent-save" disabled={busy || Boolean(extensions.snapshot?.errors.agents) || !(editingAgent ? editingAgent.editable : data?.markdown.agents.safety.writable)} onPress={submitAgent} variant="default"><Text>{t('common:actions.save')}</Text></Button>
+              <Button disabled={busy} onPress={() => { setEditingAgent(undefined); setAgentId(''); setAgentDescription(''); setAgentMode('subagent'); setAgentModel(''); setAgentPermissions(''); setAgentInstructions(''); setAgentAdvanced(''); setAgentFormat('markdown'); setAgentFormOpen(false); }} variant="ghost"><Text>{t('common:actions.cancel')}</Text></Button>
+            </View>
+          </> : <>
+            <Text variant="title">{t('settings:extensions.agents.addTitle')}</Text>
+            <Button testID="settings-extension-agent-add" disabled={busy || Boolean(extensions.snapshot?.errors.agents) || !data?.markdown.agents.safety.writable} onPress={() => setAgentFormOpen(true)} variant="default"><Text>{t('settings:extensions.agents.add')}</Text></Button>
+            <FieldDescription invalid={false}>{t('settings:extensions.agents.markdownHint')}</FieldDescription>
+          </>}
+          {data?.items.agents.length === 0 ? <FieldDescription invalid={false}>{t('settings:extensions.agents.empty')}</FieldDescription> : null}
+          {data?.items.agents.map((row) => (
+            <View key={row.key} className={cn(stylesClasses.row, "border-border")}>
+              <ListRow title={row.name} description={row.shadowedBy ? t('settings:extensions.origin.shadowed') : row.readOnlyReason || row.description || row.path} right={() => <Badge variant="secondary"><Text>{t(`settings:extensions.origin.${row.origin}`)}</Text></Badge>}></ListRow>
+              <View className={cn(stylesClasses.actions)}>
+                <Button testID={`settings-extension-agent-view-${row.id.replace(/[^a-z0-9]+/gi, '-')}`} disabled={busy} onPress={() => { setAgentFormOpen(false); setEditingAgent(undefined); setViewingAgent(row); }} variant="ghost"><Text>{t('settings:extensions.agents.view')}</Text></Button>
+                {row.editable ? <Button testID={`settings-extension-agent-edit-${row.id.replace(/[^a-z0-9]+/gi, '-')}`} disabled={busy} onPress={() => editAgent(row)} variant="ghost"><Text>{t('common:actions.edit')}</Text></Button> : null}
+                {row.removable ? <Button testID={`settings-extension-agent-remove-${row.id.replace(/[^a-z0-9]+/gi, '-')}`} disabled={busy} onPress={() => remove(t('settings:extensions.removeTitle'), t('settings:extensions.agents.removeMessage', { name: row.name }), () => { void extensions.removeAgent(effectiveScope, row).catch(() => undefined); })} variant="ghost"><Text className={cn("text-destructive")} >{t('common:actions.remove')}</Text></Button> : null}
+              </View>
+            </View>
+          ))}
+          {data ? <ReadOnlyRows title={t('settings:extensions.shared')} rows={visibleSharedRows(data.shared.agents)} render={(row) => <ListRow title={row.name} description={row.description || row.readOnlyReason || row.path}></ListRow>} /> : null}
+        </View>
+      ) : null}
+
       {tab === 'skills' ? (
         <View className={cn(stylesClasses.section)}>
           {editingSkill ? <>
@@ -277,19 +382,25 @@ export function ExtensionsSection() {
 
       {tab === 'commands' ? (
         <View className={cn(stylesClasses.section)}>
-          <Text  variant="title">{editingCommand ? t('settings:extensions.commands.editTitle', { name: editingCommand }) : t('settings:extensions.commands.addTitle')}</Text>
+          {extensions.snapshot?.errors.commands ? <FieldDescription testID="extensions-commands-error" invalid={true}>{extensions.snapshot.errors.commands}</FieldDescription> : null}
+          <Text  variant="title">{editingCommand ? t('settings:extensions.commands.editTitle', { name: editingCommand.name }) : t('settings:extensions.commands.addTitle')}</Text>
           <SettingField testID="settings-extension-command-name" label={t('settings:extensions.commands.name')} ref={commandNameRef} onBlur={commandNameBlur} value={commandName} onChangeText={setCommandName} autoCapitalize="none" autoCorrect={false}></SettingField>
           <SettingField testID="settings-extension-command-description" label={t('settings:extensions.commands.descriptionLabel')} ref={commandDescriptionRef} onBlur={commandDescriptionBlur} value={commandDescription} onChangeText={setCommandDescription}></SettingField>
           <SettingField testID="settings-extension-command-template" multiline numberOfLines={5} label={t('settings:extensions.commands.template')} ref={commandTemplateRef} onBlur={commandTemplateBlur} value={commandTemplate} onChangeText={setCommandTemplate}></SettingField>
           <FieldDescription  invalid={false}>{t('settings:extensions.commands.templateHint')}</FieldDescription>
-          <View className={cn(stylesClasses.actions)}><Button testID="settings-extension-command-save" disabled={busy || !data?.safety.writable} onPress={submitCommand} variant="default"><Text>{t('common:actions.save')}</Text></Button>{editingCommand ? <Button disabled={busy} onPress={() => { setEditingCommand(undefined); setCommandName(''); setCommandDescription(''); setCommandTemplate(''); }} variant="ghost"><Text>{t('common:actions.cancel')}</Text></Button> : null}</View>
+          {!editingCommand ? <ToggleGroup type="single" value={commandFormat} onValueChange={(value) => { if (value) setCommandFormat(value as 'markdown' | 'jsonc'); }} className="flex-row flex-wrap">
+            <ToggleGroupItem value="markdown"><Text>{t('settings:extensions.format.markdown')}</Text></ToggleGroupItem>
+            <ToggleGroupItem value="jsonc"><Text>{t('settings:extensions.format.jsonc')}</Text></ToggleGroupItem>
+          </ToggleGroup> : null}
+          <FieldDescription invalid={false}>{t(commandFormat === 'markdown' ? 'settings:extensions.commands.markdownHint' : 'settings:extensions.commands.jsoncHint')}</FieldDescription>
+          <View className={cn(stylesClasses.actions)}><Button testID="settings-extension-command-save" disabled={busy || Boolean(extensions.snapshot?.errors.commands) || !(editingCommand ? editingCommand.editable : data?.markdown.commands.safety.writable)} onPress={submitCommand} variant="default"><Text>{t('common:actions.save')}</Text></Button>{editingCommand ? <Button testID="settings-extension-command-cancel" disabled={busy} onPress={() => { setEditingCommand(undefined); setCommandName(''); setCommandDescription(''); setCommandTemplate(''); setCommandFormat('markdown'); }} variant="ghost"><Text>{t('common:actions.cancel')}</Text></Button> : null}</View>
           {data?.items.commands.length === 0 ? <FieldDescription  invalid={false}>{t('settings:extensions.commands.empty')}</FieldDescription> : null}
           {data?.items.commands.map((row) => (
             <View key={row.key} className={cn(stylesClasses.row, "border-border")}>
-              <ListRow title={`/${row.name}`} description={row.description || row.template}></ListRow>
+              <ListRow title={`/${row.name}`} description={row.shadowedBy ? t('settings:extensions.origin.shadowed') : row.readOnlyReason || row.description || row.template} right={() => <Badge variant="secondary"><Text>{t(`settings:extensions.origin.${row.origin}`)}</Text></Badge>}></ListRow>
               <View className={cn(stylesClasses.actions)}>
-                {row.editable ? <Button disabled={busy} onPress={() => { setEditingCommand(row.name); setCommandName(row.name); setCommandDescription(row.description || ''); setCommandTemplate(row.template || ''); }} variant="ghost"><Text>{t('common:actions.edit')}</Text></Button> : null}
-                {row.editable ? <Button testID={`settings-extension-command-remove-${row.name.replace(/[^a-z0-9]+/gi, '-')}`} disabled={busy} onPress={() => remove(t('settings:extensions.removeTitle'), t('settings:extensions.commands.removeMessage', { name: row.name }), () => { void extensions.removeCommand(effectiveScope, row.name).catch(() => undefined); })} variant="ghost"><Text className={cn("text-destructive")} >{t('common:actions.remove')}</Text></Button> : null}
+                {row.editable ? <Button testID={`settings-extension-command-edit-${row.name.replace(/[^a-z0-9]+/gi, '-')}`} disabled={busy} onPress={() => { setEditingCommand(row); setCommandName(row.name); setCommandDescription(row.description || ''); setCommandTemplate(row.template || ''); setCommandFormat(row.origin === 'config' ? 'jsonc' : 'markdown'); }} variant="ghost"><Text>{t('common:actions.edit')}</Text></Button> : null}
+                {row.removable ? <Button testID={`settings-extension-command-remove-${row.name.replace(/[^a-z0-9]+/gi, '-')}`} disabled={busy} onPress={() => remove(t('settings:extensions.removeTitle'), t('settings:extensions.commands.removeMessage', { name: row.name }), () => { void extensions.removeCommand(effectiveScope, row).catch(() => undefined); })} variant="ghost"><Text className={cn("text-destructive")} >{t('common:actions.remove')}</Text></Button> : null}
               </View>
             </View>
           ))}

@@ -351,11 +351,11 @@ The completion version, preference schema and first-run migration are unchanged.
 - `features/extensions/state/use-mcp-state.ts`
   MCP server status plus its lifecycle actions.
 - `features/extensions/state/use-extensions-state.ts`
-  Server-scoped extensions domain: scoped snapshots for MCPs, plugins, skills,
+  Server-scoped extensions domain: scoped snapshots for MCPs, plugins, agents, skills,
   and commands; serialized mutations; safety preflight; and refresh fan-out.
 - `features/extensions/services/extensions-service.ts`
-  Loads scoped extension inventories and performs backup/verify/rollback config
-  mutations and skill file operations.
+  Loads scoped extension inventories and performs backup/verify/rollback config and
+  Markdown agent/command mutations plus skill file operations.
 - `shared/protocol/opencode/extensions/`
   Pure extension helpers: config scope and target resolution, JSONC-preserving
   edits, atomic config transactions, skill file generation, and shell-safe path

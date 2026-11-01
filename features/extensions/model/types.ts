@@ -1,6 +1,6 @@
 import type { McpLocalConfig, McpRemoteConfig, McpStatus, ProviderAuthMethod, ProviderAuthValues } from '@/shared/protocol/opencode/types';
 
-import type { ExtensionCommandDraft, ExtensionScope, ExtensionSkillDraft, ExtensionSkillRow, ExtensionSnapshot } from '@/shared/protocol/opencode/extensions/types';
+import type { ExtensionAgentDraft, ExtensionAgentRow, ExtensionCommandDraft, ExtensionCommandRow, ExtensionScope, ExtensionSkillDraft, ExtensionSkillRow, ExtensionSnapshot } from '@/shared/protocol/opencode/extensions/types';
 
 export type McpContextValue = {
   mcpStatuses: Record<string, McpStatus>;
@@ -29,8 +29,10 @@ export type ExtensionsContextValue = {
     removeMcp: (scope: ExtensionScope, name: string) => Promise<void>;
     addPlugin: (scope: ExtensionScope, target: string) => Promise<void>;
     removePlugin: (scope: ExtensionScope, target: string) => Promise<void>;
-    saveCommand: (scope: ExtensionScope, draft: ExtensionCommandDraft, previousName?: string) => Promise<void>;
-    removeCommand: (scope: ExtensionScope, name: string) => Promise<void>;
+    saveCommand: (scope: ExtensionScope, draft: ExtensionCommandDraft, previous?: ExtensionCommandRow) => Promise<void>;
+    removeCommand: (scope: ExtensionScope, row: ExtensionCommandRow) => Promise<void>;
+    saveAgent: (scope: ExtensionScope, draft: ExtensionAgentDraft, previous?: ExtensionAgentRow) => Promise<void>;
+    removeAgent: (scope: ExtensionScope, row: ExtensionAgentRow) => Promise<void>;
     createSkill: (scope: ExtensionScope, draft: ExtensionSkillDraft) => Promise<void>;
     updateSkill: (scope: ExtensionScope, row: ExtensionSkillRow, content: string) => Promise<void>;
     removeSkill: (scope: ExtensionScope, row: ExtensionSkillRow) => Promise<void>;

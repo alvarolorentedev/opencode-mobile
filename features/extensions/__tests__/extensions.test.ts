@@ -1,10 +1,14 @@
 import { describe, expect, it } from 'vitest';
 
-import { addPlugin, parseConfigText, readCommands, readMcpServers, readPlugins, removeCommand, removeMcpServer, setCommand, setMcpServer } from '@/shared/protocol/opencode/extensions/jsonc';
+import { addPlugin, parseConfigText, readAgents, readCommands, readMcpServers, readPlugins, removeAgent, removeCommand, removeMcpServer, setAgent, setCommand, setMcpServer } from '@/shared/protocol/opencode/extensions/jsonc';
 import { buildExtensionRows, splitRows } from '@/shared/protocol/opencode/extensions/snapshot';
 import { visibleSharedRows } from '@/shared/presentation/extension-rows';
 import { configBackupPath, restoreConfigBackup, writeConfigTransaction, type ShellResult, type TransactionIo } from '@/shared/protocol/opencode/extensions/transaction';
 import { assertSkillId, skillDocument } from '@/shared/protocol/opencode/extensions/skills';
+import { assertMarkdownName, buildAgentMarkdown, buildCommandMarkdown, isEditableMarkdownPath, markdownRoots, parseAgentMarkdown, parseCommandMarkdown, updateAgentMarkdown, updateCommandMarkdown } from '@/shared/protocol/opencode/extensions/markdown';
+import { ConfigAgent } from '@opencode/schema/config/agent';
+import { ConfigCommand } from '@opencode/schema/config/command';
+import { Schema } from 'effect';
 import { slugifySkillId } from '@/shared/contracts/skill-id';
 import { resolveGlobalConfigRoot, selectConfigTarget, sourceForPath } from '@/shared/protocol/opencode/extensions/scope';
 import type { ConfigEntry } from '@/shared/protocol/opencode/extensions/types';
@@ -124,8 +128,15 @@ describe('extension snapshots', () => {
         { id: 'global-skill', name: 'Global', path: '/home/me/.config/opencode/skills/global-skill/SKILL.md', content: 'x' },
       ],
       commands: [],
+      agents: [],
+      commandFiles: [],
+      agentFiles: [],
       generalWritable: true,
       projectWritable: true,
+      generalAgentWritable: true,
+      projectAgentWritable: true,
+      generalCommandWritable: true,
+      projectCommandWritable: true,
     });
     const general = splitRows(rows, 'general');
     const project = splitRows(rows, 'project');
@@ -157,8 +168,15 @@ describe('extension snapshots', () => {
         { name: 'review', description: 'review changes [commit|branch|pr], defaults to uncommitted' },
         { name: 'deploy', description: 'Ship it' },
       ],
+      agents: [],
+      commandFiles: [],
+      agentFiles: [],
       generalWritable: true,
       projectWritable: true,
+      generalAgentWritable: true,
+      projectAgentWritable: true,
+      generalCommandWritable: true,
+      projectCommandWritable: true,
     });
 
     expect(rows.plugins.find((row) => row.label === 'opencode.agent')?.source).toBe('system');
@@ -167,6 +185,31 @@ describe('extension snapshots', () => {
     expect(visibleSharedRows(rows.skills).map((row) => row.id)).toEqual(['custom-skill']);
     expect(rows.commands.filter((row) => row.source === 'system').map((row) => row.name)).toEqual(['init', 'review']);
     expect(visibleSharedRows(rows.commands).map((row) => row.name)).toEqual(['deploy']);
+  });
+
+  it('marks config agents shadowed by Markdown and keeps file agents editable', () => {
+    const rows = buildExtensionRows({
+      entries: [{ type: 'document', path: '/work/app/opencode.jsonc', info: { agents: { reviewer: { description: 'Config', system: 'Config body' } } } }],
+      projectRoot: '/work/app',
+      globalRoot: '/home/me/.config/opencode',
+      mcpStatuses: {},
+      plugins: [],
+      skills: [],
+      commands: [],
+      agents: [{ id: 'reviewer', description: 'File', mode: 'subagent' }, { id: 'build', mode: 'primary' }],
+      commandFiles: [],
+      agentFiles: [{ kind: 'agents', scope: 'project', root: '/work/app/.opencode/agents', name: 'reviewer', path: '/work/app/.opencode/agents/reviewer.md', content: '---\ndescription: File\nmode: subagent\n---\n\nFile body\n', symlink: false }],
+      generalWritable: true,
+      projectWritable: true,
+      generalAgentWritable: true,
+      projectAgentWritable: true,
+      generalCommandWritable: true,
+      projectCommandWritable: true,
+    });
+    expect(rows.agents.filter((row) => row.id === 'reviewer').map((row) => row.origin)).toEqual(['config', 'file']);
+    expect(rows.agents.find((row) => row.origin === 'config' && row.id === 'reviewer')).toMatchObject({ editable: false, removable: true, shadowedBy: '/work/app/.opencode/agents/reviewer.md' });
+    expect(rows.agents.find((row) => row.origin === 'file' && row.id === 'reviewer')).toMatchObject({ editable: true, instructions: 'File body' });
+    expect(rows.agents.find((row) => row.id === 'build')?.source).toBe('system');
   });
 
   it('keeps config-defined commands that reuse a built-in name', () => {
@@ -182,8 +225,15 @@ describe('extension snapshots', () => {
       plugins: [],
       skills: [],
       commands: [{ name: 'review', description: 'review changes [commit|branch|pr], defaults to uncommitted' }],
+      agents: [],
+      commandFiles: [],
+      agentFiles: [],
       generalWritable: true,
       projectWritable: true,
+      generalAgentWritable: true,
+      projectAgentWritable: true,
+      generalCommandWritable: true,
+      projectCommandWritable: true,
     });
 
     expect(rows.commands).toHaveLength(1);
@@ -229,5 +279,73 @@ describe('skills', () => {
     expect(document.text).toContain('name: "Code Review"');
     expect(document.text).toContain('description: "Review code"');
     expect(document.text).toContain('Check the diff.');
+  });
+});
+
+
+describe('Markdown definitions', () => {
+  it('creates canonical agent and command files', () => {
+    const agent = buildAgentMarkdown({ id: 'reviewer', description: 'Review a change', mode: 'subagent', model: 'openai/gpt-4.1-mini', instructions: 'Read the diff.' });
+    expect(agent).toContain('description: Review a change');
+    expect(agent).toContain('mode: subagent');
+    expect(agent).toContain('Read the diff.');
+    const parsed = parseAgentMarkdown(agent);
+    expect(parsed).toMatchObject({ description: 'Review a change', mode: 'subagent', model: 'openai/gpt-4.1-mini', instructions: 'Read the diff.' });
+    Schema.decodeUnknownSync(ConfigAgent.Info)({ description: parsed.description, mode: parsed.mode, model: parsed.model, system: parsed.instructions });
+    const command = buildCommandMarkdown({ name: 'summarize', description: 'Summarize', template: 'Summarize $ARGUMENTS.' });
+    const parsedCommand = parseCommandMarkdown(command);
+    expect(parsedCommand).toMatchObject({ description: 'Summarize', instructions: 'Summarize $ARGUMENTS.' });
+    Schema.decodeUnknownSync(ConfigCommand.Info)({ description: parsedCommand.description, template: parsedCommand.instructions });
+  });
+
+  it('preserves advanced frontmatter and the V2/legacy permission key while editing', () => {
+    const original = '---\ndescription: Old\nmode: subagent\nmodel: openai/gpt-4.1-mini\npermissions:\n  - action: edit\n    resource: "*"\n    effect: deny\nrequest:\n  headers:\n    X-Test: "1"\ncustom: keep\n---\n\nOld body\n';
+    const updated = updateAgentMarkdown(original, {
+      id: 'reviewer',
+      description: 'New',
+      mode: 'all',
+      model: 'openai/gpt-4.1-mini',
+      permissions: '- action: edit\n  resource: "*"\n  effect: deny',
+      instructions: 'New body',
+      advancedFrontmatter: 'request:\n  headers:\n    X-Test: "1"\ncustom: keep',
+    });
+    expect(updated).toContain('request:\n  headers:\n    X-Test: "1"');
+    expect(updated).toContain('custom: keep');
+    expect(updated).toContain('permissions:');
+    expect(updated).not.toContain('permission:');
+    expect(updated).toContain('description: New');
+    expect(updated).toContain('New body');
+    expect(parseAgentMarkdown(updated).advancedFrontmatter).toContain('custom: keep');
+  });
+
+  it('preserves command frontmatter and rejects malformed or unsafe content', () => {
+    const original = '---\ndescription: Old\nagent: plan\nmodel: openai/gpt-4.1-mini\n---\n\nOld template\n';
+    const updated = updateCommandMarkdown(original, { name: 'review', description: 'New', template: 'New template' });
+    expect(updated).toContain('agent: plan');
+    expect(updated).toContain('model: openai/gpt-4.1-mini');
+    expect(updated).toContain('New template');
+    expect(() => assertMarkdownName('../escape', 'commands')).toThrow();
+    expect(() => parseAgentMarkdown('---\nmode: nope\n---\nbody')).not.toThrow();
+    expect(() => updateAgentMarkdown('---\nmode: nope\n---\nbody', { id: 'reviewer', mode: 'subagent', instructions: 'body' })).not.toThrow();
+  });
+
+  it('resolves canonical and legacy roots without escaping them', () => {
+    const roots = markdownRoots('/work/app', 'project', 'agents');
+    expect(roots.map((root) => root.root)).toEqual(['/work/app/.opencode/agents', '/work/app/.opencode/agent', '/work/app/.opencode/modes', '/work/app/.opencode/mode']);
+    expect(isEditableMarkdownPath('/work/app/.opencode/agents/review.md', '/work/app', 'project', 'agents')).toBe(true);
+    expect(isEditableMarkdownPath('/work/app/.opencode/agents/../secret.md', '/work/app', 'project', 'agents')).toBe(false);
+  });
+});
+
+describe('JSONC agents', () => {
+  it('adds, preserves advanced fields, and removes agents', () => {
+    const withAgent = setAgent(original, { id: 'reviewer', description: 'Review', mode: 'subagent', model: 'openai/gpt-4.1-mini', permissions: '[{"action":"edit","resource":"*","effect":"deny"}]', instructions: 'Read the diff.' });
+    const agents = readAgents(parseConfigText(withAgent));
+    expect(agents.reviewer).toMatchObject({ description: 'Review', mode: 'subagent', model: 'openai/gpt-4.1-mini', system: 'Read the diff.' });
+    expect(agents.reviewer.permissions).toEqual([{ action: 'edit', resource: '*', effect: 'deny' }]);
+    Schema.decodeUnknownSync(ConfigAgent.Info)(agents.reviewer);
+    const removed = removeAgent(withAgent, 'reviewer');
+    expect(readAgents(parseConfigText(removed))).not.toHaveProperty('reviewer');
+    expect(() => setAgent('{\n  "agent": { "reviewer": {} }\n}\n', { id: 'reviewer', mode: 'subagent', instructions: 'x' })).toThrow(/legacy "agent"/i);
   });
 });

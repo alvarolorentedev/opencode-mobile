@@ -119,3 +119,22 @@ export function sourceForPath(path: string | undefined, projectRoot?: string, gl
 export function shellQuote(value: string) {
   return `'${value.replace(/'/g, "'\\''")}'`;
 }
+
+export function trashRoot(root: string) {
+  return joinPath(root, '.opencode-mobile-trash');
+}
+
+export function assertDefinitionName(value: string, label: string) {
+  const trimmed = value.trim();
+  if (!trimmed || trimmed !== value || trimmed.startsWith('/') || trimmed.includes('\\') || /[\u0000-\u001f]/.test(trimmed)) {
+    throw new Error(`${label} must be a relative name without control characters.`);
+  }
+  const segments = trimmed.split('/');
+  if (segments.some((segment) => !segment || segment === '.' || segment === '..' || segment.startsWith('.'))) {
+    throw new Error(`${label} must not contain empty, hidden, or parent path segments.`);
+  }
+  if (trimmed.endsWith('.md')) {
+    throw new Error(`${label} must not include the .md extension.`);
+  }
+  return trimmed;
+}

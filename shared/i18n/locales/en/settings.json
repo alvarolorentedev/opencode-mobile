@@ -22,7 +22,7 @@
       "replyPlaybackOff": "Reply playback off",
       "support": "Rate the app, send feedback, get help",
       "permissions": "{{value}} saved",
-      "extensions": "MCPs, plugins, skills and commands",
+      "extensions": "MCPs, plugins, agents, skills and commands",
       "responses": "Response scope and next actions",
       "voiceSystem": "System speech · {{phrase}}",
       "voiceLocal": "On-device · {{phrase}}",
@@ -53,7 +53,7 @@
       "connection": "connections server address password credentials reconnect QR",
       "cloud-link": "remote connection Cloud Link subscription machines services",
       "ai": "AI providers accounts models authentication classifier routing",
-      "extensions": "extensions MCP plugins skills commands",
+      "extensions": "extensions MCP plugins agents skills commands",
       "permissions": "permissions approvals saved rules automatic allow",
       "advanced": "diagnostics network connection realtime polling errors usage"
     }
@@ -848,7 +848,7 @@
   },
   "extensions": {
     "title": "Extensions",
-    "description": "Manage MCP servers, plugins, skills and slash commands for this server.",
+    "description": "Manage MCP servers, plugins, agents, skills and slash commands for this server.",
     "scope": {
       "project": "Project",
       "general": "General"
@@ -859,6 +859,9 @@
     },
     "safety": {
       "writable": "Writable. Changes are backed up and replaced atomically.",
+      "markdownAgents": "Agents directory: {{path}}",
+      "markdownCommands": "Commands directory: {{path}}",
+      "missing": "not available",
       "readOnly": "Read-only",
       "target": "Config file: {{path}}",
       "backup": "Last backup: {{path}}",
@@ -868,6 +871,7 @@
     "tabs": {
       "mcp": "MCPs",
       "plugins": "Plugins",
+      "agents": "Agents",
       "skills": "Skills",
       "commands": "Commands"
     },
@@ -915,7 +919,49 @@
       "template": "Template",
       "templateHint": "Use $ARGUMENTS or $1, $2 for arguments. Shell blocks in templates run on the server.",
       "empty": "No commands in this scope.",
-      "removeMessage": "Remove command \"/{{name}}\" from this scope?"
+      "removeMessage": "Remove command \"/{{name}}\" from this scope?",
+      "markdownHint": "New commands are saved as Markdown files.",
+      "jsoncHint": "This command is saved in opencode.jsonc."
+    },
+    "format": {
+      "markdown": "Markdown",
+      "jsonc": "JSONC"
+    },
+    "origin": {
+      "config": "JSONC",
+      "file": "Markdown",
+      "server": "Server",
+      "shadowed": "Overridden by a Markdown file"
+    },
+    "agents": {
+      "addTitle": "Add agent",
+      "editTitle": "Edit {{name}}",
+      "id": "Agent name",
+      "descriptionLabel": "Description",
+      "modeValue": "Mode: {{mode}}",
+      "modeLabel": "Agent mode",
+      "model": "Model",
+      "modelValue": "Model: {{model}}",
+      "permissions": "Permissions",
+      "permissionsValue": "Permissions:\n{{value}}",
+      "instructions": "Instructions",
+      "advanced": "Advanced frontmatter",
+      "advancedHint": "YAML fields other than description, mode, model, and permissions. They are preserved when you save.",
+      "markdownHint": "Saved to .opencode/agents as Markdown.",
+      "jsoncHint": "Saved in opencode.jsonc under agents.",
+      "empty": "No agents in this scope.",
+      "view": "View",
+      "add": "Create agent",
+      "none": "None",
+      "inherited": "Inherited",
+      "configDefined": "Defined in opencode.jsonc",
+      "noDescription": "No description",
+      "removeMessage": "Remove agent \"{{name}}\" from this scope?",
+      "mode": {
+        "primary": "Primary",
+        "subagent": "Subagent",
+        "all": "All"
+      }
     },
     "generalConfirmTitle": "Edit global configuration",
     "generalConfirmMessage": "This changes the configuration for every project on this server. A backup is created first.\n\n{{path}}",

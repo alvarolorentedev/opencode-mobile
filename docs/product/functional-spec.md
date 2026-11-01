@@ -558,17 +558,21 @@ Behavior:
 
 ### Extensions Section (V2)
 
-- manages MCPs, plugins, skills, and slash commands for either the active project or the user-global configuration
-- shows the exact config path, writable/read-only safety state, and the last backup path
-- backs up and atomically replaces config files; verifies the temporary bytes and the server-reloaded key; restores the backup on failure
-- disables mutations for system-managed config, symlinks, Windows servers, ambiguous global roots, unreadable/invalid JSONC, and servers without the required shell support
+- manages MCPs, plugins, agents, skills, and slash commands for either the active project or the user-global configuration
+- shows the exact config path, Markdown agent/command directories, writable/read-only safety state, and the last backup path
+- backs up and atomically replaces config and Markdown files; validates the temporary content, verifies the server-reloaded key or definition, and restores the backup on failure
+- disables mutations for system-managed config, symlinks, Windows servers, ambiguous global roots, unreadable/invalid JSONC or frontmatter, and servers without the required shell support
 - adds/removes MCP config entries while retaining runtime connect, disconnect, and OAuth controls
 - adds/removes plugin package or local targets; warns that plugins execute code on the server
 - creates skills under the selected scope, edits local `SKILL.md` content, and moves removed skills to `.opencode-mobile-trash`
-- creates/edits/removes config-backed slash commands; file-backed commands are read-only
+- creates agents as `.opencode/agents/*.md` (or global `agents/*.md`) by default; lists, views, edits, renames, and removes Markdown and JSONC agents, exposing description, mode, model, permissions, and instructions
+- creates slash commands as `.opencode/commands/*.md` by default; discovers and edits existing Markdown commands in canonical and legacy directories; keeps JSONC commands editable in place
+- offers an explicit JSONC storage choice for new definitions and never migrates existing JSONC entries silently
+- marks a JSONC definition that is overridden by a same-name Markdown file, keeps it removable, and prevents duplicate name creation across formats and scopes
+- lists legacy `mode/`/`modes/` agents and inherited definitions read-only
 - shows General entries as shared/read-only in Project scope
-- omits OpenCode built-in plugins, embedded skills, and built-in commands because they cannot be changed from the app
-- refreshes capabilities, commands, MCP status, and the extension snapshot after a successful change
+- omits OpenCode built-in plugins, embedded skills, built-in commands, and built-in agents because they cannot be changed from the app
+- refreshes capabilities, commands, agents, MCP status, and the extension snapshot after a successful change
 
 ### Voice Section
 

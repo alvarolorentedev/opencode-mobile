@@ -859,6 +859,9 @@
     },
     "safety": {
       "writable": "書き込み可能。変更はバックアップされ、アトミックに置き換えられます。",
+      "markdownAgents": "Agents directory: {{path}}",
+      "markdownCommands": "Commands directory: {{path}}",
+      "missing": "not available",
       "readOnly": "読み取り専用",
       "target": "設定ファイル: {{path}}",
       "backup": "最後のバックアップ: {{path}}",
@@ -868,6 +871,7 @@
     "tabs": {
       "mcp": "MCP",
       "plugins": "プラグイン",
+      "agents": "Agents",
       "skills": "スキル",
       "commands": "コマンド"
     },
@@ -915,7 +919,49 @@
       "template": "テンプレート",
       "templateHint": "引数には $ARGUMENTS または $1、$2 を使用します。テンプレート内のシェルブロックはサーバー上で実行されます。",
       "empty": "このスコープにコマンドはありません。",
-      "removeMessage": "このスコープからコマンド「/{{name}}」を削除しますか？"
+      "removeMessage": "このスコープからコマンド「/{{name}}」を削除しますか？",
+      "markdownHint": "New commands are saved as Markdown files.",
+      "jsoncHint": "This command is saved in opencode.jsonc."
+    },
+    "format": {
+      "markdown": "Markdown",
+      "jsonc": "JSONC"
+    },
+    "origin": {
+      "config": "JSONC",
+      "file": "Markdown",
+      "server": "Server",
+      "shadowed": "Overridden by a Markdown file"
+    },
+    "agents": {
+      "addTitle": "Add agent",
+      "editTitle": "Edit {{name}}",
+      "id": "Agent name",
+      "descriptionLabel": "Description",
+      "modeValue": "Mode: {{mode}}",
+      "modeLabel": "Agent mode",
+      "model": "Model",
+      "modelValue": "Model: {{model}}",
+      "permissions": "Permissions",
+      "permissionsValue": "Permissions:\n{{value}}",
+      "instructions": "Instructions",
+      "advanced": "Advanced frontmatter",
+      "advancedHint": "YAML fields other than description, mode, model, and permissions. They are preserved when you save.",
+      "markdownHint": "Saved to .opencode/agents as Markdown.",
+      "jsoncHint": "Saved in opencode.jsonc under agents.",
+      "empty": "No agents in this scope.",
+      "view": "View",
+      "add": "Create agent",
+      "none": "None",
+      "inherited": "Inherited",
+      "configDefined": "Defined in opencode.jsonc",
+      "noDescription": "No description",
+      "removeMessage": "Remove agent \"{{name}}\" from this scope?",
+      "mode": {
+        "primary": "Primary",
+        "subagent": "Subagent",
+        "all": "All"
+      }
     },
     "generalConfirmTitle": "グローバル設定を編集",
     "generalConfirmMessage": "これはこのサーバーのすべてのプロジェクトの設定を変更します。先にバックアップが作成されます。\n\n{{path}}",

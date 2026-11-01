@@ -11,7 +11,7 @@ Back to the [validation index](../testing-and-validation.md) · [engineering ind
 | Auto model routing | `tests/e2e/auto-model.spec.mjs`, `features/ai/__tests__/auto-model.test.ts` | classifier/provider setup against a real server |
 | Chat and transcript | `tests/e2e/chat.spec.mjs`, `tests/e2e/diffs.spec.mjs` | long transcripts, large text, screen reader |
 | Conversation mode | `tests/e2e/chat.spec.mjs`, voice suites | microphone, wake word, audio session |
-| Extensions | `tests/e2e/extensions.spec.mjs` | MCP OAuth completion, real plugin/skill files |
+| Extensions | `tests/e2e/extensions.spec.mjs` | MCP OAuth completion, real plugin/skill files, Markdown and JSONC agent/command definitions |
 | Attachments and inbox | `tests/e2e/chat.spec.mjs` | native share sheet, document viewer, large files |
 | Inbound sharing and widgets | `tests/e2e/share.spec.mjs`, `tests/e2e/app-updates.spec.mjs` | Android share intent, home widget, iOS parity gaps |
 | Connections and Cloud Link | `tests/e2e/connect.spec.mjs`, `tests/e2e/manual-connection.spec.mjs` | camera, local-network reachability, real purchase |

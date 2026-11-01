@@ -9,15 +9,33 @@ test.beforeEach(async ({ page }, info) => {
 async function openExtensions(page) {
   await goToTab(page, 'Settings');
   await page.getByText('Extensions', { exact: true }).click();
-  await expect(page.getByText('Manage MCP servers, plugins, skills and slash commands for this server.')).toBeVisible();
+  await expect(page.getByText('Manage MCP servers, plugins, agents, skills and slash commands for this server.')).toBeVisible();
 }
 
 async function configFor(page, request, directory) {
   return (await request.get(`${backendOrigin()}/api/config?location[directory]=${encodeURIComponent(directory)}`)).json();
 }
 
+async function writeWorkspaceFile(request, directory, path, content) {
+  const response = await request.post(`${backendOrigin()}/api/experimental/fs/write?path=${encodeURIComponent(path)}&location[directory]=${encodeURIComponent(directory)}`, {
+    data: content,
+    headers: { 'Content-Type': 'text/plain' },
+  });
+  expect(response.ok()).toBe(true);
+}
+
+async function commandsFor(request, directory) {
+  return (await request.get(`${backendOrigin()}/api/command?location[directory]=${encodeURIComponent(directory)}`)).json();
+}
+
+async function agentsFor(request, directory) {
+  return (await request.get(`${backendOrigin()}/api/agent?location[directory]=${encodeURIComponent(directory)}`)).json();
+}
+
 test('project extensions add plugins, skills and slash commands', async ({ page, request }) => {
   await resetScenario(request, 'happy-path');
+  const projectDirectory = '/workspace/demo-project';
+  await writeWorkspaceFile(request, projectDirectory, `${projectDirectory}/.opencode/commands/existing-md.md`, '---\ndescription: Existing Markdown\n---\n\nUse $ARGUMENTS.\n');
   await openReadyChat(page);
   await openExtensions(page);
 
@@ -35,16 +53,23 @@ test('project extensions add plugins, skills and slash commands', async ({ page,
   await expect(page.getByText('review-helper', { exact: true })).toBeVisible();
 
   await page.getByRole('tab', { name: 'Commands', exact: true }).click();
+  await expect(page.getByText('/existing-md', { exact: true })).toBeVisible();
+  await page.getByTestId('settings-extension-command-edit-existing-md').click();
+  await page.getByTestId('settings-extension-command-description').fill('Updated Markdown');
+  await page.getByTestId('settings-extension-command-save').click();
+  await expect.poll(async () => (await commandsFor(request, projectDirectory)).data.find((command) => command.name === 'existing-md')?.description).toBe('Updated Markdown');
+  await expect(page.getByText('Add slash command', { exact: true })).toBeVisible();
   await page.getByTestId('settings-extension-command-name').fill('summarize');
   await page.getByTestId('settings-extension-command-description').fill('Summarize an argument');
   await page.getByTestId('settings-extension-command-template').fill('Summarize $ARGUMENTS.');
   await page.getByTestId('settings-extension-command-save').click();
   await expect(page.getByText('/summarize', { exact: true })).toBeVisible();
 
-  const entries = await configFor(page, request, '/workspace/demo-project');
+  const entries = await configFor(page, request, projectDirectory);
   const project = entries.find((entry) => entry.type === 'document' && entry.path?.endsWith('/demo-project/opencode.jsonc'));
   expect(project.info.plugins).toContain('opencode-example');
-  expect(project.info.commands.summarize.template).toBe('Summarize $ARGUMENTS.');
+  expect(project.info.commands?.summarize).toBeUndefined();
+  await expect.poll(async () => (await commandsFor(request, projectDirectory)).data.some((command) => command.name === 'summarize')).toBe(true);
 
   await goToTab(page, 'Chat');
   await page.getByPlaceholder('Ask anything...').fill('/summ');
@@ -53,8 +78,36 @@ test('project extensions add plugins, skills and slash commands', async ({ page,
 
 test('project extensions can be removed and leave no active entries', async ({ page, request }) => {
   await resetScenario(request, 'happy-path');
+  const projectDirectory = '/workspace/demo-project';
+  const projectConfigPath = `${projectDirectory}/opencode.jsonc`;
+  await writeWorkspaceFile(request, projectDirectory, projectConfigPath, JSON.stringify({
+    commands: { 'legacy-cmd': { description: 'Legacy command', template: 'Legacy $ARGUMENTS.' } },
+    agents: { 'legacy-agent': { description: 'Legacy agent', mode: 'subagent', system: 'Legacy instructions.' } },
+  }, null, 2));
   await openReadyChat(page);
   await openExtensions(page);
+
+  await page.getByRole('tab', { name: 'Commands', exact: true }).click();
+  await expect(page.getByText('/legacy-cmd', { exact: true })).toBeVisible();
+  await page.getByTestId('settings-extension-command-edit-legacy-cmd').click();
+  await page.getByTestId('settings-extension-command-description').fill('Legacy updated');
+  await page.getByTestId('settings-extension-command-save').click();
+  await expect.poll(async () => {
+    const entries = await configFor(page, request, projectDirectory);
+    const project = entries.find((entry) => entry.type === 'document' && entry.path?.endsWith('/demo-project/opencode.jsonc'));
+    return project?.info.commands?.['legacy-cmd']?.description;
+  }).toBe('Legacy updated');
+
+  await page.getByRole('tab', { name: 'Agents', exact: true }).click();
+  await expect(page.getByText('legacy-agent', { exact: true })).toBeVisible();
+  await page.getByTestId('settings-extension-agent-edit-legacy-agent').click();
+  await page.getByTestId('settings-extension-agent-description').fill('Legacy agent updated');
+  await page.getByTestId('settings-extension-agent-save').click();
+  await expect.poll(async () => {
+    const entries = await configFor(page, request, projectDirectory);
+    const project = entries.find((entry) => entry.type === 'document' && entry.path?.endsWith('/demo-project/opencode.jsonc'));
+    return project?.info.agents?.['legacy-agent']?.description;
+  }).toBe('Legacy agent updated');
 
   await page.getByText('Remote', { exact: true }).click();
   await page.getByTestId('settings-extension-mcp-name').fill('removable');
@@ -86,6 +139,22 @@ test('project extensions can be removed and leave no active entries', async ({ p
     return skills.data.some((skill) => skill.id === 'remove-me-skill');
   }).toBe(false);
 
+  await page.getByRole('tab', { name: 'Agents', exact: true }).click();
+  await page.getByTestId('settings-extension-agent-add').click();
+  await page.getByTestId('settings-extension-agent-id').fill('remove-me-agent');
+  await page.getByTestId('settings-extension-agent-description').fill('Remove me agent');
+  await page.getByTestId('settings-extension-agent-model').fill('openai/gpt-4.1-mini');
+  await page.getByTestId('settings-extension-agent-instructions').fill('Temporary agent instructions.');
+  await page.getByTestId('settings-extension-agent-save').click();
+  await expect(page.getByText('remove-me-agent', { exact: true })).toBeVisible();
+  await page.getByTestId('settings-extension-agent-edit-remove-me-agent').click();
+  await page.getByTestId('settings-extension-agent-description').fill('Edited agent');
+  await page.getByTestId('settings-extension-agent-save').click();
+  await expect.poll(async () => (await agentsFor(request, projectDirectory)).data.find((agent) => agent.id === 'remove-me-agent')?.description).toBe('Edited agent');
+  await page.getByTestId('settings-extension-agent-remove-remove-me-agent').click();
+  await respondToConfirmation(page, true);
+  await expect.poll(async () => (await agentsFor(request, projectDirectory)).data.some((agent) => agent.id === 'remove-me-agent')).toBe(false);
+
   await page.getByRole('tab', { name: 'Commands', exact: true }).click();
   await page.getByTestId('settings-extension-command-name').fill('remove-me');
   await page.getByTestId('settings-extension-command-template').fill('Do nothing.');
@@ -95,7 +164,7 @@ test('project extensions can be removed and leave no active entries', async ({ p
   await respondToConfirmation(page, true);
   await expect(page.getByText('/remove-me', { exact: true })).toHaveCount(0);
 
-  const commands = await (await request.get(`${backendOrigin()}/api/command?location[directory]=${encodeURIComponent('/workspace/demo-project')}`)).json();
+  const commands = await commandsFor(request, projectDirectory);
   expect(commands.data.some((command) => command.name === 'remove-me')).toBe(false);
 });
 
@@ -111,6 +180,15 @@ test('general extensions are shared with the project and can be restored from ba
   await respondToConfirmation(page, true);
   await expect(page.getByText('global-plugin', { exact: true })).toBeVisible();
 
+  await page.getByRole('tab', { name: 'Agents', exact: true }).click();
+  await page.getByTestId('settings-extension-agent-add').click();
+  await page.getByTestId('settings-extension-agent-id').fill('global-reviewer');
+  await page.getByTestId('settings-extension-agent-description').fill('Global review agent');
+  await page.getByTestId('settings-extension-agent-instructions').fill('Review every project.');
+  await page.getByTestId('settings-extension-agent-save').click();
+  await respondToConfirmation(page, true);
+  await expect(page.getByText('global-reviewer', { exact: true })).toBeVisible();
+
   const entries = await configFor(page, request, '/workspace/demo-project');
   const global = entries.find((entry) => entry.type === 'document' && entry.path?.endsWith('/workspace/opencode.jsonc'));
   expect(global.info.plugins).toContain('global-plugin');
@@ -119,6 +197,8 @@ test('general extensions are shared with the project and can be restored from ba
   await page.getByRole('tab', { name: 'Plugins', exact: true }).click();
   await expect(page.getByText('Shared with all projects', { exact: true })).toBeVisible();
   await expect(page.getByText('global-plugin', { exact: true })).toBeVisible();
+  await page.getByRole('tab', { name: 'Agents', exact: true }).click();
+  await expect(page.getByText('global-reviewer', { exact: true })).toBeVisible();
 
   await page.getByRole('button', { name: 'General', exact: true }).click();
   await page.getByRole('button', { name: 'Restore last backup', exact: true }).click();
