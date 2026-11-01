@@ -6,6 +6,29 @@ remain authoritative; this page is the checklist.
 
 Back to the [engineering index](README.md) · [documentation hub](../README.md).
 
+## Before any commit
+
+**When:** creating or amending any commit, including docs and follow-up fixes.
+
+**Validate:**
+
+```bash
+npm run validate:commit
+```
+
+Then run the owning focused checks from the [validation strategy](validation/strategy.md#test-selection-matrix).
+Protocol/fake-server changes also run `npm run test:fake-server:self`, UI flow
+changes run the affected Playwright spec, and localization changes run
+`npm run gen:i18n` plus the strict i18n test.
+
+**Blocked:** if any required command fails, or the toolchain cannot run it
+(wrong Node version, missing package manager or browser), do not commit. Fix the
+toolchain or ask for help. Do not commit to see what CI reports, and do not
+amend a commit to hide a failed check.
+
+**Done:** the final summary lists each command and its result, plus any check
+that could not run and why.
+
 ## Translations
 
 **When:** you add or change a user-facing string.

@@ -28,6 +28,7 @@
     "test:e2e:budget": "node ./scripts/ci/check-e2e-budget.mjs",
     "test:e2e:web:isolated": "node ./scripts/e2e-isolated.mjs",
     "serve:web:prebuilt": "node ./scripts/serve-web-prebuilt.mjs",
+    "validate:commit": "node ./tests/run-static.mjs",
     "validate:fast": "npm run test:ci:static && npm run test:fake-server:self && npm run test:e2e:budget && npm run test:e2e:smoke",
     "test:ci:static": "node ./tests/run-static.mjs",
     "build:android": "node ./scripts/build-android-release.mjs",

@@ -96,13 +96,32 @@ Follow [the ADR process](docs/adr/README.md): copy the numbered template, update
    and strict parity checks. English runtime fallback is not completion.
 5. Update current implementation docs and section README links in the same change.
 6. Record durable decisions with an ADR; supersede accepted decisions, never rewrite them.
-7. Run focused checks while developing, push to `main` or update the PR branch, and
+7. Run the commit gate below, then push to `main` or update the PR branch, and
    inspect GitHub Actions. Fix failures there. CI is the final integration authority;
-   do not run the complete suite or native release builds before every push.
+   it is not the first validator.
+
+## Commit gate
+
+Every commit, including documentation-only and follow-up fix commits, must pass
+the local commit gate before it is created or amended:
+
+1. Run `npm run validate:commit`.
+2. Run the owning focused checks from the task router and
+   [test-selection matrix](docs/engineering/validation/strategy.md#test-selection-matrix).
+   Protocol/fake-server changes also run `npm run test:fake-server:self`; UI flow
+   changes run the affected Playwright spec; localization changes run
+   `npm run gen:i18n` and the strict i18n test.
+3. If a required command fails, or the toolchain cannot run it (wrong Node
+   version, missing package manager, missing browser), do not commit. Fix the
+   toolchain or ask for help. CI is not a substitute for a local check.
+4. Never commit "to see what CI says" after a preventable local failure. Do not
+   amend a commit to hide a failed gate; fix the failure and rerun the gate.
+5. Report the exact commands and outcomes in the final summary. State any check
+   that could not run and why. "I could not run the tests" blocks the commit.
 
 ## Validation
 
-Baseline for touched code: `npm run lint` and `npm run typecheck`. Feature tests are
+Baseline for touched code: `npm run validate:commit`. Feature tests are
 colocated; `tests/vitest/test-discovery.test.ts` prevents suites silently disappearing
 from Vitest or TypeScript. Do not increase the test-typecheck exclusion budget.
 
@@ -140,7 +159,9 @@ For every release version increase:
 
 GitHub Actions performs validation, signing, Google Play internal upload, TestFlight upload
 and GitHub Release publication. Do not run manual packaging, signing, upload or release
-scripts. Never move or delete a release tag; fix forward with a new version.
+scripts. Never move or delete a release tag; fix forward with a new version. A failed
+release validation is not a reason to move the tag: bump the version, commit the fix,
+and tag the new commit.
 
 A local temporary mirror may run heavy checks. Make every source edit here, sync
 before checking, treat mirror output as read-only, and never commit/tag/push there.

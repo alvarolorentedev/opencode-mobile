@@ -7,6 +7,7 @@ Back to the [engineering index](README.md) · [documentation hub](../README.md).
 
 | I need to… | Read |
 | --- | --- |
+| Validate before creating or amending a commit | [strategy.md](validation/strategy.md#local-commit-gate) |
 | Choose a validation command | [strategy.md](validation/strategy.md) |
 | Understand CI gates and costs | [strategy.md](validation/strategy.md#ci-gates) |
 | Change the fake server or a scenario | [fake-server.md](validation/fake-server.md) |

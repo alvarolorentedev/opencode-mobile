@@ -6,6 +6,19 @@ not chase broad unit-test coverage.
 
 Back to the [validation index](../testing-and-validation.md) · [engineering index](../README.md).
 
+## Local commit gate
+
+Before creating or amending any commit, run `npm run validate:commit`. It runs
+lint, app and test type-checking, and the full Vitest suite. Add the owning
+focused checks from the matrix below; protocol/fake-server work also runs
+`npm run test:fake-server:self`, UI flows run their affected Playwright spec,
+and localization work runs the generator and strict i18n test.
+
+If a required check fails or its toolchain is unavailable (wrong Node version,
+missing package manager or browser), the commit is blocked. Do not commit to
+let CI discover a preventable local failure. CI remains the integration
+authority, not the first validator.
+
 ## Start here
 
 | Change | Minimum validation |
