@@ -409,5 +409,5 @@ const approvalQR = 'opencodemobile://pair?v=1&cp=https%3A%2F%2Fapi.opencodecloud
   f.runtime.unmount();
 }
 
-  });
+  }, 60_000);
 });

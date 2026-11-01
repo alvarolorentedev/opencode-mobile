@@ -13,8 +13,7 @@ Pod::Spec.new do |s|
   s.dependency 'ExpoModulesCore'
   s.dependency 'SocketRocket'
   s.source_files = '*.swift'
-  s.preserve_paths = '*.h'
   s.pod_target_xcconfig = {
-    'SWIFT_OBJC_BRIDGING_HEADER' => '${PODS_TARGET_SRCROOT}/OpencodeTls-Bridging-Header.h',
+    'DEFINES_MODULE' => 'YES',
   }
 end

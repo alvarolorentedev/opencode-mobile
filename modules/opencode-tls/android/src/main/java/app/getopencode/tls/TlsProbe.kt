@@ -86,7 +86,7 @@ object TlsProbe {
         is CertPathValidatorException -> {
           val reason = cause.reason
           if (reason == CertPathValidatorException.BasicReason.EXPIRED || reason == CertPathValidatorException.BasicReason.NOT_YET_VALID) return "expired"
-          if (reason == CertPathValidatorException.BasicReason.UNTRUSTED_CHAIN || cause.message?.contains("Trust anchor", ignoreCase = true) == true) return "untrusted"
+          if (cause.message?.contains("Trust anchor", ignoreCase = true) == true) return "untrusted"
         }
       }
       if (cause.message?.contains("hostname", ignoreCase = true) == true) return "hostname-mismatch"
