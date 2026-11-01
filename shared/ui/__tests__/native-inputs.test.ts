@@ -190,6 +190,12 @@ describe('native input regressions', () => {
     expect(input().props.scrollEnabled).toBe(true);
   });
 
+  it('lets the composer keep both horizontal margins', () => {
+    const className = input().props.className;
+    expect(className).toContain('w-auto');
+    expect(className).not.toContain('w-full');
+  });
+
   it('preserves credential bytes and explicit single-line alignment', () => {
     const value = 'a long server password with spaces '.repeat(5);
     const onChangeText = vi.fn();

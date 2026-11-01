@@ -217,7 +217,7 @@ export function ChatComposer({
               // Let the platform size the multiline input and scroll at the cap.
               ? { minHeight: minInputHeight, maxHeight: maxInputHeight, color: palette.text }
               : { height: displayedInputHeight, color: palette.text },
-          ], Platform.OS === 'ios' ? [styles.inputContentCompact, { minHeight: minInputHeight, maxHeight: maxInputHeight }] : styles.inputContentCompact]} className="border-0 shadow-none bg-transparent dark:bg-transparent min-h-0 px-0 py-0"></Input>
+          ], Platform.OS === 'ios' ? [styles.inputContentCompact, { minHeight: minInputHeight, maxHeight: maxInputHeight }] : styles.inputContentCompact]} className="w-auto self-stretch border-0 shadow-none bg-transparent dark:bg-transparent min-h-0 px-0 py-0"></Input>
         {fontScale > 1.3 ? <View>{modelPicker}</View> : null}
         <View className={cn(stylesClasses.composerToolbar)}>
           <Button testID="chat-attach-button" accessibilityLabel={t('chat:composer.attachFiles')} onPress={onAttach} variant="ghost" size="icon" className={cn(stylesClasses.composerActionButton, "bg-transparent")} ><Icon name={"plus"} size={24} color={palette.text} /></Button>
