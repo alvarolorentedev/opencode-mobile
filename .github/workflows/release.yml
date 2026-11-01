@@ -130,6 +130,10 @@ jobs:
             echo "::error::Missing or empty release changelog: $CHANGELOG"
             exit 1
           fi
+          if [ "$(wc -c < "$CHANGELOG")" -gt 500 ]; then
+            echo "::error::Release changelog $CHANGELOG exceeds the 500-character Google Play release-notes limit."
+            exit 1
+          fi
 
           : "${ANDROID_CERT_SHA256:?Missing repository variable: ANDROID_CERT_SHA256}"
           : "${ANDROID_KEYSTORE_BASE64:?Missing secret: ANDROID_KEYSTORE_BASE64}"

@@ -1,0 +1,5 @@
+- Extensions now use focused editors per type with searchable model selection and clearer permission fields.
+- Assistant bubbles show the model used for each reply, including auto-routed replies.
+- Auto-model routing choices persist across restarts.
+- Custom-CA connections on iOS register the fetch trust provider on the main thread for reliable self-hosted TLS.
+- Chat library drops the redundant project footer; the header keeps the workspace context.
