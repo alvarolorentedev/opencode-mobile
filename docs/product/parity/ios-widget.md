@@ -89,8 +89,13 @@ Build with `EXPO_IOS_LIVE_ACTIVITIES=1` to include the iOS implementation of
 store builds leave this flag unset. The notifications feature reuses its existing
 observations and scope aggregation; iOS is V2-only. Android behavior is unchanged.
 
-The Lock Screen and Dynamic Island show generic translated status, task counts,
-and elapsed time. Session titles, tool/request/reply text, credentials, and server
+The Lock Screen and Dynamic Island show generic translated work phases, task
+counts, elapsed time, and optional verified progress. A current task list can
+provide completed/total progress; unknown progress never becomes an invented
+percentage. Bounded current-run observations can also provide active-agent and
+running-tool counters. Missing or incomplete observations are not treated as
+zero, and unknown plans are not summed into a misleading aggregate percentage.
+Session titles, tool/request/reply text, credentials, and server
 URLs are not sent to the extension. Taps use the existing scoped session link;
 permissions, questions, and all mutations stay inside the app. Notification-alert
 permission is separate from the system Live Activities setting.
@@ -100,16 +105,23 @@ canonical scope; it resolves only against saved/current app-owned connections.
 The opt-in build's `opencodemobile-activities` scheme keeps activity taps distinct
 from a separately installed upstream app. Legacy links retain their normal route.
 
-Starting requires the foreground. Backgrounding shows paused/stale state instead
-of promising live delivery. Foreground reconciliation resumes verified updates;
+Starting requires the foreground. Observation freshness is separate from agent
+state: paused/stale content retains its last-known phase and counts with a
+secondary notice and observation time, rather than implying that the server task
+itself paused. Elapsed progress is frozen when stale. Foreground reconciliation
+resumes verified updates;
 scope cleanup, terminal state, disabled authorization, and dismissal are handled
 by the existing coordinator plus native lifecycle. Ordinary completion alerts
 remain enabled independently. No background mode or keepalive service is added.
 
 This implementation deliberately avoids the App Group required by Expo Widgets'
 shared JavaScript runtime; see [ADR 0023](../../adr/0023-opt-in-local-ios-live-activities.md).
+The richer presentation/freshness policy is proposed in
+[ADR 0024](../../adr/0024-truthful-live-activity-progress-and-freshness.md).
 Continuous progress after suspension or termination still needs a separately
 approved APNs sender and Apple provisioning; no push channel is implemented here.
+The [remote-delivery proposal](../../engineering/ios-live-activity-remote-delivery.md)
+lists the upstream ownership, security, provisioning, and testing decisions.
 
 ## Acceptance tests (device, iOS 17+)
 
@@ -125,12 +137,16 @@ approved APNs sender and Apple provisioning; no push channel is implemented here
 - Battery: no unexpected widget timeline reloads while the app is backgrounded
   (system budget); no new background modes.
 - Experimental Live Activity: foreground work appears; paused state is honest
-  after backgrounding; foreground restores it; completion freezes elapsed time;
+  after backgrounding and does not hide the last observed work state; foreground
+  restores fresh observations; completion freezes elapsed time;
   dismissal does not restart the same cycle; multiple connections preserve the
   remaining work when one disconnects; taps select the correct connection/project.
 - Inspect every activity presentation before unlock: no private titles, request
   details, or commands, and no mutation buttons. Check light/dark, text scaling,
   VoiceOver, declined notification permission, and disabled system Live Activities.
+- Verify known-plan, unknown-plan, needs-input, reconnecting, stale, and terminal
+  presentations. A plan progress bar must use real current-run tasks; missing
+  history and mixed known/unknown plans must not produce fake percentages.
 
 ## Rollback
 

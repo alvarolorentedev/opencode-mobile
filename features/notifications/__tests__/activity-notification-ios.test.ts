@@ -49,7 +49,7 @@ describe('iOS Live Activity boundary', () => {
     expect(new URL(content.link).searchParams.get('connectionScope')).toBe(privateReference(connectionScope));
     expect(new URL(content.link).pathname).toBe('/session%2Fone');
     expect(new URL(content.link).searchParams.get('project')).toBe('/repo');
-    expect(Object.keys(content).sort()).toEqual(['active', 'agentCount', 'body', 'channelLabel', 'chip', 'count', 'key', 'link', 'pausedLabel', 'phase', 'stopLabel', 'title', 'toolCount', 'workKeys'].sort());
+    expect(Object.keys(content).sort()).toEqual(['active', 'agentCount', 'agentsLabel', 'body', 'channelLabel', 'chip', 'count', 'elapsedLabel', 'key', 'link', 'pausedLabel', 'phase', 'stopLabel', 'title', 'toolCount', 'toolsLabel', 'updatedLabel', 'workKeys'].sort());
     expect(api.isActivityCompletionManaged(connectionScope)).toBe(false);
     native.suppressesCompletion.mockReturnValue(true);
     expect(api.isActivityCompletionManaged(connectionScope)).toBe(false);
@@ -152,12 +152,89 @@ describe('iOS Live Activity boundary', () => {
 
   it('keeps every known terminal or active phase localized and resets terminal counters', async () => {
     const { api, native } = await platform();
-    for (const phase of ['thinking', 'needsInput', 'retrying', 'queued', 'reconnecting', 'finished', 'failed', 'stopped']) {
+    for (const phase of ['thinking', 'reading', 'editing', 'searching', 'executing', 'delegating', 'needsInput', 'retrying', 'queued', 'reconnecting', 'finished', 'failed', 'stopped']) {
       const active = !['finished', 'failed', 'stopped'].includes(phase);
       if (!active) await api.updateActivityNotification(task);
       await api.updateActivityNotification({ ...task, phase, active, count: 2, agentCount: 3, toolCount: 4 });
       expect(native.update.mock.calls.at(-1)![0]).toMatchObject({ body: `notifications:activity.${phase}`, phase,
         count: active ? 2 : 0, agentCount: active ? 3 : 0, toolCount: active ? 4 : 0 });
+    }
+  });
+
+  it.each(['finished', 'failed', 'stopped'])('uses the localized %s terminal chip instead of Working', async (phase) => {
+    const { api, native } = await platform();
+    await api.updateActivityNotification(task);
+    await api.updateActivityNotification({ ...task, phase, active: false, count: 0 });
+    const content = native.update.mock.calls.at(-1)![0];
+    expect(content).toMatchObject({ active: false, count: 0, phase, chip: `notifications:activity.${phase}`, body: `notifications:activity.${phase}` });
+    expect(JSON.stringify(content)).not.toMatch(/PRIVATE|SECRET/);
+  });
+
+  it('emits confirmed numeric progress and localized generic labels, including terminal retention', async () => {
+    const { api, native } = await platform();
+    await api.updateActivityNotification({ ...task, phase: 'editing', progress: { completed: 1, total: 3, private: 'SECRET' }, filesChanged: 2 });
+    expect(native.update.mock.calls.at(-1)![0]).toMatchObject({ phase: 'editing', completedSteps: 1, totalSteps: 3, filesChanged: 2,
+      progressLabel: 'notifications:activity.progressLabel', filesLabel: '2 tasks', pausedLabel: 'notifications:activity.updatesPaused',
+      updatedLabel: 'notifications:activity.updatedLabel', elapsedLabel: 'notifications:activity.elapsedLabel' });
+    expect(JSON.stringify(native.update.mock.calls.at(-1)![0])).not.toMatch(/SECRET|PRIVATE/);
+    await api.updateActivityNotification({ ...task, active: false, phase: 'failed', progress: { completed: 1, total: 3 } });
+    expect(native.update.mock.calls.at(-1)![0]).toMatchObject({ phase: 'failed', completedSteps: 1, totalSteps: 3 });
+  });
+
+  it('aggregates progress and counts only when every active scope knows the metric', async () => {
+    const { api, native } = await platform();
+    await api.updateActivityNotification({ ...task, progress: { completed: 1, total: 2 }, agentCount: 2, toolCount: 1, filesChanged: 1 });
+    await api.updateActivityNotification({ ...task, connectionScope: 'other' });
+    for (const key of ['completedSteps', 'totalSteps', 'progressLabel', 'agentCount', 'toolCount', 'filesChanged']) {
+      expect(native.update.mock.calls.at(-1)![0]).not.toHaveProperty(key);
+    }
+    await api.updateActivityNotification({ ...task, connectionScope: 'other', phase: 'needsInput', progress: { completed: 2, total: 3 },
+      agentCount: 1, toolCount: 2, filesChanged: 2 });
+    expect(native.update.mock.calls.at(-1)![0]).toMatchObject({ phase: 'needsInput', completedSteps: 3, totalSteps: 5, agentCount: 3, toolCount: 3, filesChanged: 3 });
+    await api.stopActivityNotification('other');
+    expect(native.update.mock.calls.at(-1)![0]).toMatchObject({ completedSteps: 1, totalSteps: 2 });
+  });
+
+  it.each([
+    undefined, { completed: 0, total: 0 }, { completed: -1, total: 2 }, { completed: 3, total: 2 },
+    { completed: NaN, total: 2 }, { completed: 1, total: Infinity }, { completed: 0.5, total: 2 },
+    { completed: 1, total: 1.5 }, { completed: 1, total: 10000 },
+  ])('omits unknown or invalid progress rather than displaying an invented indicator: %j', async (progress) => {
+    const { api, native } = await platform();
+    await api.updateActivityNotification({ ...task, progress });
+    for (const key of ['completedSteps', 'totalSteps', 'progressLabel']) expect(native.update.mock.calls.at(-1)![0]).not.toHaveProperty(key);
+  });
+
+  it('accepts factual zero completed and omits an aggregate plan exceeding the numeric budget', async () => {
+    const { api, native } = await platform();
+    await api.updateActivityNotification({ ...task, progress: { completed: 0, total: 9999 }, agentCount: 9999, toolCount: 9999 });
+    expect(native.update.mock.calls.at(-1)![0]).toMatchObject({ completedSteps: 0, totalSteps: 9999 });
+    await api.updateActivityNotification({ ...task, connectionScope: 'other', progress: { completed: 0, total: 1 }, agentCount: 1, toolCount: 1 });
+    expect(native.update.mock.calls.at(-1)![0]).toMatchObject({ agentCount: 9999, toolCount: 9999 });
+    expect(native.update.mock.calls.at(-1)![0]).not.toHaveProperty('totalSteps');
+  });
+
+  it('omits overall metrics while another registered scope is unread, failed, or stale', async () => {
+    const { api, native } = await platform();
+    api.registerActivityNotificationScope('scope'); api.registerActivityNotificationScope('other');
+    api.markActivityNotificationScopeReady('scope', () => true);
+    const known = { ...task, progress: { completed: 1, total: 2 }, agentCount: 1, toolCount: 1 };
+    await api.updateActivityNotification(known);
+    expect(native.update.mock.calls.at(-1)![0]).not.toHaveProperty('totalSteps');
+    expect(native.update.mock.calls.at(-1)![0]).not.toHaveProperty('agentCount');
+    api.markActivityNotificationScopeReady('other'); await api.updateActivityNotification(known);
+    expect(native.update.mock.calls.at(-1)![0]).not.toHaveProperty('totalSteps');
+    api.markActivityNotificationScopeReady('other', () => true); await api.updateActivityNotification(known);
+    expect(native.update.mock.calls.at(-1)![0]).toMatchObject({ completedSteps: 1, totalSteps: 2, agentCount: 1 });
+    api.markActivityNotificationScopeReady('other', () => false); await api.updateActivityNotification(known);
+    expect(native.update.mock.calls.at(-1)![0]).not.toHaveProperty('totalSteps');
+  });
+
+  it('omits nonfinite optional counts rather than converting unknown values to zero', async () => {
+    const { api, native } = await platform();
+    await api.updateActivityNotification({ ...task, agentCount: Infinity, toolCount: NaN, filesChanged: Infinity });
+    for (const key of ['agentCount', 'toolCount', 'filesChanged', 'agentsLabel', 'toolsLabel', 'filesLabel']) {
+      expect(native.update.mock.calls.at(-1)![0]).not.toHaveProperty(key);
     }
   });
 

@@ -39,6 +39,7 @@ final class OpencodeActivityController {
   private var cycle: OpencodeActivityCycle?
   private let phases: Set<String> = [
     "thinking", "needsInput", "retrying", "queued", "finished", "failed", "stopped", "reconnecting",
+    "reading", "editing", "searching", "executing", "delegating",
   ]
   private let terminalPhases: Set<String> = ["finished", "failed", "stopped"]
   private var current: LiveActivity?
@@ -48,6 +49,7 @@ final class OpencodeActivityController {
   private var listeners: [NSObjectProtocol] = []
   private var revision = 0
   private var suspended = UIApplication.shared.applicationState != .active
+  private var backgrounded = UIApplication.shared.applicationState == .background
   private var backgroundTask: UIBackgroundTaskIdentifier = .invalid
 
   static var isEnabled: Bool {
@@ -72,18 +74,26 @@ final class OpencodeActivityController {
       clearActiveIdentity()
     }
     let center = NotificationCenter.default
-    for name in [UIApplication.willResignActiveNotification, UIApplication.didEnterBackgroundNotification] {
-      listeners.append(center.addObserver(forName: name, object: nil, queue: .main) { [weak self] _ in
-        // The observer explicitly runs on the main queue. Invalidate freshness
-        // synchronously, before any suspended ActivityKit operation can resume.
-        MainActor.assumeIsolated { self?.suspend() }
-      })
-    }
+    listeners.append(center.addObserver(
+      forName: UIApplication.willResignActiveNotification, object: nil, queue: .main
+    ) { [weak self] _ in
+      // Control Center / Island inspection is transient inactivity, not proof
+      // that monitoring has stopped. Still invalidate all in-flight observations.
+      MainActor.assumeIsolated { self?.invalidateFreshness() }
+    })
+    listeners.append(center.addObserver(
+      forName: UIApplication.didEnterBackgroundNotification, object: nil, queue: .main
+    ) { [weak self] _ in
+      MainActor.assumeIsolated { self?.suspend() }
+    })
     listeners.append(center.addObserver(
       forName: UIApplication.didBecomeActiveNotification, object: nil, queue: .main
     ) { [weak self] _ in
       // Becoming active is not evidence of fresh server state. Only JS update is.
-      MainActor.assumeIsolated { self?.suspended = false }
+      MainActor.assumeIsolated {
+        self?.suspended = false
+        self?.backgrounded = false
+      }
     })
     enqueue {
       await self.adopt()
@@ -140,10 +150,17 @@ final class OpencodeActivityController {
     await result.value
   }
 
-  private func suspend() {
-    guard !suspended else { return }
+  private func invalidateFreshness() {
     suspended = true
     revision += 1
+  }
+
+  private func suspend() {
+    // willResignActive already suspended freshness; do not skip the real
+    // background flush just because the app passed through inactive first.
+    guard !backgrounded else { return }
+    backgrounded = true
+    invalidateFreshness()
     // Only enough background time to flush a local pause; never a keepalive.
     if backgroundTask == .invalid {
       backgroundTask = UIApplication.shared.beginBackgroundTask(withName: "OpencodeActivityPause") { [weak self] in
@@ -313,7 +330,7 @@ final class OpencodeActivityController {
     // A background transition may have occurred while update was awaiting IPC.
     // Flush a paused state before the next queued write can run.
     if !fresh(revision) {
-      await pauseCurrent()
+      if backgrounded { await pauseCurrent() }
       return false
     }
     return true
@@ -347,7 +364,12 @@ final class OpencodeActivityController {
     State(
       body: record.body, link: record.link, chip: record.chip,
       pausedLabel: record.pausedLabel, phase: phase, count: record.count,
-      updatedAt: Date(), isPaused: false, frozenAt: nil, endedAt: nil
+      updatedAt: Date(), isPaused: false, frozenAt: nil, endedAt: nil,
+      completedSteps: record.completedSteps, totalSteps: record.totalSteps,
+      agentCount: record.agentCount, toolCount: record.toolCount, filesChanged: record.filesChanged,
+      progressLabel: record.progressLabel, agentsLabel: record.agentsLabel,
+      toolsLabel: record.toolsLabel, filesLabel: record.filesLabel,
+      updatedLabel: record.updatedLabel, elapsedLabel: record.elapsedLabel
     )
   }
 
@@ -378,7 +400,17 @@ final class OpencodeActivityController {
       let scope = query.first(where: { $0.name == "connectionScope" })?.value,
       scope.hasPrefix("activity-sha256:"), scope.count == 80,
       scope.dropFirst(16).allSatisfy({ $0.isHexDigit && $0.isASCII }) else { return false }
-    guard [record.body, record.chip, record.pausedLabel, record.link].allSatisfy({
+    let labels = [record.progressLabel, record.agentsLabel, record.toolsLabel,
+      record.filesLabel, record.updatedLabel, record.elapsedLabel].compactMap { $0 }
+    guard labels.allSatisfy({ !$0.isEmpty && $0.count <= 80 }),
+      [record.agentCount, record.toolCount, record.filesChanged].compactMap({ $0 }).allSatisfy({
+        (0...9999).contains($0)
+      }) else { return false }
+    if record.completedSteps != nil || record.totalSteps != nil {
+      guard let completed = record.completedSteps, let total = record.totalSteps,
+        (1...9999).contains(total), (0...total).contains(completed) else { return false }
+    }
+    guard ([record.body, record.chip, record.pausedLabel, record.link] + labels).allSatisfy({
       $0.rangeOfCharacter(from: .controlCharacters) == nil
     }) else { return false }
     // ActivityKit has a combined attributes/content payload budget of 4 KB.

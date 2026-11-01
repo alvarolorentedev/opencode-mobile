@@ -17,6 +17,15 @@ struct OpencodeActivityRecord: Record {
   @Field var count: Int = 0
   @Field var agentCount: Int?
   @Field var toolCount: Int?
+  @Field var completedSteps: Int?
+  @Field var totalSteps: Int?
+  @Field var filesChanged: Int?
+  @Field var progressLabel: String?
+  @Field var agentsLabel: String?
+  @Field var toolsLabel: String?
+  @Field var filesLabel: String?
+  @Field var updatedLabel: String?
+  @Field var elapsedLabel: String?
 }
 
 public final class OpencodeActivityModule: Module {

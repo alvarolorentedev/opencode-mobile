@@ -80,6 +80,7 @@ export function useActivityNotifications(input: Input) {
     let monitoring = false;
     let foregroundRevision = 0;
     let work: ActivityWork[] = [];
+    let metrics: { agentCount?: number; toolCount?: number; progress?: { completed: number; total: number } } = {};
     const tracked = new Map<string, number>();
     const watched = new Set<string>();
     const runPrefix = `${scope}:${Date.now()}`;
@@ -98,8 +99,9 @@ export function useActivityNotifications(input: Input) {
       return updateActivityNotification({
         sessionId: activity.session.id, projectPath: activity.session.directory || '', connectionScope: scope,
         title: activity.session.title || i18n.t('notifications:activity.untitled'),
-        action: ios ? '' : action(activity), phase: activity.state, count, key: `${runPrefix}:${generation}`, active: activity.active,
-        ...(ios ? { work, isCurrent } : {}),
+        action: ios ? '' : action(activity), phase: ios && activity.state === 'thinking' ? activity.workPhase ?? activity.state : activity.state,
+        count, key: `${runPrefix}:${generation}`, active: activity.active,
+        ...(ios ? { work, isCurrent, ...(activity.active ? metrics : { agentCount: 0, toolCount: 0, progress: activity.progress }) } : {}),
       });
     }
     async function refresh() {
@@ -124,7 +126,7 @@ export function useActivityNotifications(input: Input) {
         if (localSending && !displayed && AppState.currentState === 'active') {
           generation++;
           displayed = { session: localSending, active: true, state: 'thinking' };
-          if (ios) work = [{ sessionId: localSending.id }];
+          if (ios) { work = [{ sessionId: localSending.id }]; metrics = {}; }
           previousIds.add(localSending.id);
           watched.add(localSending.id);
           monitoring = await publish(displayed, 1, isCurrent);
@@ -150,11 +152,25 @@ export function useActivityNotifications(input: Input) {
         if (sendingState.active && sendingState.sessionId) {
           const sending = activities.find((item) => item.session.id === sendingState.sessionId);
           const sendingSession = latest.current.sessions.find((session) => session.id === sendingState.sessionId);
-          if (sending) { sending.active = true; sending.state = 'thinking'; }
+          if (sending) {
+            sending.active = true; sending.state = 'thinking';
+            // The bounded transcript can still describe the previous prompt
+            // while a local submission is in flight. Do not reuse its insights.
+            sending.progress = undefined; sending.workPhase = undefined; sending.toolCount = undefined; sending.agentCount = undefined;
+          }
           else if (sendingSession) activities.push({ session: sendingSession, active: true, state: 'thinking' });
         }
         const active = activities.filter((item) => item.active);
-        if (ios) work = active.map((item) => ({ sessionId: item.session.id, ...(item.runId ? { runId: item.runId } : {}) }));
+        if (ios) {
+          work = active.map((item) => ({ sessionId: item.session.id, ...(item.runId ? { runId: item.runId } : {}) }));
+          metrics = {
+            agentCount: active.every((item) => item.agentCount !== undefined) ? active.reduce((sum, item) => sum + item.agentCount!, 0) : undefined,
+            toolCount: active.every((item) => item.toolCount !== undefined) ? active.reduce((sum, item) => sum + item.toolCount!, 0) : undefined,
+            progress: active.length && active.every((item) => item.progress) ? active.reduce((sum, item) => ({
+              completed: sum.completed + item.progress!.completed, total: sum.total + item.progress!.total,
+            }), { completed: 0, total: 0 }) : undefined,
+          };
+        }
         const ids = new Set(active.map((item) => item.session.id));
         if (active.some((item) => !previousIds.has(item.session.id))) generation++;
         previousIds = ids;

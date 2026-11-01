@@ -42,7 +42,16 @@ describe('Android notification boundary', () => {
     expect(isActivityCompletionManaged('other')).toBe(false);
     native.suppressesCompletion.mockReturnValue(false);
     expect(isActivityCompletionManaged('scope')).toBe(false);
-    await updateActivityNotification({ sessionId: 's', projectPath: '/repo', connectionScope: 'scope', title: '  ', action: 'Ready to review', count: 0, key: 'cycle', active: false });
-    expect(native.update.mock.calls.at(-1)![0]).toMatchObject({ title: 'notifications:activity.untitled', body: 'Ready to review', active: false });
+    await updateActivityNotification({ sessionId: 's', projectPath: '/repo', connectionScope: 'scope', title: '  ', action: 'Ready to review', count: 0, key: 'cycle', active: false, phase: 'finished' });
+    expect(native.update.mock.calls.at(-1)![0]).toMatchObject({ title: 'notifications:activity.untitled', body: 'Ready to review', active: false, chip: 'notifications:activity.working' });
+  });
+
+  it('does not add iOS insight fields or change Android paused copy', async () => {
+    await updateActivityNotification({ sessionId: 's', projectPath: '/repo', connectionScope: 'scope', title: 'Task', action: 'Working',
+      count: 1, key: 'cycle', active: true, phase: 'editing', agentCount: 2, toolCount: 1, filesChanged: 3, progress: { completed: 1, total: 2 } });
+    const content = native.update.mock.calls.at(-1)![0];
+    expect(content.pausedLabel).toBe('notifications:activity.paused');
+    for (const key of ['phase', 'agentCount', 'toolCount', 'completedSteps', 'totalSteps', 'filesChanged', 'progressLabel', 'agentsLabel',
+      'toolsLabel', 'filesLabel', 'updatedLabel', 'elapsedLabel']) expect(content).not.toHaveProperty(key);
   });
 });

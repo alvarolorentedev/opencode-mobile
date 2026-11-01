@@ -6,8 +6,9 @@ import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 
 const require = createRequire(import.meta.url);
-const { withIOSLiveActivities } = require('../../config/plugins/ios-live-activities.cjs') as {
+const { withIOSLiveActivities, activityThemeSource } = require('../../config/plugins/ios-live-activities.cjs') as {
   withIOSLiveActivities: (config: any) => any;
+  activityThemeSource: () => string;
 };
 const xcode = require('xcode');
 const plist = require('@expo/plist').default;
@@ -96,12 +97,23 @@ describe('opt-in local iOS Live Activity plugin', () => {
       expect(buildFile.fileRef).toBe(extension![1].productReference);
       expect(buildFile.settings.ATTRIBUTES).toContain('CodeSignOnCopy');
       const extensionSources = extension![1].buildPhases.find((phase: any) => phase.comment === 'Sources');
-      expect(objects.PBXSourcesBuildPhase[extensionSources.value].files).toHaveLength(2);
+      const sources = objects.PBXSourcesBuildPhase[extensionSources.value].files;
+      expect(sources).toHaveLength(4);
+      expect(sources.map((file: any) => file.comment).sort()).toEqual([
+        'ActivityDashboard.swift in Sources', 'OpencodeActivityAttributes.swift in Sources',
+        'OpencodeActivityTheme.swift in Sources', 'OpencodeLiveActivity.swift in Sources',
+      ]);
 
       const folder = path.join(value.root, 'OpencodeLiveActivity');
       expect(fs.readFileSync(path.join(folder, 'OpencodeActivityAttributes.swift'), 'utf8')).toBe(
         fs.readFileSync(new URL('../../modules/opencode-activity/ios/OpencodeActivityAttributes.swift', import.meta.url), 'utf8'),
       );
+      for (const filename of ['ActivityDashboard.swift', 'OpencodeLiveActivity.swift']) {
+        expect(fs.readFileSync(path.join(folder, filename), 'utf8')).toBe(
+          fs.readFileSync(new URL(`../../modules/opencode-activity/ios/LiveActivity/${filename}`, import.meta.url), 'utf8'),
+        );
+      }
+      expect(fs.readFileSync(path.join(folder, 'OpencodeActivityTheme.swift'), 'utf8')).toBe(activityThemeSource());
       const info = plist.parse(fs.readFileSync(path.join(folder, 'Info.plist'), 'utf8'));
       expect(info.NSExtension).toEqual({ NSExtensionPointIdentifier: 'com.apple.widgetkit-extension' });
       const serialized = value.project.writeSync();
@@ -109,7 +121,8 @@ describe('opt-in local iOS Live Activity plugin', () => {
       expect(serialized).not.toContain('aps-environment');
       expect(serialized).not.toContain('CODE_SIGN_ENTITLEMENTS = OpencodeLiveActivity');
       expect(fs.readdirSync(folder).sort()).toEqual([
-        'Info.plist', 'OpencodeActivityAttributes.swift', 'OpencodeLiveActivity.swift',
+        'ActivityDashboard.swift', 'Info.plist', 'OpencodeActivityAttributes.swift',
+        'OpencodeActivityTheme.swift', 'OpencodeLiveActivity.swift',
       ]);
     },
   );
@@ -118,11 +131,29 @@ describe('opt-in local iOS Live Activity plugin', () => {
     const value = fixture();
     await apply(value);
     const first = value.project.writeSync();
+    const folder = path.join(value.root, 'OpencodeLiveActivity');
+    const generated = fs.readdirSync(folder).map((filename) => [filename, fs.readFileSync(path.join(folder, filename), 'utf8')]);
     fs.writeFileSync(value.projectPath, first);
     const reparsed = xcode.project(value.projectPath);
     reparsed.parseSync();
     await apply(value, reparsed);
     expect(reparsed.writeSync()).toBe(first);
+    expect(fs.readdirSync(folder).map((filename) => [filename, fs.readFileSync(path.join(folder, filename), 'utf8')])).toEqual(generated);
+  });
+
+  it('projects only source-owned light/dark semantic and default green colors into standalone SwiftUI', () => {
+    const tokens = require('../../shared/ui/theme/ui-tokens.json');
+    const theme = activityThemeSource();
+    for (const role of ['text', 'success', 'warning', 'danger', 'background', 'surfaceAlt', 'muted', 'tint']) {
+      const color = (mode: string) => {
+        const hex = tokens.colors[mode][role] || tokens.presets.green[mode][role];
+        const [r, g, b] = [1, 3, 5].map((offset) => parseInt(hex.slice(offset, offset + 2), 16));
+        return `Color(red: ${r}.0 / 255, green: ${g}.0 / 255, blue: ${b}.0 / 255)`;
+      };
+      expect(theme).toContain(`${role} = dark ? ${color('dark')} : ${color('light')}`);
+    }
+    expect(theme).toContain('import SwiftUI');
+    expect(theme).not.toMatch(/Expo|React|UIKit|UserDefaults/);
   });
 
   it('does not steal another extension product from an existing copy phase', async () => {
@@ -150,5 +181,6 @@ describe('opt-in local iOS Live Activity plugin', () => {
     expect(source('OpencodeActivityModule.swift')).toContain('AsyncFunction("waitUntilStopped")');
     expect(source('OpencodeActivityController.swift')).toContain('pushType: nil');
     expect(source('LiveActivity/OpencodeLiveActivity.swift')).not.toMatch(/Button\(|AppIntent|Link\(/);
+    expect(source('LiveActivity/ActivityDashboard.swift')).not.toMatch(/Button\(|AppIntent|Link\(|ActivityViewContext</);
   });
 });

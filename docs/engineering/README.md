@@ -20,6 +20,7 @@ build, or understand an operational constraint.
 | [validation/e2e.md](validation/e2e.md) | Playwright spec map and supported flow coverage |
 | [validation/regressions.md](validation/regressions.md) | Feature-to-spec map and manual/device checks |
 | [integrations-and-operations.md](integrations-and-operations.md) | External dependencies, Expo/native integrations, environment rules, operational scripts, and release notes |
+| [ios-live-activity-remote-delivery.md](ios-live-activity-remote-delivery.md) | Proposed, not implemented: remote Live Activity ownership, logical contract, privacy, provisioning, and acceptance decisions |
 | [voice-validation.md](voice-validation.md) | Offline wake-word benchmark and physical-device voice checklist |
 | [library-extraction.md](library-extraction.md) | Library replacements, deferred evaluations, and candidate extraction boundaries |
 | [fdroid.md](fdroid.md) | F-Droid/FOSS variant scope, build, and distribution |

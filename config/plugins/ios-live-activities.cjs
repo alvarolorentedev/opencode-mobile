@@ -4,14 +4,56 @@ const plist = require('@expo/plist').default;
 const { IOSConfig, withInfoPlist, withXcodeProject } = require('@expo/config-plugins');
 
 const targetName = 'OpencodeLiveActivity';
-const swiftFiles = ['OpencodeActivityAttributes.swift', 'OpencodeLiveActivity.swift'];
+const widgetFiles = ['OpencodeLiveActivity.swift', 'ActivityDashboard.swift'];
+const swiftFiles = ['OpencodeActivityAttributes.swift', ...widgetFiles, 'OpencodeActivityTheme.swift'];
+
+// The extension has no app appearance store. Project the system light/dark
+// semantic roles and default green preset from the sole authored token source.
+// Export the same generator for the standalone synthetic simulator preview.
+function activityThemeSource() {
+  const tokens = require('../../shared/ui/theme/ui-tokens.json');
+  const roles = ['text', 'success', 'warning', 'danger', 'background', 'surfaceAlt', 'muted', 'tint'];
+  const color = (hex) => {
+    if (!/^#[\da-f]{6}$/i.test(hex)) throw new Error('Live Activity theme requires opaque RGB tokens.');
+    const rgb = [1, 3, 5].map((offset) => parseInt(hex.slice(offset, offset + 2), 16));
+    return `Color(red: ${rgb[0]}.0 / 255, green: ${rgb[1]}.0 / 255, blue: ${rgb[2]}.0 / 255)`;
+  };
+  const assignments = roles.map((role) => {
+    const value = (mode) => tokens.colors[mode][role] || tokens.presets.green[mode][role];
+    return `    ${role} = dark ? ${color(value('dark'))} : ${color(value('light'))}`;
+  });
+  return `// Generated from shared/ui/theme/ui-tokens.json; do not author colors here.
+import SwiftUI
+
+struct OpencodeActivityTheme {
+${roles.map((role) => `  let ${role}: Color`).join('\n')}
+
+  init(colorScheme: ColorScheme) {
+    let dark = colorScheme == .dark
+${assignments.join('\n')}
+  }
+
+  func status(for phase: String) -> Color {
+    switch phase {
+    case "finished": return success
+    case "failed": return danger
+    case "needsInput", "retrying", "reconnecting", "stopped": return warning
+    default: return tint
+    }
+  }
+}
+`;
+}
 
 function writeExtension(config) {
   const destination = path.join(config.modRequest.platformProjectRoot, targetName);
   const source = path.join(path.dirname(require.resolve('../../modules/opencode-activity/expo-module.config.json')), 'ios');
   fs.mkdirSync(destination, { recursive: true });
   fs.copyFileSync(path.join(source, swiftFiles[0]), path.join(destination, swiftFiles[0]));
-  fs.copyFileSync(path.join(source, 'LiveActivity', swiftFiles[1]), path.join(destination, swiftFiles[1]));
+  for (const filename of widgetFiles) {
+    fs.copyFileSync(path.join(source, 'LiveActivity', filename), path.join(destination, filename));
+  }
+  fs.writeFileSync(path.join(destination, 'OpencodeActivityTheme.swift'), activityThemeSource());
   fs.writeFileSync(path.join(destination, 'Info.plist'), plist.build({
     CFBundleDisplayName: 'OpenCode',
     CFBundleName: '$(PRODUCT_NAME)',
@@ -121,4 +163,4 @@ function withIOSLiveActivities(config) {
   });
 }
 
-module.exports = { withIOSLiveActivities };
+module.exports = { withIOSLiveActivities, activityThemeSource };

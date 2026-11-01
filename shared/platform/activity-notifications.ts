@@ -6,7 +6,8 @@ import { i18n } from '@/shared/i18n/index';
 import { buildSessionLink } from '@/shared/contracts/session-link';
 import { privateConnectionReference } from '@/shared/platform/private-connection-reference';
 
-export type ActivityPhase = 'thinking' | 'needsInput' | 'retrying' | 'queued' | 'finished' | 'failed' | 'stopped' | 'reconnecting';
+export type ActivityPhase = 'thinking' | 'needsInput' | 'retrying' | 'queued' | 'finished' | 'failed' | 'stopped' | 'reconnecting'
+  | 'reading' | 'editing' | 'searching' | 'executing' | 'delegating';
 
 type ActivityContent = {
   title: string;
@@ -22,6 +23,15 @@ type ActivityContent = {
   count?: number;
   agentCount?: number;
   toolCount?: number;
+  completedSteps?: number;
+  totalSteps?: number;
+  filesChanged?: number;
+  progressLabel?: string;
+  agentsLabel?: string;
+  toolsLabel?: string;
+  filesLabel?: string;
+  updatedLabel?: string;
+  elapsedLabel?: string;
   workKeys?: string[];
 };
 
@@ -36,6 +46,7 @@ export type ActivityInput = {
   sessionId: string; projectPath: string; connectionScope: string; title: string;
   action: string; count: number; key: string; active: boolean;
   phase?: ActivityPhase; agentCount?: number; toolCount?: number;
+  progress?: { completed: number; total: number }; filesChanged?: number;
   work?: ActivityWork[];
   isCurrent?: () => boolean;
 };
@@ -69,12 +80,26 @@ function boundedCount(value: number) { return Number.isFinite(value) ? Math.min(
 function safePhase(phase?: ActivityPhase): ActivityPhase {
   switch (phase) {
     case 'needsInput': case 'retrying': case 'queued': case 'finished': case 'failed': case 'stopped': case 'reconnecting': return phase;
+    case 'reading': case 'editing': case 'searching': case 'executing': case 'delegating': return phase;
     default: return 'thinking';
   }
 }
-function sumOptionalCount(active: ActivityInput[], selected: ActivityInput, key: 'agentCount' | 'toolCount') {
-  return selected[key] === undefined && !active.some((entry) => entry[key] !== undefined)
-    ? undefined : active.reduce((total, entry) => total + boundedCount(entry[key] ?? 0), 0);
+function sumOptionalCount(active: ActivityInput[], selected: ActivityInput, key: 'agentCount' | 'toolCount' | 'filesChanged') {
+  if (!active.length) return selected[key] === undefined || !Number.isFinite(selected[key]) ? undefined
+    : key === 'filesChanged' ? boundedCount(selected[key]!) : 0;
+  return active.every((entry) => entry[key] !== undefined && Number.isFinite(entry[key]))
+    ? boundedCount(active.reduce((total, entry) => total + boundedCount(entry[key]!), 0)) : undefined;
+}
+function validProgress(progress?: ActivityInput['progress']) {
+  return progress && Number.isSafeInteger(progress.completed) && Number.isSafeInteger(progress.total)
+    && progress.completed >= 0 && progress.total > 0 && progress.completed <= progress.total && progress.total <= 9999
+    ? { completed: progress.completed, total: progress.total } : undefined;
+}
+function aggregateProgress(active: ActivityInput[], selected: ActivityInput) {
+  if (!active.length) return validProgress(selected.progress);
+  if (!active.every((entry) => validProgress(entry.progress))) return undefined;
+  return validProgress(active.reduce((sum, entry) => ({ completed: sum.completed + entry.progress!.completed,
+    total: sum.total + entry.progress!.total }), { completed: 0, total: 0 }));
 }
 function publishActivity(stopWhenIdle = false, forceStop = false, submittedIsCurrent?: () => boolean): Promise<boolean> {
   const publish = async () => {
@@ -93,9 +118,14 @@ function publishActivity(stopWhenIdle = false, forceStop = false, submittedIsCur
       if (ios && isCurrent()) idleReconciled = true;
       return false;
     }
+    const metricsKnown = [...scopes.values()].every((owner) => owner.isCurrent?.())
+      && [...activities.values()].every((entry) => entry.isCurrent?.() !== false);
     const result = await renderActivity({ ...selected,
       count: active.reduce((total, entry) => total + Math.max(1, ios ? boundedCount(entry.count) : entry.count), 0),
-      ...(ios ? { agentCount: sumOptionalCount(active, selected, 'agentCount'), toolCount: sumOptionalCount(active, selected, 'toolCount') } : {}),
+      ...(ios ? { agentCount: metricsKnown ? sumOptionalCount(active, selected, 'agentCount') : undefined,
+        toolCount: metricsKnown ? sumOptionalCount(active, selected, 'toolCount') : undefined,
+        filesChanged: metricsKnown ? sumOptionalCount(active, selected, 'filesChanged') : undefined,
+        progress: metricsKnown ? aggregateProgress(active, selected) : undefined } : {}),
     }, active, isCurrent);
     if (ios && !active.length && result && isCurrent()) idleReconciled = true;
     return result;
@@ -148,17 +178,22 @@ async function renderActivity(input: ActivityInput, active: ActivityInput[], isC
   const link = ios ? buildSessionLink(destination, scheme) : buildSessionLink(destination);
   const count = boundedCount(input.count);
   const phase = safePhase(input.phase);
+  const progress = validProgress(input.progress);
   return activityNotifications?.update({
     title: ios ? 'OpenCode' : input.active && input.count > 1 ? i18n.t('notifications:activity.tasks', { count: input.count }) : title,
     body: ios ? i18n.t(`notifications:activity.${phase}`) : input.active && input.count > 1 ? `${title} · ${input.action}` : input.action,
     link, key: ios ? 'activity-aggregate' : input.key, active: input.active,
-    chip: ios && count > 1 ? i18n.t('notifications:activity.tasks', { count }) : i18n.t('notifications:activity.working'),
+    chip: ios && !input.active && ['finished', 'failed', 'stopped'].includes(phase) ? i18n.t(`notifications:activity.${phase}`)
+      : ios && count > 1 ? i18n.t('notifications:activity.tasks', { count }) : i18n.t('notifications:activity.working'),
     ...(ios ? { phase, count, workKeys: [...new Set(workKeys)].sort(),
-      ...(input.agentCount === undefined ? {} : { agentCount: boundedCount(input.agentCount) }),
-      ...(input.toolCount === undefined ? {} : { toolCount: boundedCount(input.toolCount) }),
+      ...(input.agentCount === undefined ? {} : { agentCount: boundedCount(input.agentCount), agentsLabel: i18n.t('notifications:activity.agentsLabel', { count: boundedCount(input.agentCount) }) }),
+      ...(input.toolCount === undefined ? {} : { toolCount: boundedCount(input.toolCount), toolsLabel: i18n.t('notifications:activity.toolsLabel', { count: boundedCount(input.toolCount) }) }),
+      ...(input.filesChanged === undefined ? {} : { filesChanged: boundedCount(input.filesChanged), filesLabel: i18n.t('notifications:activity.filesLabel', { count: boundedCount(input.filesChanged) }) }),
+      ...(progress ? { completedSteps: progress.completed, totalSteps: progress.total, progressLabel: i18n.t('notifications:activity.progressLabel', progress) } : {}),
+      updatedLabel: i18n.t('notifications:activity.updatedLabel'), elapsedLabel: i18n.t('notifications:activity.elapsedLabel'),
     } : {}),
     stopLabel: i18n.t('notifications:activity.stopMonitoring'),
     channelLabel: i18n.t('notifications:activity.channel'),
-    pausedLabel: i18n.t('notifications:activity.paused'),
+    pausedLabel: i18n.t(ios ? 'notifications:activity.updatesPaused' : 'notifications:activity.paused'),
   }) ?? Promise.resolve(false);
 }

@@ -16,6 +16,18 @@ struct OpencodeActivityAttributes: ActivityAttributes {
     var isPaused: Bool
     var frozenAt: Date?
     var endedAt: Date?
+    // Optional for adoption of activities encoded by earlier app versions.
+    var completedSteps: Int?
+    var totalSteps: Int?
+    var agentCount: Int?
+    var toolCount: Int?
+    var filesChanged: Int?
+    var progressLabel: String?
+    var agentsLabel: String?
+    var toolsLabel: String?
+    var filesLabel: String?
+    var updatedLabel: String?
+    var elapsedLabel: String?
   }
 
   // A SHA-256 digest, not the JS key (which may contain connection identity).

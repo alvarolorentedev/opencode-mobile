@@ -131,6 +131,52 @@ describe('provider observer', () => {
     expect(h.cleared).toHaveLength(0);
   });
 
+  it('publishes factual iOS metrics across roots, omits partial plans, and retains final progress', async () => {
+    h.platform = 'ios'; h.snapshot = snapshot(['one', 'new']);
+    const records = (completed: number, total: number) => [
+      { info: { id: 'prompt', role: 'user', time: { created: 1 } }, parts: [] },
+      { info: { id: 'step', role: 'assistant', parentID: 'prompt', time: { created: 2 } }, parts: [
+        { id: 'plan', callID: 'plan', type: 'tool', tool: 'todowrite', state: { status: 'completed', input: {
+          todos: Array.from({ length: total }, (_, index) => ({ content: 'PRIVATE', status: index < completed ? 'completed' : 'pending' })),
+        } } },
+        { id: 'read', callID: 'read', type: 'tool', tool: 'read_file', state: { status: 'running', input: { path: '/PRIVATE' }, title: 'PRIVATE' } },
+      ] },
+    ];
+    h.snapshot.messages.one = records(1, 2); h.snapshot.messages.new = records(2, 3);
+    await mount();
+    expect(h.updates.at(-1)).toMatchObject({ phase: 'reading', action: '', agentCount: 2, toolCount: 2, progress: { completed: 3, total: 5 } });
+    h.snapshot.messages.new = []; await poll();
+    expect(h.updates.at(-1).progress).toBeUndefined(); expect(h.updates.at(-1).toolCount).toBeUndefined();
+    h.snapshot.statuses.new = { type: 'idle' }; await poll();
+    expect(h.updates.at(-1)).toMatchObject({ progress: { completed: 1, total: 2 } });
+    h.snapshot.blocked.add('one'); await poll();
+    expect(h.updates.at(-1).phase).toBe('needsInput');
+    h.snapshot.blocked.clear(); h.snapshot.statuses.one = { type: 'idle' }; await poll();
+    expect(h.updates.at(-1)).toMatchObject({ active: false, phase: 'finished', progress: { completed: 1, total: 2 }, agentCount: 0, toolCount: 0 });
+    expect(h.cleared).toHaveLength(0);
+    const slow = deferred(); h.read.mockImplementationOnce(() => slow.promise);
+    h.runtime.update({ sendingState: { active: true, sessionId: 'one' } }); await h.runtime.settle();
+    expect(h.updates.at(-1)).toMatchObject({ active: true, phase: 'thinking' });
+    expect(h.updates.at(-1).progress).toBeUndefined(); expect(h.updates.at(-1).agentCount).toBeUndefined();
+    slow.resolve({ sessions: h.snapshot.sessions, statuses: h.snapshot.statuses }); await h.runtime.settle();
+  });
+
+  it('does not reuse previous-turn insights for a local submission or alter Android rendering', async () => {
+    h.platform = 'ios';
+    h.snapshot.messages.one = [{ info: { id: 'step', role: 'assistant', parentID: 'old', time: { created: 1 } }, parts: [
+      { type: 'tool', tool: 'read', state: { status: 'running', input: {}, title: 'Reading private.txt' } },
+    ] }];
+    await mount(); expect(h.updates.at(-1).phase).toBe('reading');
+    h.runtime.update({ sendingState: { active: true, sessionId: 'one' } }); await h.runtime.settle();
+    expect(h.updates.at(-1)).toMatchObject({ phase: 'thinking' });
+    expect(h.updates.at(-1).toolCount).toBeUndefined();
+    h.runtime.unmount(); h.runtime = hookRuntime();
+    for (const [key, value] of Object.entries(h.runtime.globals)) vi.stubGlobal(key, value);
+    h.platform = 'android'; await mount();
+    expect(h.updates.at(-1)).toMatchObject({ phase: 'thinking', action: 'Reading private.txt' });
+    expect(h.updates.at(-1)).not.toHaveProperty('progress');
+  });
+
   it('registers before the first iOS read and reconciles verified idle startup without clearing completion data', async () => {
     h.platform = 'ios'; h.snapshot.statuses.one = { type: 'idle' };
     await mount();

@@ -74,6 +74,7 @@ coverage, and documentation links.
 | [0021](0021-per-connection-custom-ca.md) | Per-connection custom CA trust | Accepted |
 | [0022](0022-markdown-first-extension-definitions.md) | Markdown-first agent and command definitions with JSONC compatibility | Accepted |
 | [0023](0023-opt-in-local-ios-live-activities.md) | Opt-in private local iOS Live Activities and unsigned CI test artifacts | Accepted |
+| [0024](0024-truthful-live-activity-progress-and-freshness.md) | Truthful native Live Activity progress, freshness, and test boundaries | Proposed |
 
 ## Template
 

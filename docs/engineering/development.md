@@ -155,6 +155,21 @@ the existing Personal Team push-entitlement opt-out and a distinct test bundle
 identifier. No Apple signing secrets, release tag, version bump, or store upload
 are involved. Ordinary signed release builds are unchanged.
 
+Feature-branch pushes first run Apple-SDK checks and a lightweight Simulator
+presentation harness using the production activity dashboard. A device archive
+is explicitly requested with the `[ios-ipa]` marker in the pushed commit message
+or the manual workflow's `build_ipa` input. This separates native UI iteration
+from a full iPhone build. Manual dispatch requires the workflow to be available
+under GitHub's workflow-dispatch rules; a branch push does not require changing
+the repository's default branch.
+
+The harness checks native rendering, including stale/terminal states and larger
+text. It is not a full React Native cold-launch test, actual system Lock Screen
+or Dynamic Island hosting, signing acceptance, or APNs delivery. Those remain
+separate device/integration checks. Compiler and CocoaPods download caches may
+reduce repeated work; a cache hit never skips validation or guarantees a short
+archive, and cold builds can still take tens of minutes.
+
 After a successful run, download the `ios-live-activity-unsigned-test` artifact
 and extract `opencode-mobile-unsigned-test.ipa`. This is a real device Release
 build with embedded JavaScript and the Live Activity extension, but it is

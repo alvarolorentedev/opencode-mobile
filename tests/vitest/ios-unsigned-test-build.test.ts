@@ -94,6 +94,10 @@ describe('optional unsigned iPhoneOS test build', () => {
     const workflow = parse(source);
     assert.equal(workflow.name, unsignedEnv.GITHUB_WORKFLOW);
     assert.ok(Object.hasOwn(workflow.on, 'workflow_dispatch'));
+    assert.deepEqual(workflow.on.workflow_dispatch.inputs.build_ipa, {
+      description: 'Also build the unsigned device IPA (last cold archive took about 24 minutes)',
+      type: 'boolean', required: false, default: false,
+    });
     assert.deepEqual(workflow.on.push.branches, ['feat/ios-live-activities']);
     assert.deepEqual(workflow.permissions, { contents: 'read' });
     assert.equal(workflow.jobs.validate.uses, './.github/workflows/ci.yml');
@@ -108,6 +112,7 @@ describe('optional unsigned iPhoneOS test build', () => {
     assert.equal(job.env.EXPO_IOS_DISABLE_PUSH_ENTITLEMENT, '1');
     assert.equal(job.env.EXPO_IOS_BUNDLE_ID, bundleIdentifier);
     assert.equal(job.env.DEVELOPER_DIR, '/Applications/Xcode_26.6.app/Contents/Developer');
+    assert.equal(job.env.BUILD_IPA, "${{ (github.event_name == 'workflow_dispatch' && inputs.build_ipa) || contains(github.event.head_commit.message, '[ios-ipa]') }}");
     const checkout = job.steps.find((step: any) => step.uses === 'actions/checkout@v4');
     assert.equal(checkout.with.ref, workflow.jobs.validate.with.ref);
     assert.equal(checkout.with['persist-credentials'], false);
@@ -118,6 +123,7 @@ describe('optional unsigned iPhoneOS test build', () => {
     assert.equal(diagnostics.if, 'always()');
     assert.equal(diagnostics.with['retention-days'], 3);
     assert.match(diagnostics.with.path, /unsigned-test\.xcresult/);
+    assert.match(diagnostics.with.path, /\.xcarchive\/dSYMs\/OpenCodeMobile\.app\.dSYM/);
 
     const configSource = fs.readFileSync(new URL('app.config.ts', root), 'utf8');
     const compiled = ts.transpileModule(configSource, { compilerOptions: { module: ts.ModuleKind.CommonJS } }).outputText;
@@ -126,6 +132,71 @@ describe('optional unsigned iPhoneOS test build', () => {
     const config = (context.exports as { default: any }).default;
     assert.equal(config.ios.bundleIdentifier, bundleIdentifier);
     assert.ok(config.plugins.some((plugin: unknown) => (plugin as Function).name === 'withoutPushEntitlement'));
+  });
+
+  it('always previews native UI before an explicitly requested archive, without installing Pods for preview', () => {
+    const workflow = parse(fs.readFileSync(new URL('.github/workflows/ios-test-build.yml', root), 'utf8'));
+    const steps = workflow.jobs['ios-test'].steps;
+    const named = (name: string) => steps.find((step: any) => step.name === name);
+    const prebuild = named('Generate production extension without installing Pods');
+    assert.match(prebuild.run, /npx expo prebuild --platform ios --no-install/);
+    assert.equal(prebuild.if, undefined);
+    const preview = named('SDK typecheck and render standalone SwiftUI preview');
+    assert.match(preview.run, /node scripts\/ci\/ios-live-activity-preview\.mjs/);
+    assert.equal(preview.if, undefined);
+    const archive = named('Prebuild and archive unsigned iPhoneOS Release test IPA');
+    assert.ok(steps.indexOf(preview) < steps.indexOf(archive));
+    for (const name of ['Prepare compiler cache and fingerprint actual native toolchain', 'Restore native compiler and download caches',
+      'Verify pinned native prebuilts for the requested device archive', 'Prebuild and archive unsigned iPhoneOS Release test IPA',
+      'Upload unsigned test IPA', 'Explain unsigned test artifact']) {
+      assert.equal(named(name).if, "env.BUILD_IPA == 'true'", name);
+    }
+    const artifact = named('Upload native preview evidence');
+    assert.equal(artifact.if, 'always()');
+    assert.equal(artifact.with.name, 'ios-live-activity-native-preview');
+    assert.match(artifact.with.path, /preview\/\*\.png/);
+    assert.match(named('Explain preview scope and archive cost').run, /not full React Native app startup/);
+  });
+
+  it('uses supported compiler/download caches with toolchain/config keys, not a deleted Pods tree or stale engines', () => {
+    const workflow = parse(fs.readFileSync(new URL('.github/workflows/ios-test-build.yml', root), 'utf8'));
+    const job = workflow.jobs['ios-test'];
+    const steps = job.steps;
+    const prepare = steps.find((step: any) => step.id === 'native-cache-key');
+    assert.equal(job.env.USE_CCACHE, '1');
+    assert.equal(job.env.CCACHE_DIR, undefined, 'runner context is unavailable in job-level env');
+    assert.equal(prepare.env.CCACHE_DIR, '${{ runner.temp }}/opencode-ios-ccache');
+    assert.match(prepare.run, /echo "CCACHE_DIR=\$CCACHE_DIR" >> "\$GITHUB_ENV"/);
+    assert.equal(job.env.CCACHE_BASEDIR, '${{ github.workspace }}');
+    assert.match(prepare.run, /if ! command -v ccache/);
+    assert.match(prepare.run, /brew install ccache/);
+    for (const command of ['sw_vers', 'uname -m', 'xcodebuild -version', 'xcrun --sdk iphoneos --show-sdk-version', 'pod --version', 'ccache --version']) {
+      assert.ok(prepare.run.includes(command), command);
+    }
+    const cache = steps.find((step: any) => step.uses === 'actions/cache@v4');
+    assert.match(cache.with.path, /Library\/Caches\/CocoaPods/);
+    assert.match(cache.with.path, /\.cocoapods\/repos/);
+    assert.match(cache.with.path, /llama\.rn\/ios\/rnllama\.xcframework/);
+    assert.match(cache.with.path, /llama\.rn\/android\/src\/main\/jniLibs/);
+    assert.doesNotMatch(cache.with.path, /ios\/Pods|DerivedData/);
+    for (const key of [cache.with.key, cache.with['restore-keys']]) {
+      for (const input of ['runner.os', 'runner.arch', 'outputs.fingerprint', 'package-lock.json', 'patches/**', 'config/plugins/**', 'modules/**/*.podspec', 'native-artifacts.json']) {
+        assert.ok(key.includes(input), input);
+      }
+      assert.equal(key.includes('ios/Podfile.lock'), false);
+    }
+    assert.ok(cache.with.key.includes('github.sha'));
+    const install = steps.find((step: any) => step.name === 'Install locked dependencies for CNG and native preview');
+    const prebuilts = steps.find((step: any) => step.name === 'Verify pinned native prebuilts for the requested device archive');
+    assert.match(install.run, /RNLLAMA_SKIP_POSTINSTALL=1 npm ci/);
+    assert.ok(steps.indexOf(install) < steps.indexOf(cache));
+    assert.ok(steps.indexOf(cache) < steps.indexOf(prebuilts));
+    assert.match(prebuilts.run, /node node_modules\/llama\.rn\/install\/download-native-artifacts\.js/);
+    assert.doesNotMatch(prebuilts.run, /RNLLAMA_SKIP_POSTINSTALL|--force/);
+    const stats = steps.find((step: any) => step.name === 'Record compiler cache statistics');
+    assert.equal(stats.if, "always() && steps.native-cache-key.outcome == 'success'");
+    assert.match(stats.run, /ccache --show-stats/);
+    assert.match(stats.run, /ios-build\/logs\/ccache-stats\.log/);
   });
 
   it('packages the complete .app, embedded JS, extension, permissions and framework symlinks', () => {

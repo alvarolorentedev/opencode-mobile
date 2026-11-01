@@ -857,10 +857,13 @@ Parity implication:
 - a rewrite should preserve both in-app completion flushing and background completion checking
 - Experimental iOS builds with `EXPO_IOS_LIVE_ACTIVITIES=1` show one aggregate,
   V2-only Live Activity using the same connection-owned observations. The Lock
-  Screen/Dynamic Island show generic localized status, counts, and elapsed time;
+  Screen/Dynamic Island show generic localized work phases, real task-list
+  progress when known, counts, and elapsed time;
   private titles and tool/request/reply text are omitted. Taps route into the app
-  for all actions. Backgrounding marks it paused/stale, and verified foreground
-  observations resume updates. Ordinary completion notifications are not suppressed.
+  for all actions. Paused/stale observations retain the last-known work state
+  with a secondary freshness notice; they do not imply the agent stopped.
+  Verified foreground observations resume updates. Unknown progress is not a
+  percentage. Ordinary completion notifications are not suppressed.
   See [iOS parity](./parity/ios-widget.md) for limitations and device acceptance.
 
 ## Android inbound sharing
