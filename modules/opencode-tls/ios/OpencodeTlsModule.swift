@@ -81,6 +81,13 @@ public final class OpencodeTlsModule: Module {
   }
 
   private static func installExpoFetchProvider() {
+    // Expo's Objective-C setter is @MainActor. OnCreate runs on the JS
+    // thread, and calling its IMP there bypasses Swift's compiler checks but
+    // traps at runtime. Install synchronously before JS can issue a fetch.
+    guard Thread.isMainThread else {
+      DispatchQueue.main.sync { installExpoFetchProvider() }
+      return
+    }
     typealias Provider = @convention(block) () -> URLSessionConfiguration?
     typealias Setter = @convention(c) (AnyObject, Selector, AnyObject?) -> Void
     guard let cls = NSClassFromString("EXFetchCustomExtension") else { return }

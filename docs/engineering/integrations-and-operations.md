@@ -129,6 +129,11 @@ Patch versions, required behavior and upstream removal conditions live in the
 [patch inventory](library-extraction.md#remaining-dependency-patches). Native
 acceptance is defined by the [production matrix](validation/strategy.md#coordinated-native-dependency-acceptance).
 
+iOS TLS module registration can run on React Native's JavaScript thread. Its
+Expo fetch-provider setter is main-actor isolated, so installation synchronously
+hops to the main thread before registration returns. Network configuration
+callbacks and scoped certificate validation remain nonisolated.
+
 ### Expo Router
 
 Used for app navigation and typed route structure.

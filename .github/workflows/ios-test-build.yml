@@ -90,6 +90,8 @@ jobs:
           path: |
             ios-build/logs/
             ios-build/unsigned-test.xcresult/
+            ios-build/unsigned-test.xcarchive/dSYMs/OpenCodeMobile.app.dSYM/
+            ios-build/unsigned-test.xcarchive/dSYMs/OpencodeLiveActivity.appex.dSYM/
             ios/Podfile.lock
           if-no-files-found: warn
           retention-days: 3
