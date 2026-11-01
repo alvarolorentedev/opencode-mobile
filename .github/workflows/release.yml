@@ -610,8 +610,10 @@ jobs:
         if: env.APPSTORE_API_KEY_ID != '' && env.APPSTORE_API_ISSUER_ID != '' && env.APPSTORE_API_PRIVATE_KEY != ''
         run: |
           set -euo pipefail
-          mkdir -p "$RUNNER_TEMP/private_keys"
-          KEY_PATH="$RUNNER_TEMP/private_keys/AuthKey_${APPSTORE_API_KEY_ID}.p8"
+          # altool only looks for the .p8 key under the home directory, never
+          # under RUNNER_TEMP, so stage it in ~/.private_keys.
+          mkdir -p "$HOME/.private_keys"
+          KEY_PATH="$HOME/.private_keys/AuthKey_${APPSTORE_API_KEY_ID}.p8"
           printf '%s\n' "$APPSTORE_API_PRIVATE_KEY" > "$KEY_PATH"
           chmod 600 "$KEY_PATH"
           xcrun altool --validate-app \
@@ -632,7 +634,7 @@ jobs:
 
       - name: Remove App Store Connect key
         if: always()
-        run: rm -rf "$RUNNER_TEMP/private_keys"
+        run: rm -f "$HOME/.private_keys/AuthKey_${APPSTORE_API_KEY_ID}.p8"
 
   publish-github:
     name: publish-github
