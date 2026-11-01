@@ -100,7 +100,7 @@
       "endpointNotFound": "在 {{url}} 未找到 OpenCode 端点。{{apiHint}}{{versionHint}}",
       "webPage": "{{url}} 的服务器返回了网页而不是 OpenCode API。{{apiHint}}{{versionHint}}",
       "apiHint": " 如果此地址提供 Web UI，请改用其 API 基础 URL，通常是 {{url}}/api。",
-      "versionHint": " This app requires OpenCode 2; verify the API base URL is correct.",
+      "versionHint": " 此应用支持 OpenCode 1.x 和 2.x 服务器；请检查 API 基础 URL。",
       "certificateUntrusted": "The server certificate is not trusted. Import the CA certificate for this server.",
       "certificateExpired": "The server certificate has expired.",
       "certificateHostnameMismatch": "The server certificate does not match this address.",

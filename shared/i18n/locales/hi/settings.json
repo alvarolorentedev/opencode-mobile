@@ -100,7 +100,7 @@
       "endpointNotFound": "{{url}} पर OpenCode एंडपॉइंट नहीं मिला।{{apiHint}}{{versionHint}}",
       "webPage": "{{url}} पर सर्वर ने OpenCode API के बजाय वेब पेज लौटाया।{{apiHint}}{{versionHint}}",
       "apiHint": " यदि यह पता वेब UI परोसता है, तो इसके बजाय इसका API बेस URL उपयोग करें, आमतौर पर {{url}}/api.",
-      "versionHint": " This app requires OpenCode 2; verify the API base URL is correct.",
+      "versionHint": " यह ऐप OpenCode 1.x और 2.x सर्वर का समर्थन करता है; API बेस URL जाँचें।",
       "certificateUntrusted": "The server certificate is not trusted. Import the CA certificate for this server.",
       "certificateExpired": "The server certificate has expired.",
       "certificateHostnameMismatch": "The server certificate does not match this address.",

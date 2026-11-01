@@ -169,9 +169,22 @@ function checkApk(apk, expected) {
     if (!packages.includes(keepClass)) fail(`${apk}: expected R8 keep class ${keepClass} is missing`);
   }
 
-  const certOutput = run(apksigner, ['verify', '--verbose', '--print-certs', apk]);
-  const certMatch = certOutput.match(/Signer #1 certificate SHA-256 digest:\s*([0-9a-f:]+)/i);
-  if (!certMatch) fail(`${apk}: could not read signing certificate`);
+  // apksigner revisions differ on which stream carries the signer digest, so
+  // parse the combined output instead of stdout alone. A parse miss fails with
+  // the raw output attached so the next failure is diagnosable.
+  const verifyResult = spawnSync(apksigner, ['verify', '--verbose', '--print-certs', apk], {
+    encoding: 'utf8',
+    maxBuffer: 128 * 1024 * 1024,
+  });
+  const combinedOutput = [verifyResult.stdout, verifyResult.stderr].filter(Boolean).join('\n');
+  if (verifyResult.status !== 0) {
+    fail(`${apk}: apksigner verification failed:\n${combinedOutput.trim()}`);
+  }
+  const certMatch = combinedOutput.match(/Signer #1 certificate SHA-256 digest:\s*([0-9a-f:]+)/i);
+  if (!certMatch) {
+    const excerpt = combinedOutput.split('\n').slice(0, 20).join('\n');
+    fail(`${apk}: could not read signing certificate. apksigner output:\n${excerpt}`);
+  }
   const cert = certMatch[1].replace(/:/g, '').toLowerCase();
   if (!expected.certSha256) fail('Missing --cert-sha256; release signing identity must be pinned');
   if (cert !== expected.certSha256.replace(/:/g, '').toLowerCase()) {

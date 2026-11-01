@@ -100,7 +100,7 @@
       "endpointNotFound": "{{url}} に OpenCode エンドポイントが見つかりません。{{apiHint}}{{versionHint}}",
       "webPage": "{{url}} のサーバーは OpenCode API ではなく Web ページを返しました。{{apiHint}}{{versionHint}}",
       "apiHint": " このアドレスが Web UI を提供している場合は、代わりにその API ベース URL (通常は {{url}}/api) を使用してください。",
-      "versionHint": " This app requires OpenCode 2; verify the API base URL is correct.",
+      "versionHint": " このアプリは OpenCode 1.x および 2.x サーバーをサポートしています。API ベース URL を確認してください。",
       "certificateUntrusted": "The server certificate is not trusted. Import the CA certificate for this server.",
       "certificateExpired": "The server certificate has expired.",
       "certificateHostnameMismatch": "The server certificate does not match this address.",

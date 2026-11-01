@@ -100,7 +100,7 @@
       "endpointNotFound": "Эндпоинт OpenCode не найден по адресу {{url}}.{{apiHint}}{{versionHint}}",
       "webPage": "Сервер по адресу {{url}} вернул веб-страницу вместо API OpenCode.{{apiHint}}{{versionHint}}",
       "apiHint": " Если по этому адресу открывается веб-интерфейс, используйте его базовый URL API, обычно {{url}}/api.",
-      "versionHint": " This app requires OpenCode 2; verify the API base URL is correct.",
+      "versionHint": " Приложение поддерживает серверы OpenCode 1.x и 2.x; проверьте правильность базового URL API.",
       "certificateUntrusted": "The server certificate is not trusted. Import the CA certificate for this server.",
       "certificateExpired": "The server certificate has expired.",
       "certificateHostnameMismatch": "The server certificate does not match this address.",

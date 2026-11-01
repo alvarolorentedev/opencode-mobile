@@ -2,7 +2,6 @@ import ExpoModulesCore
 import Foundation
 import ObjectiveC
 import Security
-import SocketRocket
 
 public final class OpencodeTlsModule: Module {
   public func definition() -> ModuleDefinition {
@@ -11,7 +10,7 @@ public final class OpencodeTlsModule: Module {
     OnCreate {
       Self.installURLSessionProvider()
       Self.installExpoFetchProvider()
-      Self.installWebSocketProvider()
+      OpencodeTlsWebSocketInstaller.install()
     }
 
     AsyncFunction("importCertificate") { (input: String, promise: Promise) in
@@ -83,26 +82,5 @@ public final class OpencodeTlsModule: Module {
     let setter = unsafeBitCast(method_getImplementation(method), to: Setter.self)
     let provider: Provider = { OpencodeTlsModule.configuration() }
     setter(cls, selector, provider as AnyObject)
-  }
-
-  private static func installWebSocketProvider() {
-    typealias Provider = @convention(block) (URLRequest) -> SRWebSocket?
-    typealias Setter = @convention(c) (Provider?) -> Void
-    guard let symbol = dlsym(UnsafeMutableRawPointer(bitPattern: -2), "RCTSetCustomSRWebSocketProvider") else {
-      return
-    }
-    let setter = unsafeBitCast(symbol, to: Setter.self)
-    let provider: Provider = { request in
-      guard let url = request.url, let host = url.host else { return nil }
-      let origin = TrustStore.originKey(host: host, port: url.port ?? 443)
-      let certificates = TrustStore.certificates(for: origin)
-      guard !certificates.isEmpty else { return nil }
-      let policy = OpencodeTlsSecurityPolicy(origin: origin, certificates: certificates)
-      let protocols = request.value(forHTTPHeaderField: "Sec-WebSocket-Protocol")?
-        .split(separator: ",")
-        .map { $0.trimmingCharacters(in: .whitespaces) }
-      return SRWebSocket(urlRequest: request, protocols: protocols, securityPolicy: policy)
-    }
-    setter(provider)
   }
 }
