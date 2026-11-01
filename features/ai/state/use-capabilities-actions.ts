@@ -110,26 +110,9 @@ export function useCapabilitiesActions({
     probedClassifierRef.current = undefined;
   }, [client, connectionScope]);
 
-  useEffect(() => {
-    if (!chatPreferences.autoModel.enabled || chatPreferences.autoModel.classifier !== 'local' || localReady) {
-      return;
-    }
-    setChatPreferences((current) => current.autoModel.enabled
-      ? { ...current, autoModel: { ...current.autoModel, enabled: false } }
-      : current);
-  }, [chatPreferences.autoModel, localReady, setChatPreferences]);
-
-  useEffect(() => {
-    if (!chatPreferences.autoModel.enabled || chatPreferences.autoModel.classifier !== 'server') {
-      return;
-    }
-    if (serverClassifierStatus !== 'unsupported' && serverClassifierStatus !== 'auth') {
-      return;
-    }
-    setChatPreferences((current) => current.autoModel.enabled
-      ? { ...current, autoModel: { ...current.autoModel, enabled: false } }
-      : current);
-  }, [chatPreferences.autoModel, serverClassifierStatus, setChatPreferences]);
+  // Availability is derived for the UI and the send-time guards. It must never
+  // rewrite the persisted routing choice: an unreadable pack, a slow catalog or
+  // a pending probe is not a user decision to turn routing off.
 
   useEffect(() => {
     const preferences = chatPreferences.autoModel;

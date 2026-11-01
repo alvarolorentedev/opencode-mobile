@@ -139,6 +139,18 @@ describe('persistence hydration and write-back', () => {
     assert.ok(Array.isArray(defaults.enabledModelIds)); assert.ok(Array.isArray(defaults.recentModelIds));
     assert.deepEqual(JSON.parse(JSON.stringify(parseChatPreferences('{"modelVariantSelections":{"openai/model":"max","openai/default":null}}').modelVariantSelections)), { 'openai/model': 'max', 'openai/default': null });
     assert.equal(parseChatPreferences('{"modelVariantSelections":{"openai/model":false}}').modelVariantSelections, undefined);
+    const autoModel = {
+      enabled: true,
+      classifier: 'server',
+      classifierModelId: 'openai/nano',
+      tiers: { simple: 'openai/nano', standard: 'auto', complex: 'openai/deep' },
+      protectLongChats: false,
+    };
+    assert.deepEqual(JSON.parse(JSON.stringify(parseChatPreferences(JSON.stringify({ autoModel })))), { autoModel });
+    assert.deepEqual(
+      JSON.parse(JSON.stringify(parseChatPreferences(JSON.stringify({ autoModel: { enabled: 'yes', classifier: 'other', tiers: { simple: '  openai/nano  ' } } })))),
+      { autoModel: { enabled: false, classifier: 'local', tiers: { simple: 'openai/nano', standard: 'auto', complex: 'auto' }, protectLongChats: true } },
+    );
 
     const write = createPersistenceWriter(), gate = deferred<void>(), writes: string[] = [];
     const first = write('settings', 'a', async () => { await gate.promise; writes.push('a'); });

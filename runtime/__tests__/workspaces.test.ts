@@ -127,6 +127,13 @@ describe('multi-server contracts', () => {
     expect(() => parseWorkspaces(JSON.stringify({ version: 2, connections: [] }))).toThrow();
     expect(() => parseWorkspaces(JSON.stringify({ version: 1, connections: [{ ...entry, events: undefined }] }))).toThrow();
     expect(() => parseWorkspaces(JSON.stringify({ version: 1, connections: [{ ...entry, events: undefined, settings: { serverUrl: 'http://a', username: '', directory: '', headers: { 'CF-Access-Client-Secret': 'header-secret' } } }] }))).toThrow();
+
+    // Routing preferences must survive a workspace registry round-trip; a stale
+    // or dropped value here is what makes an enabled setting look reset on launch.
+    const autoModel = { enabled: true, classifier: 'server', classifierModelId: 'openai/nano', tiers: { simple: 'openai/nano', standard: 'auto', complex: 'openai/deep' }, protectLongChats: false };
+    const withRouting = { ...entry, preferences: { autoModel } };
+    const routingRoundTrip = parseWorkspaces(serializeWorkspaces([withRouting], { connectionId: entry.id, projectPath: '/same' }));
+    expect(routingRoundTrip.connections[0].preferences.autoModel).toEqual(autoModel);
   });
 });
 
@@ -196,7 +203,7 @@ it('keeps lifecycle decisions current and closes projects without resetting reta
     '@react-native-async-storage/async-storage': { __esModule: true, default: { getItem: async () => 'stored', setItem: async () => {} } },
     '@/runtime/workspace/workspace-focus': workspaceFocus,
     "@/shared/contracts/connection-scope": { ...identity, getConnectionUiScope: (value: any) => value.serverUrl.slice(7) },
-    "@/shared/storage/connection-profiles": { createProfileId: () => 'new', getProfilePassword: async () => '', loadConnectionProfiles: async () => [], mutateConnectionProfiles: vi.fn(), saveProfilePassword: vi.fn(), deleteProfilePassword: vi.fn() },
+    "@/shared/storage/connection-profiles": { createProfileId: () => 'new', getProfilePassword: async () => '', loadConnectionProfiles: async () => [], mutateConnectionProfiles: vi.fn(async () => {}), saveProfilePassword: vi.fn(), deleteProfilePassword: vi.fn() },
     "@/shared/contracts/connection-profiles": { findMatchingProfile: () => undefined, pickModelPreferences: () => ({}) },
     "@/shared/storage/connection-headers": { getProfileHeaders: async () => ({}), saveProfileHeaders: vi.fn(), deleteProfileHeaders: vi.fn() },
     "@/shared/protocol/opencode/client/types": { defaultConnectionSettings: { serverUrl: 'http://default', username: '' } },
@@ -238,6 +245,59 @@ it('keeps lifecycle decisions current and closes projects without resetting reta
   driver.unmount();
 });
 
+it('persists the focused auto-model choice and ignores background workspace copies', async () => {
+  const driver = hookRuntime();
+  const entries = ['a', 'b'].map((id) => ({ id, name: id, settings: { serverUrl: `http://${id}`, username: '', password: '', directory: '' }, projects: ['/repo'], enabled: true, preferences: {} }));
+  const paths = { 'http://a:': ['/repo'], 'http://b:': ['/repo'] };
+  let chatPreferences: any = { autoModel: { enabled: false, classifier: 'server', tiers: { simple: 'auto', standard: 'auto', complex: 'auto' }, protectLongChats: true } };
+  const shell: any = {
+    settings: entries[0].settings,
+    onboardingVersion: 1,
+    get chatPreferences() { return chatPreferences; },
+    projectPathsByConnection: paths,
+    projectPathsByConnectionRef: { current: paths },
+    setProjectPathsByConnection: vi.fn(),
+    setSettings: vi.fn(),
+    setChatPreferences: vi.fn((updater: any) => { chatPreferences = typeof updater === 'function' ? updater(chatPreferences) : updater; }),
+  };
+  const writer = Object.assign(async () => {}, { preserveUnread: vi.fn() });
+  const workspaceFocus = await loadTs('runtime/workspace/workspace-focus.ts');
+  const { useWorkspaceConnections } = await loadTs('runtime/workspace/use-workspace-connections.ts', {
+    react: driver.react,
+    '@react-native-async-storage/async-storage': { __esModule: true, default: { getItem: async () => 'stored', setItem: async () => {} } },
+    '@/runtime/workspace/workspace-focus': workspaceFocus,
+    "@/shared/contracts/connection-scope": { ...identity, getConnectionUiScope: (value: any) => value.serverUrl.slice(7) },
+    "@/shared/storage/connection-profiles": { createProfileId: () => 'new', getProfilePassword: async () => '', loadConnectionProfiles: async () => [], mutateConnectionProfiles: vi.fn(async () => {}), saveProfilePassword: vi.fn(), deleteProfilePassword: vi.fn() },
+    "@/shared/contracts/connection-profiles": { findMatchingProfile: () => undefined, pickModelPreferences: () => ({}) },
+    "@/shared/storage/connection-headers": { getProfileHeaders: async () => ({}), saveProfileHeaders: vi.fn(), deleteProfileHeaders: vi.fn() },
+    "@/shared/protocol/opencode/client/types": { defaultConnectionSettings: { serverUrl: 'http://default', username: '' } },
+    "@/shared/contracts/server-url": { getServerHostname: (value: string) => value },
+    "@/shared/storage/persistence-hydration": { createPersistenceWriter: () => writer },
+    "@/shared/network/shared-event-stream": { createSharedEventStream: () => () => {} },
+    "@/shared/protocol/services/session-service": { listActiveSessions: vi.fn(async () => ({ sessions: [], statuses: {} })) },
+    "@/shared/storage/workspace-storage": { WORKSPACES_STORAGE_KEY: 'workspaces', parseWorkspaces: () => ({ connections: entries, focus: { connectionId: 'a', projectPath: '/repo' } }), serializeWorkspaces: () => 'stored' },
+    "@/shared/contracts/workspace": { workspaceKey: ({ connectionId, projectPath }: any) => JSON.stringify([connectionId, projectPath]) }
+  }, driver.globals);
+  driver.mount(({ shell }: any) => useWorkspaceConnections(shell, true), { shell });
+  await driver.settle();
+
+  const enabled = { ...chatPreferences, autoModel: { ...chatPreferences.autoModel, enabled: true } };
+  driver.value.updatePreferences('a', enabled);
+  driver.flush();
+  expect(driver.value.connections.find((entry: any) => entry.id === 'a').preferences.autoModel.enabled).toBe(true);
+  expect(chatPreferences.autoModel.enabled).toBe(true);
+
+  // A background workspace applying its own stale preferences must not turn the
+  // focused connection's routing off in the shell or the global persistence key.
+  const background = { ...chatPreferences, autoModel: { ...chatPreferences.autoModel, enabled: false, classifier: 'local' } };
+  driver.value.updatePreferences('b', background);
+  driver.flush();
+  expect(driver.value.connections.find((entry: any) => entry.id === 'b').preferences.autoModel.enabled).toBe(false);
+  expect(chatPreferences.autoModel.enabled).toBe(true);
+  expect(chatPreferences.autoModel.classifier).toBe('server');
+  driver.unmount();
+});
+
 it('selects a connected fallback for failover and prefers the last healthy server', async () => {
   const { connectedWorkspaceTarget } = await loadTs('runtime/workspace/workspace-focus.ts');
   const connection = (id: string, enabled = true) => ({ id, enabled });
@@ -272,7 +332,7 @@ it('moves chat focus to a connected server when the focused server fails', async
     '@react-native-async-storage/async-storage': { __esModule: true, default: { getItem: async () => 'stored', setItem: async () => {} } },
     '@/runtime/workspace/workspace-focus': workspaceFocus,
     "@/shared/contracts/connection-scope": { ...identity, getConnectionUiScope: (value: any) => value.serverUrl.slice(7) },
-    "@/shared/storage/connection-profiles": { createProfileId: () => 'new', getProfilePassword: async () => '', loadConnectionProfiles: async () => [], mutateConnectionProfiles: vi.fn(), saveProfilePassword: vi.fn(), deleteProfilePassword: vi.fn() },
+    "@/shared/storage/connection-profiles": { createProfileId: () => 'new', getProfilePassword: async () => '', loadConnectionProfiles: async () => [], mutateConnectionProfiles: vi.fn(async () => {}), saveProfilePassword: vi.fn(), deleteProfilePassword: vi.fn() },
     "@/shared/contracts/connection-profiles": { findMatchingProfile: () => undefined, pickModelPreferences: () => ({}) },
     "@/shared/storage/connection-headers": { getProfileHeaders: async () => ({}), saveProfileHeaders: vi.fn(), deleteProfileHeaders: vi.fn() },
     "@/shared/protocol/opencode/client/types": { defaultConnectionSettings: { serverUrl: 'http://default', username: '' } },
@@ -332,7 +392,7 @@ it('clears focus and keeps the retained runtime when the last opened project clo
     '@react-native-async-storage/async-storage': { __esModule: true, default: { getItem: async () => 'stored', setItem: async () => {} } },
     '@/runtime/workspace/workspace-focus': workspaceFocus,
     "@/shared/contracts/connection-scope": { ...identity, getConnectionUiScope: (value: any) => value.serverUrl.slice(7) },
-    "@/shared/storage/connection-profiles": { createProfileId: () => 'new', getProfilePassword: async () => '', loadConnectionProfiles: async () => [], mutateConnectionProfiles: vi.fn(), saveProfilePassword: vi.fn(), deleteProfilePassword: vi.fn() },
+    "@/shared/storage/connection-profiles": { createProfileId: () => 'new', getProfilePassword: async () => '', loadConnectionProfiles: async () => [], mutateConnectionProfiles: vi.fn(async () => {}), saveProfilePassword: vi.fn(), deleteProfilePassword: vi.fn() },
     "@/shared/contracts/connection-profiles": { findMatchingProfile: () => undefined, pickModelPreferences: () => ({}) },
     "@/shared/storage/connection-headers": { getProfileHeaders: async () => ({}), saveProfileHeaders: vi.fn(), deleteProfileHeaders: vi.fn() },
     "@/shared/protocol/opencode/client/types": { defaultConnectionSettings: { serverUrl: 'http://default', username: '' } },
