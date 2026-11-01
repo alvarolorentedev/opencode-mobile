@@ -2,7 +2,7 @@ import { setTimeout as sleep } from 'node:timers/promises';
 
 import { expect, test } from './helpers/fixtures.mjs';
 
-import { respondToConfirmation, addConnection, backendOrigin, chatAction, connectToSavedConnection, connectToServer, ensureAiSection, expectConnectedTo, fakeV2Origin, getFreePort, goToTab, openChatLibrary, openReadyChat, resetScenario, seedOnboarding, sendPrompt, spawnV1Server, waitForServer } from './helpers/flows.mjs';
+import { respondToConfirmation, addConnection, backendOrigin, chatAction, chatWorkspaceContext, connectToSavedConnection, connectToServer, ensureAiSection, expectConnectedTo, fakeV2Origin, getFreePort, goToTab, openChatLibrary, openReadyChat, resetScenario, seedOnboarding, sendPrompt, spawnV1Server, waitForServer } from './helpers/flows.mjs';
 
 test.beforeEach(async ({ page }, info) => {
   await seedOnboarding(page, info);
@@ -85,7 +85,7 @@ test('favorites switch projects and open cross-project sessions @smoke', async (
   await page.getByTestId('chat-library-project-button').click();
   await page.getByTestId('chat-project-picker').getByRole('button', { name: 'Select demo-project' }).click();
   await openChatLibrary(page);
-  await expect(page.getByTestId('chat-library').getByText('demo-project', { exact: true }).last()).toBeVisible();
+  await expect(chatWorkspaceContext(page).first()).toContainText('demo-project');
   await page.getByTestId('chat-library').getByRole('button', { name: /^Open Favorite Cross Project Session,/ }).click();
   await expect(page.getByTestId('chat-library')).not.toBeVisible();
 

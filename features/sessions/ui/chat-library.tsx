@@ -84,7 +84,6 @@ export function ChatLibrary({ visible, onClose, onNewChat }: { visible: boolean;
     && `${row.session.title} ${row.preview ?? ''} ${row.serverName} ${row.projectPath}`.toLowerCase().includes(needle));
   const projectOptions = [...new Map(library.sessions.filter((row) => !multipleServers || !server || row.connectionId === server)
     .map((row) => [workspaceKey(row), { value: workspaceKey(row), label: row.projectPath.split('/').pop() || row.projectPath, description: row.serverName }])).values()];
-  const focusedServer = registry.connections.find((entry) => entry.id === registry.focus?.connectionId)?.name;
   function renderRow(row: LibrarySession) {
     const key = sessionKey(row);
     const label = row.session.title || t('chat:library.untitledChat');
@@ -143,7 +142,6 @@ export function ChatLibrary({ visible, onClose, onNewChat }: { visible: boolean;
       <FlashList data={rows} extraData={busy} keyExtractor={sessionKey} style={{ flex: 1 }} keyboardShouldPersistTaps="handled" renderItem={({ item }) => renderRow(item)}
         ListEmptyComponent={<Text style={{ color: palette.muted }}>{t(query.trim() ? 'chat:library.noMatchingChats' : 'chat:library.noChats')}</Text>} />
       <Button disabled={Boolean(busy)} onPress={onNewChat} variant="ghost"><Icon name={"plus"} size={20} /><Text>{t('chat:library.newChat')}</Text></Button>
-      <Text className={cn("text-muted-foreground text-center")}>{multipleServers ? `${focusedServer} / ` : ''}{activeProject?.label}</Text>
     </OverlaySheet>
     {visible && projectVisible ? <ProjectPicker visible testID="chat-project-picker" activePath={activeProject?.path} onClose={() => setProjectVisible(false)} onSelected={close} /> : null}
   </>}</>;
