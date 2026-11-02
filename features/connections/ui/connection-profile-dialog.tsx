@@ -11,7 +11,7 @@ import { Text } from '@/shared/ui/text';
 import { FieldDescription } from '@/shared/ui/text-field';
 import { Spinner } from '@/shared/ui/spinner';
 
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { KeyboardAvoidingView, ScrollView, StyleSheet, View } from 'react-native';
 
@@ -22,12 +22,11 @@ import { usePalette } from '@/shared/ui/theme/use-palette';
 
 import { MAX_CONNECTION_HEADERS, parseConnectionHeaders } from '@/shared/contracts/connection-headers';
 import type { CertificateFailureReason, ConnectionCertificate } from '@/shared/contracts/connection-certificate';
-import { OIDC_DEFAULT_SCOPES, OIDC_DEFAULT_TOKEN_HEADER, OIDC_REDIRECT_PATH, toConnectionOidc, type ConnectionOidc } from '@/shared/contracts/connection-oidc';
+import { OIDC_DEFAULT_SCOPES, OIDC_DEFAULT_TOKEN_HEADER, OIDC_DEFAULT_REDIRECT_URI, toConnectionOidc, type ConnectionOidc } from '@/shared/contracts/connection-oidc';
 import type { ConnectionProbeResult } from '@/shared/protocol/opencode/client';
 import { getServerHostname } from '@/shared/contracts/server-url';
 import { connectionOrigin, isTlsTrustSupported } from '@/shared/platform/tls-trust';
-import { createURL } from '@/shared/platform/linking';
-import { isOidcAuthError } from '@/shared/auth/oidc/errors';
+import { isOidcAuthError, oidcErrorMessageKey } from '@/shared/auth/oidc/errors';
 import { useConnection } from '@/features/connections/context';
 import { ConnectionCertificateField } from '@/features/connections/ui/connection-certificate-field';
 import { ConnectionOidcFields, type OidcFieldStatus, type OidcFormValue } from '@/features/connections/ui/connection-oidc-fields';
@@ -91,7 +90,7 @@ export function ConnectionProfileDialog({ title, submitLabel, showName = true, i
   const oidcIdentityKey = [oidcValue.enabled, oidcValue.issuer, oidcValue.clientId, oidcValue.redirectUri, serverUrl, username].join('\n');
   const [oidcSession, setOidcSession] = useState<{ key: string; status: OidcFieldStatus }>({ key: '', status: 'unknown' });
   const [oidcError, setOidcError] = useState<string>();
-  const defaultRedirectUri = useMemo(() => createURL(OIDC_REDIRECT_PATH), []);
+  const defaultRedirectUri = OIDC_DEFAULT_REDIRECT_URI;
   const [headersOpen, setHeadersOpen] = useState(headers.length > 0);
   const [showHeaderValues, setShowHeaderValues] = useState(false);
   const [step, setStep] = useState<'address' | 'details'>('address');
@@ -193,7 +192,7 @@ export function ConnectionProfileDialog({ title, submitLabel, showName = true, i
       setOidcSession({ key, status: 'signed-out' });
       setOidcError(isOidcAuthError(reason) && reason.code === 'sign-in-cancelled'
         ? t('settings:connection.oidc.cancelled')
-        : t('settings:connection.errors.oidcSignInFailed'));
+        : t(oidcErrorMessageKey(reason) ?? 'settings:connection.errors.oidcSignInFailed'));
     } finally {
       if (current === request.current) setBusy(undefined);
     }

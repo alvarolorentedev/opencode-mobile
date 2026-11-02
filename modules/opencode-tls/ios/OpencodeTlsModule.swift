@@ -81,6 +81,11 @@ public final class OpencodeTlsModule: Module {
   }
 
   private static func installExpoFetchProvider() {
+    // Expo's setter is main-actor isolated; finish registration before JS can fetch.
+    guard Thread.isMainThread else {
+      DispatchQueue.main.sync { installExpoFetchProvider() }
+      return
+    }
     typealias Provider = @convention(block) () -> URLSessionConfiguration?
     typealias Setter = @convention(c) (AnyObject, Selector, AnyObject?) -> Void
     guard let cls = NSClassFromString("EXFetchCustomExtension") else { return }

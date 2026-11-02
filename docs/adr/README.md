@@ -73,7 +73,11 @@ coverage, and documentation links.
 | [0020](0020-local-first-observability-and-otlp.md) | Local-first observability with opt-in OTLP export | Accepted |
 | [0021](0021-per-connection-custom-ca.md) | Per-connection custom CA trust | Accepted |
 | [0022](0022-markdown-first-extension-definitions.md) | Markdown-first agent and command definitions with JSONC compatibility | Accepted |
-| [0023](0023-oidc-pkce-connection-authorization.md) | OpenID Connect authorization for connections | Accepted |
+| [0024](0024-oidc-pkce-connection-authorization.md) | OpenID Connect authorization for connections | Superseded by ADR 0025 |
+
+| [0023](0023-focused-extension-editors.md) | Focused extension editors with structured authoring | Accepted |
+
+| [0025](0025-oidc-credential-and-session-boundaries.md) | OIDC credential and session boundaries with Expo AuthSession | Accepted |
 
 ## Template
 

@@ -25,6 +25,17 @@ const config: StorybookConfig = {
     viteConfig.plugins.push({
       name: 'rn-primitives-jsx', enforce: 'pre',
       transform(code, id) {
+        // Expo emits value imports in this declarations-only module.
+        if (id.endsWith('/expo-modules-core/build/ts-declarations/global.js')) return { code: 'export {};' };
+        if (id.endsWith('/features/ai/ui/provider-icon.tsx')) {
+          const assets: string[] = [];
+          const transformed = code.replace(/require\((['"])([^'"]+\.png)\1\)/g, (_match, _quote, asset: string) => {
+            const name = `providerIcon${assets.length}`;
+            assets.push(`import ${name} from '${asset}';`);
+            return name;
+          });
+          return { code: `${assets.join('\n')}\n${transformed}` };
+        }
         if (/node_modules\/@rn-primitives\/.*\.[cm]?js$/.test(id)) return transformWithOxc(code, id, { lang: 'tsx', jsx: { runtime: 'automatic' } });
       },
     });

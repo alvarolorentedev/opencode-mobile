@@ -196,8 +196,10 @@ export function extensionAgents(state, directory) {
 
 function normalizeModel(value) {
   if (typeof value === 'string') {
-    const [providerID, rest] = value.split('/');
-    if (!providerID || !rest) return undefined;
+    const slash = value.indexOf('/');
+    const providerID = value.slice(0, slash);
+    const rest = value.slice(slash + 1);
+    if (slash <= 0 || !rest) return undefined;
     const [id, variant] = rest.split('#');
     return { providerID, id, ...(variant ? { variant } : {}) };
   }

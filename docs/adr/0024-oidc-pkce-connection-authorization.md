@@ -1,6 +1,6 @@
-# ADR 0023: OpenID Connect authorization for connections
+# ADR 0024: OpenID Connect authorization for connections
 
-- Status: Accepted
+- Status: Superseded by ADR 0025
 - Date: 2026-11-01
 - Deciders: maintainers
 - Supersedes: —

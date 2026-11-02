@@ -27,6 +27,9 @@ verifies that session events carry that session's directory. Non-session events
 use the server's main directory. Scoped session lists filter by `directory`;
 unscoped lists include every project for the Chat Library's recent group.
 
+Agent model references split at the first provider separator and retain the
+complete model ID and optional variant, matching the pinned OpenCode schema.
+
 Its intended job is to simulate the server behaviors this client depends on, including:
 
 - project discovery

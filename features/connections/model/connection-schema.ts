@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import { parseConnectionHeaders, type ConnectionHeaderError } from '@/shared/contracts/connection-headers';
-import { oidcConfigError, type OidcConfigError } from '@/shared/contracts/connection-oidc';
-import { isValidServerUrl } from '@/shared/contracts/server-url';
+import { isSecureOidcUrl, oidcConfigError, type OidcConfigError } from '@/shared/contracts/connection-oidc';
+import { isValidServerUrl, normalizeServerUrl } from '@/shared/contracts/server-url';
 
 const headerErrors: Record<ConnectionHeaderError, string> = {
   name: 'headerName', value: 'headerValue', duplicate: 'headerDuplicate', reserved: 'headerReserved', limit: 'headerLimit',
@@ -24,6 +24,9 @@ export const connectionSchema = z.object({
   const parsed = parseConnectionHeaders(draft.headers);
   if (parsed.error) context.addIssue({ code: 'custom', path: ['headers'], message: `settings:connection.errors.${headerErrors[parsed.error]}` });
   if (draft.oidc.enabled) {
+    if (!isSecureOidcUrl(normalizeServerUrl(draft.serverUrl).displayUrl)) context.addIssue({
+      code: 'custom', path: ['serverUrl'], message: 'settings:connection.errors.oidcSecureUrl',
+    });
     const error = oidcConfigError(draft.oidc);
     if (error) context.addIssue({ code: 'custom', path: ['oidc'], message: `settings:connection.errors.${oidcErrors[error]}` });
   }

@@ -1,10 +1,11 @@
+import { readPermissionRules, writePermissionRules } from '@/shared/protocol/opencode/extensions/permission-draft';
 import { describe, expect, it } from 'vitest';
 
 import { addPlugin, parseConfigText, readAgents, readCommands, readMcpServers, readPlugins, removeAgent, removeCommand, removeMcpServer, setAgent, setCommand, setMcpServer } from '@/shared/protocol/opencode/extensions/jsonc';
 import { buildExtensionRows, splitRows } from '@/shared/protocol/opencode/extensions/snapshot';
 import { visibleSharedRows } from '@/shared/presentation/extension-rows';
 import { configBackupPath, restoreConfigBackup, writeConfigTransaction, type ShellResult, type TransactionIo } from '@/shared/protocol/opencode/extensions/transaction';
-import { assertSkillId, skillDocument } from '@/shared/protocol/opencode/extensions/skills';
+import { assertSkillId, skillDocument, parseSkillDocument, updateSkillDocument } from '@/shared/protocol/opencode/extensions/skills';
 import { assertMarkdownName, buildAgentMarkdown, buildCommandMarkdown, isEditableMarkdownPath, markdownRoots, parseAgentMarkdown, parseCommandMarkdown, updateAgentMarkdown, updateCommandMarkdown } from '@/shared/protocol/opencode/extensions/markdown';
 import { ConfigAgent } from '@opencode/schema/config/agent';
 import { ConfigCommand } from '@opencode/schema/config/command';
@@ -347,5 +348,50 @@ describe('JSONC agents', () => {
     const removed = removeAgent(withAgent, 'reviewer');
     expect(readAgents(parseConfigText(removed))).not.toHaveProperty('reviewer');
     expect(() => setAgent('{\n  "agent": { "reviewer": {} }\n}\n', { id: 'reviewer', mode: 'subagent', instructions: 'x' })).toThrow(/legacy "agent"/i);
+  });
+});
+
+describe('structured extension drafts', () => {
+  it('keeps skill comments, unknown metadata and line endings when changing known fields', () => {
+    const original = '---\r\n# keep this comment\r\nname: Reviewer\r\ndescription: Before\r\nmetadata:\r\n  custom: keep\r\n  opencode/autoinvoke: false\r\nunknown: [one, two]\r\n---\r\n\r\nOld instructions\r\n';
+    const updated = updateSkillDocument(original, { id: 'reviewer', name: 'Reviewer', description: 'After', instructions: 'New instructions', autoinvoke: true });
+    expect(updated).toContain('# keep this comment\r\n');
+    expect(updated).toContain('custom: keep\r\n');
+    expect(parseSkillDocument(updated).data?.unknown).toEqual(['one', 'two']);
+    expect(updated).not.toMatch(/(?<!\r)\n/);
+    expect(parseSkillDocument(updated)).toMatchObject({ name: 'Reviewer', description: 'After', instructions: 'New instructions', autoinvoke: true });
+    expect(() => parseSkillDocument('---\nmetadata: [bad]\n---\nBody')).toThrow();
+    expect(() => updateSkillDocument(original, { id: 'reviewer', name: 'Reviewer', instructions: '   ' })).toThrow();
+  });
+
+  it('preserves ordered permission rules and uses the source editor for legacy or custom shapes', () => {
+    const rules = [{ action: 'read', resource: '/work/**', effect: 'allow' as const }, { action: 'read', resource: '/work/private/**', effect: 'deny' as const }];
+    for (const format of ['json', 'yaml'] as const) expect(readPermissionRules(writePermissionRules(rules, format), format)).toEqual(rules);
+    expect(readPermissionRules('', 'yaml')).toEqual([]);
+    expect(readPermissionRules('read: ask', 'yaml')).toBeUndefined();
+    expect(readPermissionRules('[{"action":"read","resource":"*","effect":"allow","custom":true}]', 'json')).toBeUndefined();
+    expect(readPermissionRules('- action: read\n  resource: "*"\n  effect: unexpected', 'yaml')).toBeUndefined();
+    expect(readPermissionRules('invalid', 'json')).toBeUndefined();
+    expect(writePermissionRules([], 'json')).toBe('');
+  });
+
+  it('preserves MCP timeout, credentials and disabled state when editing its URL', () => {
+    const original = JSON.stringify({ mcp: { servers: { remote: { type: 'remote', url: 'https://old.test', disabled: true, timeout: 9000, headers: { Authorization: 'keep' }, oauth: { client_id: 'original' } } } } });
+    const next = readMcpServers(parseConfigText(setMcpServer(original, 'remote', { type: 'remote', url: 'https://new.test' }, 'edit')));
+    expect(next.remote).toMatchObject({ url: 'https://new.test', disabled: true, timeout: 9000, headers: { Authorization: 'keep' }, oauth: { client_id: 'original' } });
+  });
+
+  it('matches the official contract for models with slash-containing IDs and variants', () => {
+    const result = Schema.decodeUnknownSync(ConfigAgent.Info)({ mode: 'subagent', model: 'openai/openai/gpt-4.1-mini#fast', system: 'Review.' });
+    expect(result.model).toEqual({ providerID: 'openai', model: 'openai/gpt-4.1-mini', variant: 'fast' });
+  });
+
+  it('preserves an existing object model and its variant during an unrelated JSONC agent edit', () => {
+    const model = { providerID: 'openai', model: 'gpt-4.1-mini', variant: 'fast' };
+    const source = JSON.stringify({ agents: { reviewer: { model, system: 'Before', mode: 'subagent', custom: 'keep' } } });
+    const next = parseConfigText(setAgent(source, { id: 'reviewer', mode: 'subagent', instructions: 'After', model: 'openai/gpt-4.1-mini#fast' }));
+    expect(readAgents(next).reviewer).toMatchObject({ model, system: 'After', custom: 'keep' });
+    const changed = parseConfigText(setAgent(source, { id: 'reviewer', mode: 'subagent', instructions: 'After', model: 'openai/other' }));
+    expect(readAgents(changed).reviewer.model).toBe('openai/other');
   });
 });

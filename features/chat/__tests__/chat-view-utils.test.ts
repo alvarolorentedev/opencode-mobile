@@ -1,8 +1,27 @@
 import { describe, expect, it } from 'vitest';
 
-import { getChatActivityState, getCurrentTurnActivityKey } from '@/features/chat/ui/chat-view-utils';
+import { getChatActivityState, getCurrentTurnActivityKey, getEntryModelLabel } from '@/features/chat/ui/chat-view-utils';
 import { getModelVariantLabel } from '@/features/ai/model/model-variant-label';
 import type { TranscriptRow } from '@/shared/presentation/transcript';
+
+describe('transcript model labels', () => {
+  const labels = new Map([['openai/gpt-4.1-mini', 'GPT-4.1 mini']]);
+
+  it('prefers the catalog label', () => {
+    expect(getEntryModelLabel({ role: 'assistant', model: { providerID: 'openai', modelID: 'gpt-4.1-mini' } }, labels)).toBe('GPT-4.1 mini');
+  });
+
+  it('falls back to the raw model id when the catalog misses', () => {
+    expect(getEntryModelLabel({ role: 'assistant', model: { providerID: 'retired', modelID: 'old-model' } }, labels)).toBe('old-model');
+    expect(getEntryModelLabel({ role: 'assistant', model: { providerID: 'retired', modelID: 'old-model' } }, undefined)).toBe('old-model');
+  });
+
+  it('returns nothing without an assistant model', () => {
+    expect(getEntryModelLabel({ role: 'assistant' }, labels)).toBeUndefined();
+    expect(getEntryModelLabel({ role: 'user', model: { providerID: 'openai', modelID: 'gpt-4.1-mini' } }, labels)).toBeUndefined();
+    expect(getEntryModelLabel({ role: 'assistant', model: { providerID: 'openai', modelID: '' } }, labels)).toBeUndefined();
+  });
+});
 
 describe('model variant labels', () => {
   it('translates common variants and preserves unknown server IDs', () => {

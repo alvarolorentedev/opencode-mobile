@@ -19,6 +19,9 @@ import type { ModelOption } from '@/shared/contracts/model-options';
 
 type ModelPickerProps = {
   disabled?: boolean;
+  testID?: string;
+  fallbackLabel?: string;
+  inheritChoice?: { label: string; description: string; selected: boolean; onSelect: () => void };
   compact?: boolean;
   reasoningLabel?: string;
   selectedVariant?: string;
@@ -38,7 +41,7 @@ function getSelectedModelLabel(models: ModelOption[], selectedModelId: string | 
   return selected ? `${selected.label} · ${selected.providerLabel}` : fallback;
 }
 
-export function ModelPicker({ disabled = false, models, onSelect, recentModelIds, selectedModelId, slim = false, compact = false, reasoningLabel, selectedVariant, onVariantChange, autoRoutingEnabled = false, autoRoutingAvailable = false, onAutoRoutingChange }: ModelPickerProps) {
+export function ModelPicker({ disabled = false, models, onSelect, recentModelIds, selectedModelId, slim = false, compact = false, reasoningLabel, selectedVariant, onVariantChange, autoRoutingEnabled = false, autoRoutingAvailable = false, onAutoRoutingChange, testID = 'chat-model-picker', fallbackLabel, inheritChoice }: ModelPickerProps) {
   const { t } = useTranslation();
   const palette = usePalette();
   const [visible, setVisible] = useState(false);
@@ -86,10 +89,10 @@ export function ModelPicker({ disabled = false, models, onSelect, recentModelIds
   const selected = models.find((model) => model.id === selectedModelId);
   const selectedModelLabel = autoRoutingEnabled
     ? t('chat:modelPicker.autoRouting')
-    : getSelectedModelLabel(models, selectedModelId, t('chat:modelPicker.selectModel'));
+    : inheritChoice?.selected ? inheritChoice.label : getSelectedModelLabel(models, selectedModelId, fallbackLabel || t('chat:modelPicker.selectModel'));
   const selectedTriggerLabel = autoRoutingEnabled
     ? t('chat:modelPicker.autoRouting')
-    : selected?.label || t('chat:modelPicker.selectModel');
+    : inheritChoice?.selected ? inheritChoice.label : selected?.label || fallbackLabel || t('chat:modelPicker.selectModel');
   const variantIds = [undefined, ...(selected?.variants.map((variant) => variant.id) ?? [])];
   const showVariantPicker = !autoRoutingEnabled && variantIds.length > 1 && onVariantChange;
   const recentModels = useMemo(() => (recentModelIds ?? [])
@@ -129,25 +132,30 @@ export function ModelPicker({ disabled = false, models, onSelect, recentModelIds
     <>
       {compact ? (
         <Pressable
-          testID="chat-model-picker-trigger"
+          testID={`${testID}-trigger`}
           accessibilityRole="button"
           accessibilityLabel={`${selectedModelLabel}${reasoningLabel ? ` · ${reasoningLabel}` : ''}`}
-          accessibilityState={{ disabled: disabled || models.length === 0 }}
-          disabled={disabled || models.length === 0}
+          accessibilityState={{ disabled: disabled || (models.length === 0 && !inheritChoice) }}
+          disabled={disabled || (models.length === 0 && !inheritChoice)}
           onPress={() => { Keyboard.dismiss(); setVisible(true); }}
           style={({ pressed }) => [styles.summary, { opacity: disabled ? 0.45 : pressed ? 0.7 : 1 }]}>
           <Text maxFontSizeMultiplier={1.5} numberOfLines={1} className={cn("text-foreground")} style={[styles.summaryModel]}>{selectedTriggerLabel}</Text>
           {reasoningLabel ? <Text maxFontSizeMultiplier={1.5} numberOfLines={1} className={cn("text-foreground")} style={[styles.summaryReasoning]}>{reasoningLabel}</Text> : null}
         </Pressable>
       ) : (
-        <Button variant={visible ? 'secondary' : 'outline'} disabled={disabled || models.length === 0}
+        <Button variant={visible ? 'secondary' : 'outline'} disabled={disabled || (models.length === 0 && !inheritChoice)}
           onPress={() => setVisible(true)} className={cn('flex-1 min-w-0', slim && 'px-2')}
-          testID="chat-model-picker-trigger" accessibilityLabel={selectedModelLabel}>
+          testID={`${testID}-trigger`} accessibilityLabel={selectedModelLabel}>
           {renderProviderIcon(selected?.providerID, slim ? 14 : 16, palette.tint)}
           <UiText numberOfLines={1} maxFontSizeMultiplier={1.5}>{selectedModelLabel}</UiText>
         </Button>
       )}
-      <OverlaySheet visible={visible} title={t('chat:modelPicker.chooseModel')} onClose={close} testID="chat-model-picker" scrollable={false}>
+      <OverlaySheet visible={visible} title={t('chat:modelPicker.chooseModel')} onClose={close} testID={testID} scrollable={false}>
+              {inheritChoice ? <Pressable accessibilityRole="radio" accessibilityState={{ checked: inheritChoice.selected }}
+                onPress={() => { close(); inheritChoice.onSelect(); }} className="min-h-row flex-row items-center gap-3 rounded-control border border-border bg-background p-3 m-3">
+                <View className="flex-1 gap-1"><UiText>{inheritChoice.label}</UiText><UiText variant="description" className="text-muted-foreground">{inheritChoice.description}</UiText></View>
+                {inheritChoice.selected ? <MaterialCommunityIcons name="check" size={20} color={palette.tint} /> : null}
+              </Pressable> : null}
               {onAutoRoutingChange ? (
                 <Pressable
                   accessibilityRole="switch"
@@ -205,7 +213,7 @@ export function ModelPicker({ disabled = false, models, onSelect, recentModelIds
                   placeholderTextColor={palette.muted}
                   selectionColor={palette.tint}
                   className="border-0 shadow-none bg-transparent dark:bg-transparent px-0 py-0" style={styles.searchInput}
-                  testID="chat-model-picker-search"
+                  testID={`${testID}-search`}
                   value={query}
                   onChangeText={setQuery}
                 />

@@ -1,25 +1,16 @@
-import { createHash } from 'node:crypto';
-
-import { base64urlnopad } from '@scure/base';
 import { describe, expect, it, vi } from 'vitest';
 
-import { OIDC_DEFAULT_TOKEN_HEADER, normalizeOidcIssuer, oidcConfigError, oidcSessionKey, parseConnectionOidc, sameConnectionOidc, toConnectionOidc } from '@/shared/contracts/connection-oidc';
-import { buildOidcAuthorizationUrl, issuerMatches, parseOidcRedirect } from '@/shared/auth/oidc/redirect';
+import { OIDC_DEFAULT_TOKEN_HEADER, isSecureOidcUrl, isValidOidcRedirectUri, normalizeOidcIssuer, oidcConfigError, oidcSessionKey, parseConnectionOidc, sameConnectionOidc, toConnectionOidc } from '@/shared/contracts/connection-oidc';
+import { issuerMatches, parseOidcRedirect } from '@/shared/auth/oidc/redirect';
 import { parseOidcDiscovery } from '@/shared/auth/oidc/discovery';
 import { parseOidcTokenResponse } from '@/shared/auth/oidc/token-endpoint';
-import { createPkcePair, sha256Base64Url } from '@/shared/auth/oidc/pkce';
 
-vi.mock('expo-crypto', () => ({
-  CryptoDigestAlgorithm: { SHA256: 'SHA-256' },
-  digest: async (_algorithm: string, bytes: Uint8Array) => {
-    const digest = createHash('sha256').update(Buffer.from(bytes)).digest();
-    return digest.buffer.slice(digest.byteOffset, digest.byteOffset + digest.byteLength);
-  },
-  getRandomBytesAsync: async (count: number) => Uint8Array.from({ length: count }, (_, index) => index + 1),
-}));
+
+vi.mock('expo/fetch', () => ({ fetch: vi.fn() }));
 
 describe('OpenID Connect contract', () => {
   it('normalizes issuers and rejects unsafe ones', () => {
+    expect(normalizeOidcIssuer('HTTPS://login.example.com/realms/main/')).toBe('https://login.example.com/realms/main');
     expect(normalizeOidcIssuer('https://login.example.com/realms/main/')).toBe('https://login.example.com/realms/main');
     expect(normalizeOidcIssuer(' login.example.com/realms/main ')).toBe('https://login.example.com/realms/main');
     expect(normalizeOidcIssuer('https://user:secret@idp.example.com')).toBe('');
@@ -55,28 +46,14 @@ describe('OpenID Connect contract', () => {
 });
 
 describe('authorization redirect', () => {
-  it('builds an S256 authorization request', () => {
-    const url = new URL(buildOidcAuthorizationUrl({
-      authorizationEndpoint: 'https://idp.test/authorize',
-      clientId: 'app',
-      redirectUri: 'opencodemobile://oidc-callback',
-      scopes: 'openid offline_access',
-      state: 'state-1',
-      codeChallenge: 'challenge-1',
-    }));
-    expect(url.searchParams.get('response_type')).toBe('code');
-    expect(url.searchParams.get('code_challenge_method')).toBe('S256');
-    expect(url.searchParams.get('code_challenge')).toBe('challenge-1');
-    expect(url.searchParams.get('redirect_uri')).toBe('opencodemobile://oidc-callback');
-  });
-
-  it('reads a code from the query or the fragment', () => {
-    expect(parseOidcRedirect('opencodemobile://oidc-callback?code=abc&state=xyz')).toEqual({ code: 'abc', state: 'xyz' });
-    expect(parseOidcRedirect('https://app.test/cb#code=abc&state=xyz')).toEqual({ code: 'abc', state: 'xyz' });
-    expect(parseOidcRedirect('opencodemobile://oidc-callback?error=access_denied&error_description=Denied')).toMatchObject({
-      error: 'access_denied',
-      errorDescription: 'Denied',
-    });
+  it('reads a code only from the configured app callback', () => {
+    const callback = 'opencodemobile://oidc-callback';
+    expect(parseOidcRedirect(`${callback}?code=abc&state=xyz`, callback)).toEqual({ code: 'abc', state: 'xyz' });
+    expect(parseOidcRedirect(`${callback}#code=abc&state=xyz`, callback)).toEqual({ code: 'abc', state: 'xyz' });
+    for (const url of ['https://app.test/cb?code=abc', 'other://oidc-callback?code=abc', `${callback}/extra?code=abc`,
+      `${callback}?code=a&code=b&state=x`, `${callback}?state=x#state=y&code=a`, `${callback}?code=a&error=denied`, 'malformed?code=abc']) {
+      expect(() => parseOidcRedirect(url, callback)).toThrow();
+    }
   });
 
   it('requires the discovery document to name the configured issuer', () => {
@@ -105,15 +82,26 @@ describe('token response', () => {
     });
     expect(parseOidcTokenResponse({ access_token: 'access' }, 0)).toMatchObject({ accessToken: 'access', expiresAt: 300_000, tokenType: 'Bearer' });
     expect(parseOidcTokenResponse({ refresh_token: 'refresh' }, 0)).toBeUndefined();
+    expect(parseOidcTokenResponse({ access_token: 'invalid\r\nvalue' })).toBeUndefined();
+    expect(parseOidcTokenResponse({ access_token: 'access', refresh_token: 'invalid\u0000value' })).toBeUndefined();
+    expect(parseOidcTokenResponse({ access_token: 'invalid\u0100value' })).toBeUndefined();
   });
 });
 
-describe('PKCE', () => {
-  it('derives an RFC 7636 S256 challenge', async () => {
-    const pair = await createPkcePair();
-    const expected = base64urlnopad.encode(createHash('sha256').update(pair.verifier).digest());
-    expect(pair.challenge).toBe(expected);
-    expect(pair.challenge).toBe(await sha256Base64Url(pair.verifier));
-    expect(pair.verifier).toMatch(/^[A-Za-z0-9\-_]{43}$/);
+describe('OIDC endpoint security', () => {
+  it.each(['http://idp.test', 'http://localhost.evil.test', 'https://user:private@idp.test', 'https://idp.test/#fragment', 'https://idp.test/with space', 'file:///token', 'https:invalid'])('rejects insecure endpoint %s', (url) => {
+    expect(isSecureOidcUrl(url)).toBe(false);
+    expect(normalizeOidcIssuer(url)).toBe('');
+    expect(parseOidcDiscovery({ issuer: 'https://idp.test', authorization_endpoint: url, token_endpoint: 'https://idp.test/token' }, 'https://idp.test')).toBeUndefined();
+    expect(parseOidcDiscovery({ issuer: 'https://idp.test', authorization_endpoint: 'https://idp.test/auth', token_endpoint: url }, 'https://idp.test')).toBeUndefined();
+  });
+  it.each(['http://localhost:8080', 'http://127.0.0.1:8080', 'http://[::1]:8080'])('permits only explicit loopback HTTP development endpoints %s', (url) => {
+    expect(isSecureOidcUrl(url)).toBe(true);
+  });
+  it('permits HTTPS discovered endpoints on a different provider host', () => {
+    expect(parseOidcDiscovery({ issuer: 'https://idp.test', authorization_endpoint: 'https://login.idp.test/auth', token_endpoint: 'https://tokens.idp.test/token' }, 'https://idp.test')).toBeDefined();
+  });
+  it.each(['javascript:alert(1)', 'data:text/html,hello', 'file:///cb', 'https://app.test/oidc-callback', 'exp://localhost/--/oidc-callback', 'other://oidc-callback', 'opencodemobile://other', 'opencodemobile://oidc-callback?code=x'])('rejects unregistered redirect URI %s', (uri) => {
+    expect(isValidOidcRedirectUri(uri)).toBe(false);
   });
 });

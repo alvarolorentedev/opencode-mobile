@@ -5,6 +5,17 @@ import { modelSelectionSchema } from '@/shared/protocol/opencode/extensions/cont
 import { slugifySkillId } from '@/shared/contracts/skill-id';
 
 const required = z.string().refine((value) => Boolean(value.trim()), 'common:validation.required');
+export const pluginSchema = z.object({ target: required });
+export const mcpEditorSchema = z.object({
+  name: required, type: z.enum(['local', 'remote']), url: z.string(), executable: z.string(), arguments: z.array(z.object({ value: z.string() })),
+}).superRefine((draft, context) => {
+  const key = draft.type === 'remote' ? 'url' : 'executable';
+  if (!draft[key].trim()) context.addIssue({ code: 'custom', path: [key], message: 'common:validation.required' });
+  if (draft.type === 'remote' && draft.url.trim()) {
+    try { const url = new URL(draft.url); if (!['http:', 'https:'].includes(url.protocol)) throw new Error(); }
+    catch { context.addIssue({ code: 'custom', path: ['url'], message: 'common:validation.invalid' }); }
+  }
+});
 export const mcpSchema = z.object({ name: required, type: z.enum(['local', 'remote']), target: required }).superRefine((draft, context) => {
   if (draft.type !== 'local') return;
   try {
@@ -39,6 +50,7 @@ export const agentSchema = z.object({
 });
 
 export type McpDraft = z.infer<typeof mcpSchema>;
+export type McpEditorDraft = z.infer<typeof mcpEditorSchema>;
 export type SkillDraft = z.infer<typeof skillSchema>;
 export type CommandDraft = z.infer<typeof commandSchema>;
 export type AgentDraft = z.infer<typeof agentSchema>;

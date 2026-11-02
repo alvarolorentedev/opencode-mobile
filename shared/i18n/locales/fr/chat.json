@@ -122,6 +122,15 @@
   },
   "composer": {
     "chooseAssistantMode": "Choisissez le mode de l’assistant",
+    "agentDescriptions": {
+      "build": "Agent par défaut qui modifie les fichiers et exécute des outils.",
+      "plan": "Agent en lecture seule pour explorer et planifier.",
+      "general": "Agent général pour la recherche et les tâches en plusieurs étapes.",
+      "explore": "Exploration rapide et en lecture seule du code.",
+      "summary": "Agent de maintenance qui résume les conversations.",
+      "title": "Agent de maintenance qui génère les titres de discussion.",
+      "compaction": "Agent de maintenance qui compacte un contexte long."
+    },
     "autoApproveEnabled": "Autoriser automatiquement",
     "askPermission": "Demander avant chaque action",
     "conversationMode": "Mode conversation",

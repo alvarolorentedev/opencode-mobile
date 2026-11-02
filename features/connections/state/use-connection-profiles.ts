@@ -78,11 +78,11 @@ export function useConnectionProfiles({ settings, switchConnection, updateSettin
     const oldHeaders = previous ? await getProfileHeaders(profile.id) : {};
     const oldCertificate = previous ? await getProfileCertificate(profile.id) : undefined;
     if (previous && (oldPassword !== values.password || JSON.stringify(oldHeaders) !== JSON.stringify(values.headers) || JSON.stringify(oldCertificate) !== JSON.stringify(values.certificate) || JSON.stringify(previous.oidc) !== JSON.stringify(values.oidc))) await clearCapabilitiesSnapshots(getConnectionScope(previous));
-    // A changed issuer or client id is a different session; retire the old one
+    // A changed connection scope, issuer or client id is a different session; retire the old one
     // instead of leaving an unusable refresh token behind.
-    if (previous?.oidc && (!values.oidc || previous.oidc.issuer !== values.oidc.issuer || previous.oidc.clientId !== values.oidc.clientId)) {
+    if (previous?.oidc && (!values.oidc || previous.oidc.issuer !== values.oidc.issuer || previous.oidc.clientId !== values.oidc.clientId || getConnectionScope(previous) !== getConnectionScope(profile))) {
       const { signOutOidc } = await import('@/shared/auth/oidc/session');
-      await signOutOidc({ serverUrl: previous.serverUrl, username: previous.username }, previous.oidc).catch(() => undefined);
+      await signOutOidc({ serverUrl: previous.serverUrl, username: previous.username }, previous.oidc);
     }
     await saveProfilePassword(profile.id, values.password);
     await saveProfileHeaders(profile.id, values.headers);
@@ -107,16 +107,16 @@ export function useConnectionProfiles({ settings, switchConnection, updateSettin
     if (findMatchingProfile(stored, latest.current.settings)?.id === id) throw new Error('The active connection cannot be deleted.');
     const next = stored.filter((profile) => profile.id !== id);
     const profile = stored.find((item) => item.id === id);
+    if (profile?.oidc) {
+      const { signOutOidc } = await import('@/shared/auth/oidc/session');
+      await signOutOidc(profile, profile.oidc);
+    }
     if (profile) await onRemoved?.(profile);
     await saveMetadata(next);
     setProfiles(next);
     await deleteProfilePassword(id);
     await deleteProfileHeaders(id);
     await deleteProfileCertificate(id);
-    if (profile?.oidc) {
-      const { signOutOidc } = await import('@/shared/auth/oidc/session');
-      await signOutOidc(profile, profile.oidc).catch(() => undefined);
-    }
     if (profile?.serverUrl) {
       const origin = connectionOrigin(profile.serverUrl);
       const stillUsed = origin && next.some((entry) => connectionOrigin(entry.serverUrl) === origin);

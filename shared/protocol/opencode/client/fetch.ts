@@ -4,9 +4,10 @@ import { recordBytes, recordRequest } from '@/shared/network/data-usage';
 import { recordRequestStart } from '@/shared/network/request-stats';
 import { telemetry } from '@/shared/observability/client';
 import { getConnectCredentialError } from '@/shared/contracts/cloud-link';
-import { resolveAuthorizedHeaders, refreshOidcAuthorization } from '@/shared/protocol/opencode/client/authorization';
+import { assertOidcRequestTarget, resolveAuthorizedHeaders, refreshOidcAuthorization } from '@/shared/protocol/opencode/client/authorization';
 import { classifyConnectionFailure } from '@/shared/protocol/opencode/client/errors';
 import { classifyHttpOperation } from '@/shared/protocol/opencode/client/operation';
+import { oidcTokenHeader } from '@/shared/contracts/connection-oidc';
 import { joinUrlPath } from '@/shared/contracts/server-url';
 import type { OpencodeConnectionSettings } from '@/shared/protocol/opencode/client/types';
 import { fetchWithReadDeadline } from '@/shared/protocol/opencode/client/read-deadline';
@@ -92,10 +93,11 @@ async function fetchConnectionInner(input: RequestInfo | URL, init?: RequestInit
     const error = getConnectCredentialError(settings.connect, settings.password);
     if (error) throw new Error(error);
   }
-  if (settings?.certificate) await ensureConnectionTrust(settings);
-  // RN's XHR ignores redirect rejection. Use Expo for Cloud Link and one-use
-  // local pairing requests; other manual connections retain their transport.
-  const transport = settings?.connect || init?.redirect === 'error'
+  if (settings?.oidc) assertOidcRequestTarget(settings, retryUrl);
+  if (settings?.certificate || settings?.oidc) await ensureConnectionTrust(settings);
+  // RN's XHR ignores redirect rejection. Expo enforces it for OIDC,
+  // Cloud Link and one-use pairing; legacy manual transports stay unchanged.
+  const transport = settings?.connect || settings?.oidc || init?.redirect === 'error'
     ? (input: RequestInfo | URL, init?: RequestInit) => expoFetch(input, { ...init, redirect: 'error' })
     : fetch;
   const url = typeof input === 'string' ? input : input instanceof URL ? input.toString() : input.url;
@@ -109,9 +111,10 @@ async function fetchConnectionInner(input: RequestInfo | URL, init?: RequestInit
   // read.
   const inputMethod = typeof input === 'object' && 'method' in input ? input.method : undefined;
   const replayableBody = (init?.body === undefined || init?.body === null || typeof init.body === 'string')
-    && (!inputMethod || /^(GET|HEAD)$/i.test(inputMethod) || init?.body !== undefined);
+    && (!inputMethod || /^(GET|HEAD)$/i.test(inputMethod) || typeof init?.body === 'string');
+  const inputHeaders = init?.headers ?? (typeof input === 'object' && 'headers' in input ? input.headers : undefined);
   let requestInit: RequestInit | undefined = settings?.oidc
-    ? { ...init, headers: await resolveAuthorizedHeaders(settings, init?.headers) }
+    ? { ...init, headers: await resolveAuthorizedHeaders(settings, inputHeaders) }
     : init;
   let reauthorized = false;
 
@@ -125,18 +128,18 @@ async function fetchConnectionInner(input: RequestInfo | URL, init?: RequestInit
       // and surfaces the "Sign in again" action.
       if (settings?.oidc && !reauthorized && (response.status === 401 || response.status === 403)) {
         reauthorized = true;
-        await refreshOidcAuthorization(settings);
+        await refreshOidcAuthorization(settings, new Headers(requestInit?.headers).get(oidcTokenHeader(settings.oidc)) ?? undefined);
         if (!replayableBody) {
           finishStats({ status: response.status });
           return response;
         }
         telemetry.counter('http.retry', 1, { operation, reason: 'oidc' });
         await response.body?.cancel().catch(() => undefined);
-        requestInit = { ...init, headers: await resolveAuthorizedHeaders(settings, init?.headers) };
+        requestInit = { ...init, headers: await resolveAuthorizedHeaders(settings, inputHeaders) };
         finishStats({ status: response.status, retried: true });
         continue;
       }
-      if (shouldRetryRead({ method, url, attempt, elapsedMs: Date.now() - startedAt, status: response.status })) {
+      if (!reauthorized && shouldRetryRead({ method, url, attempt, elapsedMs: Date.now() - startedAt, status: response.status })) {
         telemetry.counter('http.retry', 1, { operation });
         finishStats({ status: response.status, retried: true });
         // Drain tiny retryable gateway errors so the connection can be reused,
@@ -149,7 +152,7 @@ async function fetchConnectionInner(input: RequestInfo | URL, init?: RequestInit
       return response;
     } catch (error) {
       finishStats({ error });
-      if (!shouldRetryRead({ method, url, attempt, elapsedMs: Date.now() - startedAt, error })) throw error;
+      if (reauthorized || !shouldRetryRead({ method, url, attempt, elapsedMs: Date.now() - startedAt, error })) throw error;
       telemetry.counter('http.retry', 1, { operation });
       await abortableDelay(250 + Math.round(Math.random() * 250), signal);
     }

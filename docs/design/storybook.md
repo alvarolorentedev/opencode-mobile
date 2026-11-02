@@ -28,6 +28,10 @@ runs the same build in the `ci.yml` static job.
 | `.storybook/stubs/vector-icons.tsx` | Placeholder icon component because Expo icon fonts are not loaded on web |
 | `.storybook/stories/` | Cross-cutting stories such as design foundations |
 
+The Vite pre-transform also resolves provider PNG requires to asset imports and
+omits Expo’s declarations-only global module so the production model picker
+can render its real web image implementation.
+
 Stories are co-located with components:
 
 ```text

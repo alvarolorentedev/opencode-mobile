@@ -23,6 +23,7 @@ type TranscriptMessageProps = {
   entry: TranscriptEntry;
   flat?: boolean;
   fontSize: number;
+  modelLabel?: string;
   onCopy: (entry: TranscriptEntry) => void;
   onFork?: (entry: TranscriptEntry) => void;
   onRevert?: (entry: TranscriptEntry) => void;
@@ -37,6 +38,7 @@ function TranscriptMessageImpl({
   entry,
   flat = false,
   fontSize,
+  modelLabel,
   onCopy,
   onFork,
   onRevert,
@@ -71,7 +73,10 @@ function TranscriptMessageImpl({
                   backgroundColor: isUser ? palette.bubbleUser : palette.bubbleAssistant,
                   borderColor: copied ? palette.tint : isUser ? palette.bubbleUser : palette.border,
                 }, slimSpacing, copied && !flat ? styles.messageBubbleCopied : null]}><View className={cn(stylesClasses.messageMeta, slim && "gap-2")}>
-            <Text style={{ color: metaColor }} variant="label">{isUser ? t('chat:cards.you') : t('chat:cards.opencode')}</Text>
+            <View className={cn(stylesClasses.messageMetaAuthor)}>
+              <Text style={{ color: metaColor }} variant="label">{isUser ? t('chat:cards.you') : t('chat:cards.opencode')}</Text>
+              {!isUser && modelLabel ? <Text numberOfLines={1} style={{ color: metaColor, opacity: 0.8 }} variant="label">{modelLabel}</Text> : null}
+            </View>
             <View className={cn(stylesClasses.messageMetaRight)}>
               <Button accessibilityLabel={t('common:actions.copy')} onPress={() => onCopy(entry)} variant="ghost" size="icon" className={cn(stylesClasses.messageActionButton)} ><Icon name={"content-copy"} size={slim ? 14 : 16} color={palette.muted} /></Button>
               {copied ? (
@@ -118,6 +123,7 @@ function areTranscriptMessagePropsEqual(prev: TranscriptMessageProps, next: Tran
     prev.copied === next.copied &&
     prev.speaking === next.speaking &&
     prev.canSpeak === next.canSpeak &&
+    prev.modelLabel === next.modelLabel &&
     prev.onCopy === next.onCopy &&
     prev.onFork === next.onFork &&
     prev.onRevert === next.onRevert &&
@@ -149,8 +155,9 @@ const stylesClasses = {
   "messageRowUser": "items-end",
   "messageTouchable": "self-stretch rounded-[24px]",
   "messageBubble": "rounded-[24px] border px-4 py-3.5 gap-2.5 self-stretch min-w-0 overflow-hidden",
-  "messageMeta": "flex-row justify-between items-center gap-3",
-  "messageMetaRight": "flex-row items-center gap-1.5",
+  "messageMeta": "flex-row justify-between items-start gap-3",
+  "messageMetaAuthor": "shrink min-w-0 gap-0.5",
+  "messageMetaRight": "flex-row items-center shrink-0 gap-1.5",
   "messageActionButton": "m-0",
   "copiedPill": "flex-row items-center gap-1 rounded-full px-2 py-1",
   "summaryRow": "flex-row flex-wrap gap-2",

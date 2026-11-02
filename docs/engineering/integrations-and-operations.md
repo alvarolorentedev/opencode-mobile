@@ -544,3 +544,17 @@ On OpenCode 1, `reasoning`, `responseScope`, and `includeNextActions` are implem
 That distinction is important when validating parity.
 
 The UI foundation and complex-form conventions are defined in [ADR 0013](../adr/0013-source-owned-ui-and-complex-forms.md) and the [design system](../design/design-system.md). Native renderers, Expo dependencies and FOSS module exclusions keep their existing contracts.
+
+### OIDC custom-CA redirect check
+
+The native delegate self-check verifies Expo redirect rejection for foreign hosts
+and HTTPS-to-HTTP downgrades, while retaining the legacy follow policy. On macOS:
+
+```bash
+xcrun swiftc -swift-version 6 modules/opencode-tls/ios/CertificateParser.swift modules/opencode-tls/ios/TrustStore.swift modules/opencode-tls/ios/OpencodeTlsURLProtocol.swift modules/opencode-tls/ios/TlsSessionDelegate.swift tests/native/oidc-redirect.swift -o /tmp/oidc-native-redirect-check
+/tmp/oidc-native-redirect-check
+```
+
+This checks native delegate behavior; it does not replace a real identity-provider
+browser round trip or custom-CA device validation. See
+[OIDC transport policy](../architecture/network-resilience.md#openid-connect-authorization).

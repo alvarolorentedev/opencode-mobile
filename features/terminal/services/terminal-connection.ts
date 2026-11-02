@@ -14,6 +14,7 @@ export type TerminalConnectionContext = {
   directory: string;
   serverContract: ServerContract;
   headers?: Record<string, string>;
+  rejectRedirects?: boolean;
 };
 
 export function createTerminalConnection({ id, context, publish }: {
@@ -89,7 +90,7 @@ export function createTerminalConnection({ id, context, publish }: {
       const current = context();
       const next = openTerminalWebSocket(getTerminalWebSocketUrl({ serverUrl: current.serverUrl, directory: current.directory }, id, {
         ticket: token.ticket, cursor: cursor === undefined ? undefined : String(cursor),
-      }, current.serverContract), current.headers);
+      }, current.serverContract), current.headers, current.rejectRedirects);
       socket = next;
       const sink = renderer;
       output = createTerminalOutputQueue({

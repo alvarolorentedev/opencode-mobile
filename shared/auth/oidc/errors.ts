@@ -1,6 +1,9 @@
 export type OidcAuthErrorCode =
   | 'discovery'
   | 'network'
+  | 'refresh-token-invalid'
+  | 'provider-unavailable'
+  | 'timeout'
   | 'sign-in-required'
   | 'sign-in-cancelled'
   | 'sign-in-failed'
@@ -26,3 +29,13 @@ export function isOidcAuthError(error: unknown): error is OidcAuthError {
 export const OIDC_SIGN_IN_REQUIRED_MESSAGE = 'Sign in with OpenID Connect to use this server.';
 
 export const OIDC_SIGN_IN_REJECTED_MESSAGE = 'OpenID Connect authentication was rejected. Sign in again to continue.';
+
+export function oidcErrorMessageKey(error: unknown) {
+  if (!isOidcAuthError(error)) return undefined;
+  switch (error.code) {
+    case 'provider-unavailable': return 'settings:connection.errors.oidcUnavailable';
+    case 'network': return 'settings:connection.errors.oidcNetwork';
+    case 'timeout': return 'settings:connection.errors.oidcTimeout';
+    default: return undefined;
+  }
+}

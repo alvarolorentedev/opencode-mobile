@@ -74,6 +74,9 @@ export function useConnectState({ controlPlaneUrl, setControlPlaneUrl, switchCon
   const pairingRef = useRef<ConnectPairing | undefined>(undefined);
   const apiRef = useRef<ConnectStoreApi | undefined>(undefined);
   const lock = useRef(false);
+  // The native purchase sheet must not own the shared action lock: its listener,
+  // AppState recovery and finalization have to run while the request is pending.
+  const purchaseRequestInFlight = useRef(false);
   const pendingClaim = useRef<PendingAccess | undefined>(undefined);
   const pendingPurchase = useRef<PendingConnectPurchase | undefined>(undefined);
   const scopeGeneration = useRef(0);
@@ -109,9 +112,9 @@ export function useConnectState({ controlPlaneUrl, setControlPlaneUrl, switchCon
     setPhase('idle'); setError(undefined); setNotice(undefined); setCanRetry(false);
   }, [setCanRetry, setControlPlaneUrl, setError, setInitialization, setNotice, setPhase]);
 
-  const perform = useCallback(async (action: () => Promise<boolean | void>, preserveError = false) => {
-    if (!enabled || lock.current) return false;
-    lock.current = true;
+  const perform = useCallback(async (action: () => Promise<boolean | void>, preserveError = false, guard: { current: boolean } = lock) => {
+    if (!enabled || guard.current || (guard !== lock && lock.current)) return false;
+    guard.current = true;
     transition({ type: 'started', preserveError });
     const startedAt = Date.now();
     const generation = scopeGeneration.current;
@@ -132,9 +135,11 @@ export function useConnectState({ controlPlaneUrl, setControlPlaneUrl, switchCon
       return false;
     }
     finally {
-      lock.current = false;
+      guard.current = false;
       if (generation === scopeGeneration.current) {
-        transition({ type: 'completed' });
+        // A detached purchase request can overlap the finalization it wakes up;
+        // that operation owns the busy state and will complete it itself.
+        if (!lock.current) transition({ type: 'completed' });
         if (nextControlPlane) changeControlPlane(nextControlPlane);
         else drainRef.current();
       }
@@ -153,6 +158,13 @@ export function useConnectState({ controlPlaneUrl, setControlPlaneUrl, switchCon
   }, purchase), [controlPlaneUrl, setNotice, setPhase, setPurchaseRecovery, store]);
 
   const availablePurchases = useCallback(() => listConnectPurchases({ apiRef, catalog: readCatalog(), store }), [readCatalog, store]);
+
+  const enqueuePurchases = useCallback((result: Purchase | Purchase[] | null | undefined) => {
+    for (const purchase of result ? (Array.isArray(result) ? result : [result]) : []) {
+      if (!finishedPurchases.current.has(purchase.id)) purchaseQueue.current.set(purchase.id, purchase);
+    }
+    drainRef.current();
+  }, []);
 
   const recoverSession = useCallback(() => recoverConnectSession({ pendingPurchase, sessionRef, availablePurchases, finishPurchase }), [availablePurchases, finishPurchase]);
 
@@ -236,8 +248,8 @@ export function useConnectState({ controlPlaneUrl, setControlPlaneUrl, switchCon
       if (!current()) return false;
       apiRef.current = api;
       subscriptions = [api.purchaseUpdatedListener((purchase) => {
-        if (!current() || finishedPurchases.current.has(purchase.id)) return;
-        purchaseQueue.current.set(purchase.id, purchase); drainRef.current();
+        if (!current()) return;
+        enqueuePurchases(purchase);
       }), api.purchaseErrorListener((reason) => {
         if (!current()) return;
         setPhase('idle');
@@ -264,7 +276,7 @@ export function useConnectState({ controlPlaneUrl, setControlPlaneUrl, switchCon
       if (current()) { initializationTask.current = undefined; setInitialization(ready ? 'ready' : 'error'); }
     });
     return () => { initialized(false); scopeGeneration.current += 1; activation.current?.controller.abort(); activation.current = undefined; subscriptions.forEach((subscription) => subscription.remove()); void apiRef.current?.endConnection(); apiRef.current = undefined; };
-  }, [availablePurchases, controlPlaneUrl, enabled, finishPurchase, isHydrated, initializationAttempt, loadCatalog, perform, readCatalog, store, setProfiles, setPhase, setNotice, setError, setPurchaseRecovery, setInitialization]);
+  }, [availablePurchases, controlPlaneUrl, enabled, enqueuePurchases, finishPurchase, isHydrated, initializationAttempt, loadCatalog, perform, readCatalog, store, setProfiles, setPhase, setNotice, setError, setPurchaseRecovery, setInitialization]);
 
   // Store-install resolution is a capability query, independent of hydration
   // and of the store connection itself. The dialog only appears once the
@@ -323,16 +335,26 @@ export function useConnectState({ controlPlaneUrl, setControlPlaneUrl, switchCon
   const dismissError = useCallback(() => { setError(undefined); setNotice(undefined); }, [setError, setNotice]);
 
   const purchase = useCallback((key: string) => {
-    if (pendingPurchase.current || phase === 'purchasing' || phase === 'pending') return Promise.resolve(false);
+    if (purchaseRequestInFlight.current || pendingPurchase.current || phase === 'purchasing' || phase === 'pending') return Promise.resolve(false);
+    const generation = scopeGeneration.current;
     return perform(async () => {
       const offer = offers.find((entry) => entry.key === key);
-      if (!offer || !apiRef.current) throw new Error('Choose an available subscription first.');
-      const previous = (await availablePurchases())[0];
+      const api = apiRef.current;
+      if (!offer || !api) throw new Error('Choose an available subscription first.');
       setPhase('purchasing');
-      try { await apiRef.current.requestPurchase(connectPurchaseRequest(offer, previous, store)); }
-      catch { setPhase('idle'); throw new Error('The native store could not start the purchase. Choose Purchase again or Restore.'); }
-    });
-  }, [availablePurchases, offers, perform, phase, setPhase, store]);
+      const previous = (await availablePurchases())[0];
+      if (scopeGeneration.current !== generation) return false;
+      try {
+        const result = await api.requestPurchase(connectPurchaseRequest(offer, previous, store));
+        if (scopeGeneration.current !== generation) return false;
+        enqueuePurchases(result);
+      }
+      catch {
+        if (scopeGeneration.current === generation) setPhase('idle');
+        throw new Error('The native store could not start the purchase. Choose Purchase again or Restore.');
+      }
+    }, false, purchaseRequestInFlight);
+  }, [availablePurchases, enqueuePurchases, offers, perform, phase, setPhase, store]);
 
   const restore = useCallback(() => perform(async () => {
     if (!apiRef.current) throw new Error('Restore requires a native development/store build.');

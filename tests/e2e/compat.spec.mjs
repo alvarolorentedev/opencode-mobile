@@ -26,7 +26,9 @@ for (const mode of ['auto', 'code']) {
   test(`v2 MCP OAuth completes through ${mode} authorization`, async ({ page, request }) => {
     await resetScenario(request, 'happy-path'); await openReadyChat(page);
     await goToTab(page, 'Settings'); await page.getByText('Extensions', { exact: true }).click();
-    await page.getByText('Remote', { exact: true }).click();
+    await page.getByTestId('settings-extension-mcp-open').click();
+    await page.getByRole('button', { name: 'Connection type. Command on server', exact: true }).click();
+    await page.getByRole('option', { name: 'Remote server', exact: true }).click();
     const name = `tools-${mode}`;
     await page.getByTestId('settings-extension-mcp-name').fill(name);
     await page.getByTestId('settings-extension-mcp-target').fill('https://tools.test/mcp');

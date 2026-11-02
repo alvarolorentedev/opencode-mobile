@@ -23,7 +23,7 @@ async function form(onSubmit = vi.fn()) {
     'react-native': { Platform: { OS: 'web' } },
     "@/shared/storage/cloud-link": { getConnectTestSecret: () => '', setConnectTestSecret: () => {} }
   });
-  const { isValidServerUrl } = await loadTs('shared/contracts/server-url.ts', {
+  const { isValidServerUrl, normalizeServerUrl } = await loadTs('shared/contracts/server-url.ts', {
     "@/shared/protocol/opencode/client/types": { defaultConnectionSettings: { serverUrl: 'http://localhost:4096' } }
   });
   const connectionOidc = await loadTs('shared/contracts/connection-oidc.ts', {
@@ -33,7 +33,7 @@ async function form(onSubmit = vi.fn()) {
     zod: { z },
     "@/shared/contracts/connection-headers": connectionHeaders,
     "@/shared/contracts/connection-oidc": connectionOidc,
-    "@/shared/contracts/server-url": { isValidServerUrl }
+    "@/shared/contracts/server-url": { isValidServerUrl, normalizeServerUrl }
   });
   const signIn = vi.fn(async () => ({ accessToken: 'token', expiresAt: Date.now() + 3600_000, tokenType: 'Bearer', issuer: 'https://login.example.test/realms/main', clientId: 'opencode-mobile' }));
   const { ConnectionProfileDialog } = await loadTs('features/connections/ui/connection-profile-dialog.tsx', {
@@ -121,7 +121,7 @@ describe('manual connection form', () => {
   });
   it('collects OpenID Connect settings and only signs in on demand', async () => {
     const view = await form();
-    view.change('connection-profile-url-input', 'http://example.test');
+    view.change('connection-profile-url-input', 'https://example.test');
     await view.press('connection-profile-continue');
     const fields = () => { const value = find(view.runtime.value, 'OidcFields'); if (!value) throw new Error('Missing OidcFields'); return value; };
     const patch = (value: Record<string, unknown>) => { fields().props.onChange(value); view.runtime.flush(); };
@@ -136,20 +136,20 @@ describe('manual connection form', () => {
     fields().props.onSignIn();
     await view.runtime.settle();
     expect(view.signIn).toHaveBeenCalledWith({
-      serverUrl: 'http://example.test',
+      serverUrl: 'https://example.test',
       username: '',
       oidc: { issuer: 'https://login.example.test/realms/main', clientId: 'opencode-mobile', scopes: 'openid profile email offline_access', tokenHeader: 'X-Auth-Request-Access-Token' },
     }, expect.anything());
     expect(fields().props.status).toBe('signed-in');
     await view.press('connection-profile-save-confirm');
     expect(view.onSubmit).toHaveBeenCalledWith({
-      name: '', serverUrl: 'http://example.test', username: '', password: 'server-password', headers: {},
+      name: '', serverUrl: 'https://example.test', username: '', password: 'server-password', headers: {},
       oidc: { issuer: 'https://login.example.test/realms/main', clientId: 'opencode-mobile', scopes: 'openid profile email offline_access', tokenHeader: 'X-Auth-Request-Access-Token' },
     });
   });
   it('blocks an enabled OpenID Connect block with an invalid issuer', async () => {
     const view = await form();
-    view.change('connection-profile-url-input', 'http://example.test');
+    view.change('connection-profile-url-input', 'https://example.test');
     await view.press('connection-profile-continue');
     const fields = () => { const value = find(view.runtime.value, 'OidcFields'); if (!value) throw new Error('Missing OidcFields'); return value; };
     fields().props.onChange({ enabled: true });

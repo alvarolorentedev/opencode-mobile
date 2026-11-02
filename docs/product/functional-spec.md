@@ -154,6 +154,7 @@ The Chat screen shows:
 Behavior details:
 
 - the transcript honors the `timelineDetail` preference, which defaults to `Everything`: `Messages only` renders user and assistant bubbles with files and errors, `Reasoning` adds reasoning activity, and `Everything` renders the full detailed timeline with reasoning, tools, and patches
+- each assistant bubble shows the model recorded on that message beneath the `OpenCode` author label. Auto-routing switches the session model before submission, so this is the only per-reply record of the routed choice; the label uses the catalog model name and falls back to the raw model ID
 - at `Everything` detail, reasoning, tool, and patch rows render as a two-level activity timeline outside message bubbles and match the assistant bubble's width; contiguous activity merges into one growing run whose `Used <total> <types>` header lists every rendered type once, including `Thought`, runs start collapsed and expand only on an explicit tap, and each child expands independently; shell output is a selectable, copyable code block, grep stays a one-line pattern with its match count, consecutive reads collapse to one filename list, and edit/write/patch files render expandable diff cards with `+N −N`; the initial pull loads one newest window of up to 200 records without a display-target loop
 - no separate `OpenCode is ...` running footer is reserved; while the session runs, the newest activity header keeps the progress circle even after its own tools complete, and the active child row carries it only while that row is running. If the transcript has no activity row to carry it (including `Messages only`), a transient non-expandable activity row shows `Sending…`, `Waiting for OpenCode…`, `OpenCode is working…`, or `OpenCode is retrying…` in the same activity-row position; it coexists with the pending-prompt stack and disappears when the session settles or a real activity row takes over
 - a small floating progress view shows the current step and completed count; tapping it opens a content-sized overlay with the task list; pending permission actions replace it while blocked
@@ -297,7 +298,7 @@ Server-owned tasks appear in a compact floating progress view. Tapping it opens 
 
 The composer includes:
 
-- agent picker (a mode bottom sheet with agent descriptions and the current selection)
+- agent picker (a mode bottom sheet ordered Build, Plan, General, Explore, custom agents, Summary, Title, Compaction; built-in modes use short app-local descriptions capped at two lines, and the current selection is marked)
 - model picker
 - reasoning picker
 - auto-approve toggle
@@ -399,7 +400,7 @@ If summarization fails, the session simply remains untitled.
 Settings follows the [design system](../design/design-system.md). Home shows App preferences
 (Appearance, Chat & responses, Voice & audio, Notifications, Language, About &
 support), Connections (Connection and eligible Cloud Link), then Selected server
-(AI & providers, Extensions, Approvals, Server diagnostics). Every category opens
+(AI & providers, Extensions, Approvals, Diagnostics). Every category opens
 in the existing content-sized sheet; longer content scrolls below its fixed
 Close header. Connection and provider forms retain their keyboard-safe surfaces.
 Server and project selectors list only connected servers; disconnected,
@@ -434,7 +435,7 @@ Behavior:
 - the active row shows an `Active` (or `Connecting`) badge; the active connection always has a row, titled `Current connection` while it has not been saved as a profile yet
 - `Add connection` offers three choices in order: Scan QR code (local network, native only), Manual, and Cloud Link. Scan QR code and Manual open the shared scrollable full-screen form for name, server URL, username, password, and (manual only) an optional set of custom HTTP headers; its keyboard-safe primary action, `Save & connect`, stores the profile (password and header values in SecureStore, metadata in AsyncStorage) and switches to it. Cloud Link opens the guided assistant
 - manual connections on native platforms can also import a PEM/DER CA or self-signed certificate. It is trusted only for that server's `host:port`, applies to API, SSE, and terminal WebSocket traffic, and is encrypted at rest (AES-256-GCM; key in SecureStore). The field shows the subject, issuer, expiry and SHA-256 fingerprint and supports replace/remove. It is hidden for Cloud Link and cleared when the server is detected as OpenCode 1. Certificate failures surface a distinct message instead of the generic unreachable copy
-- manual connections can also use OpenID Connect, with or without the server password. The form takes an issuer URL, client ID, scopes, the request header that carries the token (default `X-Auth-Request-Access-Token`, raw JWT) and an optional redirect URI; the redirect URI defaults to the app's own scheme and is shown so it can be registered with the provider. When a password is also set, requests keep Basic `Authorization` and add the JWT header; a passwordless connection uses `Authorization: Bearer` plus the token header. `Sign in` opens the system browser (never the in-app WebView) with PKCE, and the form reports signed-in, expired and signed-out states. The token renews silently; when the provider rejects it, the connection row exposes `Sign in again`. Tokens are encrypted at rest and never appear in the profile metadata. Cloud Link connections keep their device credentials and do not offer this option
+- manual connections can also use OpenID Connect, with or without the server password. The form takes an issuer URL, client ID, scopes, the request header that carries the token (default `X-Auth-Request-Access-Token`, raw JWT) and an optional redirect URI; the redirect URI defaults to the app's own scheme and is shown so it can be registered with the provider. When a password is also set, requests keep Basic `Authorization` and add the JWT header; a passwordless connection uses `Authorization: Bearer` plus the token header. `Sign in` opens the system browser (never the in-app WebView) with PKCE, and the form reports signed-in, expired and signed-out states. The token renews silently. Temporary provider failures preserve the session; only an invalid or revoked refresh grant requires `Sign in again`. OIDC requires HTTPS (with explicit HTTP loopback development exceptions) and the registered app callback scheme. Tokens are encrypted at rest and never appear in the profile metadata. Cloud Link connections keep their device credentials and do not offer this option
 - `Edit` opens the same form for that connection: for a saved connection it updates the stored profile (and the live settings when it is active), for the current unsaved connection it updates the live settings only
 - editing the active connection never reconnects on its own; the row's Reconnect action does that, so an in-flight session is not dropped
 - the active connection cannot be deleted; other connections offer Delete with a confirmation
@@ -492,9 +493,9 @@ Purpose:
 Behavior:
 
 - providers that expose a key/OAuth login method (or a V1 generic API-key fallback) appear in a searchable `Add provider` selector; providers with no interactive method are omitted. Already-configured providers stay listed (marked "add another account") so another account can be added for any provider
-- configured providers display as chips, and OpenCode 2 providers with stored credentials show their labeled accounts with the active one marked; tapping an inactive account switches to it and the close action removes it
-- configured providers display as chips
-- models are grouped by provider in independent accordions; several providers can stay expanded at once, and each header shows the selected count plus an expand/collapse chevron
+- configured providers are listed once as expandable rows; each header shows the selected model count, an expand/collapse chevron, and a remove action
+- expanding a provider reveals its OpenCode 2 labeled accounts (the active one is marked; tapping an inactive account switches to it and the close action removes it) and its models
+- models are grouped by provider in independent accordions; several providers can stay expanded at once
 - each model can be toggled on/off from the enabled list
 - if all stored enabled models disappear, all currently available configured models become enabled by default
 
@@ -518,7 +519,7 @@ Behavior:
 - if API auth is selected, auth values are normalized and sent to `client.auth.set` (V1) or the V2 credential endpoint
 - after successful auth, the provider is enabled in server config and capabilities are refreshed
 - configured providers can be removed, deleting stored credentials and disabling the provider in config
-- on OpenCode 2 a provider's stored credentials are listed as labeled accounts; one is active, and the user can switch the active account or remove an account. A provider's accounts are those credentials whose integration serves one of the provider's login methods
+- on OpenCode 2 a provider's stored credentials are listed as labeled accounts inside the provider's expanded settings row; one is active, and the user can switch the active account or remove an account. A provider's accounts are those credentials whose integration serves one of the provider's login methods
 - the Add provider picker lists every provider with an interactive login method, including already-configured providers (with an "add another account" hint), so a second account can be added for any provider
 
 ### Notifications Section
@@ -559,8 +560,16 @@ Behavior:
 
 ### Extensions Section (V2)
 
+Related decision: [ADR 0023](../adr/0023-focused-extension-editors.md).
+
 - manages MCPs, plugins, agents, skills, and slash commands for either the active project or the user-global configuration
-- shows the exact config path, Markdown agent/command directories, writable/read-only safety state, and the last backup path
+- shows installed extensions before add/edit forms; focused editor sheets preserve drafts across Setup/Instructions tabs, confirm unsaved dismissal, and retain inputs after failed saves
+- labels scope as This project or All projects and keeps its server/project context visible; the global-edit confirmation remains once per scope visit
+- shows read-only safety warnings immediately and groups config paths, Markdown directories and backup recovery under Configuration details
+- agents choose models through a searchable, provider-grouped picker with inheritance and variants, independently of chat model visibility; Advanced retains custom IDs and frontmatter
+- permissions use ordered action/resource/decision rows for V2 rules; legacy/custom shapes retain source editing without conversion
+- local MCP setup uses an executable and individual arguments without shell parsing; remote setup validates an HTTP(S) URL
+- skill creation and editing share structured fields and an automatic-invocation switch; advanced source editing and unknown metadata/comments are preserved
 - backs up and atomically replaces config and Markdown files; validates the temporary content, verifies the server-reloaded key or definition, and restores the backup on failure
 - disables mutations for system-managed config, symlinks, Windows servers, ambiguous global roots, unreadable/invalid JSONC or frontmatter, and servers without the required shell support
 - adds/removes MCP config entries while retaining runtime connect, disconnect, and OAuth controls
@@ -964,7 +973,7 @@ Any reimplementation should preserve these functional outcomes:
 - experimental worktree creation/removal
 - MCP lifecycle/configuration/OAuth management
 - ticket-authenticated interactive PTYs with xterm, bounded scrollback, resize, and acknowledged reconnect
-- server diagnostics
+- diagnostics
 - provider discovery and auth configuration from server metadata
 - enabled-model filtering separate from model selection
 - auto-approve writing back to server permissions config

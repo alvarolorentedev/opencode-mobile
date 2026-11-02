@@ -1,32 +1,21 @@
+import { normalizeServerUrl } from '@/shared/contracts/server-url';
 import { getConnectionScope } from '@/shared/contracts/connection-scope';
-import { normalizeOidcIssuer, oidcSessionKey, type ConnectionOidc } from '@/shared/contracts/connection-oidc';
+import { isSecureOidcUrl, normalizeOidcIssuer, oidcSessionKey, type ConnectionOidc } from '@/shared/contracts/connection-oidc';
 import { deleteOidcTokens, readOidcTokens, saveOidcTokens, type OidcTokenSet } from '@/shared/storage/connection-oidc';
 import { discoverOidc } from '@/shared/auth/oidc/discovery';
 import { OIDC_SIGN_IN_REQUIRED_MESSAGE, OidcAuthError } from '@/shared/auth/oidc/errors';
 import { runOidcAuthorization } from '@/shared/auth/oidc/flow';
 import { refreshOidcAccessToken } from '@/shared/auth/oidc/token-endpoint';
 
-// One process-wide session table, keyed by connection scope + provider. Values
-// are cached so a burst of parallel reads does not hit encrypted storage, and
-// refreshes are single-flight so a 401 storm cannot mint a refresh-token herd.
 export type OidcSessionIdentity = { serverUrl: string; username: string };
-
 export type OidcSessionStatus = 'signed-in' | 'expired' | 'signed-out';
-
-// Refresh slightly before expiry so a token cannot die mid-request on a slow
-// cellular link.
 const EXPIRY_SKEW_MS = 60_000;
-
-// A forced refresh that follows another forced refresh within this window
-// reuses its result; it is the same rejected request storm, not a new attempt.
-const REFRESH_COALESCE_MS = 5_000;
-
-type CacheEntry = { tokens?: OidcTokenSet };
-
-const cache = new Map<string, CacheEntry>();
+const cache = new Map<string, { tokens?: OidcTokenSet }>();
 const inflight = new Map<string, Promise<OidcTokenSet>>();
-const refreshedAt = new Map<string, number>();
+const generations = new Map<string, number>();
+const storage = new Map<string, Promise<unknown>>();
 const listeners = new Set<() => void>();
+let nextGeneration = 0;
 
 export function subscribeOidcSession(listener: () => void) {
   listeners.add(listener);
@@ -43,6 +32,32 @@ export function oidcSessionKeyFor(identity: OidcSessionIdentity, oidc: Pick<Conn
   return oidcSessionKey(getConnectionScope(identity), oidc);
 }
 
+function generation(key: string) {
+  if (!generations.has(key)) generations.set(key, ++nextGeneration);
+  return generations.get(key)!;
+}
+
+function invalidate(key: string) {
+  generations.set(key, ++nextGeneration);
+  inflight.delete(key);
+  return nextGeneration;
+}
+
+function assertCurrent(key: string, expected: number) {
+  if (generations.get(key) !== expected) {
+    throw new OidcAuthError('sign-in-cancelled', 'OpenID Connect session changed. Retry the operation.');
+  }
+}
+
+// Serialize reads/writes/deletes so a slow encrypted write cannot outlive a
+// sign-out deletion or overwrite a replacement session on disk.
+function serialized<T>(key: string, operation: () => Promise<T>): Promise<T> {
+  const result = (storage.get(key) ?? Promise.resolve()).catch(() => undefined).then(operation);
+  storage.set(key, result);
+  void result.finally(() => { if (storage.get(key) === result) storage.delete(key); }).catch(() => undefined);
+  return result;
+}
+
 function usable(tokens: OidcTokenSet | undefined) {
   return Boolean(tokens && tokens.expiresAt - Date.now() > EXPIRY_SKEW_MS);
 }
@@ -50,59 +65,53 @@ function usable(tokens: OidcTokenSet | undefined) {
 async function load(key: string): Promise<OidcTokenSet | undefined> {
   const cached = cache.get(key);
   if (cached) return cached.tokens;
-  const tokens = await readOidcTokens(key).catch(() => undefined);
-  cache.set(key, { tokens });
-  return tokens;
+  const expected = generation(key);
+  return serialized(key, async () => {
+    assertCurrent(key, expected);
+    if (cache.has(key)) return cache.get(key)?.tokens;
+    const tokens = await readOidcTokens(key);
+    assertCurrent(key, expected);
+    cache.set(key, { tokens });
+    return tokens;
+  });
 }
 
-async function store(key: string, tokens: OidcTokenSet) {
-  await saveOidcTokens(key, tokens);
-  cache.set(key, { tokens });
-  refreshedAt.set(key, Date.now());
-  notify();
-  return tokens;
+function store(key: string, tokens: OidcTokenSet, expected: number) {
+  return serialized(key, async () => {
+    assertCurrent(key, expected);
+    await saveOidcTokens(key, tokens);
+    assertCurrent(key, expected);
+    cache.set(key, { tokens });
+    notify();
+    return tokens;
+  });
 }
 
 async function clear(key: string) {
+  invalidate(key);
   cache.set(key, {});
-  refreshedAt.delete(key);
-  await deleteOidcTokens(key).catch(() => undefined);
   notify();
+  await serialized(key, () => deleteOidcTokens(key));
 }
 
 function toTokenSet(oidc: ConnectionOidc, tokens: { accessToken: string; refreshToken?: string; expiresAt: number; tokenType: string; scope?: string }): OidcTokenSet {
-  return {
-    accessToken: tokens.accessToken,
-    ...(tokens.refreshToken ? { refreshToken: tokens.refreshToken } : {}),
-    expiresAt: tokens.expiresAt,
-    tokenType: tokens.tokenType,
-    ...(tokens.scope ? { scope: tokens.scope } : {}),
-    issuer: normalizeOidcIssuer(oidc.issuer),
-    clientId: oidc.clientId.trim(),
-  };
+  return { ...tokens, issuer: normalizeOidcIssuer(oidc.issuer), clientId: oidc.clientId.trim() };
 }
 
-async function refresh(key: string, oidc: ConnectionOidc, current: OidcTokenSet | undefined, signal?: AbortSignal): Promise<OidcTokenSet> {
-  if (!current?.refreshToken) {
-    await clear(key);
-    throw new OidcAuthError('sign-in-required', OIDC_SIGN_IN_REQUIRED_MESSAGE);
-  }
-  const discovery = await discoverOidc(oidc.issuer, { signal });
+async function refresh(key: string, oidc: ConnectionOidc, current: OidcTokenSet, expected: number): Promise<OidcTokenSet> {
+  // Shared refreshes own their bounded provider deadline; one caller's abort
+  // must not cancel rotation for every other request using this session.
+  const discovery = await discoverOidc(oidc.issuer);
+  assertCurrent(key, expected);
   try {
     const refreshed = await refreshOidcAccessToken({
-      tokenEndpoint: discovery.tokenEndpoint,
-      clientId: oidc.clientId,
-      refreshToken: current.refreshToken,
-      scope: oidc.scopes,
-      signal,
+      tokenEndpoint: discovery.tokenEndpoint, clientId: oidc.clientId,
+      refreshToken: current.refreshToken!, scope: oidc.scopes,
     });
-    // Refresh-token rotation is optional; keep the previous token when the
-    // provider does not send a new one.
-    return await store(key, toTokenSet(oidc, { ...refreshed, refreshToken: refreshed.refreshToken ?? current.refreshToken }));
+    return await store(key, toTokenSet(oidc, { ...refreshed, refreshToken: refreshed.refreshToken ?? current.refreshToken }), expected);
   } catch (error) {
-    if (error instanceof OidcAuthError && error.code === 'sign-in-failed') {
-      // invalid_grant and friends mean the refresh token is dead. Keep the
-      // error recognizable while forcing the next attempt through sign-in.
+    assertCurrent(key, expected);
+    if (error instanceof OidcAuthError && error.code === 'refresh-token-invalid') {
       await clear(key);
       throw new OidcAuthError('sign-in-required', OIDC_SIGN_IN_REQUIRED_MESSAGE);
     }
@@ -110,43 +119,54 @@ async function refresh(key: string, oidc: ConnectionOidc, current: OidcTokenSet 
   }
 }
 
-function refreshOnce(key: string, oidc: ConnectionOidc, current: OidcTokenSet | undefined, signal?: AbortSignal) {
+function refreshOnce(key: string, oidc: ConnectionOidc, current: OidcTokenSet, expected: number) {
   const pending = inflight.get(key);
   if (pending) return pending;
-  const attempt = refresh(key, oidc, current, signal).finally(() => { inflight.delete(key); });
+  const attempt = refresh(key, oidc, current, expected).finally(() => {
+    if (inflight.get(key) === attempt) inflight.delete(key);
+  });
   inflight.set(key, attempt);
   return attempt;
 }
 
-export async function getOidcAccessToken(identity: OidcSessionIdentity, oidc: ConnectionOidc, options?: { forceRefresh?: boolean; signal?: AbortSignal }): Promise<string> {
-  const key = oidcSessionKeyFor(identity, oidc);
-  const current = await load(key);
-  if (current && !options?.forceRefresh && usable(current)) return current.accessToken;
+async function forCaller<T>(operation: Promise<T>, signal?: AbortSignal): Promise<T> {
+  if (!signal) return operation;
+  let abort: () => void = () => {};
+  const cancelled = new Promise<never>((_resolve, reject) => {
+    abort = () => reject(new OidcAuthError('sign-in-cancelled', 'OpenID Connect request cancelled.'));
+    signal.addEventListener('abort', abort, { once: true });
+    if (signal.aborted) abort();
+  });
+  try { return await Promise.race([operation, cancelled]); }
+  finally { signal.removeEventListener('abort', abort); }
+}
 
-  if (options?.forceRefresh) {
-    // The rejected token has just been refreshed by a parallel request.
-    const last = refreshedAt.get(key) ?? 0;
-    if (current && usable(current) && Date.now() - last < REFRESH_COALESCE_MS) return current.accessToken;
-  }
+export async function getOidcAccessToken(identity: OidcSessionIdentity, oidc: ConnectionOidc, options?: { forceRefresh?: boolean; rejectedToken?: string; signal?: AbortSignal }): Promise<string> {
+  const key = oidcSessionKeyFor(identity, oidc);
+  const expected = generation(key);
+  const current = await forCaller(load(key), options?.signal);
+  assertCurrent(key, expected);
+  if (current && usable(current) && (!options?.forceRefresh
+    || (options.rejectedToken !== undefined && options.rejectedToken !== current.accessToken))) return current.accessToken;
   if (!current?.refreshToken) {
-    // The rejected token cannot be renewed; drop it so the next attempt starts
-    // from the sign-in state instead of replaying a token the server refuses.
     if (current) await clear(key);
     throw new OidcAuthError('sign-in-required', OIDC_SIGN_IN_REQUIRED_MESSAGE);
   }
-  return (await refreshOnce(key, oidc, current, options?.signal)).accessToken;
+  return (await forCaller(refreshOnce(key, oidc, current, expected), options?.signal)).accessToken;
 }
 
-// Called by the transport after a 401/403. Returns the replacement access token
-// or throws the sign-in-required error the connection surface shows.
-export function refreshOidcSession(identity: OidcSessionIdentity, oidc: ConnectionOidc, signal?: AbortSignal) {
-  return getOidcAccessToken(identity, oidc, { forceRefresh: true, signal });
+export function refreshOidcSession(identity: OidcSessionIdentity, oidc: ConnectionOidc, rejectedToken?: string, signal?: AbortSignal) {
+  return getOidcAccessToken(identity, oidc, { forceRefresh: true, rejectedToken, signal });
 }
 
 export async function signInWithOidc(identity: OidcSessionIdentity, oidc: ConnectionOidc, options?: { signal?: AbortSignal }): Promise<OidcTokenSet> {
-  const tokens = await runOidcAuthorization(oidc, options);
+  if (!isSecureOidcUrl(normalizeServerUrl(identity.serverUrl).displayUrl)) throw new OidcAuthError('sign-in-failed', 'OpenID Connect requires a secure server endpoint.');
   const key = oidcSessionKeyFor(identity, oidc);
-  return store(key, toTokenSet(oidc, tokens));
+  const expected = invalidate(key);
+  const tokens = await runOidcAuthorization(oidc, options);
+  assertCurrent(key, expected);
+  if (options?.signal?.aborted) throw new OidcAuthError('sign-in-cancelled', 'OpenID Connect request cancelled.');
+  return store(key, toTokenSet(oidc, tokens), invalidate(key));
 }
 
 export async function signOutOidc(identity: OidcSessionIdentity, oidc: Pick<ConnectionOidc, 'issuer' | 'clientId'>) {
@@ -159,10 +179,6 @@ export async function getOidcSessionStatus(identity: OidcSessionIdentity, oidc: 
   return usable(tokens) || tokens.refreshToken ? 'signed-in' : 'expired';
 }
 
-// Test seam: drop the in-memory table without touching encrypted storage.
 export function resetOidcSessionCache() {
-  cache.clear();
-  inflight.clear();
-  refreshedAt.clear();
-  listeners.clear();
+  cache.clear(); inflight.clear(); generations.clear(); storage.clear(); listeners.clear();
 }

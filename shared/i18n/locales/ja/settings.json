@@ -111,7 +111,11 @@
       "oidcRedirectUri": "有効なリダイレクト URI を入力してください。",
       "oidcSignIn": "このサーバーを使用するには OpenID Connect で再度サインインしてください。",
       "oidcSignInFailed": "OpenID Connect のサインインに失敗しました。発行者とクライアント ID を確認してください。",
-      "oidcTokenHeader": "Authorization 以外の有効なヘッダー名を入力してください。"
+      "oidcTokenHeader": "Authorization 以外の有効なヘッダー名を入力してください。",
+      "oidcUnavailable": "OpenID Connect プロバイダーは一時的に利用できません。後でもう一度お試しください。",
+      "oidcNetwork": "OpenID Connect プロバイダーに接続できません。ネットワークを確認して再試行してください。",
+      "oidcTimeout": "OpenID Connect プロバイダーの応答がタイムアウトしました。後でもう一度お試しください。",
+      "oidcSecureUrl": "OpenID Connect には HTTPS URL が必要です。HTTP は localhost、127.0.0.1、[::1] でのみ使用できます。"
     },
     "setup": {
       "step": "ステップ {{step}} / 2",
@@ -541,7 +545,7 @@
     }
   },
   "diagnostics": {
-    "title": "サーバー診断",
+    "title": "診断",
     "server": "サーバー",
     "openCodeVersion": "OpenCode {{version}}",
     "healthUnavailable": "ヘルスエンドポイントを利用できません",
@@ -880,8 +884,8 @@
     "title": "拡張機能",
     "description": "このサーバーの MCP サーバー、プラグイン、スキル、スラッシュコマンドを管理します。",
     "scope": {
-      "project": "プロジェクト",
-      "general": "一般"
+      "project": "このプロジェクト",
+      "general": "すべてのプロジェクト"
     },
     "scopeDescription": {
       "project": "これらの拡張機能は {{project}} にのみ適用されます。",
@@ -995,7 +999,78 @@
     },
     "generalConfirmTitle": "グローバル設定を編集",
     "generalConfirmMessage": "これはこのサーバーのすべてのプロジェクトの設定を変更します。先にバックアップが作成されます。\n\n{{path}}",
-    "generalConfirmAction": "続ける"
+    "generalConfirmAction": "続ける",
+    "editor": {
+      "discardTitle": "変更を破棄しますか？",
+      "discardHint": "保存していない変更は失われます。",
+      "discard": "変更を破棄",
+      "back": "拡張機能に戻る",
+      "setup": "設定",
+      "instructions": "指示",
+      "advanced": "詳細設定",
+      "storage": "保存形式",
+      "inheritModel": "モデルを継承",
+      "inheritModelHint": "OpenCode にモデルの選択を任せます。",
+      "customModel": "カスタムモデル ID",
+      "customModelHint": "このモデルは詳細設定で構成されています。構成は保持されます。",
+      "noModels": "設定済みモデルがありません。AI とプロバイダーで設定するか、詳細設定でモデル ID を入力してください。",
+      "availability": "利用対象",
+      "custom": "カスタム",
+      "inherited": "継承",
+      "inheritPermissions": "サーバーの権限ルールを継承します。",
+      "rulesHint": "ルールは現在の順序で評価されます。すべて削除すると継承に戻ります。",
+      "ruleAction": "操作",
+      "ruleResource": "リソースパターン",
+      "ruleEffect": "判断",
+      "ask": "確認",
+      "allow": "許可",
+      "deny": "拒否",
+      "addRule": "ルールを追加",
+      "legacyRules": "カスタムまたは旧形式のルールです。形式を保つためソースを編集してください。",
+      "source": "権限のソース",
+      "sourceHint": "SKILL.md 全体を編集します。フォーム使用時は未知のフロントマターも保持されます。",
+      "editSource": "ソースを編集",
+      "useFields": "フォームを使用",
+      "autoinvoke": "自動呼び出し",
+      "autoinvokeHint": "モデルがこのスキルを自動的に検出できるようにします。",
+      "connectionType": "接続タイプ",
+      "executable": "実行ファイル",
+      "argumentsHint": "サーバーで実行します。シェルの引用符を付けず、引数を個別に入力してください。",
+      "argument": "引数 {{number}}",
+      "removeArgument": "引数 {{number}} を削除",
+      "addArgument": "引数を追加",
+      "pluginHint": "@scope/plugin@1.0.0 のようなパッケージ、または ./plugins/example.js のようなサーバー上のパスを入力します。",
+      "configDetails": "構成の詳細",
+      "mode": {
+        "primary": "メインチャット",
+        "subagent": "他のエージェント",
+        "all": "両方"
+      },
+      "modeHint": {
+        "primary": "メインチャットで選択できます。",
+        "subagent": "特定のタスクで他のエージェントから呼び出されます。",
+        "all": "チャットと他のエージェントから利用できます。"
+      },
+      "mcpType": {
+        "remote": "リモートサーバー",
+        "local": "サーバー上のコマンド"
+      },
+      "mcpStatus": {
+        "connected": "接続済み",
+        "disabled": "切断済み",
+        "pending": "接続中…",
+        "failed": "失敗",
+        "needs_auth": "ログインが必要",
+        "needs_client_registration": "クライアント登録が必要"
+      }
+    },
+    "source": {
+      "general": "すべてのプロジェクト",
+      "project": "このプロジェクト",
+      "inherited": "継承",
+      "runtime": "実行時",
+      "system": "システム"
+    }
   },
   "modelRouting": {
     "title": "モデルの自動ルーティング",

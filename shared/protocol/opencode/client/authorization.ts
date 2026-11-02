@@ -1,6 +1,7 @@
 import { base64 } from '@scure/base';
 
-import { oidcTokenHeader, type ConnectionOidc } from '@/shared/contracts/connection-oidc';
+import { isSecureOidcUrl, oidcTokenHeader, type ConnectionOidc } from '@/shared/contracts/connection-oidc';
+import { normalizeServerUrl } from '@/shared/contracts/server-url';
 import type { OpencodeConnectionSettings } from '@/shared/protocol/opencode/client/types';
 
 export function createAuthHeader(settings: OpencodeConnectionSettings) {
@@ -74,15 +75,29 @@ export async function resolveAuthorizedHeaders(settings: OpencodeConnectionSetti
   // OIDC never drops the password the way a straight bearer replacement did.
   const base = new Headers(getRequestHeaders(settings));
   new Headers(headers ?? {}).forEach((value, name) => base.set(name, value));
+  const basic = createAuthHeader(settings);
+  if (basic) base.set('Authorization', basic);
   return withOidcAuthorization(base, token, settings.oidc);
 }
 
 // Called after a 401/403. A successful refresh lets the transport replay the
 // request once; a dead refresh token throws the sign-in-required error that the
 // connection surface turns into a "Sign in again" action.
-export async function refreshOidcAuthorization(settings: OpencodeConnectionSettings | undefined) {
+export async function refreshOidcAuthorization(settings: OpencodeConnectionSettings | undefined, rejectedToken: string | undefined) {
   if (!settings?.oidc) return false;
   const { refreshOidcSession } = await import('@/shared/auth/oidc/session');
-  await refreshOidcSession(settings, settings.oidc);
+  await refreshOidcSession(settings, settings.oidc, rejectedToken);
   return true;
+}
+
+// Validate before resolving any credentials. The API mount is the narrowest
+// shared destination boundary across SDKs, probes, SSE and terminal tickets.
+export function assertOidcRequestTarget(settings: OpencodeConnectionSettings, input: string) {
+  const base = normalizeServerUrl(settings.serverUrl);
+  const target = new URL(input);
+  if (!base.valid || !isSecureOidcUrl(base.displayUrl) || !isSecureOidcUrl(input)
+    || target.origin !== base.origin
+    || (base.pathPrefix && target.pathname !== base.pathPrefix && !target.pathname.startsWith(`${base.pathPrefix}/`))) {
+    throw new Error('OpenID Connect credentials require the configured secure server endpoint.');
+  }
 }

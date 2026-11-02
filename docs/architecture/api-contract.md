@@ -114,6 +114,8 @@ Agents and commands follow the V2 loaders. New definitions default to Markdown i
 
 Every config or Markdown mutation is transactional: schema/frontmatter validation, backup, same-directory temp file, byte verification, exact previous-content check, atomic rename, read-back, and a `config.get`/`agent.list`/`command.list` reload poll. A failed replace or reload restores the backup; removed Markdown files move to a hidden `.opencode-mobile-trash` directory and are restored when reload verification fails. System/MDM config, symlinks, ambiguous global roots, missing shell support, Windows servers, and unreadable/invalid files are read-only. V2 exposes no command body, so body-only command edits are confirmed by exact file read-back and server name presence; agent instructions are confirmed through the effective `system` field. No config validation endpoint exists in V2, so validation is local YAML/JSONC/shape checking plus the post-write server reload check.
 
+Structured extension editors serialize into the existing drafts and mutation interfaces; no endpoint or compatibility path is added. Skill edits use the YAML document codec to preserve unknown frontmatter and comments. Permission rows preserve V2 rule order and serialize to the row’s JSON/YAML format; legacy and custom shapes stay in source mode. Unchanged JSONC object models retain their original object and variant. See [ADR 0023](../adr/0023-focused-extension-editors.md).
+
 ## Approvals And Forms
 
 Native permission requests use `permission.request.list`, preserving session ID, action/resources/save, metadata and tool source. Replies use `permission.reply({ sessionID, requestID, decision })`. Saved always-allow rules use `permission.saved.list/remove`.

@@ -26,6 +26,7 @@ export type ConnectionOidc = {
 export const OIDC_DEFAULT_SCOPES = 'openid profile email offline_access';
 
 export const OIDC_REDIRECT_PATH = 'oidc-callback';
+export const OIDC_DEFAULT_REDIRECT_URI = `opencodemobile://${OIDC_REDIRECT_PATH}`;
 
 // oauth2-proxy's conventional upstream header. The token is sent raw (no
 // "Bearer " prefix); Authorization carries the prefix when basic auth is absent.
@@ -94,6 +95,18 @@ function normalizeScopes(value: string | undefined) {
   return [...seen].join(' ');
 }
 
+export function isSecureOidcUrl(value: string) {
+  if (!/^https?:\/\/[^/?#]+/i.test(value) || /[\s\\]/.test(value)) return false;
+  try {
+    const url = new URL(value);
+    return Boolean(url.hostname) && !url.username && !url.password && !url.hash
+      && (url.protocol === 'https:' || (url.protocol === 'http:'
+        && ['localhost', '127.0.0.1', '[::1]'].includes(url.hostname)));
+  } catch {
+    return false;
+  }
+}
+
 // Accepts bare hosts for convenience (`login.example.com/realms/acme`) because
 // the connection URL field does the same, then stores the normalized absolute
 // issuer without a trailing slash. Query strings and fragments cannot be part
@@ -106,9 +119,7 @@ export function normalizeOidcIssuer(value: string) {
   const withProtocol = /^https?:\/\//i.test(trimmed) ? trimmed : `https://${trimmed}`;
   try {
     const parsed = new URL(withProtocol);
-    if (!/^https?:$/.test(parsed.protocol) || !parsed.hostname || parsed.username || parsed.password) return '';
-    parsed.hash = '';
-    parsed.search = '';
+    if (!isSecureOidcUrl(withProtocol) || parsed.search || parsed.hash) return '';
     return `${parsed.origin}${parsed.pathname.replace(/\/+$/, '')}`;
   } catch {
     return '';
@@ -124,8 +135,11 @@ export function isValidOidcRedirectUri(value: string) {
   if (!trimmed || trimmed.length > MAX_OIDC_REDIRECT_URI_LENGTH) return false;
   try {
     const parsed = new URL(trimmed);
-    // Custom app schemes and https deep links are both valid redirect targets.
-    return Boolean(parsed.protocol && !/[\r\n\0]/.test(trimmed));
+    // Only the scheme registered in app.config.ts; HTTPS app links and Expo Go
+    // callbacks are not registered authentication entrypoints in this app.
+    return parsed.protocol === 'opencodemobile:'
+      && /^opencodemobile:\/\/(?:oidc-callback\/?|\/oidc-callback)$/.test(trimmed)
+      && !parsed.username && !parsed.password && !parsed.port;
   } catch {
     return false;
   }

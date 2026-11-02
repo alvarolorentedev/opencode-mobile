@@ -122,6 +122,15 @@
   },
   "composer": {
     "chooseAssistantMode": "选择助手模式",
+    "agentDescriptions": {
+      "build": "默认代理，可编辑文件并运行工具。",
+      "plan": "用于探索和规划的只读代理。",
+      "general": "用于研究和多步骤任务的通用代理。",
+      "explore": "快速、只读地探索代码库。",
+      "summary": "用于总结对话的维护代理。",
+      "title": "用于生成聊天标题的维护代理。",
+      "compaction": "用于压缩长上下文的维护代理。"
+    },
     "autoApproveEnabled": "自动批准",
     "askPermission": "操作前询问",
     "conversationMode": "对话模式",

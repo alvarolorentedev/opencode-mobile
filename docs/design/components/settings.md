@@ -169,19 +169,20 @@ create form. No fetch or protocol logic lives here.
 
 Responsibility:
 
-- show configured providers
-- tap a configured provider chip to reopen login or replace its API key
-- allow adding unconfigured providers
+- show configured providers once as expandable rows; each header shows the selected model count, a chevron, and a remove action
+- allow adding providers, including another account for an already-configured provider
 - allow removing configured provider credentials
-- on OpenCode 2, list a provider's labeled accounts, mark the active account, switch accounts, remove an account, or add another account
-- show models grouped by provider in independent accordions; each header shows the selected count and a chevron, and several providers can stay expanded together
+- expanding a provider reveals its OpenCode 2 labeled accounts (active account marked, switch or remove) and its models
+- several providers can stay expanded together
 - allow toggling enabled model IDs
 
 #### `AutoModelSection`
 
 Responsibility:
 
-- enable/disable prompt routing only after a classifier is usable
+- enable/disable prompt routing only after a classifier is usable; an unavailable
+  stored classifier stays selected and reports its status instead of being
+  silently switched
 - switch between the pinned on-device GGUF pack and the OpenCode classifier
 - download, verify, remove, and report the on-device pack
 - probe the V2 classifier endpoint and select its model
@@ -364,14 +365,20 @@ Main relevant props:
 
 #### Responsibility
 
-- render the V2-only Extensions surface with General/Project scope, MCP/plugin/agent/skill/command tabs, shared/read-only rows, and inline add/edit forms
+- render the V2-only Extensions surface with This project/All projects scope, MCP/plugin/agent/skill/command inventories, shared/read-only rows, and focused add/edit sheets
 - hide system-managed shared rows (built-in plugins, embedded skills, built-in commands, built-in agents) from the plugin, agent, skill, and command tabs
-- show the exact target config path, Markdown agent/command directories, safety state, and last-backup recovery action
+- keep read-only safety warnings visible; disclose the exact target config path, Markdown agent/command directories and last-backup recovery under Configuration details
 - show Markdown/JSONC origin badges, overridden JSONC rows, and the Markdown-default storage choice for new definitions
 - delegate every mutation and refresh to `useExtensions()`; never fetch or persist config itself
 - keep only form drafts, selected scope/tab, editing state, and local action feedback
 - reuse the MCP authentication dialog and keep MCP runtime lifecycle actions in the existing MCP domain
 - expose test IDs for the add/remove/edit controls used by the extension flows
+- compose `agent-editor.tsx`, `command-editor.tsx`, `skill-editor.tsx`, `mcp-editor.tsx` and `plugin-editor.tsx` inside the existing overlay host; `extension-editor.tsx` preserves drafts between Setup/Instructions tabs, confirms dirty dismissal and keeps Save outside the scrolling body
+- agents reuse the public AI `ModelPicker` with inheritance, provider search and variants; unavailable/custom IDs remain editable under Advanced without changing chat preferences
+- `permission-fields.tsx` edits ordered V2 rules; legacy/custom shapes retain source editing. Its colocated story covers inherited, ordered and disabled states; the AI picker story covers empty catalogs and unavailable selections
+- skills retain unknown frontmatter/comments through protocol codecs; commands and agents retain their storage format and unknown fields
+
+Related decision: [ADR 0023](../../adr/0023-focused-extension-editors.md).
 
 ### `features/cloud-link/ui/settings/services-section.tsx`
 

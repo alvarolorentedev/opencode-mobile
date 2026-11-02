@@ -92,10 +92,12 @@ export function ChatHeader({
               onPress={onOpenSessionMenu}
               style={({ pressed }) => [styles.headerSessionAnchor, pressed && styles.headerSessionAnchorPressed]}>
               <View className={cn(stylesClasses.headerCopy)}>
-                <Text maxFontSizeMultiplier={1.5} numberOfLines={1} className={cn("text-foreground")} style={[styles.headerTitle]} variant="title">{selectedSession?.title || t('chat:header.untitledChat')}</Text>
+                <View className={cn(stylesClasses.headerTitleRow)}>
+                  <Text maxFontSizeMultiplier={1.5} numberOfLines={1} className={cn("text-foreground")} style={[styles.headerTitle]} variant="title">{selectedSession?.title || t('chat:header.untitledChat')}</Text>
+                  <MaterialCommunityIcons name="chevron-down" size={20} color={palette.muted} />
+                </View>
                 <ChatWorkspaceContext compact={slim} />
               </View>
-              <MaterialCommunityIcons name="chevron-down" size={20} color={palette.muted} />
             </Pressable>
           </View>
         </View><View className={cn(stylesClasses.headerActions)}>

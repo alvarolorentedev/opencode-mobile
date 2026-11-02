@@ -111,7 +111,11 @@
       "oidcRedirectUri": "Introduza um URI de redirecionamento válido.",
       "oidcSignIn": "Entre novamente com OpenID Connect para usar este servidor.",
       "oidcSignInFailed": "O início de sessão OpenID Connect falhou. Verifique o emissor e o ID de cliente.",
-      "oidcTokenHeader": "Introduza um nome de cabeçalho válido diferente de Authorization."
+      "oidcTokenHeader": "Introduza um nome de cabeçalho válido diferente de Authorization.",
+      "oidcUnavailable": "O fornecedor OpenID Connect está temporariamente indisponível. Tente novamente mais tarde.",
+      "oidcNetwork": "Não foi possível contactar o fornecedor OpenID Connect. Verifique a rede e tente novamente.",
+      "oidcTimeout": "O fornecedor OpenID Connect excedeu o tempo limite. Tente novamente mais tarde.",
+      "oidcSecureUrl": "O OpenID Connect requer um URL HTTPS. HTTP só é permitido para localhost, 127.0.0.1 ou [::1]."
     },
     "setup": {
       "step": "Passo {{step}} de 2",
@@ -541,7 +545,7 @@
     }
   },
   "diagnostics": {
-    "title": "Diagnósticos do servidor",
+    "title": "Diagnósticos",
     "server": "Servidor",
     "openCodeVersion": "OpenCode {{version}}",
     "healthUnavailable": "Endpoint de integridade indisponível",
@@ -880,8 +884,8 @@
     "title": "Extensões",
     "description": "Gerencie servidores MCP, plugins, habilidades e comandos de barra para este servidor.",
     "scope": {
-      "project": "Projeto",
-      "general": "Geral"
+      "project": "Este projeto",
+      "general": "Todos os projetos"
     },
     "scopeDescription": {
       "project": "Estas extensões se aplicam apenas a {{project}}.",
@@ -995,7 +999,78 @@
     },
     "generalConfirmTitle": "Editar configuração global",
     "generalConfirmMessage": "Isso altera a configuração de todos os projetos deste servidor. Um backup é criado primeiro.\n\n{{path}}",
-    "generalConfirmAction": "Continuar"
+    "generalConfirmAction": "Continuar",
+    "editor": {
+      "discardTitle": "Descartar alterações?",
+      "discardHint": "As alterações não guardadas serão perdidas.",
+      "discard": "Descartar alterações",
+      "back": "Voltar às extensões",
+      "setup": "Configuração",
+      "instructions": "Instruções",
+      "advanced": "Avançado",
+      "storage": "Formato de armazenamento",
+      "inheritModel": "Herdar modelo",
+      "inheritModelHint": "Deixar o OpenCode escolher o modelo.",
+      "customModel": "ID de modelo personalizado",
+      "customModelHint": "Este modelo é configurado em Avançado. A sua configuração é preservada.",
+      "noModels": "Não há modelos configurados. Configure um fornecedor em IA e fornecedores ou introduza um ID de modelo em Avançado.",
+      "availability": "Disponível para",
+      "custom": "Personalizado",
+      "inherited": "Herdado",
+      "inheritPermissions": "Herdar as regras de permissões do servidor.",
+      "rulesHint": "As regras mantêm a ordem de avaliação. Remover todas restaura a herança.",
+      "ruleAction": "Ação",
+      "ruleResource": "Padrão de recurso",
+      "ruleEffect": "Decisão",
+      "ask": "Perguntar",
+      "allow": "Permitir",
+      "deny": "Negar",
+      "addRule": "Adicionar regra",
+      "legacyRules": "Esta configuração usa regras personalizadas ou antigas. Edite o código-fonte para preservar o formato.",
+      "source": "Código-fonte de permissões",
+      "sourceHint": "Edite o ficheiro SKILL.md completo. Os campos desconhecidos são preservados ao usar os controlos.",
+      "editSource": "Editar código-fonte",
+      "useFields": "Usar controlos",
+      "autoinvoke": "Invocação automática",
+      "autoinvokeHint": "Permitir que o modelo descubra esta competência automaticamente.",
+      "connectionType": "Tipo de ligação",
+      "executable": "Executável",
+      "argumentsHint": "Executado no servidor. Introduza cada argumento separadamente, sem aspas de shell.",
+      "argument": "Argumento {{number}}",
+      "removeArgument": "Remover argumento {{number}}",
+      "addArgument": "Adicionar argumento",
+      "pluginHint": "Introduza um pacote como @scope/plugin@1.0.0 ou um caminho do servidor como ./plugins/example.js.",
+      "configDetails": "Detalhes da configuração",
+      "mode": {
+        "primary": "Chat principal",
+        "subagent": "Outros agentes",
+        "all": "Ambos"
+      },
+      "modeHint": {
+        "primary": "Selecionável no chat principal.",
+        "subagent": "Chamado por outro agente para tarefas específicas.",
+        "all": "Disponível no chat e para outros agentes."
+      },
+      "mcpType": {
+        "remote": "Servidor remoto",
+        "local": "Comando no servidor"
+      },
+      "mcpStatus": {
+        "connected": "Ligado",
+        "disabled": "Desligado",
+        "pending": "A ligar…",
+        "failed": "Falhou",
+        "needs_auth": "Início de sessão necessário",
+        "needs_client_registration": "Registo do cliente necessário"
+      }
+    },
+    "source": {
+      "general": "Todos os projetos",
+      "project": "Este projeto",
+      "inherited": "Herdado",
+      "runtime": "Execução",
+      "system": "Sistema"
+    }
   },
   "modelRouting": {
     "title": "Roteamento automático de modelos",

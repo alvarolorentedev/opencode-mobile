@@ -130,6 +130,7 @@ export function useOpencodeProviderComposition(input: WorkspaceRuntimeInput) {
     isCurrentClient,
     serverUrl: state.settings.serverUrl,
     headers: terminalHeaders,
+    rejectRedirects: Boolean(state.settings.oidc),
     online: network.online,
   });
   const worktree = useWorktreeState({ ...domain, client, isCurrentClient, connected: state.connection.status === 'connected' });

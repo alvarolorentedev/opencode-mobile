@@ -84,11 +84,25 @@ workspace registry and saved connection profiles. Unavailable model IDs are kept
 in preferences and treated as unavailable at send time rather than being
 rewritten during a slow or incomplete capability refresh.
 
+The persisted `enabled` and `classifier` values are also user-owned. Transient
+availability (an empty or slow model catalog, an offline connection, a pending
+probe, or a missing on-device pack) is evaluated at send time and reported in
+Settings, but never rewrites those values. Only explicit actions change them:
+changing the classifier or classifier model, removing the on-device pack, or
+turning routing off. This keeps an enabled choice across app restarts even when
+the server is not reachable yet.
+
 ## UI
 
 - Composer: an `Auto-routing` row in the model picker. Selecting an explicit
   model disables routing. The row is only shown when the selected classifier is
   available.
+- A stored classifier that is temporarily unavailable stays selected and reports
+  its status. Routing is skipped for that send instead of silently switching to
+  the other classifier.
+- Replies: each assistant bubble shows the model recorded on that message, so
+  the routed model remains visible after the session switches for a later turn.
+  The label uses the catalog model name and falls back to the raw model ID.
 - Settings → AI & providers: classifier mode, on-device pack status/download/
   remove, OpenCode classifier model and probe, per-tier model mapping, and the
   long-chat cache guard.
@@ -106,6 +120,9 @@ rewritten during a slow or incomplete capability refresh.
 
 - `features/ai/__tests__/auto-model.test.ts` covers prompt parsing, preferences, catalog
   suggestions, attachment/context guards, and cache protection.
+- `runtime/__tests__/persistence-hydration.test.ts` and
+  `runtime/__tests__/workspaces.test.ts` cover chat-preference and workspace
+  registry round-trips plus focused/background preference merging.
 - `tests/e2e/auto-model.spec.mjs` covers OpenCode probe success, simple/complex
   routing, and the explicit-model override against the fake V2 server.
 - Native validation must cover pack download/integrity, llama.rn load and

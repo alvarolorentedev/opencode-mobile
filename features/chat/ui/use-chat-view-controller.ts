@@ -105,6 +105,12 @@ export function useChatViewController() {
     () => getVisibleModels(availableModels, configuredProviders, chatPreferences.enabledModelIds),
     [availableModels, chatPreferences.enabledModelIds, configuredProviders],
   );
+  // Resolve historical replies against the full catalog, not just enabled
+  // models: auto-routed turns keep their model after the user changes defaults.
+  const modelLabels = useMemo(
+    () => new Map(availableModels.map((model) => [`${model.providerID}/${model.modelID}`, model.label])),
+    [availableModels],
+  );
   // Scoped to the turn the overlay shows: an unscoped list would report files
   // from every turn in the transcript.
   const diffDetails = useMemo(
@@ -379,7 +385,7 @@ export function useChatViewController() {
       currentPendingPermissions, currentPendingQuestions, currentSessionId, currentTodos,
       diffAdditions, diffCount, diffDeletions, diffDetails, diffTurns, transcriptRows,
       expandedDiffId, hasTranscriptMessages, isBootstrappingChat, isCancelingRevert, isRefreshingDiffs, isRefreshingMessages,
-      pendingInteractions, pendingPrompts, progressIcon, progressVisible,
+      modelLabels, pendingInteractions, pendingPrompts, progressIcon, progressVisible,
       retryTranscript, selectedDiffMessageId, speakingMessageId, transcriptPaging, transcriptReadError,
     },
     composer: {

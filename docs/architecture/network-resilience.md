@@ -68,7 +68,9 @@ certificate.
 
 The native module is `modules/opencode-tls/`: Android installs a host-aware
 `SSLSocketFactory` and `X509ExtendedTrustManager` through the existing OkHttp
-hooks; iOS installs a host-scoped `NSURLProtocol` and `SRSecurityPolicy`. A
+hooks; iOS installs a host-scoped `NSURLProtocol` and `SRSecurityPolicy`. Expo's
+fetch configuration provider is registered synchronously on the main thread
+before JavaScript requests begin, as its setter is main-actor isolated. A
 certificate failure is a distinct, non-retryable connection failure with an
 actionable message. See [ADR 0021](../adr/0021-per-connection-custom-ca.md).
 
@@ -77,21 +79,21 @@ actionable message. See [ADR 0021](../adr/0021-per-connection-custom-ca.md).
 A manual connection can instead authenticate with an OpenID Connect provider.
 The connection form stores the issuer, client ID, scopes and an optional redirect
 URI override; the redirect URI defaults to `opencodemobile://oidc-callback`
-(`Linking.createURL('oidc-callback')`) and is shown so it can be registered with
+ and is shown so it can be registered with
 the provider. Providers are limited to public clients using Authorization Code +
-PKCE (S256). See [ADR 0023](../adr/0023-oidc-pkce-connection-authorization.md).
+PKCE (S256). Only the registered app callback scheme is supported; HTTPS app links and Expo Go callbacks are not registered. See [ADR 0025](../adr/0025-oidc-credential-and-session-boundaries.md).
 
-- Sign-in opens the system browser (`expo-web-browser`), never the in-app WebView.
+- Sign-in uses `expo-auth-session` for PKCE, OAuth state and system-browser coordination (`expo-web-browser`), never the in-app WebView.
   The verifier and state stay in process memory; only the code returns.
   `app/+native-intent.ts` routes the callback back to the route that started
   sign-in, so the connection form survives the browser round trip.
 - `shared/auth/oidc/discovery.ts` fetches `/.well-known/openid-configuration`
-  and rejects a document whose `issuer` does not match the configured value.
+  and rejects a document whose `issuer` does not match the configured value. Issuer, authorization and token endpoints require HTTPS, except explicit HTTP loopback development endpoints (`localhost`, `127.0.0.1`, `[::1]`). Discovery and token requests use Expo fetch with redirect rejection.
 - Tokens are refreshed 60 s before expiry and once after a 401/403.
   `shared/protocol/opencode/client/authorization.ts` resolves the bearer token
   immediately before each request, so no token is baked into a cached client.
   A replay after a refresh is limited to requests with no body or a string body.
-- A failed refresh clears the session. The connection reports an auth failure
+- Only an `invalid_grant` response on HTTP 400/401 clears the session. Network failures, timeouts, 429, 5xx, malformed responses and provider configuration errors preserve stored credentials. The connection reports an auth failure
   and the connection screen offers `Sign in`/`Sign in again`; the app never opens
   a browser without a tap. `probeConnection` reports
   `openid-sign-in-required` so the setup form keeps its options instead of
@@ -100,9 +102,21 @@ PKCE (S256). See [ADR 0023](../adr/0023-oidc-pkce-connection-authorization.md).
   SecureStore and the ciphertext in AsyncStorage, keyed by connection scope,
   issuer and client ID. The OIDC block itself is non-secret profile metadata.
 - The terminal WebSocket upgrade uses the same bearer token through a
-  non-interactive token snapshot that refreshes when the session table changes.
+  non-interactive token snapshot that refreshes when the session table changes. OIDC sockets reject redirects; legacy sockets retain their existing policy.
 - Web builds cannot intercept the redirect; sign-in reports an explicit
   unsupported error there.
+
+OIDC API credentials are resolved only for the configured secure origin and proxy
+mount. Redirects are rejected before forwarding credentials, including in the
+nested iOS custom-CA session. Basic authorization remains app-owned; caller
+headers cannot replace it. Connections without OIDC keep their existing HTTP,
+Basic, gateway-header, custom-CA and Cloud Link behavior.
+
+Refreshes are single-flight and coalesce by the access token actually rejected,
+so an immediate 401 after sign-in renews rather than reusing that token. Session
+generations reject stale browser/refresh results after sign-out, replacement or
+profile removal; per-session storage operations are serialized. Each caller can
+cancel its own wait without cancelling another caller's token rotation.
 
 ## Realtime and polling
 

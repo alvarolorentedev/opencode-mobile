@@ -37,12 +37,8 @@ function tokenAad(sessionKey: string) {
 }
 
 async function readKeyMaterial() {
-  try {
-    if (Platform.OS === 'web') return getConnectTestSecret(OIDC_KEY_STORAGE_KEY);
-    return (await SecureStore.getItemAsync(OIDC_KEY_STORAGE_KEY)) ?? '';
-  } catch {
-    return '';
-  }
+  if (Platform.OS === 'web') return getConnectTestSecret(OIDC_KEY_STORAGE_KEY);
+  return (await SecureStore.getItemAsync(OIDC_KEY_STORAGE_KEY)) ?? '';
 }
 
 async function writeKeyMaterial(value: string) {
@@ -55,17 +51,20 @@ async function writeKeyMaterial(value: string) {
   });
 }
 
-let cachedKey: AESEncryptionKey | undefined;
+let cachedKey: Promise<AESEncryptionKey> | undefined;
 
-async function tokenKey() {
-  if (cachedKey) return cachedKey;
+async function createTokenKey() {
   let encoded = await readKeyMaterial();
   if (!encoded) {
     const generated = await AESEncryptionKey.generate();
     encoded = await generated.encoded('base64');
     await writeKeyMaterial(encoded);
   }
-  cachedKey = await AESEncryptionKey.import(encoded, 'base64');
+  return AESEncryptionKey.import(encoded, 'base64');
+}
+
+function tokenKey() {
+  if (!cachedKey) cachedKey = createTokenKey().catch((error) => { cachedKey = undefined; throw error; });
   return cachedKey;
 }
 
@@ -91,7 +90,7 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 }
 
 function isToken(value: unknown): value is string {
-  return typeof value === 'string' && value.length > 0 && value.length <= MAX_TOKEN_LENGTH && !/[\r\n\0]/.test(value);
+  return typeof value === 'string' && value.length > 0 && value.length <= MAX_TOKEN_LENGTH && /^[\x20-\x7E]+$/.test(value);
 }
 
 export function parseOidcTokenSet(value: unknown): OidcTokenSet | undefined {
@@ -112,10 +111,10 @@ export function parseOidcTokenSet(value: unknown): OidcTokenSet | undefined {
 
 export async function readOidcTokens(sessionKey: string): Promise<OidcTokenSet | undefined> {
   const storageKey = tokenStorageKey(sessionKey);
-  const ciphertext = await readCiphertext(storageKey).catch(() => '');
+  const ciphertext = await readCiphertext(storageKey);
   if (!ciphertext) return undefined;
+  const key = await tokenKey();
   try {
-    const key = await tokenKey();
     const sealed = AESSealedData.fromCombined(ciphertext, { ivLength: 12, tagLength: 16 });
     const bytes = await aesDecryptAsync(sealed, key, { output: 'bytes', additionalData: tokenAad(sessionKey) });
     const tokens = parseOidcTokenSet(JSON.parse(new TextDecoder().decode(bytes)));
@@ -136,12 +135,7 @@ export async function saveOidcTokens(sessionKey: string, tokens: OidcTokenSet) {
     { additionalData: tokenAad(sessionKey) },
   );
   const ciphertext = await sealed.combined('base64');
-  try {
-    await writeCiphertext(tokenStorageKey(sessionKey), ciphertext);
-  } catch (error) {
-    await writeCiphertext(tokenStorageKey(sessionKey), '').catch(() => undefined);
-    throw error;
-  }
+  await writeCiphertext(tokenStorageKey(sessionKey), ciphertext);
 }
 
 export async function deleteOidcTokens(sessionKey: string) {

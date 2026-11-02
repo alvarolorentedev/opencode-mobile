@@ -1,3 +1,4 @@
+import type { TranscriptEntry } from '@/shared/presentation/format';
 import type { TranscriptRow } from '@/shared/presentation/transcript';
 import type { SessionStatus } from '@/shared/protocol/opencode/types';
 
@@ -9,6 +10,18 @@ export const STARTER_PROMPT_KEYS = [
 
 export function getAutoApproveIcon(autoApprove: boolean) {
   return autoApprove ? 'alert-outline' : 'shield-outline';
+}
+
+// The assistant message records the model that produced it. Prefer the catalog
+// label so auto-routed turns are readable, and fall back to the raw server ID
+// when the model is no longer in the current catalog.
+export function getEntryModelLabel(
+  entry: Pick<TranscriptEntry, 'role' | 'model'>,
+  modelLabels: ReadonlyMap<string, string> | undefined,
+) {
+  if (entry.role !== 'assistant' || !entry.model?.modelID) return undefined;
+  const { providerID, modelID } = entry.model;
+  return modelLabels?.get(`${providerID}/${modelID}`) ?? modelID;
 }
 
 // The live activity row has to describe work that is not represented by a

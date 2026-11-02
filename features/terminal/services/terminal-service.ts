@@ -18,10 +18,10 @@ export function createTerminalConnectToken(client: ScopedOpencodeClient, ptyID: 
   return createServerAdapter(client).terminals.connectToken(ptyID);
 }
 export function getTerminalWebSocketUrl(settings: Pick<OpencodeConnectionSettings, 'serverUrl' | 'directory'>, ptyId: string, options?: { ticket?: string; cursor?: string }, contract?: ServerContract) { return buildPtyWebSocketUrl(settings, ptyId, options, contract); }
-export function openTerminalWebSocket(url: string, headers?: Record<string, string>) {
+export function openTerminalWebSocket(url: string, headers?: Record<string, string>, rejectRedirects?: boolean) {
   // Browsers cannot attach custom headers to a WebSocket upgrade. Native
   // transports do, and the HTTP ticket request already carries the same headers.
   if (Platform.OS === 'web') return new WebSocket(url);
-  const NativeSocket = WebSocket as unknown as { new(url: string, protocols: undefined, options: { headers: Record<string, string> }): WebSocket };
-  return new NativeSocket(url, undefined, { headers: headers ?? {} });
+  const NativeSocket = WebSocket as unknown as { new(url: string, protocols: undefined, options: { headers: Record<string, string>; redirect?: 'error' }): WebSocket };
+  return new NativeSocket(url, undefined, { headers: headers ?? {}, ...(rejectRedirects ? { redirect: 'error' as const } : {}) });
 }

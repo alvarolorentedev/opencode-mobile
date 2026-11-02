@@ -1,4 +1,6 @@
-import { normalizeOidcIssuer, oidcDiscoveryUrl } from '@/shared/contracts/connection-oidc';
+import { isSecureOidcUrl, normalizeOidcIssuer, oidcDiscoveryUrl } from '@/shared/contracts/connection-oidc';
+import { fetch as expoFetch } from 'expo/fetch';
+
 import { OidcAuthError } from '@/shared/auth/oidc/errors';
 import { issuerMatches } from '@/shared/auth/oidc/redirect';
 
@@ -17,7 +19,7 @@ function endpoint(value: unknown): string | undefined {
   if (typeof value !== 'string' || !value.trim()) return undefined;
   try {
     const url = new URL(value.trim());
-    return /^https?:$/.test(url.protocol) ? url.toString() : undefined;
+    return isSecureOidcUrl(value.trim()) ? url.toString() : undefined;
   } catch {
     return undefined;
   }
@@ -51,9 +53,9 @@ export async function discoverOidc(issuer: string, options?: { signal?: AbortSig
   options?.signal?.addEventListener('abort', abort, { once: true });
   if (options?.signal?.aborted) abort();
   try {
-    const response = await fetch(oidcDiscoveryUrl(normalized), {
+    const response = await expoFetch(oidcDiscoveryUrl(normalized), {
       headers: { Accept: 'application/json' },
-      redirect: 'follow',
+      redirect: 'error',
       signal: controller.signal,
     });
     if (!response.ok) throw new OidcAuthError('discovery', `The OpenID Connect provider returned ${response.status} for its discovery document.`);

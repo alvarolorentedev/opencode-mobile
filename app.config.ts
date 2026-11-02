@@ -41,6 +41,7 @@ const androidPackage = isDevelopmentVariant ? developmentAndroidPackage : releas
 const buildPropertiesPlugin: [string, {
   android?: {
     usesCleartextTraffic: boolean;
+    buildReactNativeFromSource?: boolean;
     enableMinifyInReleaseBuilds?: boolean;
     enableShrinkResourcesInReleaseBuilds?: boolean;
     extraProguardRules?: string;
@@ -48,7 +49,7 @@ const buildPropertiesPlugin: [string, {
 }] = [
   'expo-build-properties',
   {
-    android: { usesCleartextTraffic: true, ...(!isDevelopmentVariant ? {
+    android: { usesCleartextTraffic: true, buildReactNativeFromSource: true, ...(!isDevelopmentVariant ? {
       enableMinifyInReleaseBuilds: true,
       enableShrinkResourcesInReleaseBuilds: true,
       // Expo modules convert JS objects into native records through the Pika
@@ -88,14 +89,14 @@ const iapPlugin: PluginList = ['expo-iap'];
 const config: ExpoConfig = {
   name: isDevelopmentVariant ? 'OpenCode Mobile Dev' : 'OpenCode Mobile',
   slug: 'opencode-mobile',
-  version: '1.0.119',
+  version: '1.0.124',
   orientation: 'default',
   icon: './assets/images/icon.png',
   scheme: 'opencodemobile',
   userInterfaceStyle: 'automatic',
   android: {
     package: androidPackage,
-    versionCode: 119,
+    versionCode: 124,
     adaptiveIcon: {
       foregroundImage: './assets/images/adaptive-icon.png',
       backgroundColor: "#202020"
@@ -109,7 +110,7 @@ const config: ExpoConfig = {
   },
   ios: {
     bundleIdentifier: iosBundleIdentifierOverride ?? (isDevelopmentVariant ? 'app.getopencode.mobile.dev' : 'app.getopencode.mobile'),
-    buildNumber: '119',
+    buildNumber: '124',
     infoPlist: {
       ITSAppUsesNonExemptEncryption: false,
       NSPhotoLibraryUsageDescription: 'Allow OpenCode Mobile to access photos you choose to attach to chat messages.',

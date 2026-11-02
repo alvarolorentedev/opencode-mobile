@@ -6,7 +6,7 @@ import { readFile } from 'node:fs/promises';
 import { createRequire } from 'node:module';
 import vm from 'node:vm';
 import ts from 'typescript';
-import { loadTs, hookRuntime } from '../../../tests/helpers/runtime.mjs';
+import { loadTs, hookRuntime, deferred } from '../../../tests/helpers/runtime.mjs';
 import { describe, it } from 'vitest';
 
 describe('connect and Cloud Link pairing', () => {
@@ -623,6 +623,154 @@ for (const platform of ['apple', 'google']) {
     } finally {
       runtime.unmount(); globalThis.fetch = originalFetch; (globalThis as any).__secureWriteFails = false;
     }
+  }
+}
+
+// Purchase initiation is detached from the shared action lock. The store event
+// and the requestPurchase result must both finalize the transaction while the
+// native request is still pending, on both store implementations.
+for (const platform of ['apple', 'google']) {
+  for (const scenario of ['listener', 'result', 'both', 'foreground', 'rejected']) {
+    const freshConnectUri = `${connectUri}#${platform}-purchase-${scenario}`;
+    const connect = { ...baseConnect, ...await import(freshConnectUri) };
+    const subscriptionService = await import(await moduleUri('features/cloud-link/services/connect-subscription-service.ts', [
+      [/from '@\/shared\/protocol\/cloud-link\/connect'/g, `from "${freshConnectUri}"`],
+      [/from '@\/shared\/platform\/billing\/connect-store'/g, `from "${storeUri}"`],
+    ]));
+    (globalThis as any).__connectPlatform = platform === 'apple' ? 'ios' : 'android';
+    (globalThis as any).__connectSecrets.clear();
+    const runtime = hookRuntime();
+    let request = deferred<any>();
+    let requestCalls = 0, claims = 0, finishes = 0, proof: any;
+    let onPurchase: any, onAppState: any, published = false;
+    const purchase: any = { id: `purchase-${scenario}`, productId: `fixture.${platform}`, store: platform, purchaseState: 'purchased',
+      purchaseToken: platform === 'apple' ? 'exact.native.jws' : 'exact-google-token', transactionDate: Date.now(),
+      ...(platform === 'google' ? { isAcknowledgedAndroid: false } : {}) };
+    const nativeApi = {
+      initConnection: async () => true, endConnection: async () => true,
+      fetchProducts: async () => platform === 'apple' ? [appleProduct] : [googleProduct],
+      getAvailablePurchases: async () => published ? [purchase] : [],
+      getPendingTransactionsIOS: async () => published ? [purchase] : [],
+      requestPurchase: async () => { requestCalls += 1; return request.promise; },
+      restorePurchases: async () => {},
+      getTransactionJwsIOS: async () => '', isEligibleForIntroOfferIOS: async () => false,
+      finishTransaction: async ({ purchase: finished, isConsumable }: any) => {
+        finishes += 1; assert.equal(finished, purchase); assert.equal(isConsumable, false);
+      },
+      purchaseUpdatedListener: (listener: any) => { onPurchase = listener; return { remove() {} }; },
+      purchaseErrorListener: () => ({ remove() {} }),
+    };
+    const concern: Record<string, any> = {
+      'react-native': { Platform: { OS: (globalThis as any).__connectPlatform }, AppState: { currentState: 'active', addEventListener: (_: any, listener: any) => { onAppState = listener; return { remove() {} }; } } },
+      "@/shared/contracts/cloud-link": connect,
+      "@/shared/protocol/cloud-link/connect": connect,
+      "@/shared/storage/cloud-link": connect,
+      '@/features/cloud-link/services/connect-subscription-service': subscriptionService,
+      "@/shared/platform/install-identity": { isConnectStoreInstall: async () => true },
+      "@/shared/platform/billing/connect-store": { ...storeApi, loadConnectStore: async () => nativeApi },
+      "@/shared/storage/connection-profiles": { loadConnectionProfiles: async () => [] },
+    };
+    const catalogModule = await loadTs('features/cloud-link/state/connect/catalog.ts', concern, { Error });
+    const purchasesModule = await loadTs('features/cloud-link/state/connect/purchases.ts', concern);
+    const pairingModule = await loadTs('features/cloud-link/state/connect/pairing.ts', concern);
+    concern['./activation'] = await loadTs('features/cloud-link/state/connect/activation.ts', concern);
+    const accessModule = await loadTs('features/cloud-link/state/connect/access.ts', concern);
+    const hook = await loadTs('features/cloud-link/state/connect/use-connect-machine.ts', {
+      ...concern,
+      react: runtime.react,
+      '@/features/cloud-link/state/connect/catalog': catalogModule,
+      '@/features/cloud-link/state/connect/purchases': purchasesModule,
+      '@/features/cloud-link/state/connect/pairing': pairingModule,
+      '@/features/cloud-link/state/connect/access': accessModule
+    }, { Error });
+    globalThis.fetch = async (address: any, init: any) => {
+      if (address.endsWith('/catalog')) return new Response(JSON.stringify(fixtureCatalog));
+      if (address.endsWith('/claim')) {
+        claims += 1; proof = init?.body ? JSON.parse(init.body) : undefined;
+        return new Response(JSON.stringify(session));
+      }
+      return new Response(JSON.stringify({ machines: [] }));
+    };
+    try {
+      runtime.mount(() => {
+        const [controlPlaneUrl, setControlPlaneUrl] = runtime.react.useState(pairing.controlPlaneUrl);
+        const [profiles, setProfiles] = runtime.react.useState([]);
+        return hook.useConnectState({ profiles, setProfiles, controlPlaneUrl, setControlPlaneUrl, isHydrated: true, migrateConnectConnectionScope: async () => {},
+          switchConnection: async () => ({ status: 'connected' }), disconnect: async () => {},
+          beforeProfileRefresh: async () => {}, onProfileRefreshed: () => {}, isActiveProfile: () => true,
+        });
+      }, {});
+      await runtime.settle();
+      assert.equal(runtime.value.canPurchase, true);
+      const key = runtime.value.offers[0].key;
+      const started = runtime.value.purchase(key);
+      await runtime.settle();
+      assert.equal(requestCalls, 1);
+      assert.equal(runtime.value.phase, 'purchasing');
+      assert.equal(runtime.value.busy, true);
+      assert.equal(await runtime.value.purchase(key), false, 'A pending native request blocks duplicate purchase taps');
+      assert.equal(requestCalls, 1);
+      if (scenario === 'rejected') {
+        request.reject(new Error('native store unavailable'));
+        assert.equal(await started, false);
+        await runtime.settle();
+        assert.equal(runtime.value.phase, 'idle');
+        assert.equal(runtime.value.busy, false);
+        assert.equal(runtime.value.canRetry, true);
+        assert.equal(runtime.value.canPurchase, true);
+        assert.match(runtime.value.error, /could not start the purchase/);
+        assert.equal(claims, 0); assert.equal(finishes, 0);
+        request = deferred<any>();
+        const retried = runtime.value.purchase(key);
+        await runtime.settle();
+        assert.equal(requestCalls, 2, 'A rejected request releases the purchase guard');
+        onPurchase?.(purchase);
+        await runtime.settle();
+        assert.equal(runtime.value.entitled, true);
+        assert.equal(runtime.value.phase, 'idle');
+        request.resolve(purchase);
+        assert.equal(await retried, true);
+        await runtime.settle();
+        assert.equal(claims, 1); assert.equal(finishes, platform === 'apple' ? 1 : 0);
+        assert.deepEqual(proof, platform === 'apple' ? { store: 'apple', signedTransaction: 'exact.native.jws' } : { store: 'google', purchaseToken: 'exact-google-token' });
+        continue;
+      }
+      if (scenario === 'foreground') {
+        published = true;
+        onAppState?.('active');
+        await runtime.settle();
+        assert.equal(claims, 1, 'Foreground recovery finalizes a completed native transaction during purchasing');
+        assert.equal(runtime.value.entitled, true);
+        assert.equal(runtime.value.phase, 'idle');
+      } else if (scenario === 'listener' || scenario === 'both') {
+        onPurchase?.(purchase);
+        await runtime.settle();
+        assert.equal(claims, 1);
+        assert.equal(runtime.value.entitled, true);
+        assert.equal(runtime.value.phase, 'idle');
+      }
+      if (scenario === 'result' || scenario === 'both' || scenario === 'foreground') {
+        request.resolve(scenario === 'both' ? [purchase] : purchase);
+        assert.equal(await started, true);
+        await runtime.settle();
+        assert.equal(claims, 1, scenario === 'result' ? 'The requestPurchase result finalizes without a listener event' : 'The listener event and request result finalize exactly once');
+      }
+      if (scenario === 'result') {
+        onPurchase?.(purchase);
+        await runtime.settle();
+        assert.equal(claims, 1, 'A late listener event cannot finalize a completed transaction again');
+      }
+      assert.equal(finishes, platform === 'apple' ? 1 : 0, 'Google never finishes the transaction client-side');
+      assert.equal(runtime.value.error, undefined);
+      assert.deepEqual(proof, platform === 'apple' ? { store: 'apple', signedTransaction: 'exact.native.jws' } : { store: 'google', purchaseToken: 'exact-google-token' });
+      if (scenario === 'listener') {
+        request.resolve(purchase);
+        assert.equal(await started, true);
+        await runtime.settle();
+        assert.equal(claims, 1);
+        assert.equal(finishes, platform === 'apple' ? 1 : 0);
+      }
+    } finally { runtime.unmount(); globalThis.fetch = originalFetch; }
   }
 }
 

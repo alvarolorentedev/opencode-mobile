@@ -1,3 +1,4 @@
+import { oidcErrorMessageKey } from '@/shared/auth/oidc/errors';
 import type { CertificateFailureReason } from '@/shared/contracts/connection-certificate';
 import { normalizeServerUrl } from '@/shared/contracts/server-url';
 
@@ -83,7 +84,10 @@ function fallbackTranslate(key: string, options: Record<string, unknown> = {}) {
     case 'settings:connection.errors.certificateHostnameMismatch': return 'The server certificate does not match this address.';
     case 'settings:connection.errors.certificateInvalid': return 'The server certificate could not be validated.';
     case 'settings:connection.errors.oidcSignIn': return 'Sign in with OpenID Connect again to use this server.';
-    case 'settings:connection.errors.oidcFailed': return 'OpenID Connect authorization failed. Check the issuer and client ID.';
+    case 'settings:connection.errors.oidcUnavailable': return 'The OpenID Connect provider is temporarily unavailable. Try again later.';
+    case 'settings:connection.errors.oidcNetwork': return 'Could not reach the OpenID Connect provider. Check your network and try again.';
+    case 'settings:connection.errors.oidcTimeout': return 'The OpenID Connect provider timed out. Try again later.';
+    case 'settings:connection.errors.oidcSignInFailed': return 'OpenID Connect authorization failed. Check the issuer and client ID.';
     case 'settings:connection.errors.notApi': return `The server at ${options.url} did not return an OpenCode API response.${options.apiHint}${options.versionHint}`;
     case 'settings:connection.errors.endpointNotFound': return `OpenCode endpoint not found at ${options.url}.${options.apiHint}${options.versionHint}`;
     case 'settings:connection.errors.webPage': return `The server at ${options.url} returned a web page instead of the OpenCode API.${options.apiHint}${options.versionHint}`;
@@ -126,12 +130,13 @@ export function getConnectionErrorMessage(error: unknown, serverUrl: string, tra
     return tr('settings:connection.errors.tunnelStarting');
   }
 
-  // OpenID Connect failures are translated for the UI; the thrown message keeps
-  // the provider detail for telemetry.
+  const oidcKey = oidcErrorMessageKey(error);
+  if (oidcKey) return tr(oidcKey);
+  // Provider descriptions are never displayed or recorded.
   if (/openid connect/i.test(message)) {
     return /sign in|rejected|expired/i.test(message)
       ? tr('settings:connection.errors.oidcSignIn')
-      : tr('settings:connection.errors.oidcFailed');
+      : tr('settings:connection.errors.oidcSignInFailed');
   }
 
   if (/unsupported.?content.?type|malformed.?response/i.test(message)) {

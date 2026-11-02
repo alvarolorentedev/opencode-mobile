@@ -46,6 +46,7 @@ describe('native inbound share routing', () => {
     systemPath.value = '/settings';
     expect(await redirectSystemPath({ path: 'opencodemobile://oidc-callback?code=abc&state=xyz', initial: false })).toBe('/settings');
     expect(await redirectSystemPath({ path: 'opencodemobile://oidc-callback#code=abc', initial: false })).toBe('/settings');
+    expect(await redirectSystemPath({ path: 'other://oidc-callback?code=abc', initial: false })).toBe('other://oidc-callback?code=abc');
     expect(await redirectSystemPath({ path: 'opencodemobile://oidc-callback-other', initial: false })).toBe('opencodemobile://oidc-callback-other');
   });
 
