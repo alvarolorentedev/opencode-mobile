@@ -240,6 +240,16 @@ Only an explicit Purchase tap invokes `requestPurchase`. Pending approval and
 cancellation grant nothing. Google replacement purchases include the previous
 subscription token and explicit `deferred` replacement parameters.
 
+Purchase initiation and finalization are deliberately independent.
+`requestPurchase` runs under a dedicated purchase guard rather than the shared
+action lock, so an open native store sheet cannot block
+`purchaseUpdatedListener`, `drainRef`, or AppState recovery. Both the listener
+event and the purchase or purchases returned by `requestPurchase` enter the same
+transaction queue, and `finishedPurchases` drops a late duplicate. `purchasing`
+is cleared by successful finalization or by a retryable request failure; the
+guided flow then continues from the verified session. Finalization ordering and
+platform ownership are unchanged.
+
 Only an explicit Restore tap calls `restorePurchases`, followed by
 `getAvailablePurchases`. Startup, foreground, session recovery and reconnect
 may query available purchases, but never synchronize StoreKit interactively or
@@ -465,6 +475,17 @@ client finalization step. Locally, static CI, both fake-server self-tests and th
 39 Cloud Link E2E flows passed. The updated E2E assertions require explicit human
 validation under AGENTS.md, and live Android license-test acknowledgement remains
 a separate acceptance check.
+
+Purchase initiation/finalization validation on 2026-11-02:
+`features/cloud-link/__tests__/connect.test.ts` drives deferred native requests on
+both Apple and Google fixtures. It covers a listener completing while the request
+is pending, a result-only completion with no listener event, both paths arriving
+for one transaction, AppState recovery during `purchasing`, and a rejected
+request exposing the retryable error. Duplicate taps and late deliveries do not
+claim or finish twice; Apple still finishes StoreKit and Google never does.
+Locally, `npm run validate:commit` passed (147 files, 895 tests) along with the
+focused Cloud Link suites. Real native store-sheet behavior remains a device
+acceptance check.
 
 Cloud Link recovery validation on 2026-10-11: static CI, both fake-server
 self-tests and all 116 web E2E flows passed. The user explicitly confirmed live
