@@ -22,12 +22,13 @@ describe('native activity lifecycle metadata boundary', () => {
     const observation = controller.slice(controller.indexOf('private func observe('), controller.indexOf('private func forget('));
     expect(observation).toContain('forKey: self.dismissalKey');
     expect(observation).not.toContain('clearCycle()');
-    expect(controller.slice(controller.indexOf('func stop()'), controller.indexOf('private func suspend()'))).toContain('self.clearCycle()');
+    expect(controller.slice(controller.indexOf('func stop(force:'), controller.indexOf('private func suspend()'))).toContain('self.clearCycle()');
     expect(controller).toMatch(/if terminal \{\s+clearCycle\(\)/);
     expect(controller).toContain('!suspended && revision == submittedRevision');
     expect(controller).toContain('guard foreground, fresh(revision) else { return false }');
     expect(controller).toContain('return encoded.count <= 3500');
-    expect(controller).toContain('pushType: nil');
+    expect(controller).toContain('pushType: remote ? .token : nil');
+    expect(controller).toContain('let remote = OpencodeActivityRemote.shared.enrollment != nil');
   });
 
   it('invalidates transient inactive work without forcing pause IPC, then flushes on actual background', () => {

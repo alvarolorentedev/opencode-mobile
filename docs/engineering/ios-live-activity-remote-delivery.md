@@ -1,172 +1,190 @@
-# iOS Live Activity remote-delivery proposal
+# iOS Live Activity remote delivery
 
-**Status: PROPOSED / NOT IMPLEMENTED.** This document requests upstream decisions;
-it does not enable remote delivery, define a deployed API, or authorize hosting.
-No new remote credentials, requests, native push flags, token bridges, senders,
-or background pollers are introduced. The app continues using its existing local
-features and observation owners.
+**Status: experimental reference implementation; not deployed or device-validated.**
+The local/free-signing path remains the default. [ADR 0025](../adr/0025-managed-live-activity-relay.md)
+records the narrower managed-mode decision, pending maintainer acceptance.
 
-Current implementation and device limitations belong to [iOS parity](../product/parity/ios-widget.md)
-and [ADR 0023](../adr/0023-opt-in-local-ios-live-activities.md). This proposal owns
-only the additional contract, security, provisioning, and acceptance work needed
-for remote updates after the app is suspended.
+## Ownership and scope
 
-## Ownership must precede integration
+`services/live-activity-relay/` is a standalone Node service using the repository's
+installed `@opencode/client`. `modules/opencode-activity/ios/OpencodeActivityRemote.swift`
+is its native registration consumer. No existing endpoint is assumed and no
+Cloud Link, Expo push, or app connection credentials are forwarded to it.
 
-The notifications feature owns activity coordination; the native ActivityKit
-adapter owns the device resource. [Cloud Link](../product/cloud-link.md) owns
-subscription, pairing, machine access, and connector services. Its control plane
-is maintained in a separate service repository. Neither the mobile contracts nor
-the inspected OpenCode SDK expose remote-activity registration. Backend support,
-an authoritative execution-event producer, and a sender owner are unconfirmed.
-Existing machine-access and connector-service APIs are not activity APIs.
+Each enrollment authorizes up to 32 explicit `{source, sessionID}` pairs, possibly
+across multiple servers. **These are operator-configured sessions, not the app's
+connected-server aggregate.** Local foreground work starts the ActivityKit resource;
+the relay alone writes all subsequent content and ends it when its authorized
+sessions settle. Changing local tabs/connections does not change that remote scope.
+New sessions require operator configuration and a relay restart. This limited
+mode avoids silently uploading private local membership or competing writers.
 
-The app presents **one aggregate activity across multiple connections/servers**.
-APNs updates replace its complete content state: giving the same activity token
-to independent servers lets their partial snapshots overwrite one another.
-Maintainers must choose a trusted aggregation owner, or explicitly approve a
-narrower single-owner remote mode and its interaction with local aggregation.
-No implicit Cloud Link dependency or upload of other servers' state is acceptable.
-Use an agreed authoritative event source, not a second mobile query/polling owner.
+The existing dashboard is unchanged. Remote presentation contains only localized
+generic phase, count, and timestamps. Optional metrics stay absent when unverified.
+Taps open the app root, not a private session/project route. Completion notifications
+remain independent and best effort. There is no push-to-start.
 
-## Proposed logical contract
+## Configure and run the relay
 
-These are reusable operations and invariants, **not HTTP routes or an accepted
-wire schema**. Transport, discovery, authorization, backend repository, and
-version negotiation require maintainer agreement before any client calls exist.
+Use the repository Node/npm requirements and install its locked dependencies.
+Create a protected directory outside the repository, owned by the dedicated relay
+OS user (directory mode 0700, configuration/key mode 0600). Run **one process**
+per state file. Put this JSON in that directory, replacing every example value:
 
-| Operation | Required semantics |
-| --- | --- |
-| Register or replace | Authenticate the installation/owner; authorize each subscribed work scope; bind an opaque activity ID and generation to its current ActivityKit update token, monotonic registration revision, supported schema/locale, and bounded lease. The service allowlists the app/topic and verifies the APNs environment. Retries are idempotent; older revisions cannot restore superseded tokens. |
-| Deliver | The agreed producer supplies authoritative, redacted state. One sender serializes/coalesces complete snapshots per activity, advances timestamps, and prevents old progress from following a terminal result. Explicitly reconcile local writes with remote writes and connection membership changes. |
-| End or unregister | Owner-authenticated and idempotent, scoped to the activity/generation and registration revision. Clean up on end, dismissal, disablement, or ownership revocation when the app can run; leases and APNs invalidation handle missing client cleanup. A stale unregister cannot remove a newer registration. |
+```json
+{
+  "port": 8788,
+  "stateFile": "/protected/activities/state.json",
+  "apns": {
+    "environment": "sandbox",
+    "bundleId": "your.containing.app.bundle.id",
+    "teamId": "YOURTEAMID",
+    "keyId": "YOURKEYID1",
+    "keyFile": "/protected/activities/AuthKey.p8"
+  },
+  "sources": {
+    "workstation": {
+      "url": "https://opencode.example/",
+      "headers": { "Authorization": "Basic OPERATOR_CONFIGURED_BASE64" }
+    }
+  },
+  "owners": {
+    "installation-one": {
+      "credentialHash": "SHA256_HEX_OF_UNIQUE_RANDOM_INSTALLATION_CREDENTIAL",
+      "locale": "en",
+      "subscriptions": [{ "source": "workstation", "sessionID": "ses_REPLACE" }]
+    }
+  }
+}
+```
 
-### Start in the app; update and end remotely
+Generate each credential with at least 32 cryptographically random bytes encoded
+as base64url; store its lowercase SHA-256 hex digest in the relay configuration.
+Never reuse credentials across installations. A credential authorizes only its
+configured scopes, not arbitrary source URLs or subscriptions from request bodies.
+Supported locales: en, ru, es, hi, de, fr, zh, pt, ja (existing app translations).
 
-The first proposed remote phase starts activities in the foreground with
-ActivityKit's `pushType: .token`; it does not add push-to-start or broadcast
-channels. Observe `pushTokenUpdates` for initial asynchronous issuance and every
-rotation, replace/invalidate the previous server token, and restore observation
-of existing activities after relaunch. Tokens are per activity, not ordinary APNs
-device tokens or Expo push tokens. Generation changes and native activity
-replacement must invalidate obsolete subscriptions. Do not add a native token
-bridge until an agreed registration consumer and its tests ship with it.
+Run from the repository root:
 
-The sender uses HTTP/2 over TLS to Apple's sandbox or production APNs host, with
-the ActivityKit token in the device path, `apns-push-type: liveactivity`, and
-`apns-topic: <app-bundle-id>.push-type.liveactivity` for the containing app, not
-the widget extension. Token authentication uses an ES256 provider JWT with `kid`,
-Team ID `iss`, and current Unix-second `iat`; the private signing key stays on the
-trusted sender. Provisioning determines the APNs environment; a staging Cloud
-Link purchase environment does not determine it.
+```sh
+node services/live-activity-relay/server.mjs /protected/activities/config.json
+```
 
-The `aps` envelope supplies `timestamp`, `event` (`update` or `end`), and a complete
-`content-state` matching the accepted Swift type. Use `stale-date` for freshness
-and final content plus an agreed `dismissal-date` when ending. Prefer priority 5
-for ordinary progress; reserve 10 for justified urgent transitions. Respect
-ActivityKit's update budget and user settings rather than assuming frequent
-updates. APNs is best effort: acceptance is not proof of device display.
+It binds only to 127.0.0.1. Terminate public HTTPS at an operator-managed reverse
+proxy and expose only `/v1/activity`. Disable request-body/Authorization logging;
+apply proxy connection limits, 2 KB request limits and short timeouts. Configure a
+supervisor, protected persistent volume, and host monitoring. Never run multiple
+replicas against the JSON state file. The service itself logs no tokens, source
+payloads, credentials, session IDs, or APNs response bodies.
 
-Handle invalidated tokens, including APNs `410`, without retry loops; distinguish
-topic/environment/authentication errors from retryable failures. Bound retries
-by expiry and usefulness, retaining only the newest eligible state. ActivityKit
-attributes and content have a combined 4 KB limit; the APNs JSON body also has a
-4096-byte limit. Test both byte budgets, including translated UTF-8 text.
+Sources must be V2 servers with the installed SDK's finite
+`session.log({sessionID, follow:false})` experimental endpoint available, plus
+`session.inbox.list`, `permission.list`, and `session.form.list`. Source URLs must
+be origin-only HTTPS (loopback HTTP is allowed for a colocated server); redirects
+are rejected. Proxy path-prefix deployments are not supported by this reference
+observer. Each read has a timeout; logs exceeding 10,000 events or missing
+`log.synced` fail closed. The service replays durable execution events, including
+retry, success, failure and interruption; it never infers completion from an empty
+active-session list. Any failed source suppresses the entire aggregate update.
+It polls on the server after each 15-second cycle, never in suspended mobile JS.
+Unchanged successful observations are coalesced to at most one freshness update
+per 45 seconds; actual phase/count changes can publish on the next cycle. Apple's
+delivery budget may still throttle or drop these best-effort updates.
 
-### Content compatibility and optional metrics
+## Enable and enroll the app
 
-Finalize the native/JavaScript DTO before proposing remote serialization. The
-presentation work's agreed metric names are `completedSteps`, `totalSteps`,
-`agentCount`, `toolCount`, and `filesChanged`; all are optional. Associated generic
-labels (`progressLabel`, `agentsLabel`, `toolsLabel`, `filesLabel`, `updatedLabel`,
-and `elapsedLabel`) are optional too. These names describe local presentation
-compatibility, not a live remote API. Missing metrics mean unknown, not zero;
-only bounded, verified counts and meaningful progress denominators may appear.
-No task-step text, tool arguments, filenames, or inferred progress is implied.
-Maintainers must agree aggregation, count semantics, localization ownership, and
-compatibility before a sender encodes these fields.
+1. Use a paid-team profile with Push Notifications for the containing app ID.
+   APNs environment must match that provisioning (not a Cloud Link environment).
+2. Set `EXPO_IOS_LIVE_ACTIVITIES=1` and
+   `EXPO_IOS_ACTIVITY_RELAY_URL=https://relay.example/v1/activity` for the native
+   build. The endpoint is public configuration, **not a credential**. The config
+   rejects remote mode with `EXPO_IOS_DISABLE_PUSH_ENTITLEMENT=1`, FOSS, or E2E.
+3. Using the installation's MDM managed-app configuration, set the string
+   `OpencodeActivityCredential` to its unique base64url credential. iOS exposes it
+   in `com.apple.configuration.managed`; it is never bridged to JS or embedded in
+   the bundle. This requires managed enrollment; there is currently no self-service
+   setup screen or credential deep link for unmanaged personal devices.
+4. With the app foregrounded, start work to create the resource. Initial remote
+   content is paused until the relay sends a verified observation of its scopes.
+   An empty/settled allowlist ends it rather than pretending local work is tracked.
 
-**Date encoding is not interchangeable:** Swift `Date`'s default Codable numeric
-representation is seconds since **2001-01-01 00:00:00 UTC**. APNs envelope fields
-`timestamp`, `stale-date`, and `dismissal-date` are seconds since **1970-01-01
-00:00:00 UTC**. For the same instant, the default Codable number is Unix seconds
-minus **978307200**. Neither is Unix milliseconds. ActivityKit requires default
-JSON decoding strategies; ISO strings or custom date strategies are not drop-in
-substitutes. Any future golden payload must be generated and round-trip decoded
-against the final Swift DTO using Foundation defaults. This proposal supplies no
-unverified payload fixture or delivery claim.
+Only APNs update tokens are sent to the pinned relay. The APNs private key and
+OpenCode source credentials remain on the host. The existing local Personal Team
+command remains usable with the relay URL unset. No distribution or deployment
+is performed by this integration.
 
-## Privacy and trust boundaries
+## Registration, lifecycle and delivery
 
-- Keep titles, prompts, commands, request/reply text, tool details, filenames,
-  credentials, and server URLs out of remote presentation content. Generic status
-  and bounded counts remain the default; even these need an approved data flow.
-- The current session route includes a **project path**. Hashing its connection
-  reference does not redact that path. Do not copy the full route into APNs or a
-  relay by default. Agree an app-established immutable route or an opaque local
-  reference, including cold-start resolution, before remote delivery. Taps only
-  navigate after the app's existing scope/session checks; actions stay in-app.
-- Treat activity tokens as sensitive routing capabilities, not proof of account
-  or work ownership. Protect stored tokens, transport them over authenticated TLS,
-  redact logs/telemetry, bound retention, and prevent cross-owner registration.
-- Never ship the app owner's APNs private key to phones, extensions, or arbitrary
-  user-hosted servers. Do not forward existing Basic passwords, custom gateway
-  headers, or Cloud Link bearer credentials to a new relay.
-- Remote content bypasses the app's local update validator. Enforce enum/count,
-  string/byte, and route constraints at native decoding/rendering boundaries too;
-  locally controlled generic labels are preferable to arbitrary sender copy.
-- Consent, revocation, local/remote precedence, and treatment of disconnected or
-  forgotten connections must be explicit. No private crash-log upload is required.
+`PUT /v1/activity` and `DELETE /v1/activity` require `Authorization: Bearer ...`.
+Both accept `activityId`, a 64-character lowercase-hex `generation`, and a positive
+monotonic installation `revision`. PUT additionally requires hexadecimal `token`
+and `startedAt` in Unix seconds. Native revisions are persisted; reenrolling a
+reinstalled app requires a new installation credential/owner. Responses are empty:
+200 accepted/idempotent, 400 invalid, 401 unauthorized, 409 stale/conflicting,
+410 generation closed, 413 oversized, 429 rate limited. The limit is 30 authenticated
+requests/minute/installation, with at most 100 configured installations.
+The process caps the combined allowlists at 128 session subscriptions.
 
-## Provisioning, testing access, and costs
+Token observation is restored on adoption/relaunch and covers rotations. Register
+retries are bounded; suspended/terminated apps cannot promise rotation delivery.
+Native dismissal/end cancels observation and best-effort unregisters. Removing or
+changing managed enrollment ends the resource when the app can run. Operator
+revocation removes/rotates the credential and restarts the relay. Missing cleanup
+is bounded by a seven-hour absolute lease; the relay attempts an end in its final
+minute and deletes expired tokens. iOS also enforces its own activity lifetime.
 
-Apple's free Personal Team cannot enable Push Notifications. Keep the existing
-local-only Personal Team path usable; removing the push entitlement cannot test
-APNs. A paid-program maintainer can provision and distribute an accepted beta
-through **TestFlight**, allowing a contributor to test on their own iPhone without
-buying a developer membership or sharing signing credentials. External testing
-requires Apple's applicable beta review and an invitation; this proposal does
-not authorize a release or upload.
+The relay persists registration revisions, token replacements, terminal latches
+and a versioned enrollment fingerprint binding the owner ID, credential verifier,
+canonical authorized scope set, and locale. Changing credentials or scopes under
+the same owner ID invalidates its old registrations on restart; no old token is
+adopted into the new enrollment. Legacy records without this binding are deleted
+at startup and require fresh authenticated registration. The fingerprint contains
+no raw credential; the credential verifier itself is not copied into state storage.
+All state uses flushed atomic mode-0600 file replacement. Tombstones retain
+only native IDs/revision, bounded by configured enrollment history. Retain this
+file across restarts; losing it also loses replay protection. Registration during
+a slow source read invalidates that result. Per-owner queues serialize APNs sends
+and mutations; the whole authorized set becomes one complete replacement state.
+Progress never follows a latched terminal result for that generation.
 
-APNs has **no per-notification fee**, but remote delivery is not zero-cost:
-developer-program membership, event processing, hosting, storage, network traffic,
-key management, monitoring, and maintenance remain operational responsibilities.
-Do not promise unlimited throughput or free backend hosting.
+APNs uses TLS HTTP/2, ES256 P-256 provider JWTs, the containing app's
+`.push-type.liveactivity` topic, priority 5, short expiration, and only Apple's
+sandbox/production hosts. 429/5xx/transport failures wait at least 60 seconds;
+expired progress is replaced by the newest state. 410 drops the invalid token;
+a higher revision can install its rotation. Other permanent errors close the
+registration; fix provisioning/configuration and start a new activity. Successful
+APNs acceptance does not prove display.
 
-## Upstream decision and acceptance checklist
+`aps.timestamp`, `stale-date` and `dismissal-date` use Unix seconds. Swift content
+`Date` numbers use Foundation's default 2001 epoch: Unix seconds minus 978307200.
+Every push is a complete content state, with a 60-second stale date or final
+content plus a five-minute dismissal date. Both the 4096-byte APNs limit and
+combined attributes/content budget are checked. Native decoding also validates
+phases, counts, progress, dates, copy, routes and encoded size before rendering.
 
-- [ ] Name the backend repository, event producer, aggregation owner, APNs sender,
-  and operational/key-custody owner; agree supported manual/Cloud Link connections.
-- [ ] Resolve the single-aggregate/multiple-server model and local/remote write
-  precedence; approve consent, routing privacy, DTO/versioning, and metric semantics.
-- [ ] Agree authenticated registration/replacement, ownership checks, revocation,
-  leases, environment/topic mapping, rate limits, retention, and failure handling.
-- [ ] Approve app IDs, provisioning, protected sender credentials, operating costs,
-  and a maintainer-owned device/TestFlight acceptance path.
-- [ ] Offline: test final Swift Codable round trips, epochs, missing optional fields,
-  redaction, bounds/byte budgets, token rotation and stale revisions, cross-owner
-  rejection, leases, terminal ordering, and APNs error handling with dummy data.
-- [ ] Provisioned device: verify token issuance/rotation, suspended update/end,
-  delayed/out-of-order delivery, stale/terminal display, dismissal, authorization
-  changes, revocation, multi-connection changes, and scoped cold/warm taps. Test
-  process termination separately from user force-quit; do not promise delivery.
-- [ ] Keep native compilation, offline mocks, local Personal Team testing, and live
-  APNs acceptance as distinct results; follow existing repository validation gates.
+## Verification and remaining acceptance
 
-An optional standalone reference sender is a separate maintainer decision, not
-part of this change. If requested, keep it CLI-only with explicit send/dry-run,
-Apple-host allowlisting, protected operator credentials, and real final-DTO and
-isolated HTTP/2 tests. It needs APNs authentication but no public authentication
-or registration endpoint. Offline tests must not be presented as live delivery.
+Offline coverage lives in
+`features/notifications/__tests__/activity-relay.test.ts`: real installed SDK
+response decoding, missing sync markers, authenticated HTTP registration,
+scope isolation, token rotation, stale revisions, invalidation, restart/terminal
+ordering, leases, locale/epoch/redaction/budgets, and an isolated real HTTP/2
+server verifying headers and the JWT signature. Existing local/native source
+and config-plugin tests cover preserved opt-in boundaries.
 
-## Apple references
+Offline tests are not device verification. Before enabling distribution, compile
+the app and extension in Xcode, round-trip generated payloads through Foundation,
+and verify on provisioned devices: initial token, rotation, managed-config changes,
+background/suspended update/end, stale display, terminal ordering, dismissal,
+relaunch, authorization changes, revoked credentials, missing sources and root
+taps. Test process termination separately from force-quit. No IPA build, live
+APNs send, purchase, release tag, or deployment is implied.
 
-- [ActivityKit push tokens, payloads, rotation, and update budgets](https://developer.apple.com/documentation/activitykit/starting-and-updating-live-activities-with-activitykit-push-notifications)
-- [Live Activity lifecycle, sandbox, and size limits](https://developer.apple.com/documentation/activitykit/displaying-live-data-with-live-activities)
-- [APNs HTTP/2 requests and environments](https://developer.apple.com/documentation/usernotifications/sending-notification-requests-to-apns)
-- [Provider-token authentication and key protection](https://developer.apple.com/documentation/usernotifications/establishing-a-token-based-connection-to-apns)
-- [APNs responses and token invalidation](https://developer.apple.com/documentation/usernotifications/handling-notification-responses-from-apns)
-- [Notification payload privacy](https://developer.apple.com/documentation/usernotifications/generating-a-remote-notification)
-- [Foundation reference date](https://developer.apple.com/documentation/foundation/nsdate/timeintervalsincereferencedate-swift.property) and [default Date encoding strategy](https://developer.apple.com/documentation/foundation/jsonencoder/dateencodingstrategy-swift.enum/deferredtodate)
-- [Capabilities by program membership](https://developer.apple.com/help/account/reference/supported-capabilities-ios) and [membership details](https://developer.apple.com/programs/whats-included/)
-- [TestFlight distribution and external testers](https://developer.apple.com/testflight/)
+## References
+
+- [ActivityKit pushes](https://developer.apple.com/documentation/activitykit/starting-and-updating-live-activities-with-activitykit-push-notifications)
+- [APNs requests](https://developer.apple.com/documentation/usernotifications/sending-notification-requests-to-apns)
+- [APNs authentication](https://developer.apple.com/documentation/usernotifications/establishing-a-token-based-connection-to-apns)
+- [Managed app configuration](https://developer.apple.com/documentation/devicemanagement/app-configuration)
+- [Foundation reference date](https://developer.apple.com/documentation/foundation/nsdate/timeintervalsincereferencedate-swift.property)
+- [Local iOS behavior](../product/parity/ios-widget.md)

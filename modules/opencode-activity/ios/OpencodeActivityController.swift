@@ -75,6 +75,16 @@ final class OpencodeActivityController {
     }
     let center = NotificationCenter.default
     listeners.append(center.addObserver(
+      forName: UserDefaults.didChangeNotification, object: nil, queue: .main
+    ) { [weak self] _ in
+      MainActor.assumeIsolated {
+        if let activity = self?.current, activity.attributes.remote == true,
+          OpencodeActivityRemote.shared.enrollmentChanged(for: activity.id) {
+          Task { await self?.stop(force: true) }
+        }
+      }
+    })
+    listeners.append(center.addObserver(
       forName: UIApplication.willResignActiveNotification, object: nil, queue: .main
     ) { [weak self] _ in
       // Control Center / Island inspection is transient inactivity, not proof
@@ -97,6 +107,9 @@ final class OpencodeActivityController {
     })
     enqueue {
       await self.adopt()
+      if self.current?.attributes.remote == true, OpencodeActivityRemote.shared.enrollment == nil {
+        await self.stopRestoredRemote()
+      }
       await self.pauseCurrent()
     }
   }
@@ -123,7 +136,11 @@ final class OpencodeActivityController {
     return await result.value
   }
 
-  func stop() async {
+  func stop(force: Bool = false) async {
+    // Local catalog idleness is not evidence about the managed relay scopes.
+    // Removing enrollment or system authorization revokes this independent mode.
+    if !force, current?.attributes.remote == true, Self.isEnabled,
+      OpencodeActivityRemote.shared.enrollment != nil { return }
     // Invalidate updates already suspended inside ActivityKit before queuing cleanup.
     revision += 1
     let previous = pending
@@ -153,6 +170,15 @@ final class OpencodeActivityController {
   private func invalidateFreshness() {
     suspended = true
     revision += 1
+  }
+
+  private func stopRestoredRemote() async {
+    guard let activity = current else { return }
+    forget(activity)
+    current = nil
+    clearActiveIdentity()
+    clearCycle()
+    await activity.end(nil, dismissalPolicy: .immediate)
   }
 
   private func suspend() {
@@ -204,11 +230,13 @@ final class OpencodeActivityController {
   }
 
   private func observe(_ activity: LiveActivity) {
+    OpencodeActivityRemote.shared.observe(activity)
     guard observations[activity.id] == nil else { return }
     observations[activity.id] = Task { @MainActor [weak self] in
       for await state in activity.activityStateUpdates {
         guard !Task.isCancelled, let self else { return }
         if state == .dismissed {
+          OpencodeActivityRemote.shared.forget(activity)
           UserDefaults.standard.set(activity.attributes.generation, forKey: self.dismissalKey)
           if self.current?.id == activity.id {
             self.current = nil
@@ -218,6 +246,10 @@ final class OpencodeActivityController {
           return
         }
         if state == .ended {
+          OpencodeActivityRemote.shared.forget(activity)
+          if activity.attributes.remote == true {
+            UserDefaults.standard.set(activity.attributes.generation, forKey: self.dismissalKey)
+          }
           if self.current?.id == activity.id {
             self.current = nil
             self.clearActiveIdentity()
@@ -230,6 +262,7 @@ final class OpencodeActivityController {
   }
 
   private func forget(_ activity: LiveActivity) {
+    OpencodeActivityRemote.shared.forget(activity)
     observations.removeValue(forKey: activity.id)?.cancel()
   }
 
@@ -276,6 +309,15 @@ final class OpencodeActivityController {
     await adopt()
     guard fresh(revision) else { return false }
 
+    let remote = OpencodeActivityRemote.shared.enrollment != nil
+    if let activity = current, activity.attributes.remote == true {
+      if remote { return true } // One writer: all subsequent state comes from APNs.
+      forget(activity)
+      current = nil
+      await activity.end(nil, dismissalPolicy: .immediate)
+    }
+    if remote && terminal { return true }
+
     if terminal {
       clearCycle()
       guard let activity = current else { return true }
@@ -304,9 +346,22 @@ final class OpencodeActivityController {
       await activity.end(nil, dismissalPolicy: .immediate)
     }
     guard fresh(revision), Self.isEnabled else { return false }
-    let state = content(record, phase: phase)
+    var state = content(record, phase: phase)
+    if remote {
+      // Until the relay observes its own authorized scopes, show paused data.
+      state.body = record.pausedLabel
+      state.chip = record.pausedLabel
+      state.link = "opencodemobile-activities://"
+      state.phase = "reconnecting"
+      state.count = 0
+      state.isPaused = true
+      state.frozenAt = state.updatedAt
+      state.completedSteps = nil; state.totalSteps = nil
+      state.agentCount = nil; state.toolCount = nil; state.filesChanged = nil
+      state.progressLabel = nil; state.agentsLabel = nil; state.toolsLabel = nil; state.filesLabel = nil
+    }
     let payload = ActivityContent(state: state, staleDate: state.updatedAt.addingTimeInterval(60))
-    if let activity = current {
+    if let activity = current, !remote {
       if activity.activityState == .dismissed {
         UserDefaults.standard.set(generation, forKey: dismissalKey)
         current = nil
@@ -315,10 +370,11 @@ final class OpencodeActivityController {
       }
       await activity.update(payload)
     } else {
-      // No push type, no APNs token, no background-start attempt.
+      // Push is strictly opt-in; Personal Team/local mode retains pushType:nil.
       do {
-        let attributes = OpencodeActivityAttributes(generation: generation, startedAt: Date())
-        let activity = try LiveActivity.request(attributes: attributes, content: payload, pushType: nil)
+        if let old = current { forget(old); await old.end(nil, dismissalPolicy: .immediate) }
+        let attributes = OpencodeActivityAttributes(generation: generation, startedAt: Date(), remote: remote ? true : nil)
+        let activity = try LiveActivity.request(attributes: attributes, content: payload, pushType: remote ? .token : nil)
         current = activity
         remember(activity)
         observe(activity)
@@ -338,6 +394,7 @@ final class OpencodeActivityController {
 
   private func pauseCurrent() async {
     guard let activity = current, activity.activityState == .active || activity.activityState == .stale else { return }
+    guard activity.attributes.remote != true else { return } // Relay stale-date owns freshness.
     var state = activity.content.state
     guard state.endedAt == nil else { return }
     if !state.isPaused {

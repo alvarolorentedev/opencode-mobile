@@ -33,6 +33,13 @@ const e2eServerUrl = env('EXPO_PUBLIC_E2E_SERVER_URL');
 // on-device builds entirely for them. Strip it locally with this flag; CI and
 // paid-team builds must leave it unset so push notifications keep working.
 const disablePushEntitlement = env('EXPO_IOS_DISABLE_PUSH_ENTITLEMENT') === '1';
+// Public endpoint only. Per-installation credentials are delivered by MDM;
+// APNs signing material never enters the application configuration.
+const activityRelayURL = env('EXPO_IOS_ACTIVITY_RELAY_URL');
+if (activityRelayURL && (!enableIOSLiveActivities || disablePushEntitlement
+  || !/^https:\/\/[^/?#@:]+(?::\d+)?\/v1\/activity$/.test(activityRelayURL))) {
+  throw new Error('Activity relay requires opt-in Live Activities, push entitlement, and an HTTPS /v1/activity URL.');
+}
 // Apple bundle identifiers are unique across every developer account, not just
 // per team. The published "app.getopencode.mobile" (and its ".dev" variant)
 // are already registered to the paid team, so a free "Personal Team" account
@@ -118,6 +125,7 @@ const config: ExpoConfig = {
     buildNumber: '121',
     infoPlist: {
       ITSAppUsesNonExemptEncryption: false,
+      ...(activityRelayURL ? { OpencodeActivityRelayURL: activityRelayURL } : {}),
       NSPhotoLibraryUsageDescription: 'Allow OpenCode Mobile to access photos you choose to attach to chat messages.',
       NSAppTransportSecurity: {
         NSAllowsArbitraryLoads: true,

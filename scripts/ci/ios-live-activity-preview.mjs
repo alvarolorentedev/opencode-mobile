@@ -239,6 +239,13 @@ export async function runPreview({ root = process.cwd(), exec = execute, launch 
   const appSources = [...sources.filter((file) => path.basename(file) !== 'OpencodeLiveActivity.swift'),
     path.join(root, 'tests/native/ios-live-activity/PreviewApp.swift')];
   exec('xcrun', swiftArguments({ sdk, arch, sources: appSources, output: path.join(app, 'OpencodeActivityPreview'), moduleCache }));
+  // The relay consumer belongs to the containing app, not the WidgetKit target.
+  // Check it independently even in preview-only runs; the archive's podspec
+  // includes every module Swift source when building the full application.
+  exec('xcrun', swiftArguments({ sdk, arch, moduleCache, sources: [
+    path.join(root, 'modules/opencode-activity/ios/OpencodeActivityAttributes.swift'),
+    path.join(root, 'modules/opencode-activity/ios/OpencodeActivityRemote.swift'),
+  ] }));
   exec('/usr/bin/codesign', ['--force', '--sign', '-', app]);
   const device = selectSimulator(
     JSON.parse(exec('xcrun', ['simctl', 'list', 'runtimes', '--json'])),

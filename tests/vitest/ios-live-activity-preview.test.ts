@@ -272,12 +272,16 @@ describe('native Live Activity preview planning (no Apple SDK compilation on Lin
     const run = mockedNativeRun();
     await runPreview({ ...run, platform: 'darwin' });
     const compiler = run.calls.filter((call) => call.args.includes('swiftc'));
-    assert.equal(compiler.length, 2);
+    assert.equal(compiler.length, 3);
     assert.ok(compiler[0].args.some((arg) => arg.endsWith('/OpencodeLiveActivity.swift')));
     assert.ok(compiler[1].args.some((arg) => arg.endsWith('/ActivityDashboard.swift')));
     assert.ok(compiler[1].args.some((arg) => arg.endsWith('/OpencodeActivityTheme.swift')));
     assert.equal(compiler[1].args.some((arg) => arg.endsWith('/OpencodeLiveActivity.swift')), false);
     assert.ok(compiler[1].args.at(-1)!.endsWith('.app/OpencodeActivityPreview'));
+    assert.ok(compiler[2].args.includes('-typecheck'));
+    assert.ok(compiler[2].args.some((arg) => arg.endsWith('/OpencodeActivityAttributes.swift')));
+    assert.ok(compiler[2].args.some((arg) => arg.endsWith('/OpencodeActivityRemote.swift')));
+    assert.equal(compiler[2].args.some((arg) => arg.endsWith('/OpencodeLiveActivity.swift')), false);
     assert.ok(run.calls.some((call) => call.args.join(' ') === `simctl bootstatus ${device.udid} -b`));
     assert.ok(run.calls.some((call) => call.args[1] === 'install'));
     assert.ok(run.calls.some((call) => call.args.join(' ') === `simctl get_app_container ${device.udid} ${previewBundleIdentifier} data`));

@@ -122,10 +122,12 @@ This implementation deliberately avoids the App Group required by Expo Widgets'
 shared JavaScript runtime; see [ADR 0023](../../adr/0023-opt-in-local-ios-live-activities.md).
 The richer presentation/freshness policy is proposed in
 [ADR 0024](../../adr/0024-truthful-live-activity-progress-and-freshness.md).
-Continuous progress after suspension or termination still needs a separately
-approved APNs sender and Apple provisioning; no push channel is implemented here.
-The [remote-delivery proposal](../../engineering/ios-live-activity-remote-delivery.md)
-lists the upstream ownership, security, provisioning, and testing decisions.
+An additional [experimental managed relay](../../engineering/ios-live-activity-remote-delivery.md)
+implements opt-in APNs delivery for operator-allowlisted V2 sessions. It requires
+a configured/deployed sender, paid push provisioning, and per-installation managed
+enrollment. It is not enabled in ordinary/local builds and has not been verified
+on a provisioned device. Remote mode has exclusive relay ownership and root taps;
+the local freshness and scoped-navigation behavior above remains the default.
 
 ## Acceptance tests (device, iOS 17+)
 

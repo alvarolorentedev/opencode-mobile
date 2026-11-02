@@ -179,7 +179,7 @@ describe('opt-in local iOS Live Activity plugin', () => {
     expect(source('OpencodeActivity.podspec')).toContain("s.source_files = '*.swift'");
     expect(source('OpencodeActivityModule.swift')).toContain('Function("suppressesCompletion") { false }');
     expect(source('OpencodeActivityModule.swift')).toContain('AsyncFunction("waitUntilStopped")');
-    expect(source('OpencodeActivityController.swift')).toContain('pushType: nil');
+    expect(source('OpencodeActivityController.swift')).toContain('pushType: remote ? .token : nil');
     expect(source('LiveActivity/OpencodeLiveActivity.swift')).not.toMatch(/Button\(|AppIntent|Link\(/);
     expect(source('LiveActivity/ActivityDashboard.swift')).not.toMatch(/Button\(|AppIntent|Link\(|ActivityViewContext</);
   });
