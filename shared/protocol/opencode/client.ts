@@ -10,6 +10,7 @@ export type { ServerContract, PendingPermissionRequest, PendingPermission, Pendi
 export { defaultConnectionSettings } from '@/shared/protocol/opencode/client/types';
 export { getNormalizedServerUrl, isValidServerUrl, getServerBase } from '@/shared/contracts/server-url';
 export { getRequestHeaders, createPrefixFetch } from '@/shared/protocol/opencode/client/fetch';
+export { withOidcAuthorizationObject } from '@/shared/protocol/opencode/client/authorization';
 export { DEFAULT_SERVICES_PORT, MAX_MANAGED_SERVICES, buildServiceShareUrl, formatServiceAddress, getServicePortOptions, prepareServiceDraft, type ManagedService, type ServiceDraft, type ServiceDraftErrors, type ServiceInput, type ServiceManagementVersion, type ServicePortOption } from '@/shared/contracts/service-management';
 export { ServiceManagementError, deleteManagedService, getServiceManagementVersion, listManagedServices, putManagedService } from '@/shared/protocol/opencode/client/management-api';
 export { getConnectionError, getCertificateErrorMessage, isContractMismatchError, isRetryableCloudLinkStartupError, classifyConnectionFailure, isAuthConnectionFailure, type ConnectionFailureKind } from '@/shared/protocol/opencode/client/errors';

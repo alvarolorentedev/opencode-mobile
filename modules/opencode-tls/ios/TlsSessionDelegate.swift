@@ -23,6 +23,25 @@ final class TlsSessionDelegate: NSObject, URLSessionDataDelegate {
   func urlSession(
     _ session: URLSession,
     task: URLSessionTask,
+    willPerformHTTPRedirection response: HTTPURLResponse,
+    newRequest request: URLRequest,
+    completionHandler: @escaping (URLRequest?) -> Void
+  ) {
+    // Expo marks redirect:error requests; the nested CA session must honor it
+    // before sending any credentials to the redirect destination.
+    if let owner,
+       URLProtocol.property(forKey: "shouldFollowRedirects", in: owner.request) as? Bool == false {
+      completionHandler(nil)
+      finish()
+      owner.client?.urlProtocol(owner, didFailWithError: URLError(.httpTooManyRedirects))
+      return
+    }
+    completionHandler(request)
+  }
+
+  func urlSession(
+    _ session: URLSession,
+    task: URLSessionTask,
     didReceive challenge: URLAuthenticationChallenge,
     completionHandler: @escaping (URLSession.AuthChallengeDisposition, URLCredential?) -> Void
   ) {
@@ -75,6 +94,7 @@ final class TlsSessionDelegate: NSObject, URLSessionDataDelegate {
   }
 
   func urlSession(_ session: URLSession, task: URLSessionTask, didCompleteWithError error: Error?) {
+    guard !finished else { return }
     finish()
     guard let owner else { return }
     if let error {

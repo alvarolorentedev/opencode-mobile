@@ -41,6 +41,7 @@ const androidPackage = isDevelopmentVariant ? developmentAndroidPackage : releas
 const buildPropertiesPlugin: [string, {
   android?: {
     usesCleartextTraffic: boolean;
+    buildReactNativeFromSource?: boolean;
     enableMinifyInReleaseBuilds?: boolean;
     enableShrinkResourcesInReleaseBuilds?: boolean;
     extraProguardRules?: string;
@@ -48,7 +49,7 @@ const buildPropertiesPlugin: [string, {
 }] = [
   'expo-build-properties',
   {
-    android: { usesCleartextTraffic: true, ...(!isDevelopmentVariant ? {
+    android: { usesCleartextTraffic: true, buildReactNativeFromSource: true, ...(!isDevelopmentVariant ? {
       enableMinifyInReleaseBuilds: true,
       enableShrinkResourcesInReleaseBuilds: true,
       // Expo modules convert JS objects into native records through the Pika

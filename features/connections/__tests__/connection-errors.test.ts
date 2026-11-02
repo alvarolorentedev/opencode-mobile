@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 
+import { OidcAuthError } from '@/shared/auth/oidc/errors';
 import { getConnectionErrorMessage } from '@/shared/protocol/opencode/client/errors';
 
 vi.mock('@/shared/protocol/opencode/client/types', () => ({ defaultConnectionSettings: { serverUrl: 'http://127.0.0.1:4096' } }));
@@ -16,4 +17,11 @@ describe('connection error copy', () => {
     expect(api).not.toContain('If this address serves a web UI');
     expect(api).toContain('This app supports OpenCode 1.x and 2.x');
   });
+});
+
+it.each([
+  ['provider-unavailable', 'oidcUnavailable'], ['network', 'oidcNetwork'], ['timeout', 'oidcTimeout'],
+] as const)('translates %s without asking for a new sign-in', (code, key) => {
+  const translate = vi.fn((value: string) => value);
+  expect(getConnectionErrorMessage(new OidcAuthError(code, 'OpenID Connect request failed.'), 'https://server.test', translate)).toBe(`settings:connection.errors.${key}`);
 });

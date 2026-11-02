@@ -104,7 +104,18 @@
       "certificateUntrusted": "The server certificate is not trusted. Import the CA certificate for this server.",
       "certificateExpired": "The server certificate has expired.",
       "certificateHostnameMismatch": "The server certificate does not match this address.",
-      "certificateInvalid": "The server certificate could not be validated."
+      "certificateInvalid": "The server certificate could not be validated.",
+      "oidcIssuer": "输入有效的 OpenID Connect 颁发者 URL。",
+      "oidcClientId": "输入为此应用注册的客户端 ID。",
+      "oidcScopes": "使用以空格分隔且可打印字符的作用域。",
+      "oidcRedirectUri": "输入有效的重定向 URI。",
+      "oidcSignIn": "请使用 OpenID Connect 重新登录以使用此服务器。",
+      "oidcSignInFailed": "OpenID Connect 登录失败。请检查颁发者和客户端 ID。",
+      "oidcTokenHeader": "输入有效的标头名称（不能是 Authorization）。",
+      "oidcUnavailable": "OpenID Connect 提供方暂时不可用。请稍后重试。",
+      "oidcNetwork": "无法连接到 OpenID Connect 提供方。请检查网络并重试。",
+      "oidcTimeout": "OpenID Connect 提供方响应超时。请稍后重试。",
+      "oidcSecureUrl": "OpenID Connect 需要 HTTPS URL。仅 localhost、127.0.0.1 或 [::1] 允许使用 HTTP。"
     },
     "setup": {
       "step": "第 {{step}} 步，共 2 步",
@@ -168,6 +179,29 @@
         "invalid": "This is not a valid X.509 certificate.",
         "read": "Could not read the selected certificate.",
         "notTrusted": "The imported certificate does not trust this server."
+      }
+    },
+    "oidc": {
+      "enable": "使用 OpenID Connect",
+      "hint": "通过提供商登录，而不是使用服务器密码。",
+      "issuer": "颁发者 URL",
+      "issuerHint": "提供商的颁发者标识，例如 https://login.example.com/realms/main。",
+      "clientId": "客户端 ID",
+      "scopes": "作用域",
+      "scopesHint": "以空格分隔。保留 offline_access，以便会话无需重新打开浏览器即可续期。",
+      "tokenHeader": "令牌标头",
+      "tokenHeaderHint": "原始访问令牌将在此标头中发送。留空则使用 X-Auth-Request-Access-Token。设置密码时，Authorization 保持 Basic 认证。",
+      "redirectUri": "重定向 URI",
+      "redirectHint": "在提供商中注册这个确切的 URI：{{uri}}",
+      "signIn": "登录",
+      "signInAgain": "重新登录",
+      "cancelled": "登录已取消。",
+      "status": {
+        "unknown": "尚未登录。",
+        "signed-in": "已登录。令牌会自动续期。",
+        "expired": "会话已过期。请重新登录。",
+        "signed-out": "登录以授权此服务器。",
+        "signing-in": "正在等待浏览器…"
       }
     }
   },

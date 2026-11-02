@@ -104,7 +104,18 @@
       "certificateUntrusted": "The server certificate is not trusted. Import the CA certificate for this server.",
       "certificateExpired": "The server certificate has expired.",
       "certificateHostnameMismatch": "The server certificate does not match this address.",
-      "certificateInvalid": "The server certificate could not be validated."
+      "certificateInvalid": "The server certificate could not be validated.",
+      "oidcIssuer": "Introduza um URL de emissor OpenID Connect válido.",
+      "oidcClientId": "Introduza o ID de cliente registado para esta aplicação.",
+      "oidcScopes": "Use âmbitos separados por espaços com caracteres imprimíveis.",
+      "oidcRedirectUri": "Introduza um URI de redirecionamento válido.",
+      "oidcSignIn": "Entre novamente com OpenID Connect para usar este servidor.",
+      "oidcSignInFailed": "O início de sessão OpenID Connect falhou. Verifique o emissor e o ID de cliente.",
+      "oidcTokenHeader": "Introduza um nome de cabeçalho válido diferente de Authorization.",
+      "oidcUnavailable": "O fornecedor OpenID Connect está temporariamente indisponível. Tente novamente mais tarde.",
+      "oidcNetwork": "Não foi possível contactar o fornecedor OpenID Connect. Verifique a rede e tente novamente.",
+      "oidcTimeout": "O fornecedor OpenID Connect excedeu o tempo limite. Tente novamente mais tarde.",
+      "oidcSecureUrl": "O OpenID Connect requer um URL HTTPS. HTTP só é permitido para localhost, 127.0.0.1 ou [::1]."
     },
     "setup": {
       "step": "Passo {{step}} de 2",
@@ -168,6 +179,29 @@
         "invalid": "This is not a valid X.509 certificate.",
         "read": "Could not read the selected certificate.",
         "notTrusted": "The imported certificate does not trust this server."
+      }
+    },
+    "oidc": {
+      "enable": "Usar OpenID Connect",
+      "hint": "Entre com o seu provedor em vez de uma palavra-passe do servidor.",
+      "issuer": "URL do emissor",
+      "issuerHint": "O identificador do emissor, por exemplo https://login.example.com/realms/main.",
+      "clientId": "ID de cliente",
+      "scopes": "Âmbitos",
+      "scopesHint": "Separados por espaços. Mantenha offline_access para que a sessão se renove sem reabrir o navegador.",
+      "tokenHeader": "Cabeçalho do token",
+      "tokenHeaderHint": "O token de acesso em bruto é enviado neste cabeçalho. Deixe em branco para X-Auth-Request-Access-Token. Se houver uma palavra-passe, Authorization mantém a autenticação básica.",
+      "redirectUri": "URI de redirecionamento",
+      "redirectHint": "Registe este URI exato no seu provedor: {{uri}}",
+      "signIn": "Entrar",
+      "signInAgain": "Entrar novamente",
+      "cancelled": "O início de sessão foi cancelado.",
+      "status": {
+        "unknown": "Ainda não tem sessão iniciada.",
+        "signed-in": "Sessão iniciada. O token é renovado automaticamente.",
+        "expired": "A sessão expirou. Entre novamente.",
+        "signed-out": "Entre para autorizar este servidor.",
+        "signing-in": "A aguardar o navegador…"
       }
     }
   },

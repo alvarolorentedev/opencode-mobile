@@ -104,7 +104,18 @@
       "certificateUntrusted": "The server certificate is not trusted. Import the CA certificate for this server.",
       "certificateExpired": "The server certificate has expired.",
       "certificateHostnameMismatch": "The server certificate does not match this address.",
-      "certificateInvalid": "The server certificate could not be validated."
+      "certificateInvalid": "The server certificate could not be validated.",
+      "oidcIssuer": "Enter a valid OpenID Connect issuer URL.",
+      "oidcClientId": "Enter the client ID registered for this app.",
+      "oidcScopes": "Use space-separated scopes with printable characters.",
+      "oidcRedirectUri": "Enter a valid redirect URI.",
+      "oidcSignIn": "Sign in with OpenID Connect again to use this server.",
+      "oidcSignInFailed": "OpenID Connect sign-in failed. Check the issuer and client ID.",
+      "oidcTokenHeader": "Enter a valid header name other than Authorization.",
+      "oidcUnavailable": "The OpenID Connect provider is temporarily unavailable. Try again later.",
+      "oidcNetwork": "Could not reach the OpenID Connect provider. Check your network and try again.",
+      "oidcTimeout": "The OpenID Connect provider timed out. Try again later.",
+      "oidcSecureUrl": "OpenID Connect requires an HTTPS URL. HTTP is allowed only for localhost, 127.0.0.1 or [::1]."
     },
     "setup": {
       "step": "Step {{step}} of 2",
@@ -168,6 +179,29 @@
         "invalid": "This is not a valid X.509 certificate.",
         "read": "Could not read the selected certificate.",
         "notTrusted": "The imported certificate does not trust this server."
+      }
+    },
+    "oidc": {
+      "enable": "Use OpenID Connect",
+      "hint": "Sign in through your provider instead of a server password.",
+      "issuer": "Issuer URL",
+      "issuerHint": "The provider's issuer identifier, for example https://login.example.com/realms/main.",
+      "clientId": "Client ID",
+      "scopes": "Scopes",
+      "scopesHint": "Space-separated. Keep offline_access so the session renews without reopening the browser.",
+      "tokenHeader": "Token header",
+      "tokenHeaderHint": "The raw access token is sent in this header. Leave blank for X-Auth-Request-Access-Token. When a password is set, Authorization keeps Basic auth.",
+      "redirectUri": "Redirect URI",
+      "redirectHint": "Register this exact URI in your provider: {{uri}}",
+      "signIn": "Sign in",
+      "signInAgain": "Sign in again",
+      "cancelled": "Sign-in was cancelled.",
+      "status": {
+        "unknown": "Not signed in yet.",
+        "signed-in": "Signed in. The token renews automatically.",
+        "expired": "The session expired. Sign in again.",
+        "signed-out": "Sign in to authorize this server.",
+        "signing-in": "Waiting for the browser…"
       }
     }
   },

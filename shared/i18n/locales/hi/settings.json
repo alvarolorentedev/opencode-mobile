@@ -104,7 +104,18 @@
       "certificateUntrusted": "The server certificate is not trusted. Import the CA certificate for this server.",
       "certificateExpired": "The server certificate has expired.",
       "certificateHostnameMismatch": "The server certificate does not match this address.",
-      "certificateInvalid": "The server certificate could not be validated."
+      "certificateInvalid": "The server certificate could not be validated.",
+      "oidcIssuer": "मान्य OpenID Connect जारीकर्ता URL दर्ज करें।",
+      "oidcClientId": "इस ऐप के लिए पंजीकृत क्लाइंट ID दर्ज करें।",
+      "oidcScopes": "स्पेस से अलग और मुद्रण योग्य वर्णों वाले स्कोप का उपयोग करें।",
+      "oidcRedirectUri": "मान्य रीडायरेक्ट URI दर्ज करें।",
+      "oidcSignIn": "इस सर्वर का उपयोग करने के लिए OpenID Connect से फिर से साइन इन करें।",
+      "oidcSignInFailed": "OpenID Connect साइन इन विफल रहा। जारीकर्ता और क्लाइंट ID जांचें।",
+      "oidcTokenHeader": "Authorization के अलावा मान्य हेडर नाम दर्ज करें।",
+      "oidcUnavailable": "OpenID Connect प्रदाता अभी उपलब्ध नहीं है। बाद में फिर प्रयास करें।",
+      "oidcNetwork": "OpenID Connect प्रदाता से संपर्क नहीं हो सका। अपना नेटवर्क जाँचें और फिर प्रयास करें।",
+      "oidcTimeout": "OpenID Connect प्रदाता के उत्तर की समय सीमा समाप्त हो गई। बाद में फिर प्रयास करें।",
+      "oidcSecureUrl": "OpenID Connect के लिए HTTPS URL आवश्यक है। HTTP केवल localhost, 127.0.0.1 या [::1] के लिए अनुमत है।"
     },
     "setup": {
       "step": "चरण {{step}} / 2",
@@ -168,6 +179,29 @@
         "invalid": "This is not a valid X.509 certificate.",
         "read": "Could not read the selected certificate.",
         "notTrusted": "The imported certificate does not trust this server."
+      }
+    },
+    "oidc": {
+      "enable": "OpenID Connect का उपयोग करें",
+      "hint": "सर्वर पासवर्ड के बजाय अपने प्रदाता से साइन इन करें।",
+      "issuer": "जारीकर्ता URL",
+      "issuerHint": "प्रदाता का जारीकर्ता पहचानकर्ता, उदाहरण के लिए https://login.example.com/realms/main.",
+      "clientId": "क्लाइंट ID",
+      "scopes": "स्कोप",
+      "scopesHint": "स्पेस से अलग। offline_access रखें ताकि ब्राउज़र दोबारा खोले बिना सत्र नवीनीकृत हो।",
+      "tokenHeader": "टोकन हेडर",
+      "tokenHeaderHint": "कच्चा एक्सेस टोकन इस हेडर में भेजा जाता है। X-Auth-Request-Access-Token के लिए खाली छोड़ें। यदि पासवर्ड सेट है तो Authorization बेसिक प्रमाणीकरण बनाए रखता है।",
+      "redirectUri": "रीडायरेक्ट URI",
+      "redirectHint": "अपने प्रदाता में यही URI पंजीकृत करें: {{uri}}",
+      "signIn": "साइन इन करें",
+      "signInAgain": "फिर से साइन इन करें",
+      "cancelled": "साइन इन रद्द किया गया।",
+      "status": {
+        "unknown": "अभी साइन इन नहीं हैं।",
+        "signed-in": "साइन इन हैं। टोकन अपने आप नवीनीकृत होता है।",
+        "expired": "सत्र समाप्त हो गया। फिर से साइन इन करें।",
+        "signed-out": "इस सर्वर को अधिकृत करने के लिए साइन इन करें।",
+        "signing-in": "ब्राउज़र की प्रतीक्षा हो रही है…"
       }
     }
   },

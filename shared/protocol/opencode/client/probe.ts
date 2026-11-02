@@ -8,7 +8,7 @@ export type ContractProbeResult = { contract: ServerContract; version?: string }
 export type ConnectionProbeResult =
   | ({ status: 'detected' } & ContractProbeResult)
   | { status: 'certificate'; reason: CertificateFailureReason }
-  | { status: 'authentication-required' | 'unreachable' | 'unknown' };
+  | { status: 'authentication-required' | 'openid-sign-in-required' | 'unreachable' | 'unknown' };
 
 async function probeJson(origin: string, pathPrefix: string, path: string, settings: OpencodeConnectionSettings, signal?: AbortSignal) {
   const url = `${origin}${joinUrlPath(pathPrefix, path)}`;
@@ -92,7 +92,19 @@ async function probeV2(settings: OpencodeConnectionSettings, signal?: AbortSigna
   return { status: responses.every((response) => !response) ? 'unreachable' : 'unknown' };
 }
 
-export function probeConnection(settings: OpencodeConnectionSettings, signal?: AbortSignal): Promise<ConnectionProbeResult> {
+export async function probeConnection(settings: OpencodeConnectionSettings, signal?: AbortSignal): Promise<ConnectionProbeResult> {
+  // A missing or expired OpenID Connect session is a distinct setup state: the
+  // form keeps its options and offers Sign in instead of reporting the server
+  // as unreachable or its credentials as wrong.
+  if (settings.oidc) {
+    const { isOidcAuthError } = await import('@/shared/auth/oidc/errors');
+    try {
+      const { getOidcAccessToken } = await import('@/shared/auth/oidc/session');
+      await getOidcAccessToken(settings, settings.oidc, { signal });
+    } catch (error) {
+      if (isOidcAuthError(error) && error.code === 'sign-in-required') return { status: 'openid-sign-in-required' };
+    }
+  }
   return withTemporaryTrust(settings, () => probeV2(settings, signal));
 }
 

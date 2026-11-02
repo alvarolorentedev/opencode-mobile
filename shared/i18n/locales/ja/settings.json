@@ -104,7 +104,18 @@
       "certificateUntrusted": "The server certificate is not trusted. Import the CA certificate for this server.",
       "certificateExpired": "The server certificate has expired.",
       "certificateHostnameMismatch": "The server certificate does not match this address.",
-      "certificateInvalid": "The server certificate could not be validated."
+      "certificateInvalid": "The server certificate could not be validated.",
+      "oidcIssuer": "有効な OpenID Connect 発行者 URL を入力してください。",
+      "oidcClientId": "このアプリに登録されたクライアント ID を入力してください。",
+      "oidcScopes": "スペース区切りのスコープと印刷可能な文字を使用してください。",
+      "oidcRedirectUri": "有効なリダイレクト URI を入力してください。",
+      "oidcSignIn": "このサーバーを使用するには OpenID Connect で再度サインインしてください。",
+      "oidcSignInFailed": "OpenID Connect のサインインに失敗しました。発行者とクライアント ID を確認してください。",
+      "oidcTokenHeader": "Authorization 以外の有効なヘッダー名を入力してください。",
+      "oidcUnavailable": "OpenID Connect プロバイダーは一時的に利用できません。後でもう一度お試しください。",
+      "oidcNetwork": "OpenID Connect プロバイダーに接続できません。ネットワークを確認して再試行してください。",
+      "oidcTimeout": "OpenID Connect プロバイダーの応答がタイムアウトしました。後でもう一度お試しください。",
+      "oidcSecureUrl": "OpenID Connect には HTTPS URL が必要です。HTTP は localhost、127.0.0.1、[::1] でのみ使用できます。"
     },
     "setup": {
       "step": "ステップ {{step}} / 2",
@@ -168,6 +179,29 @@
         "invalid": "This is not a valid X.509 certificate.",
         "read": "Could not read the selected certificate.",
         "notTrusted": "The imported certificate does not trust this server."
+      }
+    },
+    "oidc": {
+      "enable": "OpenID Connect を使用",
+      "hint": "サーバーのパスワードの代わりにプロバイダーでサインインします。",
+      "issuer": "発行者 URL",
+      "issuerHint": "プロバイダーの発行者識別子（例: https://login.example.com/realms/main）。",
+      "clientId": "クライアント ID",
+      "scopes": "スコープ",
+      "scopesHint": "スペース区切り。ブラウザーを開き直さずにセッションを更新するには offline_access を残してください。",
+      "tokenHeader": "トークンヘッダー",
+      "tokenHeaderHint": "生のアクセストークンをこのヘッダーで送信します。空欄の場合は X-Auth-Request-Access-Token を使用します。パスワードが設定されている場合、Authorization は Basic 認証のままです。",
+      "redirectUri": "リダイレクト URI",
+      "redirectHint": "この正確な URI をプロバイダーに登録してください: {{uri}}",
+      "signIn": "サインイン",
+      "signInAgain": "再度サインイン",
+      "cancelled": "サインインはキャンセルされました。",
+      "status": {
+        "unknown": "まだサインインしていません。",
+        "signed-in": "サインイン済み。トークンは自動的に更新されます。",
+        "expired": "セッションの有効期限が切れました。再度サインインしてください。",
+        "signed-out": "このサーバーを承認するにはサインインしてください。",
+        "signing-in": "ブラウザーを待っています…"
       }
     }
   },

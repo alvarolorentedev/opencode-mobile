@@ -38,8 +38,19 @@ describe('native inbound share routing', () => {
     expect(await redirectSystemPath({ path, initial })).toMatch(/^\/share\?receipt=/);
   });
 
-  it('routes repeat receipts and only matches the exact share host', async () => {
-    const { redirectSystemPath } = await loadTs('features/sharing/model/native-intent.ts', {}, { URL: native.URL });
+  it('returns an OpenID Connect callback to the screen that started sign-in', async () => {
+    const systemPath = { value: '/' };
+    const { redirectSystemPath } = await loadTs('features/sharing/model/native-intent.ts', {
+      '@/shared/platform/system-path': { getSystemPath: () => systemPath.value },
+    }, { URL: native.URL });
+    systemPath.value = '/settings';
+    expect(await redirectSystemPath({ path: 'opencodemobile://oidc-callback?code=abc&state=xyz', initial: false })).toBe('/settings');
+    expect(await redirectSystemPath({ path: 'opencodemobile://oidc-callback#code=abc', initial: false })).toBe('/settings');
+    expect(await redirectSystemPath({ path: 'other://oidc-callback?code=abc', initial: false })).toBe('other://oidc-callback?code=abc');
+    expect(await redirectSystemPath({ path: 'opencodemobile://oidc-callback-other', initial: false })).toBe('opencodemobile://oidc-callback-other');
+  });
+
+  it('routes repeat receipts and only matches the exact share host', async () => {    const { redirectSystemPath } = await loadTs('features/sharing/model/native-intent.ts', {}, { URL: native.URL });
     const first = await redirectSystemPath({ path: 'opencodemobile://expo-sharing', initial: false });
     for (const path of ['opencodemobile://expo-sharing/', 'opencodemobile://expo-sharing?receipt=2', 'opencodemobile://expo-sharing#share']) {
       const next = await redirectSystemPath({ path, initial: false });

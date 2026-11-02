@@ -1,6 +1,7 @@
 import { z } from 'zod';
 
 import { parseConnectMetadata, type ConnectMetadata } from '@/shared/contracts/cloud-link';
+import { parseConnectionOidc, type ConnectionOidc } from '@/shared/contracts/connection-oidc';
 
 import { getConnectionScope, type ConnectionIdentity } from '@/shared/contracts/connection-scope';
 
@@ -23,6 +24,9 @@ export type ConnectionProfile = {
   name: string;
   serverUrl: string;
   username: string;
+  // OpenID Connect authorization is non-secret metadata (issuer, client id,
+  // scopes); tokens are held by the encrypted OIDC store.
+  oidc?: ConnectionOidc;
   connect?: ConnectMetadata;
   // Partial because older writes may not carry every field; unknown fields are
   // ignored and each present field is validated before it is applied.
@@ -65,6 +69,7 @@ const ConnectionProfileSchema = z.object({
   name: z.string().refine((value) => value.trim().length > 0),
   serverUrl: z.string().refine((value) => value.trim().length > 0),
   username: z.string(),
+  oidc: z.unknown().optional(),
   connect: z.unknown().optional(),
   modelPreferences: ProfileModelPreferencesSchema.nullish().transform((value) => value ?? undefined),
 });
@@ -76,10 +81,13 @@ export function toConnectionProfile(value: unknown): ConnectionProfile | undefin
   const parsed = ConnectionProfileSchema.safeParse(value);
   if (!parsed.success) return undefined;
 
-  const { id, name, serverUrl, username, modelPreferences, connect } = parsed.data;
+  const { id, name, serverUrl, username, modelPreferences, connect, oidc } = parsed.data;
   const trimmedUsername = username.trim();
   const parsedConnect = connect === undefined ? undefined : parseConnectMetadata(connect);
   if (connect !== undefined && (!parsedConnect || parsedConnect.deviceId !== trimmedUsername)) return undefined;
+  // A malformed OIDC block is dropped instead of failing the whole profile; the
+  // connection then behaves like a plain basic-auth connection.
+  const parsedOidc = parseConnectionOidc(oidc);
 
   const parsedPreferences = modelPreferences && Object.keys(modelPreferences).length > 0
     ? modelPreferences as Partial<ProfileModelPreferences>
@@ -90,6 +98,7 @@ export function toConnectionProfile(value: unknown): ConnectionProfile | undefin
     name: name.trim(),
     serverUrl: stripServerUrlCredentials(serverUrl),
     username: trimmedUsername,
+    ...(parsedOidc ? { oidc: parsedOidc } : {}),
     ...(parsedConnect ? { connect: parsedConnect } : {}),
     ...(parsedPreferences ? { modelPreferences: parsedPreferences } : {}),
   };

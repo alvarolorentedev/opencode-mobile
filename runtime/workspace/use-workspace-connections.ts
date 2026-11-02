@@ -50,7 +50,7 @@ export function useWorkspaceConnections(shell: WorkspaceShellState, hydrated: bo
     const revisioned = next.map((entry) => {
       const previous = records.current.find((value) => value.id === entry.id);
       return previous && (previous.settings !== entry.settings || previous.enabled !== entry.enabled || previous.events !== entry.events)
-        ? { ...entry, revision: (previous.revision ?? 0) + 1, authRevision: (previous.authRevision ?? 0) + (previous.settings.password !== entry.settings.password || JSON.stringify(previous.settings.headers) !== JSON.stringify(entry.settings.headers) || JSON.stringify(previous.settings.certificate) !== JSON.stringify(entry.settings.certificate) || getConnectionScope(previous.settings) !== getConnectionScope(entry.settings) ? 1 : 0) } : entry;
+        ? { ...entry, revision: (previous.revision ?? 0) + 1, authRevision: (previous.authRevision ?? 0) + (previous.settings.password !== entry.settings.password || JSON.stringify(previous.settings.headers) !== JSON.stringify(entry.settings.headers) || JSON.stringify(previous.settings.certificate) !== JSON.stringify(entry.settings.certificate) || JSON.stringify(previous.settings.oidc) !== JSON.stringify(entry.settings.oidc) || getConnectionScope(previous.settings) !== getConnectionScope(entry.settings) ? 1 : 0) } : entry;
     });
     records.current = revisioned; setConnections(revisioned); waiters.notify();
   }, [waiters]);
@@ -79,7 +79,7 @@ export function useWorkspaceConnections(shell: WorkspaceShellState, hydrated: bo
 
   const saveProfile = useCallback(async (settings: OpencodeConnectionSettings) => mutateConnectionProfiles(async (profiles, save) => {
     const existing = findMatchingProfile(profiles, settings);
-    const profile = existing ?? { id: createProfileId(), name: getServerHostname(settings.serverUrl), serverUrl: settings.serverUrl, username: settings.username, connect: settings.connect };
+    const profile = existing ?? { id: createProfileId(), name: getServerHostname(settings.serverUrl), serverUrl: settings.serverUrl, username: settings.username, connect: settings.connect, ...(settings.oidc ? { oidc: settings.oidc } : {}) };
     const previousPassword = existing ? await getProfilePassword(profile.id) : '';
     const previousHeaders = existing ? await getProfileHeaders(profile.id) : {};
     const previousCertificate = existing ? await getProfileCertificate(profile.id) : undefined;
@@ -87,7 +87,7 @@ export function useWorkspaceConnections(shell: WorkspaceShellState, hydrated: bo
     // a manual connection keeps its gateway headers and certificate.
     const headers = settings.connect ? {} : settings.headers;
     const certificate = settings.connect ? undefined : settings.certificate;
-    if (!settings.connect && (previousPassword !== settings.password || JSON.stringify(previousHeaders) !== JSON.stringify(settings.headers ?? {}) || JSON.stringify(previousCertificate) !== JSON.stringify(certificate))) await clearCapabilitiesSnapshots(getConnectionScope(settings));
+    if (!settings.connect && (previousPassword !== settings.password || JSON.stringify(previousHeaders) !== JSON.stringify(settings.headers ?? {}) || JSON.stringify(previousCertificate) !== JSON.stringify(certificate) || JSON.stringify(existing?.oidc) !== JSON.stringify(settings.oidc))) await clearCapabilitiesSnapshots(getConnectionScope(settings));
     await saveProfilePassword(profile.id, settings.password, Boolean(settings.connect));
     await saveProfileHeaders(profile.id, headers);
     await saveProfileCertificate(profile.id, certificate);
@@ -124,7 +124,7 @@ export function useWorkspaceConnections(shell: WorkspaceShellState, hydrated: bo
         if (profile) {
           [password, headers, certificate] = await Promise.all([getProfilePassword(profile.id), getProfileHeaders(profile.id), getProfileCertificate(profile.id)]);
         }
-        return { ...entry, settings: { ...entry.settings, password, headers, ...(certificate ? { certificate } : {}) }, events: createSharedEventStream() };
+        return { ...entry, settings: { ...entry.settings, password, headers, ...(certificate ? { certificate } : {}), ...(profile?.oidc ? { oidc: profile.oidc } : {}) }, events: createSharedEventStream() };
       })) : [];
       if (!entries.length) {
         const placeholder = !initial.onboardingVersion && getConnectionUiScope(initial.settings) === getConnectionUiScope(defaultConnectionSettings);
@@ -333,7 +333,7 @@ export function useWorkspaceConnections(shell: WorkspaceShellState, hydrated: bo
     selectWorkspace(target, next);
     navigation.current?.abort();
   }, [beginActivation, connectedWorkspace, pauseConversation, selectWorkspace]);
-  const switchConnection = useCallback(async (settings: Pick<OpencodeConnectionSettings, 'serverUrl' | 'username' | 'password' | 'headers' | 'certificate' | 'connect'>, preferences?: Partial<ChatPreferences>, selectWorkspace = true) => {
+  const switchConnection = useCallback(async (settings: Pick<OpencodeConnectionSettings, 'serverUrl' | 'username' | 'password' | 'headers' | 'certificate' | 'oidc' | 'connect'>, preferences?: Partial<ChatPreferences>, selectWorkspace = true) => {
     const full = { ...settings, directory: '' };
     const profile = await saveProfile(full);
     const id = getConnectionUiScope(full);

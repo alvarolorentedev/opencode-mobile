@@ -177,7 +177,8 @@ export function useConnectionLifecycle(entry: ConnectionRecord, setup: ConnectSe
     if (entry.settings.connect) { void connect(); return; }
     controller.current?.abort();
     invalidateWorkflows();
-    dispatch({ type: 'settle', operation: ++operation.current, connection: { status: 'error', kind, message: kind === 'entitlement' ? 'Access was denied. Reconnect or restore access to continue.' : 'Authentication failed. Check the credentials and reconnect.', checkedAt: Date.now() } });
+    const oidcMessage = latest.current.entry.settings.oidc ? latest.current.t('settings:connection.errors.oidcSignIn') : undefined;
+    dispatch({ type: 'settle', operation: ++operation.current, connection: { status: 'error', kind, message: oidcMessage ?? (kind === 'entitlement' ? 'Access was denied. Reconnect or restore access to continue.' : 'Authentication failed. Check the credentials and reconnect.'), checkedAt: Date.now() } });
   }, [cache, connect, invalidateWorkflows]);
   return useMemo(() => ({ connection: entry.enabled ? state.connection : { status: 'idle' as const, message: 'Disconnected' }, serverContract: state.contract, connect, handleStreamAuthFailure, onInvalidated, reconnect }), [entry.enabled, state.connection, state.contract, connect, handleStreamAuthFailure, onInvalidated, reconnect]);
 }

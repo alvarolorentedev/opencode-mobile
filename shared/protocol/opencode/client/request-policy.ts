@@ -39,5 +39,5 @@ export function shouldRetryRead(input: {
   const message = input.error instanceof Error ? input.error.message : String(input.error);
   // Cancellation is user intent, not a transient failure. Credential and
   // entitlement errors are actionable and must not be replayed.
-  return !/abort|cancel|credential|unauthorized|forbidden|entitlement|pair this device|certificate|TLS|SSL/i.test(message);
+  return !/abort|cancel|credential|unauthorized|forbidden|entitlement|pair this device|certificate|TLS|SSL|sign in with openid connect|openid connect authentication/i.test(message);
 }

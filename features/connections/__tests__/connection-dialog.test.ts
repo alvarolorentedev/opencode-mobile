@@ -23,14 +23,19 @@ async function form(onSubmit = vi.fn()) {
     'react-native': { Platform: { OS: 'web' } },
     "@/shared/storage/cloud-link": { getConnectTestSecret: () => '', setConnectTestSecret: () => {} }
   });
-  const { isValidServerUrl } = await loadTs('shared/contracts/server-url.ts', {
+  const { isValidServerUrl, normalizeServerUrl } = await loadTs('shared/contracts/server-url.ts', {
     "@/shared/protocol/opencode/client/types": { defaultConnectionSettings: { serverUrl: 'http://localhost:4096' } }
+  });
+  const connectionOidc = await loadTs('shared/contracts/connection-oidc.ts', {
+    '@scure/base': { base64urlnopad: { encode: () => 'key' } },
   });
   const { connectionSchema } = await loadTs('features/connections/model/connection-schema.ts', {
     zod: { z },
     "@/shared/contracts/connection-headers": connectionHeaders,
-    "@/shared/contracts/server-url": { isValidServerUrl }
+    "@/shared/contracts/connection-oidc": connectionOidc,
+    "@/shared/contracts/server-url": { isValidServerUrl, normalizeServerUrl }
   });
+  const signIn = vi.fn(async () => ({ accessToken: 'token', expiresAt: Date.now() + 3600_000, tokenType: 'Bearer', issuer: 'https://login.example.test/realms/main', clientId: 'opencode-mobile' }));
   const { ConnectionProfileDialog } = await loadTs('features/connections/ui/connection-profile-dialog.tsx', {
     ...uiImports,
     'react-hook-form': formImports(runtime.react),
@@ -41,16 +46,19 @@ async function form(onSubmit = vi.fn()) {
     'react-native': { Keyboard: { dismiss: () => {} }, StyleSheet: { create: (styles: unknown) => styles }, View: 'View', Modal: 'Modal', KeyboardAvoidingView: 'KeyboardAvoidingView', ScrollView: 'ScrollView' },
     'react-native-safe-area-context': { useSafeAreaInsets: () => ({ top: 0, bottom: 0 }) },
     "@/shared/contracts/connection-headers": connectionHeaders,
+    "@/shared/contracts/connection-oidc": connectionOidc,
     "@/features/connections/model/connection-schema": { connectionSchema },
-    "@/shared/ui/settings/setting-rows": { SettingField: 'Input' },
+    "@/features/connections/ui/connection-oidc-fields": { ConnectionOidcFields: 'OidcFields' },
+    "@/shared/ui/settings/setting-rows": { SettingField: 'Input', SettingSwitchRow: 'SwitchRow' },
     "@/shared/ui/theme/theme": { Colors: { light: {} } },
     "@/runtime/presentation/use-update-blocker": { useUpdateBlocker: () => {} },
     "@/shared/ui/theme/use-color-scheme": { useColorScheme: () => 'light' },
     "@/shared/ui/theme/use-palette": { usePalette: () => ({}) },
     "@/shared/contracts/server-url": { isValidServerUrl: () => true, getServerHostname: () => '192.168.1.10' },
+    "@/shared/platform/linking": { createURL: (path: string) => `opencodemobile://${path}` },
     "@/shared/platform/tls-trust": { isTlsTrustSupported: () => false, connectionOrigin: () => undefined },
     "@/features/connections/state/use-connection-certificate": { useConnectionCertificate: () => ({ supported: false, busy: false, error: undefined, pick: async () => undefined, clearError: () => {} }) },
-    "@/features/connections/context": { useConnection: () => ({ connectionProfiles: { probe } }) }
+    "@/features/connections/context": { useConnection: () => ({ connectionProfiles: { probe, signIn, oidcStatus: async () => 'signed-out' } }) }
   }, { Error });
   const onDismiss = vi.fn();
   const onBusyChange = vi.fn();
@@ -58,7 +66,7 @@ async function form(onSubmit = vi.fn()) {
   const element = (id: string) => { const value = find(runtime.value, id); if (!value) throw new Error(`Missing ${id}`); return value; };
   const change = (id: string, value: string) => { element(id).props.onChangeText(value); runtime.flush(); };
   const press = async (id: string) => { element(id).props.onPress(); await runtime.settle(); };
-  return { runtime, probe, onSubmit, onDismiss, onBusyChange, element, change, press };
+  return { runtime, probe, signIn, onSubmit, onDismiss, onBusyChange, element, change, press };
 }
 
 describe('manual connection form', () => {
@@ -111,8 +119,48 @@ describe('manual connection form', () => {
       headers: { 'CF-Access-Client-Id': 'client-id', 'CF-Access-Client-Secret': 'client-secret' },
     });
   });
-  it('rejects reserved header names before probing again', async () => {
+  it('collects OpenID Connect settings and only signs in on demand', async () => {
     const view = await form();
+    view.change('connection-profile-url-input', 'https://example.test');
+    await view.press('connection-profile-continue');
+    const fields = () => { const value = find(view.runtime.value, 'OidcFields'); if (!value) throw new Error('Missing OidcFields'); return value; };
+    const patch = (value: Record<string, unknown>) => { fields().props.onChange(value); view.runtime.flush(); };
+    expect(fields().props.value.enabled).toBe(false);
+    expect(find(view.runtime.value, 'connection-profile-password-input')).toBeDefined();
+    patch({ enabled: true });
+    expect(fields().props.value.enabled).toBe(true);
+    expect(find(view.runtime.value, 'connection-profile-password-input')).toBeDefined();
+    patch({ issuer: 'https://login.example.test/realms/main' });
+    patch({ clientId: 'opencode-mobile' });
+    view.change('connection-profile-password-input', 'server-password');
+    fields().props.onSignIn();
+    await view.runtime.settle();
+    expect(view.signIn).toHaveBeenCalledWith({
+      serverUrl: 'https://example.test',
+      username: '',
+      oidc: { issuer: 'https://login.example.test/realms/main', clientId: 'opencode-mobile', scopes: 'openid profile email offline_access', tokenHeader: 'X-Auth-Request-Access-Token' },
+    }, expect.anything());
+    expect(fields().props.status).toBe('signed-in');
+    await view.press('connection-profile-save-confirm');
+    expect(view.onSubmit).toHaveBeenCalledWith({
+      name: '', serverUrl: 'https://example.test', username: '', password: 'server-password', headers: {},
+      oidc: { issuer: 'https://login.example.test/realms/main', clientId: 'opencode-mobile', scopes: 'openid profile email offline_access', tokenHeader: 'X-Auth-Request-Access-Token' },
+    });
+  });
+  it('blocks an enabled OpenID Connect block with an invalid issuer', async () => {
+    const view = await form();
+    view.change('connection-profile-url-input', 'https://example.test');
+    await view.press('connection-profile-continue');
+    const fields = () => { const value = find(view.runtime.value, 'OidcFields'); if (!value) throw new Error('Missing OidcFields'); return value; };
+    fields().props.onChange({ enabled: true });
+    view.runtime.flush();
+    fields().props.onChange({ clientId: 'opencode-mobile' });
+    view.runtime.flush();
+    await view.press('connection-profile-save-confirm');
+    expect(view.element('connection-profile-error').props.children).toBe('settings:connection.errors.oidcIssuer');
+    expect(view.onSubmit).not.toHaveBeenCalled();
+  });
+  it('rejects reserved header names before probing again', async () => {    const view = await form();
     view.change('connection-profile-url-input', 'http://example.test');
     await view.press('connection-profile-continue');
     await view.press('connection-profile-headers-toggle');

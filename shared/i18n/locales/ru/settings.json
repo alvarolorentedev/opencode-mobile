@@ -104,7 +104,18 @@
       "certificateUntrusted": "The server certificate is not trusted. Import the CA certificate for this server.",
       "certificateExpired": "The server certificate has expired.",
       "certificateHostnameMismatch": "The server certificate does not match this address.",
-      "certificateInvalid": "The server certificate could not be validated."
+      "certificateInvalid": "The server certificate could not be validated.",
+      "oidcIssuer": "Введите корректный URL издателя OpenID Connect.",
+      "oidcClientId": "Введите ID клиента, зарегистрированный для этого приложения.",
+      "oidcScopes": "Используйте области через пробел и печатные символы.",
+      "oidcRedirectUri": "Введите корректный URI перенаправления.",
+      "oidcSignIn": "Войдите снова через OpenID Connect, чтобы использовать этот сервер.",
+      "oidcSignInFailed": "Не удалось войти через OpenID Connect. Проверьте издателя и ID клиента.",
+      "oidcTokenHeader": "Введите корректное имя заголовка, отличное от Authorization.",
+      "oidcUnavailable": "Провайдер OpenID Connect временно недоступен. Повторите попытку позже.",
+      "oidcNetwork": "Не удалось связаться с провайдером OpenID Connect. Проверьте сеть и повторите попытку.",
+      "oidcTimeout": "Время ожидания ответа провайдера OpenID Connect истекло. Повторите попытку позже.",
+      "oidcSecureUrl": "Для OpenID Connect требуется URL HTTPS. HTTP разрешён только для localhost, 127.0.0.1 или [::1]."
     },
     "setup": {
       "step": "Шаг {{step}} из 2",
@@ -168,6 +179,29 @@
         "invalid": "This is not a valid X.509 certificate.",
         "read": "Could not read the selected certificate.",
         "notTrusted": "The imported certificate does not trust this server."
+      }
+    },
+    "oidc": {
+      "enable": "Использовать OpenID Connect",
+      "hint": "Входите через своего провайдера вместо пароля сервера.",
+      "issuer": "URL издателя",
+      "issuerHint": "Идентификатор издателя, например https://login.example.com/realms/main.",
+      "clientId": "ID клиента",
+      "scopes": "Области",
+      "scopesHint": "Через пробел. Оставьте offline_access, чтобы сеанс обновлялся без повторного открытия браузера.",
+      "tokenHeader": "Заголовок токена",
+      "tokenHeaderHint": "Необработанный токен доступа отправляется в этом заголовке. Оставьте пустым для X-Auth-Request-Access-Token. Если задан пароль, Authorization сохраняет Basic-аутентификацию.",
+      "redirectUri": "URI перенаправления",
+      "redirectHint": "Зарегистрируйте этот точный URI у провайдера: {{uri}}",
+      "signIn": "Войти",
+      "signInAgain": "Войти снова",
+      "cancelled": "Вход отменён.",
+      "status": {
+        "unknown": "Вы ещё не вошли.",
+        "signed-in": "Вы вошли. Токен обновляется автоматически.",
+        "expired": "Сеанс истёк. Войдите снова.",
+        "signed-out": "Войдите, чтобы авторизовать этот сервер.",
+        "signing-in": "Ожидание браузера…"
       }
     }
   },
