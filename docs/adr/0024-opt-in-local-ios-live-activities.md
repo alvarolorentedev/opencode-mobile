@@ -1,4 +1,4 @@
-# ADR 0023: Opt-in local iOS Live Activities
+# ADR 0024: Opt-in local iOS Live Activities
 
 - Status: Accepted
 - Date: 2026-11-01

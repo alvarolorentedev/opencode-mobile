@@ -1,7 +1,7 @@
 # iOS Live Activity remote delivery
 
 **Status: experimental reference implementation; not deployed or device-validated.**
-The local/free-signing path remains the default. [ADR 0025](../adr/0025-managed-live-activity-relay.md)
+The local/free-signing path remains the default. [ADR 0026](../adr/0026-managed-live-activity-relay.md)
 records the narrower managed-mode decision, pending maintainer acceptance.
 
 ## Ownership and scope

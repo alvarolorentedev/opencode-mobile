@@ -148,7 +148,7 @@ npm run build:ios:local
 ### Experimental Live Activity test IPA
 
 The opt-in local Live Activity is described in [iOS parity](../product/parity/ios-widget.md)
-and [ADR 0023](../adr/0023-opt-in-local-ios-live-activities.md). The optional
+and [ADR 0024](../adr/0024-opt-in-local-ios-live-activities.md). The optional
 `.github/workflows/ios-test-build.yml` workflow reuses the ordinary smoke CI gate,
 then builds on a GitHub-hosted Mac. It enables the experimental feature and uses
 the existing Personal Team push-entitlement opt-out and a distinct test bundle

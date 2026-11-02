@@ -4,7 +4,7 @@ Central place for the **iOS home widget / Lock Screen gap** and everything
 needed to close it later. iOS quick actions are implemented (dynamic items only).
 Home/Lock Screen widgets remain deferred. This fork adds an opt-in local-only
 Live Activity without an App Group; native/device acceptance is still required.
-See [ADR 0023](../../adr/0023-opt-in-local-ios-live-activities.md).
+See [ADR 0024](../../adr/0024-opt-in-local-ios-live-activities.md).
 
 Do not duplicate this list elsewhere. When iOS widgets land, update this file and
 the docs it references.
@@ -119,9 +119,9 @@ by the existing coordinator plus native lifecycle. Ordinary completion alerts
 remain enabled independently. No background mode or keepalive service is added.
 
 This implementation deliberately avoids the App Group required by Expo Widgets'
-shared JavaScript runtime; see [ADR 0023](../../adr/0023-opt-in-local-ios-live-activities.md).
+shared JavaScript runtime; see [ADR 0024](../../adr/0024-opt-in-local-ios-live-activities.md).
 The richer presentation/freshness policy is proposed in
-[ADR 0024](../../adr/0024-truthful-live-activity-progress-and-freshness.md).
+[ADR 0025](../../adr/0025-truthful-live-activity-progress-and-freshness.md).
 An additional [experimental managed relay](../../engineering/ios-live-activity-remote-delivery.md)
 implements opt-in APNs delivery for operator-allowlisted V2 sessions. It requires
 a configured/deployed sender, paid push provisioning, and per-installation managed

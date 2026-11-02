@@ -1,9 +1,9 @@
-# ADR 0024: Truthful Live Activity progress and freshness
+# ADR 0025: Truthful Live Activity progress and freshness
 
 - Status: Proposed
 - Date: 2026-11-01
 - Deciders: fork implementation; upstream review pending
-- Supersedes: Presentation and freshness policy in [ADR 0023](0023-opt-in-local-ios-live-activities.md); its opt-in, privacy, provisioning, and ownership decisions remain in force
+- Supersedes: Presentation and freshness policy in [ADR 0024](0024-opt-in-local-ios-live-activities.md); its opt-in, privacy, provisioning, and ownership decisions remain in force
 - Related: [iOS parity](../product/parity/ios-widget.md), [Native integrations](../engineering/integrations-and-operations.md), [Validation strategy](../engineering/validation/strategy.md)
 
 ## Context

@@ -177,7 +177,7 @@ Important current rule:
   `EXPO_IOS_LIVE_ACTIVITIES=1`. A CNG plugin generates the ActivityKit extension
   without an App Group. Only generic localized status/counts reach the Lock
   Screen; backgrounding marks it paused/stale and does not extend network life.
-  Completion notifications remain independent. See [ADR 0023](../adr/0023-opt-in-local-ios-live-activities.md).
+  Completion notifications remain independent. See [ADR 0024](../adr/0024-opt-in-local-ios-live-activities.md).
 
 ### Quick Actions
 

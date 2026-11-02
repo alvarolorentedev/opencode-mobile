@@ -1,6 +1,6 @@
 name: iOS unsigned test build
 
-# Experimental feature-scope build, not a release or store upload (ADR 0023).
+# Experimental feature-scope build, not a release or store upload (ADR 0024).
 on:
   workflow_dispatch:
     inputs:

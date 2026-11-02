@@ -1,10 +1,10 @@
-# ADR 0025: Opt-in managed Live Activity relay
+# ADR 0026: Opt-in managed Live Activity relay
 
 - Status: Proposed
 - Date: 2026-11-01
 - Deciders: maintainers
 - Supersedes: —
-- Related: [ADR 0023](0023-opt-in-local-ios-live-activities.md), [remote delivery](../engineering/ios-live-activity-remote-delivery.md)
+- Related: [ADR 0024](0024-opt-in-local-ios-live-activities.md), [remote delivery](../engineering/ios-live-activity-remote-delivery.md)
 
 ## Context
 
