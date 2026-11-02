@@ -81,7 +81,7 @@ The connection form stores the issuer, client ID, scopes and an optional redirec
 URI override; the redirect URI defaults to `opencodemobile://oidc-callback`
  and is shown so it can be registered with
 the provider. Providers are limited to public clients using Authorization Code +
-PKCE (S256). Only the registered app callback scheme is supported; HTTPS app links and Expo Go callbacks are not registered. See [ADR 0025](../adr/0025-oidc-credential-and-session-boundaries.md).
+PKCE (S256). Only the registered app callback scheme is supported; HTTPS app links and Expo Go callbacks are not registered. See [ADR 0024](../adr/0024-oidc-pkce-connection-authorization.md).
 
 - Sign-in uses `expo-auth-session` for PKCE, OAuth state and system-browser coordination (`expo-web-browser`), never the in-app WebView.
   The verifier and state stay in process memory; only the code returns.

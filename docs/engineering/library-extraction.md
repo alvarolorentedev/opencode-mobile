@@ -82,7 +82,7 @@ classifier acceptance remains required before release.
 `expo-auth-session` owns PKCE, state validation and system-browser coordination.
 Connection-specific endpoint validation, encrypted storage, refresh generations
 and redirect-safe Expo fetch remain app-owned. See
-[ADR 0025](../adr/0025-oidc-credential-and-session-boundaries.md).
+[ADR 0024](../adr/0024-oidc-pkce-connection-authorization.md).
 
 ### Remaining dependency patches
 
