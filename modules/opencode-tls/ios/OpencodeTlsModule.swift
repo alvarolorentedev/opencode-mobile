@@ -81,9 +81,7 @@ public final class OpencodeTlsModule: Module {
   }
 
   private static func installExpoFetchProvider() {
-    // Expo's Objective-C setter is @MainActor. OnCreate runs on the JS
-    // thread, and calling its IMP there bypasses Swift's compiler checks but
-    // traps at runtime. Install synchronously before JS can issue a fetch.
+    // Expo's setter is main-actor isolated; finish registration before JS can fetch.
     guard Thread.isMainThread else {
       DispatchQueue.main.sync { installExpoFetchProvider() }
       return

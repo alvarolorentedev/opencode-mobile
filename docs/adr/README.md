@@ -77,6 +77,8 @@ coverage, and documentation links.
 | [0024](0024-truthful-live-activity-progress-and-freshness.md) | Truthful native Live Activity progress, freshness, and test boundaries | Proposed |
 | [0025](0025-managed-live-activity-relay.md) | Opt-in managed Live Activity relay | Proposed |
 
+| [0023](0023-focused-extension-editors.md) | Focused extension editors with structured authoring | Accepted |
+
 ## Template
 
 Use [template.md](template.md). Keep the front matter fields (`Status`, `Date`,

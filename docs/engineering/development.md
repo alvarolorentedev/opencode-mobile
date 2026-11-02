@@ -111,7 +111,7 @@ trusted environment, and sandbox configuration. See
 
 **Release Automation** (`.github/workflows/release.yml`):
 - Pushes to `main` and pull requests run `ci.yml`: static checks, Vitest/architecture, fake-server validation, Storybook, FOSS preparation and critical Playwright smoke flows
-- A `v*` tag push runs `release.yml` automatically. It verifies the tag, `app.config.ts` version, Android versionCode, iOS buildNumber and changelog; requires the tag commit to belong to `main`; runs full validation once; and builds Android Play, FOSS Android and signed iOS in parallel
+- A `v*` tag push runs `release.yml` automatically. It verifies the tag, `app.config.ts` version, Android versionCode, iOS buildNumber and changelog; requires the tag commit to belong to `main`; runs full validation once; and builds Android Play, FOSS Android and signed iOS in parallel. The Play changelog (`fastlane/metadata/android/en-US/changelogs/<versionCode>.txt`) must stay within Google Play's 500-character release-notes limit or distribution fails
 - Android release artifacts are **`arm64-v8a` only**. 32-bit-only Android devices are unsupported. There is no ABI override or emulator-specific release build
 - Validated Android builds upload to Google Play **internal testing**; the signed IPA uploads to **TestFlight** when App Store Connect API credentials are configured
 - The GitHub Release is created as a draft only after validation, builds and store uploads succeed, then published with the APKs, IPA, AAB, mapping and SHA256SUMS.txt

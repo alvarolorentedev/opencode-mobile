@@ -47,8 +47,9 @@ export function settingsTargets(t: TFunction, section: string, options: {
         field('modelRouting.protect.title', 'auto-model', 'modelRouting.protect.description')] : [])];
     case 'extensions': return [
       ...['mcp', 'plugins', 'agents', 'skills', 'commands'].map((tab) => field(`extensions.tabs.${tab}`, `extensions-${tab}`)),
-      field('mcp.serverName', 'extensions-mcp'), field('mcp.commandArguments', 'extensions-mcp'), field('mcp.url', 'extensions-mcp-remote'),
+      field('mcp.serverName', 'extensions-mcp'), field('extensions.editor.executable', 'extensions-mcp', 'extensions.editor.argumentsHint'), field('mcp.url', 'extensions-mcp-remote'),
       field('extensions.plugins.package', 'extensions-plugins', 'extensions.plugins.warning'),
+      field('extensions.editor.availability', 'extensions-agents'), field('extensions.editor.customModel', 'extensions-agents'),
       ...['id', 'descriptionLabel', 'model', 'permissions', 'instructions', 'advanced'].map((key) => field(`extensions.agents.${key}`, 'extensions-agents')),
       ...['id', 'name', 'descriptionLabel', 'instructions'].map((key) => field(`extensions.skills.${key}`, 'extensions-skills')),
       ...['name', 'descriptionLabel', 'template'].map((key) => field(`extensions.commands.${key}`, 'extensions-commands')),

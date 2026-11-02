@@ -123,6 +123,28 @@ describe('format', () => {
     expect(entry.details).toEqual([]);
   });
 
+  it('keeps the model recorded on assistant messages', () => {
+    const entry = toTranscriptEntry({
+      info: { ...info, providerID: 'openai', modelID: 'gpt-4.1-mini' },
+      parts: [{ id: 'text-1', type: 'text', text: 'hello' }],
+    } as never);
+    expect(entry.model).toEqual({ providerID: 'openai', modelID: 'gpt-4.1-mini' });
+  });
+
+  it('does not attach a model to user messages or empty model fields', () => {
+    const user = toTranscriptEntry({
+      info: { ...info, role: 'user', providerID: 'openai', modelID: 'gpt-4.1-mini' },
+      parts: [],
+    } as never);
+    expect(user.model).toBeUndefined();
+
+    const empty = toTranscriptEntry({
+      info: { ...info, providerID: '', modelID: '' },
+      parts: [],
+    } as never);
+    expect(empty.model).toBeUndefined();
+  });
+
   it('derives the latest todo write', () => {
     expect(deriveTodosFromMessages([
       { info, parts: [todoWritePart('tool-todo-1', [

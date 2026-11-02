@@ -388,8 +388,13 @@ export function useWorkspaceConnections(shell: WorkspaceShellState, hydrated: bo
     const previous = records.current.find((entry) => entry.id === id);
     const serverChanged = !previous || JSON.stringify(previous.preferences) !== JSON.stringify(preferences);
     change((current) => current.map((entry) => entry.id === id && JSON.stringify(entry.preferences) !== JSON.stringify(preferences) ? { ...entry, preferences } : entry));
+    // The shell mirrors the focused workspace. A background connection must not
+    // overwrite the focused server choices, and the focused update must win over
+    // the previous shell value so a close immediately after the change persists
+    // the new server-scoped preference instead of the stale one.
+    const focused = selected.current?.connectionId === id;
     shellRef.current.setChatPreferences((current) => {
-      const next = { ...value, ...serverPreferences(current) };
+      const next = focused ? value : current;
       return JSON.stringify(current) === JSON.stringify(next) ? current : next;
     });
     // UI-only preference changes (text size, language, delivery, ...) must not

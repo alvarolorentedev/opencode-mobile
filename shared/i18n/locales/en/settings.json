@@ -511,7 +511,7 @@
     }
   },
   "diagnostics": {
-    "title": "Server diagnostics",
+    "title": "Diagnostics",
     "server": "Server",
     "openCodeVersion": "OpenCode {{version}}",
     "healthUnavailable": "Health endpoint unavailable",
@@ -850,8 +850,8 @@
     "title": "Extensions",
     "description": "Manage MCP servers, plugins, agents, skills and slash commands for this server.",
     "scope": {
-      "project": "Project",
-      "general": "General"
+      "project": "This project",
+      "general": "All projects"
     },
     "scopeDescription": {
       "project": "These extensions apply only to {{project}}.",
@@ -965,7 +965,78 @@
     },
     "generalConfirmTitle": "Edit global configuration",
     "generalConfirmMessage": "This changes the configuration for every project on this server. A backup is created first.\n\n{{path}}",
-    "generalConfirmAction": "Continue"
+    "generalConfirmAction": "Continue",
+    "editor": {
+      "discardTitle": "Discard changes?",
+      "discardHint": "Your unsaved changes will be lost.",
+      "discard": "Discard changes",
+      "back": "Back to extensions",
+      "setup": "Setup",
+      "instructions": "Instructions",
+      "advanced": "Advanced",
+      "storage": "Storage format",
+      "inheritModel": "Inherit model",
+      "inheritModelHint": "Let OpenCode choose the model.",
+      "customModel": "Custom model ID",
+      "customModelHint": "This model is configured in Advanced. Its configuration is preserved.",
+      "noModels": "No configured models. Set up a provider in AI & providers, or enter a custom model ID in Advanced.",
+      "availability": "Available to",
+      "custom": "Custom",
+      "inherited": "Inherited",
+      "inheritPermissions": "Inherit the server’s permission rules.",
+      "rulesHint": "Rules are evaluated in their existing order. Removing all rules restores inheritance.",
+      "ruleAction": "Action",
+      "ruleResource": "Resource pattern",
+      "ruleEffect": "Decision",
+      "ask": "Ask",
+      "allow": "Allow",
+      "deny": "Deny",
+      "addRule": "Add rule",
+      "legacyRules": "This configuration uses custom or legacy rules. Edit the source to preserve its format.",
+      "source": "Permission source",
+      "sourceHint": "Edit the complete SKILL.md file. Unknown frontmatter is preserved when using fields.",
+      "editSource": "Edit source",
+      "useFields": "Use fields",
+      "autoinvoke": "Automatic invocation",
+      "autoinvokeHint": "Allow the model to discover this skill automatically.",
+      "connectionType": "Connection type",
+      "executable": "Executable",
+      "argumentsHint": "Runs on the server. Enter each argument separately, without shell quoting.",
+      "argument": "Argument {{number}}",
+      "removeArgument": "Remove argument {{number}}",
+      "addArgument": "Add argument",
+      "pluginHint": "Enter a package such as @scope/plugin@1.0.0 or a local server path such as ./plugins/example.js.",
+      "configDetails": "Configuration details",
+      "mode": {
+        "primary": "Main chat",
+        "subagent": "Other agents",
+        "all": "Both"
+      },
+      "modeHint": {
+        "primary": "Choose in the main chat.",
+        "subagent": "Called by another agent for focused tasks.",
+        "all": "Available in chat and to other agents."
+      },
+      "mcpType": {
+        "remote": "Remote server",
+        "local": "Command on server"
+      },
+      "mcpStatus": {
+        "connected": "Connected",
+        "disabled": "Disconnected",
+        "pending": "Connecting…",
+        "failed": "Failed",
+        "needs_auth": "Sign-in required",
+        "needs_client_registration": "Client registration required"
+      }
+    },
+    "source": {
+      "general": "All projects",
+      "project": "This project",
+      "inherited": "Inherited",
+      "runtime": "Runtime",
+      "system": "System"
+    }
   },
   "modelRouting": {
     "title": "Auto model routing",

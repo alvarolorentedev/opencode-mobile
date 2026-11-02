@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { providerAuthSchema, initialAuthValues } from '@/features/ai/model/provider-auth-schema';
-import { commandSchema, mcpSchema } from '@/features/extensions/model/extension-schemas';
+import { commandSchema, mcpSchema, mcpEditorSchema } from '@/features/extensions/model/extension-schemas';
 import type { ProviderAuthPrompt } from '@/shared/protocol/opencode/types';
 
 describe('form validation boundaries', () => {
@@ -17,6 +17,13 @@ describe('form validation boundaries', () => {
     expect(schema.safeParse({ mode: 'remote', port: '1.5' }).success).toBe(false);
     expect(schema.safeParse({ mode: 'remote', port: '65536' }).success).toBe(false);
     expect(schema.safeParse({ mode: 'remote', port: '4096' }).success).toBe(true);
+  });
+  it('validates structured MCP setup without interpreting arguments as shell text', () => {
+    const draft = { name: 'local', type: 'local', executable: 'npx', arguments: [{ value: 'a path with spaces' }, { value: '"quoted"' }], url: '' };
+    expect(mcpEditorSchema.parse(draft).arguments).toEqual(draft.arguments);
+    expect(mcpEditorSchema.safeParse({ ...draft, executable: ' ' }).success).toBe(false);
+    expect(mcpEditorSchema.safeParse({ ...draft, type: 'remote', url: 'file:///private' }).success).toBe(false);
+    expect(mcpEditorSchema.safeParse({ ...draft, type: 'remote', url: 'https://example.test/mcp' }).success).toBe(true);
   });
   it('rejects malformed MCP commands and blank command templates', () => {
     expect(mcpSchema.safeParse({ name: 'local', type: 'local', target: '{}' }).success).toBe(false);

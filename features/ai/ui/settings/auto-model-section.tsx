@@ -50,8 +50,8 @@ export function AutoModelSection({
   const visibleModels = getVisibleModels(availableModels, configuredProviders, chatPreferences.enabledModelIds);
   const suggestions = getAutoModelSuggestions(visibleModels, chatPreferences.modelId);
   const localSupported = Platform.OS !== 'web';
-  const serverSupported = contract === 'v2' && visibleModels.length > 0;
-  const serverUsable = serverSupported && modelRouting.serverStatus !== 'unsupported';
+  const serverSupported = contract === 'v2';
+  const serverUsable = serverSupported && visibleModels.length > 0 && modelRouting.serverStatus !== 'unsupported';
   const classifierModel = autoModel.classifierModelId
     ? visibleModels.find((model) => model.id === autoModel.classifierModelId)
     : undefined;
@@ -62,29 +62,26 @@ export function AutoModelSection({
     }
   }, [autoModel, localSupported, serverUsable, updateChatPreferences]);
 
+  // Never rewrite the persisted classifier from transient state. An empty or
+  // slow catalog, an offline connection or a pending probe is reported below,
+  // and the send path skips routing when the classifier cannot run.
   useEffect(() => {
-    if (localSupported && autoModel.classifier === 'server' && (!serverSupported || modelRouting.serverStatus === 'unsupported')) {
-      updateChatPreferences({ autoModel: { ...autoModel, classifier: 'local', enabled: false } });
-    }
-  }, [autoModel, localSupported, modelRouting.serverStatus, serverSupported, updateChatPreferences]);
-
-  useEffect(() => {
-    if (serverSupported && autoModel.classifier === 'server' && modelRouting.serverStatus === 'unknown') {
+    if (serverSupported && autoModel.classifier === 'server' && modelRouting.serverStatus === 'unknown' && visibleModels.length > 0) {
       void modelRouting.checkServerClassifier(classifierModel?.id);
     }
-  }, [autoModel.classifier, classifierModel?.id, modelRouting, serverSupported]);
+  }, [autoModel.classifier, classifierModel?.id, modelRouting, serverSupported, visibleModels.length]);
 
   if (!localSupported && !serverUsable) {
     return null;
   }
 
   const classifierOptions: { value: AutoModelClassifier; label: string; description: string }[] = [
-    ...(localSupported ? [{
+    ...(localSupported || autoModel.classifier === 'local' ? [{
       value: 'local' as const,
       label: t('settings:modelRouting.classifier.local.label'),
       description: t('settings:modelRouting.classifier.local.description'),
     }] : []),
-    ...(serverUsable ? [{
+    ...(serverSupported || autoModel.classifier === 'server' ? [{
       value: 'server' as const,
       label: t('settings:modelRouting.classifier.server.label'),
       description: t('settings:modelRouting.classifier.server.description'),
@@ -97,7 +94,7 @@ export function AutoModelSection({
   const classifierLabel = classifierModel
     ? `${classifierModel.label} · ${classifierModel.providerLabel}`
     : t('settings:modelRouting.server.cheapest');
-  const serverStatus = modelRouting.serverStatus;
+  const serverStatus = serverSupported ? modelRouting.serverStatus : 'unsupported';
   const serverStatusType = serverStatus === 'available' || serverStatus === 'unknown' || serverStatus === 'checking' ? 'info' : 'error';
   const serverStatusLabel = serverStatus === 'checking'
     ? t('settings:modelRouting.server.status.checking')
@@ -180,7 +177,7 @@ export function AutoModelSection({
           {setup.status === 'ready' ? (
             <>
               <Text className={cn("text-muted-foreground")} variant="label">{t('settings:modelRouting.local.installed', { size: formatBytes(setup.bytes) })}</Text>
-              <Button onPress={() => { void setup.remove(); }} testID="settings-auto-model-remove" variant="outline"><Text>{t('settings:modelRouting.local.remove')}</Text></Button>
+              <Button onPress={() => { void setup.remove().then(() => update({ enabled: false })); }} testID="settings-auto-model-remove" variant="outline"><Text>{t('settings:modelRouting.local.remove')}</Text></Button>
             </>
           ) : (
             <>

@@ -258,7 +258,10 @@ values are `auto` or a model ID; unavailable IDs are retained and treated as
 unavailable at send time rather than erased during a slow capability refresh.
 On-device routing requires the pinned GGUF pack; OpenCode routing requires a
 successful `generate.text` probe. Neither mode falls back to a heuristic
-classifier. See [auto model routing](../product/auto-model-routing.md).
+classifier. Availability is derived at send time: an empty or slow catalog, an
+offline connection, a pending probe, or a missing pack never rewrites the stored
+`enabled` or `classifier` values; only explicit user actions do. See
+[auto model routing](../product/auto-model-routing.md).
 
 `browser`, selected file content, worktree inventory/owning project identity, and MCP status/config are server-derived and not persisted. Text edits remain local to `FilePreview` until the provider compares the current server content with the original editor baseline, writes through native v2 `file.write` (or a v1 VCS patch), and verifies the saved text. Failed comparison, write or verification retains the draft. Listing, search and file-open commits check the current client identity and request order; saves check client identity before writing and only update the selected file if that selection is still current. Identical directory paths on different servers do not make a response current.
 

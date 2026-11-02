@@ -1,7 +1,7 @@
 import { uiImports } from '../../../tests/helpers/ui.mjs';
 import { describe, expect, it, vi } from 'vitest';
 
-import { getCurrentTurnActivityKey } from '@/features/chat/ui/chat-view-utils';
+import { getCurrentTurnActivityKey, getEntryModelLabel } from '@/features/chat/ui/chat-view-utils';
 import { hookRuntime, loadTs } from '../../../tests/helpers/runtime.mjs';
 
 type Overrides = Partial<Parameters<typeof listProps>[0]>;
@@ -18,6 +18,7 @@ function listProps(overrides: Record<string, unknown> = {}) {
     hasOlderMessages: false,
     isLoadingOlderMessages: false,
     isRefreshingMessages: false,
+    modelLabels: undefined as ReadonlyMap<string, string> | undefined,
     onCopyMessage: vi.fn(),
     onForkMessage: vi.fn(),
     onLoadOlderMessages: vi.fn(),
@@ -48,7 +49,7 @@ async function mountTranscriptList(overrides: Overrides = {}) {
     "@/features/chat/ui/cards/message-card": { TranscriptMessage: 'TranscriptMessage' },
     "@/features/chat/ui/cards/activity-group": { ActivityGroupRow: 'ActivityGroupRow' },
     "@/features/chat/ui/chat-view-styles": { styles: {}, slimStyles: {}, stylesClasses: {}, slimStylesClasses: {} },
-    "@/features/chat/ui/chat-view-utils": { getCurrentTurnActivityKey, STARTER_PROMPT_KEYS: [] },
+    "@/features/chat/ui/chat-view-utils": { getCurrentTurnActivityKey, getEntryModelLabel, STARTER_PROMPT_KEYS: [] },
     "@/features/chat/ui/content/transcript-skeleton": { TranscriptSkeleton: 'TranscriptSkeleton' },
     "@/shared/ui/theme/theme": { Colors: { light: {} } }
   }, { ...runtime.globals, requestAnimationFrame: () => 1, cancelAnimationFrame: () => undefined });
@@ -149,5 +150,25 @@ describe('transcript empty state', () => {
     const { list } = await mountTranscriptList({ activityRunning: true, transcriptRows: rows });
     expect(JSON.stringify(list.props.renderItem({ item: rows[0] }))).toContain('"sessionRunning":false');
     expect(JSON.stringify(list.props.renderItem({ item: rows[1] }))).toContain('"sessionRunning":true');
+  });
+
+  it('passes the resolved model label to assistant message rows', async () => {
+    const row = {
+      key: 'message:m1',
+      type: 'message' as const,
+      entry: {
+        id: 'm1',
+        role: 'assistant' as const,
+        createdAt: 0,
+        text: 'done',
+        details: [],
+        model: { providerID: 'openai', modelID: 'gpt-4.1-mini' },
+      },
+    };
+    const { list } = await mountTranscriptList({
+      transcriptRows: [row],
+      modelLabels: new Map([['openai/gpt-4.1-mini', 'GPT-4.1 mini']]),
+    });
+    expect(JSON.stringify(list.props.renderItem({ item: row }))).toContain('"modelLabel":"GPT-4.1 mini"');
   });
 });

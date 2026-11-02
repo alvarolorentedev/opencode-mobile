@@ -99,7 +99,7 @@ const iapPlugin: PluginList = ['expo-iap'];
 const config: ExpoConfig = {
   name: isDevelopmentVariant ? 'OpenCode Mobile Dev' : 'OpenCode Mobile',
   slug: 'opencode-mobile',
-  version: '1.0.121',
+  version: '1.0.124',
   orientation: 'default',
   icon: './assets/images/icon.png',
   // Give test Live Activity taps an unambiguous route when the official app is
@@ -108,7 +108,7 @@ const config: ExpoConfig = {
   userInterfaceStyle: 'automatic',
   android: {
     package: androidPackage,
-    versionCode: 121,
+    versionCode: 124,
     adaptiveIcon: {
       foregroundImage: './assets/images/adaptive-icon.png',
       backgroundColor: "#202020"
@@ -122,7 +122,7 @@ const config: ExpoConfig = {
   },
   ios: {
     bundleIdentifier: iosBundleIdentifierOverride ?? (isDevelopmentVariant ? 'app.getopencode.mobile.dev' : 'app.getopencode.mobile'),
-    buildNumber: '121',
+    buildNumber: '124',
     infoPlist: {
       ITSAppUsesNonExemptEncryption: false,
       ...(activityRelayURL ? { OpencodeActivityRelayURL: activityRelayURL } : {}),

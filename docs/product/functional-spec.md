@@ -154,6 +154,7 @@ The Chat screen shows:
 Behavior details:
 
 - the transcript honors the `timelineDetail` preference, which defaults to `Everything`: `Messages only` renders user and assistant bubbles with files and errors, `Reasoning` adds reasoning activity, and `Everything` renders the full detailed timeline with reasoning, tools, and patches
+- each assistant bubble shows the model recorded on that message beneath the `OpenCode` author label. Auto-routing switches the session model before submission, so this is the only per-reply record of the routed choice; the label uses the catalog model name and falls back to the raw model ID
 - at `Everything` detail, reasoning, tool, and patch rows render as a two-level activity timeline outside message bubbles and match the assistant bubble's width; contiguous activity merges into one growing run whose `Used <total> <types>` header lists every rendered type once, including `Thought`, runs start collapsed and expand only on an explicit tap, and each child expands independently; shell output is a selectable, copyable code block, grep stays a one-line pattern with its match count, consecutive reads collapse to one filename list, and edit/write/patch files render expandable diff cards with `+N −N`; the initial pull loads one newest window of up to 200 records without a display-target loop
 - no separate `OpenCode is ...` running footer is reserved; while the session runs, the newest activity header keeps the progress circle even after its own tools complete, and the active child row carries it only while that row is running. If the transcript has no activity row to carry it (including `Messages only`), a transient non-expandable activity row shows `Sending…`, `Waiting for OpenCode…`, `OpenCode is working…`, or `OpenCode is retrying…` in the same activity-row position; it coexists with the pending-prompt stack and disappears when the session settles or a real activity row takes over
 - a small floating progress view shows the current step and completed count; tapping it opens a content-sized overlay with the task list; pending permission actions replace it while blocked
@@ -399,7 +400,7 @@ If summarization fails, the session simply remains untitled.
 Settings follows the [design system](../design/design-system.md). Home shows App preferences
 (Appearance, Chat & responses, Voice & audio, Notifications, Language, About &
 support), Connections (Connection and eligible Cloud Link), then Selected server
-(AI & providers, Extensions, Approvals, Server diagnostics). Every category opens
+(AI & providers, Extensions, Approvals, Diagnostics). Every category opens
 in the existing content-sized sheet; longer content scrolls below its fixed
 Close header. Connection and provider forms retain their keyboard-safe surfaces.
 Server and project selectors list only connected servers; disconnected,
@@ -558,8 +559,16 @@ Behavior:
 
 ### Extensions Section (V2)
 
+Related decision: [ADR 0023](../adr/0023-focused-extension-editors.md).
+
 - manages MCPs, plugins, agents, skills, and slash commands for either the active project or the user-global configuration
-- shows the exact config path, Markdown agent/command directories, writable/read-only safety state, and the last backup path
+- shows installed extensions before add/edit forms; focused editor sheets preserve drafts across Setup/Instructions tabs, confirm unsaved dismissal, and retain inputs after failed saves
+- labels scope as This project or All projects and keeps its server/project context visible; the global-edit confirmation remains once per scope visit
+- shows read-only safety warnings immediately and groups config paths, Markdown directories and backup recovery under Configuration details
+- agents choose models through a searchable, provider-grouped picker with inheritance and variants, independently of chat model visibility; Advanced retains custom IDs and frontmatter
+- permissions use ordered action/resource/decision rows for V2 rules; legacy/custom shapes retain source editing without conversion
+- local MCP setup uses an executable and individual arguments without shell parsing; remote setup validates an HTTP(S) URL
+- skill creation and editing share structured fields and an automatic-invocation switch; advanced source editing and unknown metadata/comments are preserved
 - backs up and atomically replaces config and Markdown files; validates the temporary content, verifies the server-reloaded key or definition, and restores the backup on failure
 - disables mutations for system-managed config, symlinks, Windows servers, ambiguous global roots, unreadable/invalid JSONC or frontmatter, and servers without the required shell support
 - adds/removes MCP config entries while retaining runtime connect, disconnect, and OAuth controls
@@ -974,7 +983,7 @@ Any reimplementation should preserve these functional outcomes:
 - experimental worktree creation/removal
 - MCP lifecycle/configuration/OAuth management
 - ticket-authenticated interactive PTYs with xterm, bounded scrollback, resize, and acknowledged reconnect
-- server diagnostics
+- diagnostics
 - provider discovery and auth configuration from server metadata
 - enabled-model filtering separate from model selection
 - auto-approve writing back to server permissions config

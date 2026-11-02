@@ -150,6 +150,8 @@ test('happy path keeps the main chat flow stable @smoke', async ({ page, request
 
   await expect(page.getByText(/Finished:/).first()).toBeVisible({ timeout: 20_000 });
   await expect(page.getByText(/Flow stayed stable against the fake OpenCode server/).first()).toBeVisible();
+  const assistantMessage = page.locator('[data-testid^="transcript-message-"]').filter({ hasText: 'Flow stayed stable against the fake OpenCode server' });
+  await expect(assistantMessage.getByText('GPT-4.1 mini', { exact: true })).toBeVisible();
   await expect(page.getByTestId('chat-changes-chip')).toHaveAccessibleName('Review changes. 1 file changed, +6 / -1');
   await page.getByTestId('chat-changes-chip').click();
   await page.getByText('app/(tabs)/index.tsx', { exact: true }).click();

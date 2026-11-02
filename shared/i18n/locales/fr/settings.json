@@ -511,7 +511,7 @@
     }
   },
   "diagnostics": {
-    "title": "Diagnostics du serveur",
+    "title": "Diagnostics",
     "server": "Serveur",
     "openCodeVersion": "OpenCode {{version}}",
     "healthUnavailable": "Point de contrôle d'état indisponible",
@@ -850,8 +850,8 @@
     "title": "Extensions",
     "description": "Gérez les serveurs MCP, les plugins, les compétences et les commandes slash pour ce serveur.",
     "scope": {
-      "project": "Projet",
-      "general": "Général"
+      "project": "Ce projet",
+      "general": "Tous les projets"
     },
     "scopeDescription": {
       "project": "Ces extensions s’appliquent uniquement à {{project}}.",
@@ -965,7 +965,78 @@
     },
     "generalConfirmTitle": "Modifier la configuration globale",
     "generalConfirmMessage": "Cela modifie la configuration de tous les projets de ce serveur. Une sauvegarde est créée au préalable.\n\n{{path}}",
-    "generalConfirmAction": "Continuer"
+    "generalConfirmAction": "Continuer",
+    "editor": {
+      "discardTitle": "Abandonner les modifications ?",
+      "discardHint": "Les modifications non enregistrées seront perdues.",
+      "discard": "Abandonner",
+      "back": "Retour aux extensions",
+      "setup": "Configuration",
+      "instructions": "Instructions",
+      "advanced": "Avancé",
+      "storage": "Format de stockage",
+      "inheritModel": "Hériter du modèle",
+      "inheritModelHint": "Laisser OpenCode choisir le modèle.",
+      "customModel": "ID de modèle personnalisé",
+      "customModelHint": "Ce modèle est configuré dans Avancé. Sa configuration est conservée.",
+      "noModels": "Aucun modèle configuré. Configurez un fournisseur dans IA et fournisseurs, ou saisissez un ID de modèle dans Avancé.",
+      "availability": "Disponible pour",
+      "custom": "Personnalisé",
+      "inherited": "Hérité",
+      "inheritPermissions": "Hériter des règles d’autorisation du serveur.",
+      "rulesHint": "Les règles conservent leur ordre d’évaluation. Les supprimer toutes rétablit l’héritage.",
+      "ruleAction": "Action",
+      "ruleResource": "Motif de ressource",
+      "ruleEffect": "Décision",
+      "ask": "Demander",
+      "allow": "Autoriser",
+      "deny": "Refuser",
+      "addRule": "Ajouter une règle",
+      "legacyRules": "Cette configuration utilise des règles personnalisées ou anciennes. Modifiez la source pour conserver leur format.",
+      "source": "Source des autorisations",
+      "sourceHint": "Modifiez le fichier SKILL.md complet. Les champs inconnus sont conservés avec les contrôles.",
+      "editSource": "Modifier la source",
+      "useFields": "Utiliser les contrôles",
+      "autoinvoke": "Invocation automatique",
+      "autoinvokeHint": "Permettre au modèle de découvrir automatiquement cette compétence.",
+      "connectionType": "Type de connexion",
+      "executable": "Exécutable",
+      "argumentsHint": "Exécuté sur le serveur. Saisissez chaque argument séparément, sans guillemets de shell.",
+      "argument": "Argument {{number}}",
+      "removeArgument": "Supprimer l’argument {{number}}",
+      "addArgument": "Ajouter un argument",
+      "pluginHint": "Saisissez un paquet comme @scope/plugin@1.0.0 ou un chemin du serveur comme ./plugins/example.js.",
+      "configDetails": "Détails de configuration",
+      "mode": {
+        "primary": "Discussion principale",
+        "subagent": "Autres agents",
+        "all": "Les deux"
+      },
+      "modeHint": {
+        "primary": "Sélectionnable dans la discussion principale.",
+        "subagent": "Appelé par un autre agent pour des tâches ciblées.",
+        "all": "Disponible dans la discussion et pour les autres agents."
+      },
+      "mcpType": {
+        "remote": "Serveur distant",
+        "local": "Commande sur le serveur"
+      },
+      "mcpStatus": {
+        "connected": "Connecté",
+        "disabled": "Déconnecté",
+        "pending": "Connexion…",
+        "failed": "Échec",
+        "needs_auth": "Connexion requise",
+        "needs_client_registration": "Enregistrement du client requis"
+      }
+    },
+    "source": {
+      "general": "Tous les projets",
+      "project": "Ce projet",
+      "inherited": "Hérité",
+      "runtime": "Exécution",
+      "system": "Système"
+    }
   },
   "modelRouting": {
     "title": "Routage automatique des modèles",

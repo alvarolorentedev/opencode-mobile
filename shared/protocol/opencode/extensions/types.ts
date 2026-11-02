@@ -100,6 +100,7 @@ export type ExtensionAgentRow = {
   description?: string;
   mode?: ExtensionAgentMode;
   model?: string;
+  modelComplex?: boolean;
   permissions?: unknown;
   permissionsText?: string;
   permissionsKey?: 'permission' | 'permissions';

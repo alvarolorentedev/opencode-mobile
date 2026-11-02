@@ -54,8 +54,11 @@ test('V2 mixes colliding chats, filters without navigation, and retains each dra
   await expect(library.getByText('Archived', { exact: true })).toHaveCount(0);
   await choose(page, 'chat-server-filter', 'Build server');
   await expect(library.getByRole('button', { name: /^Open Chat on MacBook/ })).toHaveCount(0);
-  await expect(library.getByText('MacBook Pro / demo-project', { exact: true })).toBeVisible();
+  await expect(library.getByRole('button', { name: /^Open Chat on Build server,/ })).toBeVisible();
   await choose(page, 'chat-server-filter', 'All servers');
+  await library.getByRole('button', { name: 'Close', exact: true }).click();
+  await expect(page.getByRole('button', { name: /^Open chats/ })).toContainText('Chat on MacBook Pro');
+  await openChatLibrary(page);
   await library.getByRole('button', { name: /^Open Chat on Build server,/ }).click();
   await expect(library).not.toBeVisible();
   await expect(page.getByPlaceholder('Ask anything...')).toHaveValue('');

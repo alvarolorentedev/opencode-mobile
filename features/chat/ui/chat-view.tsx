@@ -109,6 +109,7 @@ export function ChatView() {
             isBootstrappingChat={content.isBootstrappingChat}
             isLoadingOlderMessages={content.transcriptPaging.isLoadingOlder}
             isRefreshingMessages={content.isRefreshingMessages}
+            modelLabels={content.modelLabels}
             onCopyMessage={handleCopyMessage}
             onForkMessage={handleForkMessage}
             onLoadOlderMessages={() => {
