@@ -1,0 +1,1 @@
+- Connections can now sign in with OpenID Connect (PKCE): enter the issuer, client ID, and scopes in the connection dialog to authorize through your identity provider.
