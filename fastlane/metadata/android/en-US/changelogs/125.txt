@@ -1,0 +1,2 @@
+- Cloud Link subscriptions no longer get stuck on “Waiting for the store” after completing the native purchase sheet.
+- Completed App Store and Google Play purchases now finalize in the same session and continue to pairing without reopening the app.
