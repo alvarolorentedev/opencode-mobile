@@ -21,6 +21,7 @@ sections; the reference docs are large on purpose.
 | Understand the runtime, layers, and boot flow | [Architecture overview](architecture/overview.md) |
 | Change provider state, refresh, persistence, or session behavior | [State and data](architecture/state-and-data.md#state-ownership-overview) + [Architecture overview § Module Map](architecture/overview.md#module-map) |
 | Change an OpenCode endpoint, event, or compatibility boundary | [API contract](architecture/api-contract.md) + [ADR 0003](adr/0003-v2-first-protocol-boundary.md) |
+| Work on a plugin GUI or the sandboxed plugin host | [Plugin GUIs](architecture/plugin-guis.md) + [ADR 0027](adr/0027-sandboxed-mobile-plugin-gui-host.md) |
 | Work on SSE, polling, reconnect, offline, or slow networks | [Network resilience](architecture/network-resilience.md) |
 | Work on logs, traces, metrics, diagnostics, export or remote telemetry | [Observability](architecture/observability.md) |
 | Add or change a user-visible workflow | [Functional specification](product/functional-spec.md) |

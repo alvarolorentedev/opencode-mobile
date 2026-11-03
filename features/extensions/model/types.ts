@@ -1,6 +1,7 @@
 import type { McpLocalConfig, McpRemoteConfig, McpStatus, ProviderAuthMethod, ProviderAuthValues } from '@/shared/protocol/opencode/types';
 
 import type { ExtensionAgentDraft, ExtensionAgentRow, ExtensionCommandDraft, ExtensionCommandRow, ExtensionScope, ExtensionSkillDraft, ExtensionSkillRow, ExtensionSnapshot } from '@/shared/protocol/opencode/extensions/types';
+import type { PluginGuiApi } from '@/features/extensions/model/plugin-gui';
 
 export type McpContextValue = {
   mcpStatuses: Record<string, McpStatus>;
@@ -29,6 +30,7 @@ export type ExtensionsContextValue = {
     removeMcp: (scope: ExtensionScope, name: string) => Promise<void>;
     addPlugin: (scope: ExtensionScope, target: string) => Promise<void>;
     removePlugin: (scope: ExtensionScope, target: string) => Promise<void>;
+    pluginGui: PluginGuiApi;
     saveCommand: (scope: ExtensionScope, draft: ExtensionCommandDraft, previous?: ExtensionCommandRow) => Promise<void>;
     removeCommand: (scope: ExtensionScope, row: ExtensionCommandRow) => Promise<void>;
     saveAgent: (scope: ExtensionScope, draft: ExtensionAgentDraft, previous?: ExtensionAgentRow) => Promise<void>;

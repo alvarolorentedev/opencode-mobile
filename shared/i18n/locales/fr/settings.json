@@ -881,6 +881,16 @@
     }
   },
   "extensions": {
+    "gui": {
+      "title": "Interfaces de plugins",
+      "description": "Panneaux fournis par les plugins installés. Le code du plugin s’exécute dans une vue isolée et ne reçoit jamais vos identifiants.",
+      "empty": "Aucun plugin installé ne fournit d’interface.",
+      "loading": "Chargement de l’interface du plugin…",
+      "unavailable": "L’interface de ce plugin n’est pas disponible sur mobile.",
+      "failed": "Échec de l’interface du plugin : {{message}}",
+      "noPanel": "Ce plugin n’a pas de panneau mobile.",
+      "sessionRequired": "Ouvrez une session de chat avant d’ouvrir un panneau de plugin."
+    },
     "title": "Extensions",
     "description": "Gérez les serveurs MCP, les plugins, les compétences et les commandes slash pour ce serveur.",
     "scope": {

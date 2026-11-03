@@ -17,6 +17,7 @@ import type { Session } from '@/shared/protocol/opencode/types';
 import { formatEstimatedCost, formatTokenCount, type SessionUsage } from '@/shared/presentation/usage';
 
 import { ConversationOverlay } from '@/features/chat/ui/chat-overlay';
+import { PluginGuiLauncher } from '@/features/extensions/index';
 import { ChatWorkspaceContext } from '@/features/chat/ui/chat-workspace-context';
 import { OverlaySheet } from '@/shared/ui/overlay-sheet';
 import { styles, stylesClasses } from '@/features/chat/ui/chat-view-styles';
@@ -102,6 +103,7 @@ export function ChatHeader({
           </View>
         </View><View className={cn(stylesClasses.headerActions)}>
           <Button accessibilityLabel={t('chat:header.newChat')} onPress={onCreateSession} variant="ghost" size="icon"><Icon name={"plus"} size={24} /></Button>
+          <PluginGuiLauncher session={selectedSession} />
           <Button onPress={() => setUsageVisible(true)} accessibilityLabel={t('chat:header.showUsage')} variant="ghost" size="icon"><Icon name={usageIcon} size={24} /></Button>
         </View></ScreenHeader>
       <Portal>{conversation.active ? (

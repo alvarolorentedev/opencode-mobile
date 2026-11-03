@@ -176,6 +176,7 @@ export function useOpencodeProviderComposition(input: WorkspaceRuntimeInput) {
   const extensions = useExtensionsState({
     client,
     isCurrentClient,
+    settings: state.settings,
   });
 
   const sessionActions = useSessionActions({

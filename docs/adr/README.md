@@ -78,6 +78,7 @@ coverage, and documentation links.
 | [0024](0024-oidc-pkce-connection-authorization.md) | Secure OpenID Connect authorization for connections | Accepted |
 | [0025](0025-server-exposed-plugin-commands.md) | Server-exposed plugin commands and authoritative execution | Accepted |
 | [0026](0026-metadata-driven-agent-selection.md) | Metadata-driven agent selection | Accepted |
+| [0027](0027-sandboxed-mobile-plugin-gui-host.md) | Sandboxed mobile host for OpenCode GUI plugins | Accepted |
 
 ## Template
 

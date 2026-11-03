@@ -881,6 +881,16 @@
     }
   },
   "extensions": {
+    "gui": {
+      "title": "Plugin-Oberflächen",
+      "description": "Von installierten Plugins bereitgestellte Panels. Plugin-Code läuft in einer isolierten Ansicht und erhält niemals deine Zugangsdaten.",
+      "empty": "Kein installiertes Plugin stellt eine Oberfläche bereit.",
+      "loading": "Plugin-Oberfläche wird geladen…",
+      "unavailable": "Diese Plugin-Oberfläche ist auf Mobilgeräten nicht verfügbar.",
+      "failed": "Plugin-Oberfläche fehlgeschlagen: {{message}}",
+      "noPanel": "Dieses Plugin hat kein Panel für Mobilgeräte.",
+      "sessionRequired": "Öffne zuerst eine Chat-Sitzung, bevor du ein Plugin-Panel öffnest."
+    },
     "title": "Erweiterungen",
     "description": "Verwalte MCP-Server, Plugins, Fähigkeiten und Slash-Befehle für diesen Server.",
     "scope": {

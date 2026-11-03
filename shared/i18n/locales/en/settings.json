@@ -881,6 +881,16 @@
     }
   },
   "extensions": {
+    "gui": {
+      "title": "Plugin GUIs",
+      "description": "Panels contributed by installed plugins. Plugin code runs in an isolated view and never receives your credentials.",
+      "empty": "No installed plugin contributes a GUI.",
+      "loading": "Loading plugin GUI…",
+      "unavailable": "This plugin GUI is not available on mobile.",
+      "failed": "Plugin GUI failed: {{message}}",
+      "noPanel": "This plugin has no panel for mobile.",
+      "sessionRequired": "Open a chat session before opening a plugin panel."
+    },
     "title": "Extensions",
     "description": "Manage MCP servers, plugins, agents, skills and slash commands for this server.",
     "scope": {

@@ -881,6 +881,16 @@
     }
   },
   "extensions": {
+    "gui": {
+      "title": "插件界面",
+      "description": "已安装插件提供的面板。插件代码在隔离视图中运行，绝不会获取你的凭据。",
+      "empty": "没有已安装插件提供界面。",
+      "loading": "正在加载插件界面…",
+      "unavailable": "此插件的界面在移动端不可用。",
+      "failed": "插件界面失败：{{message}}",
+      "noPanel": "此插件没有移动端面板。",
+      "sessionRequired": "打开插件面板前请先打开聊天会话。"
+    },
     "title": "扩展",
     "description": "管理此服务器的 MCP 服务器、插件、技能和斜杠命令。",
     "scope": {

@@ -139,7 +139,7 @@ export type ProviderOAuthApi = {
   cancel: (providerId: string) => Promise<void>;
 };
 
-export type NativeOpencodeApi = Pick<OpenCodeClient, 'server' | 'location' | 'project' | 'session' | 'message' | 'config' | 'provider' | 'model' | 'agent' | 'integration' | 'credential' | 'permission' | 'form' | 'event' | 'file' | 'vcs' | 'worktree' | 'mcp' | 'pty' | 'command' | 'skill' | 'reference' | 'plugin' | 'shell' | 'generate'>;
+export type NativeOpencodeApi = Pick<OpenCodeClient, 'server' | 'location' | 'project' | 'session' | 'message' | 'config' | 'provider' | 'model' | 'agent' | 'integration' | 'credential' | 'permission' | 'form' | 'event' | 'file' | 'vcs' | 'worktree' | 'mcp' | 'pty' | 'command' | 'skill' | 'reference' | 'plugin' | 'shell' | 'generate' | 'rpc'>;
 
 export type ScopedOpencodeClient = {
   api?: NativeOpencodeApi;

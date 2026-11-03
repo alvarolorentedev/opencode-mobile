@@ -10,6 +10,8 @@ Use ui/ for rendering/local interaction, state/ for domain hooks/actions,
 services/ for aggregation/persistence adapters, model/ for pure rules/types,
 and __tests__/ for existing owned Vitest coverage. Create no empty scaffolding.
 Public entrypoints currently present: `index.ts`, `context.ts`, `runtime.ts`.
+Plugin GUI hosting is implemented in `ui/plugin-gui-*` and documented in
+[plugin GUIs](../../docs/architecture/plugin-guis.md).
 
 Runtime mounts state at the existing application/connection/project lifetime.
 Never mount another shared owner in a screen. Consume protocol/storage/platform

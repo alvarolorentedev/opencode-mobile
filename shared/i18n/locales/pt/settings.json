@@ -881,6 +881,16 @@
     }
   },
   "extensions": {
+    "gui": {
+      "title": "Interfaces de plugins",
+      "description": "Painéis fornecidos por plugins instalados. O código do plugin é executado em uma visualização isolada e nunca recebe suas credenciais.",
+      "empty": "Nenhum plugin instalado fornece uma interface.",
+      "loading": "Carregando interface do plugin…",
+      "unavailable": "A interface deste plugin não está disponível no celular.",
+      "failed": "Falha na interface do plugin: {{message}}",
+      "noPanel": "Este plugin não tem painel para celular.",
+      "sessionRequired": "Abra uma sessão de chat antes de abrir um painel de plugin."
+    },
     "title": "Extensões",
     "description": "Gerencie servidores MCP, plugins, habilidades e comandos de barra para este servidor.",
     "scope": {

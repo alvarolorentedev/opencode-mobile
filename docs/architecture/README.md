@@ -16,6 +16,7 @@ transport, persistence, or the client protocol. Read
 | [overview.md](overview.md) | Runtime composition, module map, boot flow, screen/provider boundaries, realtime model, and cross-cutting invariants |
 | [state-and-data.md](state-and-data.md) | Provider state ownership, persistence, derived data, transcript transformation, and capability discovery |
 | [api-contract.md](api-contract.md) | OpenCode 2 contract, V1 compatibility boundary, endpoint usage, and request/response expectations |
+| [plugin-guis.md](plugin-guis.md) | Generic sandboxed host for OpenCode V2 `gui-experimental` bundles |
 | [network-resilience.md](network-resilience.md) | Connectivity, deadlines, SSE/polling recovery, offline queue, and cached reads |
 | [observability.md](observability.md) | Local diagnostics, structured logs, traces, metrics, export, consent and OTLP export |
 

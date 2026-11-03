@@ -165,6 +165,7 @@ export type RawPluginSource =
 export type RawPluginInfo = {
   id?: string;
   source: RawPluginSource;
+  features?: { server?: true; tui?: true; rpc?: true; gui?: true };
   state: { status: 'active' } | { status: 'failed'; error: string };
 };
 

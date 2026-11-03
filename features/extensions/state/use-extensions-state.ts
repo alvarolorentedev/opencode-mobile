@@ -1,12 +1,14 @@
 import { useCallback, useMemo, useRef, useState } from 'react';
 
 import { getErrorMessage } from '@/shared/utilities/error-message';
-import type { ScopedOpencodeClient } from '@/shared/protocol/opencode/client';
+import type { OpencodeConnectionSettings, ScopedOpencodeClient } from '@/shared/protocol/opencode/client';
 import type { ExtensionAgentDraft, ExtensionAgentRow, ExtensionCommandDraft, ExtensionCommandRow, ExtensionScope, ExtensionSkillDraft, ExtensionSkillRow, ExtensionSnapshot } from '@/shared/protocol/opencode/extensions/types';
 import type { McpLocalConfig, McpRemoteConfig } from '@/shared/protocol/opencode/types';
 import { configurationOptions, skillsOptions } from '@/shared/server-data/catalogs';
 import { useQueryActivity, useQueryIdentity } from '@/shared/server-data/client';
 import { extensionInspectionOptions, pluginsOptions } from '@/features/extensions/services/queries/extensions';
+import { readPluginGui } from '@/features/extensions/services/plugin-gui-service';
+import { isPluginGui, pluginGuiLabel } from '@/features/extensions/model/plugin-gui';
 import { mcpOptions } from '@/shared/server-data/diagnostics';
 import { addMcpServer, addPlugin, createSkill, extensionSnapshot, removeMcpServer, removePlugin, removeSkill, restoreConfig, updateMcpServer, updateSkill } from '@/features/extensions/services/extensions-service';
 import { removeAgent, removeCommand, saveAgent, saveCommand } from '@/features/extensions/services/definitions-service';
@@ -15,11 +17,13 @@ import { useQueries, useQueryClient } from '@tanstack/react-query';
 type ExtensionsInput = {
   client: ScopedOpencodeClient;
   isCurrentClient: (candidate: object) => boolean;
+  settings: OpencodeConnectionSettings;
 };
 
 export function useExtensionsState({
   client,
   isCurrentClient,
+  settings,
 }: ExtensionsInput) {
   const cache = useQueryClient();
   const identity = useQueryIdentity();
@@ -35,6 +39,12 @@ export function useExtensionsState({
   const snapshot = useMemo(() => configuration?.data?.entries && skills?.data?.details && inspectionData
     ? extensionSnapshot({ entries: configuration?.data?.entries, skills: skills?.data?.details, plugins: plugins?.data ?? [], mcpStatuses: mcp?.data ?? {} }, inspectionData)
     : undefined, [configuration?.data, skills?.data, plugins?.data, mcp?.data, inspectionData]);
+  const guiPlugins = useMemo(() => (plugins?.data ?? []).filter(isPluginGui).map((plugin) => ({
+    id: plugin.id,
+    label: pluginGuiLabel(plugin),
+    version: plugin.source.type === 'package' ? plugin.source.version : undefined,
+    source: plugin.source,
+  })), [plugins?.data]);
   const [busy, setBusy] = useState<string>();
   const [error, setError] = useState<string>();
   const busyRef = useRef<string | undefined>(undefined);
@@ -78,7 +88,6 @@ export function useExtensionsState({
     error: error ?? inspection?.error?.message ?? configuration?.error?.message,
     refresh,
     addMcp: (scope: ExtensionScope, name: string, config: McpLocalConfig | McpRemoteConfig) =>
-      // eslint-disable-next-line react-hooks/refs -- These are deferred user actions; the memo only constructs callbacks.
       run('add-mcp', (current) => addMcpServer(client, current, scope, name, config)),
     updateMcp: (scope: ExtensionScope, name: string, config: McpLocalConfig | McpRemoteConfig) =>
       run('update-mcp', (current) => updateMcpServer(client, current, scope, name, config)),
@@ -88,6 +97,38 @@ export function useExtensionsState({
       run('add-plugin', (current) => addPlugin(client, current, scope, target)),
     removePlugin: (scope: ExtensionScope, target: string) =>
       run('remove-plugin', (current) => removePlugin(client, current, scope, target)),
+    pluginGui: {
+      plugins: guiPlugins,
+      load: async () => {
+        if (client.__opencode.contract !== 'v2' || !isCurrentClient(client) || !active) return;
+        setRequested(true);
+        await cache.fetchQuery(pluginsOptions(identity, client));
+      },
+      read: (id: string) => {
+        if (client.__opencode.contract !== 'v2' || !isCurrentClient(client)) {
+          return Promise.reject(new Error('Plugin GUIs require OpenCode 2.'));
+        }
+        return readPluginGui(settings, id);
+      },
+      rpc: async (request: { rpcID: string; method: string; input?: unknown; directory?: string }) => {
+        if (client.__opencode.contract !== 'v2' || !isCurrentClient(client) || !client.api?.rpc) {
+          throw new Error('Plugin RPC requires OpenCode 2.');
+        }
+        const result = await client.api.rpc.call({
+          rpcID: request.rpcID,
+          method: request.method,
+          input: request.input as never,
+          location: { directory: request.directory ?? client.__opencode.directory },
+        });
+        return result.output;
+      },
+      sessionGet: async (request: { sessionID: string }) => {
+        if (client.__opencode.contract !== 'v2' || !isCurrentClient(client) || !client.api) {
+          throw new Error('Plugin session reads require OpenCode 2.');
+        }
+        return client.api.session.get({ sessionID: request.sessionID });
+      },
+    },
     saveCommand: (scope: ExtensionScope, draft: ExtensionCommandDraft, previous?: ExtensionCommandRow) =>
       run('save-command', (current) => saveCommand(client, current, scope, draft, previous)),
     removeCommand: (scope: ExtensionScope, row: ExtensionCommandRow) =>
@@ -104,7 +145,7 @@ export function useExtensionsState({
       run('remove-skill', (current) => removeSkill(client, current, scope, row)),
     restoreBackup: (scope: ExtensionScope) =>
       run('restore-backup', (current) => restoreConfig(client, current, scope)),
-  }), [busy, client, error, inspection?.isFetching, inspection?.error, configuration?.isFetching, configuration?.error, skills?.isFetching, plugins?.isFetching, refresh, run, snapshot]);
+  }), [busy, client, error, guiPlugins, inspection?.isFetching, inspection?.error, configuration?.isFetching, configuration?.error, skills?.isFetching, plugins?.isFetching, active, cache, identity, isCurrentClient, refresh, run, settings, snapshot]);
 
   return { extensions };
 }

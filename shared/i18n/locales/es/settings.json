@@ -881,6 +881,16 @@
     }
   },
   "extensions": {
+    "gui": {
+      "title": "Interfaces de plugins",
+      "description": "Paneles aportados por plugins instalados. El código del plugin se ejecuta en una vista aislada y nunca recibe tus credenciales.",
+      "empty": "Ningún plugin instalado aporta una interfaz.",
+      "loading": "Cargando interfaz del plugin…",
+      "unavailable": "La interfaz de este plugin no está disponible en móvil.",
+      "failed": "Error en la interfaz del plugin: {{message}}",
+      "noPanel": "Este plugin no tiene panel para móvil.",
+      "sessionRequired": "Abre una sesión de chat antes de abrir un panel de plugin."
+    },
     "title": "Extensiones",
     "description": "Gestiona servidores MCP, plugins, habilidades y comandos de barra para este servidor.",
     "scope": {

@@ -20,7 +20,8 @@
     "extensions": [
       "projects",
       "connections",
-      "ai"
+      "ai",
+      "sessions"
     ],
     "notifications": [
       "sessions"
@@ -46,7 +47,8 @@
       "voice",
       "notifications",
       "sharing",
-      "updates"
+      "updates",
+      "extensions"
     ],
     "onboarding": [
       "connections",
@@ -283,7 +285,9 @@
       "ExtensionsContextValue",
       "ExtensionsSection",
       "McpContextValue",
-      "McpSection"
+      "McpSection",
+      "PluginGuiLauncher",
+      "PluginGuiScreen"
     ],
     "features/sharing/runtime.ts": [
       "emptySharedInput",
