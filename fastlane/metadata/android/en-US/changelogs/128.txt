@@ -1,0 +1,1 @@
+- Chat extensions can now open their own GUI panels in a sandboxed viewer, launched from the chat header and usable in a large overlay or side-by-side dropdown.
