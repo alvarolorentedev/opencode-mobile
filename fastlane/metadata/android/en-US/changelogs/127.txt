@@ -1,0 +1,3 @@
+- Server-provided plugin commands run from chat, and agent selection now respects each agent's modes and visibility.
+- Expanded activity runs keep their header pinned while they cover the transcript, so long tool lists collapse without scrolling back.
+- New chats no longer flash the loading skeleton during silent background refreshes.
