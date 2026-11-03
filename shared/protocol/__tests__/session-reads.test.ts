@@ -51,6 +51,30 @@ h.api = api;
 const client = buildV2Client({ serverUrl: 'http://test', directory: '/repo', username: '', password: '' } as never);
 
 describe('session reads', () => {
+  it('executes exact plugin names with arguments, files and mentions after selections, and propagates failures', async () => {
+    const calls: string[] = [];
+    const command = vi.fn(async () => { calls.push('command'); });
+    const scoped = { __opencode: { contract: 'v2', directory: '/repo' }, api: { session: {
+      switchAgent: async () => { calls.push('agent'); },
+      switchModel: async () => { calls.push('model'); }, command,
+    } } } as never;
+    const args = ' "two words" @src/a.ts @general @skill\nnext  ';
+    await executeCommand(scoped, 's', 'Plugin:Echo', args, {
+      agent: 'build', model: 'local/org/model', variant: 'max',
+      attachments: [{ uri: 'data:text/plain;base64,YQ==', filename: 'a.txt' }],
+      context: [{ kind: 'file', path: '/repo/src/a.ts', token: '@src/a.ts' },
+        { kind: 'agent', name: 'general', token: '@general' }, { kind: 'skill', id: 'skill-id', name: 'skill', token: '@skill' }],
+    });
+    expect(calls).toEqual(['agent', 'model', 'command']);
+    expect(command).toHaveBeenCalledWith({ sessionID: 's', name: 'Plugin:Echo', text: args,
+      files: [{ uri: 'data:text/plain;base64,YQ==', name: 'a.txt' }, { uri: 'file:///repo/src/a.ts', name: 'src/a.ts', mention: { start: 13, end: 22, text: '@src/a.ts' } }],
+      agents: [{ name: 'general', mention: { start: 23, end: 31, text: '@general' } }],
+      skills: [{ id: 'skill-id', mention: { start: 32, end: 38, text: '@skill' } }],
+    });
+    command.mockRejectedValueOnce(new Error('Plugin failed') as never);
+    await expect(executeCommand(scoped, 's', 'Plugin:Echo', args)).rejects.toThrow('Plugin failed');
+    expect(command).toHaveBeenCalledTimes(2);
+  });
   it('switches command sessions to the selected variant and omits Default', async () => {
     const switchModel = vi.fn();
     const client = {

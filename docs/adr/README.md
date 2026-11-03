@@ -76,6 +76,7 @@ coverage, and documentation links.
 | [0023](0023-focused-extension-editors.md) | Focused extension editors with structured authoring | Accepted |
 
 | [0024](0024-oidc-pkce-connection-authorization.md) | Secure OpenID Connect authorization for connections | Accepted |
+| [0025](0025-server-exposed-plugin-commands.md) | Server-exposed plugin commands and authoritative execution | Accepted |
 
 ## Template
 

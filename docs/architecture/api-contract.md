@@ -76,7 +76,45 @@ Native prompts use `session.prompt({ sessionID, text, files, agents, skills, del
 
 The native admission record identifies the accepted input. Completion is observed through events and message reads. `delivery` supports steer at a step boundary and queue/append at a later turn. Native inbox list/update/cancel operations preserve message identity, attachment bytes and pending state. V1 retains `session.promptAsync` with text/file parts and its `system` field.
 
-Attachment capability checks, 10 MB local-file limits, temporary-file cleanup and URI/base64 preparation remain app-owned. File-only messages retain attachment details. Commands use native `session.command({ name, text })` after model/agent selection; v1 receives its legacy command/arguments fields. A leading `!` uses `session.shell({ sessionID, command })` and renders the native `shell` timeline record as the existing shell activity row when the selected timeline detail includes tools. Abort uses native `session.interrupt`; title summarization is v1-only.
+Attachment capability checks, 10 MB local-file limits, temporary-file cleanup and URI/base64 preparation remain app-owned. File-only messages retain attachment details. Commands use native `session.command({ name, text, files, agents, skills })` after model/agent selection; v1 receives its legacy command/arguments fields. A leading `!` uses `session.shell({ sessionID, command })` and renders the native `shell` timeline record as the existing shell activity row when the selected timeline detail includes tools. Abort uses native `session.interrupt`; title summarization is v1-only.
+
+## Server Plugin Commands
+
+Related: [ADR 0025](../adr/0025-server-exposed-plugin-commands.md).
+
+`command.list({ location: { directory } })` is the effective command catalog for
+the selected server and project. It includes project/global configuration and
+server plugin registrations through `ctx.command.transform()`. Names and
+descriptions pass through unchanged. OpenCode resolves exact-name overrides in
+registration order; Mobile neither merges source definitions nor folds names by
+case. See the [upstream registry](https://github.com/anomalyco/opencode/blob/v2/packages/core/src/command.ts)
+and [plugin API](https://github.com/anomalyco/opencode/blob/v2/packages/plugin/src/promise/command.ts).
+
+Commands use the existing scoped Query partition with zero freshness, so demand
+activation, foreground return and reconnection revalidate even recently read
+catalogs. The connection event owner coalesces `command.updated`, config/plugin
+updates and stream reconnection into scoped invalidations. Retained background
+projects stay unsubscribed, and no command polling timer is added. Servers that
+omit update events refresh on the next activation/resume/reconnect.
+
+On V2 every named slash submission goes to `session.command`, even when absent
+from autocomplete. Matching is server-side and case-sensitive. The name is
+unchanged; argument bytes after the first whitespace separator retain quotes,
+newlines and trailing spaces. Files use the existing local-file preparation and
+size limit; selected mentions resolve relative to the argument text. Explicit
+model/agent choices are applied before execution. Commands execute in the
+session's server-side location, and plugin hooks run on that server. Rejection
+restores the composer through its existing snapshot guard, with no prompt
+fallback or automatic mutation retry. V1 keeps its existing known-command and
+attachment prompt behavior.
+
+Compatibility covers server-exposed plugin commands, agents, skills and tools
+through their existing server capabilities, plus server-side hooks. It does not
+automatically cover TUI command handlers/dialogs, desktop GUI components, or
+features without a server API. Mobile loads no plugin code and promises no
+universal plugin or TUI command parity. See the
+[real-server fixture](../engineering/validation/server-plugins.md) for evidence
+and its limits.
 
 ## Auto Model Classifier
 

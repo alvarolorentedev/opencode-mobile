@@ -12,6 +12,7 @@ Back to the [engineering index](README.md) · [documentation hub](../README.md).
 | Understand CI gates and costs | [strategy.md](validation/strategy.md#ci-gates) |
 | Change the fake server or a scenario | [fake-server.md](validation/fake-server.md) |
 | Add or change an E2E flow | [e2e.md](validation/e2e.md) |
+| Verify real OpenCode 2 plugin commands | [server-plugins.md](validation/server-plugins.md) |
 | Find the spec for a feature | [regressions.md](validation/regressions.md) |
 | Run focused checks and inspect CI | [strategy.md](validation/strategy.md#start-here) and [testing overview](testing-overview.md) |
 | Change logs, traces, metrics, diagnostics or remote telemetry | [observability](../architecture/observability.md) and `shared/observability/__tests__/` |

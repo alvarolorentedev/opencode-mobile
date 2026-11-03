@@ -6,6 +6,7 @@ import { telemetry } from '@/shared/observability/client';
 import { getSelectedModelParts, getSelectedModelVariant } from '@/features/ai/runtime';
 import { persistSessionCache } from '@/features/sessions/services/session-cache';
 import type { SessionCrudInput } from '@/features/sessions/model/action-inputs';
+import type { CommandOptions } from '@/shared/protocol/opencode/prompt-inbox';
 
 export function useSessionCrudActions({
   client,
@@ -238,7 +239,7 @@ export function useSessionCrudActions({
     await Promise.all([refreshSessions(), refreshMessages(sessionId, true, { mode: 'replace' }), refreshSessionDiff(sessionId, true)]);
   }, [client, refreshMessages, refreshSessionDiff, refreshSessions]);
 
-  const executeCommand = useCallback(async (sessionId: string, command: string, args: string) => {
+  const executeCommand = useCallback(async (sessionId: string, command: string, args: string, input?: Pick<CommandOptions, 'attachments' | 'context'>) => {
     const selected = getSelectedModelParts(chatPreferences.modelId);
     const variant = client.__opencode?.contract === 'v2'
       ? getSelectedModelVariant(
@@ -249,6 +250,7 @@ export function useSessionCrudActions({
         )
       : undefined;
     await svcExecuteCommand(client, sessionId, command, args, {
+      ...input,
       agent: chatPreferences.mode,
       model: selected ? `${selected.providerID}/${selected.modelID}` : undefined,
       variant,

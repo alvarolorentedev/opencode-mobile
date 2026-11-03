@@ -207,7 +207,7 @@ type ChatComposerProps = {
 
 ### `features/chat/model/composer.ts`
 
-- Pure trigger detection, token replacement, shell-command parsing, and final-draft mention resolution.
+- Pure trigger detection, token replacement, exact slash-command/argument parsing, shell-command parsing, and final-draft mention resolution.
 - Mention offsets are computed at submit time from the selected tokens, so edits and deletions cannot leave stale ranges.
 
 ### `features/ai/ui/model-picker.tsx`

@@ -10,6 +10,12 @@ export type ComposerTrigger = {
   query: string;
 };
 
+/** Keep the exact name and argument bytes after the first separator. */
+export function parseSlashCommand(text: string): { name: string; args: string } | undefined {
+  const match = text.trimStart().match(/^\/(\S+)(?:\s([\s\S]*))?$/);
+  return match ? { name: match[1], args: match[2] ?? '' } : undefined;
+}
+
 export function findComposerTrigger(text: string, cursor: number): ComposerTrigger | undefined {
   const position = Math.max(0, Math.min(cursor, text.length));
   let start = position;

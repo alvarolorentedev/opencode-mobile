@@ -50,7 +50,7 @@ export type ChatContextValue = {
   availableSkills: import('@/shared/protocol/opencode/types').Skill[];
   availableReferences: import('@/shared/protocol/opencode/types').Reference[];
   searchProjectFiles: (query: string) => Promise<string[]>;
-  executeCommand: (sessionId: string, command: string, args: string) => Promise<void>;
+  executeCommand: (sessionId: string, command: string, args: string, input?: Pick<import('@/shared/protocol/opencode/prompt-inbox').CommandOptions, 'attachments' | 'context'>) => Promise<void>;
   executeShell: (sessionId: string, command: string) => Promise<void>;
   sendPrompt: SendPrompt;
   abortSession: (sessionId: string) => Promise<void>;

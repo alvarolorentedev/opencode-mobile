@@ -56,7 +56,11 @@ renewal copies only existing data with original timestamps into the replacement
 partition, retaining stable presentation and workflow identity.
 
 The default freshness is 60 seconds and unused data is collected after five
-minutes; previews use zero retention. There are no query polling intervals,
+minutes; previews use zero retention. Commands use zero freshness so every
+active project/resume/reconnect reads the current effective server catalog;
+`command.updated` and existing config/plugin events invalidate its scoped entry.
+See [server plugin commands](api-contract.md#server-plugin-commands).
+There are no query polling intervals,
 automatic query retries or mutation replay. Existing transport retry/deadline
 policy remains authoritative. Explicit user refreshes and mutations invalidate
 canonical entries. Native store eligibility, purchases, claim checkpoints and

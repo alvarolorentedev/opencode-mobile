@@ -6,7 +6,7 @@ import { listCommands } from '@/shared/protocol/services/session-service';
 import { queryOptions } from '@tanstack/react-query';
 import { projectQueryKey, type QueryIdentity } from '@/shared/server-data/keys';
 export function commandsOptions(identity: QueryIdentity, client: ScopedOpencodeClient) {
-  return queryOptions({ queryKey: projectQueryKey(identity, client, 'commands'),
+  return queryOptions({ queryKey: projectQueryKey(identity, client, 'commands'), staleTime: 0,
     queryFn: ({ signal }) => listCommands(withReadSignal(client, signal)) });
 }
 

@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 
-import { findComposerTrigger, parseShellCommand, replaceComposerTrigger } from '@/features/chat/model/composer';
+import { findComposerTrigger, parseShellCommand, parseSlashCommand, replaceComposerTrigger } from '@/features/chat/model/composer';
 import { resolvePromptContext } from '@/shared/protocol/opencode/prompt-context';
 import { toTranscriptEntry } from '@/shared/presentation/format';
 import { toMessageRecord } from '@/shared/protocol/opencode/v2/mappers';
@@ -8,6 +8,13 @@ import { toMessageRecord } from '@/shared/protocol/opencode/v2/mappers';
 vi.mock('@/shared/i18n/index', () => ({ getFormatLocale: () => 'en' }));
 
 describe('composer triggers', () => {
+  it('preserves exact slash names, quoted arguments, newlines, and trailing whitespace', () => {
+    expect(parseSlashCommand('  /Plugin:Echo  "a b"\nnext  ')).toEqual({ name: 'Plugin:Echo', args: ' "a b"\nnext  ' });
+    expect(parseSlashCommand('/echo')).toEqual({ name: 'echo', args: '' });
+    expect(parseSlashCommand('/echo\nline')).toEqual({ name: 'echo', args: 'line' });
+    expect(parseSlashCommand('/')).toBeUndefined();
+    expect(parseSlashCommand('please /echo')).toBeUndefined();
+  });
   it('finds slash commands only at the start of the draft', () => {
     expect(findComposerTrigger('/rev', 4)).toEqual({ kind: 'command', start: 0, end: 4, query: 'rev' });
     expect(findComposerTrigger('run /rev', 8)).toBeUndefined();

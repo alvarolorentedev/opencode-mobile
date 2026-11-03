@@ -126,7 +126,7 @@ export function waitForSessionIdle(client: ScopedOpencodeClient, sessionID: stri
 export function listCommands(client: ScopedOpencodeClient) {
   return createSessionAdapter(client).commands();
 }
-export function executeCommand(client: ScopedOpencodeClient, sessionId: string, command: string, args: string, options?: { agent?: string; model?: string; variant?: string; messageId?: string }) {
+export function executeCommand(client: ScopedOpencodeClient, sessionId: string, command: string, args: string, options?: import('@/shared/protocol/opencode/prompt-inbox').CommandOptions) {
   return createSessionAdapter(client).executeCommand(sessionId, command, args, options);
 }
 export function executeShell(client: ScopedOpencodeClient, sessionId: string, command: string) {

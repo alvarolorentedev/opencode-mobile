@@ -7,6 +7,14 @@ export type PromptContextItem =
   | { kind: 'file'; path: string; token: string }
   | { kind: 'agent'; name: string; token: string }
   | { kind: 'skill'; id: string; name: string; token: string };
+export type CommandOptions = {
+  agent?: string;
+  model?: string;
+  variant?: string;
+  messageId?: string;
+  attachments?: PromptAttachment[];
+  context?: PromptContextItem[];
+};
 export type PromptInput = {
   sessionID: string;
   parts: (TextPartInput | FilePartInput)[];

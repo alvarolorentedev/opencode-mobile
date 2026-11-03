@@ -11,6 +11,9 @@ import { toMessageRecord } from '@/shared/protocol/opencode/v2/mappers';
 import type { Command, FileDiff, Project, Session, SessionStatus, Todo } from '@/shared/protocol/opencode/types';
 import * as v1 from '@/shared/protocol/opencode/compat/v1/session';
 import { listWorktrees as listV1Worktrees } from '@/shared/protocol/opencode/compat/v1/project';
+import type { CommandOptions } from '@/shared/protocol/opencode/prompt-inbox';
+import { prepareAttachment } from '@/shared/protocol/opencode/attachment';
+import { resolvePromptContext } from '@/shared/protocol/opencode/prompt-context';
 
 export type ResolvedProjectLocation = Project & { directory?: string };
 export type SessionMessagePage = { records: SessionMessageRecord[]; hasMore: boolean; nextBefore?: string };
@@ -44,7 +47,7 @@ export type SessionAdapter = {
   interrupt: (sessionId: string) => Promise<unknown>;
   waitForIdle: (sessionId: string) => Promise<unknown>;
   commands: () => Promise<Command[]>;
-  executeCommand: (sessionId: string, command: string, args: string, options?: { agent?: string; model?: string; variant?: string; messageId?: string }) => Promise<unknown>;
+  executeCommand: (sessionId: string, command: string, args: string, options?: CommandOptions) => Promise<unknown>;
   executeShell: (sessionId: string, command: string) => Promise<unknown>;
 };
 
@@ -212,12 +215,19 @@ export function createSessionAdapter(client: ScopedOpencodeClient): SessionAdapt
     commands: () => compatibility ? v1.listCommands(compatibility) : client.api!.command.list({ location: { directory } }).then((result) => result.data),
     executeCommand: async (sessionId, command, args, options) => {
       if (compatibility) return v1.executeCommand(compatibility, sessionId, command, args, options);
+      const files = await Promise.all((options?.attachments ?? []).map(prepareAttachment));
+      const context = resolvePromptContext(args, options?.context);
+      const commandFiles = [...files.map((file) => ({ uri: file.url, name: file.filename || 'Attachment' })), ...context.files];
       if (options?.agent) await client.api!.session.switchAgent({ sessionID: sessionId, agent: options.agent });
       if (options?.model) {
         const [providerID, ...id] = options.model.split('/');
         await client.api!.session.switchModel({ sessionID: sessionId, model: { providerID, id: id.join('/'), ...(options.variant && options.variant !== 'default' ? { variant: options.variant } : {}) } });
       }
-      await client.api!.session.command({ sessionID: sessionId, name: command, text: args });
+      await client.api!.session.command({ sessionID: sessionId, name: command, text: args,
+        ...(commandFiles.length ? { files: commandFiles } : {}),
+        ...(context.agents.length ? { agents: context.agents } : {}),
+        ...(context.skills.length ? { skills: context.skills } : {}),
+      });
     },
     executeShell: async (sessionId, command) => {
       // Shell execution is a V2-only composer surface; the UI never exposes it

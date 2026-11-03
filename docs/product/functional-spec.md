@@ -326,8 +326,10 @@ Slash command behavior:
 - commands are loaded from the server for the active project
 - the suggestion panel shows up to eight matching commands with their server descriptions
 - selecting a command inserts its name and closes the suggestion
-- an exact known `/command` submission is sent through the session command API with the remaining text as arguments
-- attachments prevent command interpretation and use normal prompt submission
+- on OpenCode 2 every named `/command` submission uses the session command API, including commands not yet in the cached catalog; the server matches the exact name and unknown/failed commands never become ordinary prompts
+- argument quotes, newlines and whitespace after the first separator are preserved; files and selected mentions accompany V2 commands, and failures restore the draft
+- V1 preserves known-command execution and its existing attachment prompt flow
+- catalogs refresh on project activation, connection restoration, foreground return and server command/config/plugin update events; see the [compatibility boundary](../architecture/api-contract.md#server-plugin-commands)
 
 Context behavior:
 

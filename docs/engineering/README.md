@@ -18,6 +18,7 @@ build, or understand an operational constraint.
 | [validation/strategy.md](validation/strategy.md) | Validation principles, costs, CI gates, coverage gaps, commands, and suite map |
 | [validation/fake-server.md](validation/fake-server.md) | Fake server files, scenarios, and scenario-adding workflow |
 | [validation/e2e.md](validation/e2e.md) | Playwright spec map and supported flow coverage |
+| [validation/server-plugins.md](validation/server-plugins.md) | Real OpenCode 2 plugin command fixture and compatibility validation |
 | [validation/regressions.md](validation/regressions.md) | Feature-to-spec map and manual/device checks |
 | [integrations-and-operations.md](integrations-and-operations.md) | External dependencies, Expo/native integrations, environment rules, operational scripts, and release notes |
 | [voice-validation.md](voice-validation.md) | Offline wake-word benchmark and physical-device voice checklist |

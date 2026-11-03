@@ -122,6 +122,9 @@ it('maps routine events independently from transcript/prompt/terminal reconcilia
   expect(serverDataResources({ type: 'session.status', data: { sessionID: 's', status: { type: 'idle' } } } as never)).toContain('file-status');
   expect(serverDataResources({ type: 'session.execution.succeeded', data: { sessionID: 's' } } as never)).toContain('file-status');
   expect(serverDataResources({ type: 'credential.updated' } as never)).toContain('capabilities');
+  expect(serverDataResources({ type: 'command.updated' } as never)).toContain('commands');
+  expect(serverDataResources({ type: 'plugin.updated' } as never)).toContain('commands');
+  expect(serverDataResources({ type: 'config.updated' } as never)).toContain('commands');
   expect(serverDataResources({ type: 'session.text.delta' } as never)).toEqual([]);
   expect(serverDataResources({ type: 'pty.updated' } as never)).toEqual([]);
 });

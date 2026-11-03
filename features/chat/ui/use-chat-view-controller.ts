@@ -10,7 +10,7 @@ import { mergeSharedDraft } from '@/features/sharing/index';
 import { workspaceKey } from '@/shared/contracts/workspace';
 import { getConnectionScope, getConnectionUiScope } from '@/shared/contracts/connection-scope';
 import { copyHaptic } from '@/shared/platform/haptics';
-import { parseShellCommand, replaceComposerTrigger } from '@/features/chat/model/composer';
+import { parseShellCommand, parseSlashCommand, replaceComposerTrigger } from '@/features/chat/model/composer';
 import type { TranscriptEntry } from '@/shared/presentation/format';
 import type { PromptContextItem } from '@/shared/protocol/opencode/prompt-inbox';
 import { buildTranscriptRows, getTurnPatchDetails } from '@/shared/presentation/transcript';
@@ -289,9 +289,9 @@ export function useChatViewController() {
         return;
       }
 
-      const commandMatch = nextAttachments.length === 0 ? prompt.match(/^\/(\S+)(?:\s+([\s\S]*))?$/) : undefined;
-      if (commandMatch && commands.some((command) => command.name === commandMatch[1])) {
-        await executeCommand(sessionId, commandMatch[1], commandMatch[2] || '');
+      const command = parseSlashCommand(isV2 ? nextDraft : prompt);
+      if (command && (isV2 || (nextAttachments.length === 0 && commands.some((item) => item.name === command.name)))) {
+        await executeCommand(sessionId, command.name, isV2 ? command.args : command.args.trimStart(), { attachments: nextAttachments, context: snapshot.context });
         return;
       }
 
