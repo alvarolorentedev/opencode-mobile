@@ -2,8 +2,9 @@ import { createSession as svcCreateSession, deleteSession as svcDeleteSession, e
 import { useCallback } from 'react';
 
 import type { Session, SessionStatus } from '@/shared/protocol/opencode/types';
+import { i18n } from '@/shared/i18n/index';
 import { telemetry } from '@/shared/observability/client';
-import { getSelectedModelParts, getSelectedModelVariant } from '@/features/ai/runtime';
+import { getInitialMode, getSelectedModelParts, getSelectedModelVariant } from '@/features/ai/runtime';
 import { persistSessionCache } from '@/features/sessions/services/session-cache';
 import type { SessionCrudInput } from '@/features/sessions/model/action-inputs';
 import type { CommandOptions } from '@/shared/protocol/opencode/prompt-inbox';
@@ -17,6 +18,8 @@ export function useSessionCrudActions({
   currentSessionIdRef,
   explicitSessionSelectionRef,
   locallyCreatedSessionsRef,
+  availableAgents,
+  currentConfig,
   availableModels,
   diffScopeBySessionRef,
   sessions,
@@ -240,6 +243,9 @@ export function useSessionCrudActions({
   }, [client, refreshMessages, refreshSessionDiff, refreshSessions]);
 
   const executeCommand = useCallback(async (sessionId: string, command: string, args: string, input?: Pick<CommandOptions, 'attachments' | 'context'>) => {
+    if (!isCurrentClient(client)) throw new Error(i18n.t('chat:composer.noEligibleAgent'));
+    const agent = getInitialMode(availableAgents, currentConfig, chatPreferences.mode);
+    if (!agent) throw new Error(i18n.t('chat:composer.noEligibleAgent'));
     const selected = getSelectedModelParts(chatPreferences.modelId);
     const variant = client.__opencode?.contract === 'v2'
       ? getSelectedModelVariant(
@@ -251,12 +257,12 @@ export function useSessionCrudActions({
       : undefined;
     await svcExecuteCommand(client, sessionId, command, args, {
       ...input,
-      agent: chatPreferences.mode,
+      agent,
       model: selected ? `${selected.providerID}/${selected.modelID}` : undefined,
       variant,
     });
     await Promise.all([refreshMessages(sessionId, true), refreshSessions()]).catch(() => undefined);
-  }, [availableModels, chatPreferences.mode, chatPreferences.modelId, chatPreferences.modelVariantSelections, client, refreshMessages, refreshSessions, sessions]);
+  }, [availableAgents, availableModels, currentConfig, isCurrentClient, chatPreferences.mode, chatPreferences.modelId, chatPreferences.modelVariantSelections, client, refreshMessages, refreshSessions, sessions]);
 
   const executeShell = useCallback(async (sessionId: string, command: string) => {
     await svcExecuteShell(client, sessionId, command);

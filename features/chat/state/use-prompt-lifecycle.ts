@@ -1,6 +1,6 @@
 import { interruptSession, readSessionSettlement } from '@/shared/protocol/services/session-service';
 import { prepareAttachment } from '@/shared/protocol/opencode/attachment';
-import type { FilePartInput, TextPartInput, Session, SessionStatus } from '@/shared/protocol/opencode/types';
+import type { Config, FilePartInput, TextPartInput, Session, SessionStatus } from '@/shared/protocol/opencode/types';
 import { useCallback, useEffect, useRef, useState, type Dispatch, type SetStateAction } from 'react';
 
 import type { OpencodeConnectionSettings, ScopedOpencodeClient } from '@/shared/protocol/opencode/client';
@@ -8,9 +8,10 @@ import type { SessionMessageRecord } from '@/shared/presentation/format';
 import type { PromptContextItem, PromptDelivery, PromptInput } from '@/shared/protocol/opencode/prompt-inbox';
 import { pendingNotificationKey , clearPendingTaskFinishedNotification, listPendingTaskFinishedNotifications, notifyTaskFinished, trackPendingTaskFinishedNotification } from '@/features/notifications/runtime';
 import { getConnectionScope, getConnectionUiScope } from '@/shared/contracts/connection-scope';
-import type { ModelOption } from '@/shared/contracts/model-options';
-import { getSelectedModelParts, getSelectedModelVariant , usePromptRouting } from '@/features/ai/runtime';
+import type { AgentOption, ModelOption } from '@/shared/contracts/model-options';
+import { getInitialMode, getSelectedModelParts, getSelectedModelVariant , usePromptRouting } from '@/features/ai/runtime';
 import type { ChatPreferences } from '@/shared/preferences/opencode-preferences';
+import { i18n } from '@/shared/i18n/index';
 import { buildSystemPrompt } from '@/features/chat/model/system-prompt';
 import type { SessionRefreshOptions } from '@/shared/protocol/opencode/event-dispatch';
 import type { ProviderOption } from '@/features/ai/index';
@@ -24,6 +25,8 @@ type PromptLifecycleInput = {
   connectionScope: string;
   sessions: Session[];
   sessionStatuses: Record<string, SessionStatus>;
+  availableAgents: AgentOption[];
+  currentConfig?: Config;
   availableModels: ModelOption[];
   availableProviders: ProviderOption[];
   messagesBySession: Record<string, SessionMessageRecord[]>;
@@ -47,6 +50,8 @@ export function usePromptLifecycle({
   connectionScope,
   sessions,
   sessionStatuses,
+  availableAgents,
+  currentConfig,
   availableModels,
   availableProviders,
   messagesBySession,
@@ -104,7 +109,6 @@ export function usePromptLifecycle({
       // stale completion record behind.
       setSendingState(submission);
 
-      const routingPromise = routePrompt({ sessionId, prompt: trimmedPrompt, attachments }).catch(() => undefined);
       const currentSession = sessions.find((session) => session.id === sessionId);
       let promptAccepted = false;
       const trackingKey = pendingNotificationKey(connectionScope, sessionId);
@@ -118,6 +122,9 @@ export function usePromptLifecycle({
       };
 
       try {
+        const agent = getInitialMode(availableAgents, currentConfig, chatPreferences.mode);
+        if (!agent) throw new Error(i18n.t('chat:composer.noEligibleAgent'));
+        const routingPromise = routePrompt({ sessionId, prompt: trimmedPrompt, attachments }).catch(() => undefined);
         busyNotificationsRef.current.delete(trackingKey);
         if (activeProjectPath) {
           await trackPendingTaskFinishedNotification({
@@ -199,7 +206,7 @@ export function usePromptLifecycle({
           : item);
         await submitPrompt({
           sessionID: sessionId,
-          agent: chatPreferences.mode,
+          agent,
           model: routed?.sameAsCurrent ? undefined : getSelectedModelParts(effectiveModelId),
           system: buildSystemPrompt(chatPreferences),
           variant,
@@ -259,7 +266,7 @@ export function usePromptLifecycle({
         ));
       }
     },
-    [activeProjectPath, availableModels, busyNotificationsRef, chatPreferences, client, connectionScope, isCurrentClient, promptSubmissionRef, refreshMessages, refreshSessionDiff, refreshSessionTodos, routePrompt, scheduleSessionRefresh, sessions, setPromptError, setSelectedDiffMessageBySession, settingsRef, submitPrompt],
+    [activeProjectPath, availableAgents, availableModels, currentConfig, busyNotificationsRef, chatPreferences, client, connectionScope, isCurrentClient, promptSubmissionRef, refreshMessages, refreshSessionDiff, refreshSessionTodos, routePrompt, scheduleSessionRefresh, sessions, setPromptError, setSelectedDiffMessageBySession, settingsRef, submitPrompt],
   );
 
   const abortSession = useCallback(

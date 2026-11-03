@@ -1,4 +1,4 @@
-import type { Model } from '@/shared/protocol/opencode/types';
+import type { Agent, Model } from '@/shared/protocol/opencode/types';
 
 // Model/provider/agent catalog shapes and the pure selection rules that keep the
 // stored choice valid against the current server catalog.
@@ -20,8 +20,12 @@ export type ModelOption = {
   pricing?: Model['cost'];
 };
 
-export type AgentOption = {
+export type AgentOption = Partial<Pick<Agent, 'mode' | 'hidden'>> & {
   id: string;
   label: string;
   description?: string;
 };
+
+export function getPrimaryAgents(agents: AgentOption[]): AgentOption[] {
+  return agents.filter((agent) => (agent.mode === 'primary' || agent.mode === 'all') && agent.hidden !== true);
+}

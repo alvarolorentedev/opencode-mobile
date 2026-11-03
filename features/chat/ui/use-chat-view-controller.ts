@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Keyboard } from 'react-native';
 
-import { getSelectedModelVariant, getVisibleModels } from '@/features/ai/index';
+import { getInitialMode, getSelectedModelVariant, getVisibleModels } from '@/features/ai/index';
 import { useUpdateBlocker } from '@/runtime/ui';
 import { mergeSharedDraft } from '@/features/sharing/index';
 import { workspaceKey } from '@/shared/contracts/workspace';
@@ -37,7 +37,7 @@ export function useChatViewController() {
   const { activeProject } = useProjects();
   const { activeSession, currentSessionId, ensureActiveSession } = useCurrentSession();
   const { forkSession, revertSession, sessionStatuses, sessions, unrevertSession } = useSessionLibrary();
-  const { availableAgents, availableModels, configuredProviders, modelRouting } = useCapabilities();
+  const { availableAgents, availableModels, configuredProviders, currentConfig, modelRouting } = useCapabilities();
   const { chatPreferences, updateChatPreferences } = usePreferences();
   const slim = chatPreferences.slimInterface === true;
   const { connection, settings, serverCapabilities } = useConnection();
@@ -122,10 +122,9 @@ export function useChatViewController() {
     : 0);
   const diffAdditions = currentDiffs.reduce((sum, diff) => sum + diff.additions, 0);
   const diffDeletions = currentDiffs.reduce((sum, diff) => sum + diff.deletions, 0);
-  const selectedAgentLabel = useMemo(
-    () => availableAgents.find((agent) => agent.id === chatPreferences.mode)?.label || chatPreferences.mode,
-    [availableAgents, chatPreferences.mode],
-  );
+  const selectedAgent = getInitialMode(availableAgents, currentConfig, chatPreferences.mode);
+  const selectedAgentLabel = availableAgents.find((agent) => agent.id === selectedAgent)?.label
+    ?? t('chat:composer.chooseAgent');
   const pendingInteractions = currentPendingPermissions.length + currentPendingQuestions.length;
   const awaitingUserInput = pendingInteractions > 0;
   const completedTodoCount = currentTodos.filter((todo) => todo.status === 'completed').length;
@@ -391,7 +390,8 @@ export function useChatViewController() {
     composer: {
       attachments, availableAgents, chatPreferences, commands, draft,
       isSpeechInputAvailable, isSpeechInputListening, isSpeechInputStarting,
-      isStoppingSession, isUpdatingAutoApprove, selectedAgentLabel, serverCapabilities,
+      isStoppingSession, isUpdatingAutoApprove, selectedAgent, selectedAgentLabel, serverCapabilities,
+      agentsLoading: currentConfig === undefined,
       selectedVariant: selectedModelVariant,
       autoRoutingEnabled: chatPreferences.autoModel.enabled,
       autoRoutingAvailable: modelRouting.available,

@@ -1,5 +1,5 @@
 import { getProviders, setProviderCredentialsForClient, removeProviderCredentials } from '@/features/ai/services/capabilities-service';
-import { getProviderAuthMethods } from '@/shared/protocol/opencode/v2/shared';
+import { toAgentView, toConfigView, getProviderAuthMethods } from '@/shared/protocol/opencode/v2/shared';
 import { describe, it, expect, vi } from 'vitest';
 
 import { toModelOptionRecord, toProjectView, toSessionView } from '@/shared/protocol/opencode/v2-mappers';
@@ -238,3 +238,15 @@ describe('v2 provider discovery and API-key auth', () => {
 });
 
 vi.mock('@/shared/contracts/server-url', () => ({ getServerBase: () => ({ origin: 'http://test', pathPrefix: '' }) }));
+
+describe('agent catalog metadata', () => {
+  it('preserves V2 primary/subagent visibility without guessing by name', () => {
+    expect(toAgentView({ id: 'summary', mode: 'all', hidden: false, description: 'Custom summary' } as never)).toEqual({ name: 'summary', mode: 'all', hidden: false, description: 'Custom summary' });
+    expect(toAgentView({ id: 'custom', mode: 'primary', hidden: true } as never)).toMatchObject({ mode: 'primary', hidden: true });
+  });
+
+  it('uses the last explicitly configured default, even when later documents omit it', () => {
+    expect(toConfigView([{ type: 'document', info: { default_agent: 'build' } }, { type: 'document', info: { default_agent: 'review' } }, { type: 'document', info: {} }]).default_agent).toBe('review');
+    expect(toConfigView([{ type: 'document', info: {} }]).default_agent).toBeUndefined();
+  });
+});

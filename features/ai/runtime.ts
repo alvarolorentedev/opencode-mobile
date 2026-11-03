@@ -10,3 +10,4 @@ export { migrateCapabilitiesSnapshots } from './services/capabilities-snapshot';
 export { persistCapabilitiesSnapshot } from './services/capabilities-snapshot';
 export { useCapabilitiesActions } from './state/use-capabilities-actions';
 export { usePromptRouting } from './state/use-prompt-routing';
+export { getInitialMode } from './model/opencode-model-selection';

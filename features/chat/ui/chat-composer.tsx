@@ -49,6 +49,8 @@ type ChatComposerProps = {
   onToggleConversationMode: () => void;
   palette: Palette;
   selectedAgentLabel: string;
+  selectedAgent?: string;
+  agentsLoading: boolean;
   showSendAction: boolean;
   selectedVariant?: string;
   autoRoutingEnabled: boolean;
@@ -94,6 +96,8 @@ export function ChatComposer({
   onToggleConversationMode,
   palette,
   selectedAgentLabel,
+  selectedAgent,
+  agentsLoading,
   showSendAction,
   selectedVariant,
   autoRoutingEnabled,
@@ -224,7 +228,7 @@ export function ChatComposer({
           {autoApproveAvailable ? (
             <Button testID="chat-approve-button" accessibilityLabel={`${t('chat:composer.approvals')}: ${chatPreferences.autoApprove ? t('chat:composer.autoApproveEnabled') : t('chat:composer.askPermission')}`} accessibilityState={{ checked: chatPreferences.autoApprove }} disabled={isUpdatingAutoApprove} onPress={() => { void onToggleAutoApprove(); }} variant="ghost" size="icon" className={cn(stylesClasses.composerActionButton, "bg-transparent")} >{isUpdatingAutoApprove ? <Spinner size="small" /> : null}<Icon name={getAutoApproveIcon(chatPreferences.autoApprove)} size={22} color={chatPreferences.autoApprove ? palette.warning : palette.text} /></Button>
           ) : null}
-          <Button testID="chat-agent-button" accessibilityLabel={`${t('chat:composer.agent')}: ${selectedAgentLabel}`} disabled={availableAgents.length === 0} onPress={() => { Keyboard.dismiss(); setAgentPickerVisible(true); }} variant="ghost" size="icon" className={cn(stylesClasses.composerActionButton, "bg-transparent")} ><Icon name={chatPreferences.mode === 'build' ? 'hammer-wrench' : chatPreferences.mode === 'plan' ? 'clipboard-text-outline' : 'robot-outline'} size={22} color={palette.text} /></Button>
+          <Button testID="chat-agent-button" accessibilityLabel={`${t('chat:composer.agent')}: ${selectedAgentLabel}`} onPress={() => { Keyboard.dismiss(); setAgentPickerVisible(true); }} variant="ghost" size="icon" className={cn(stylesClasses.composerActionButton, "bg-transparent")} ><Icon name={selectedAgent === 'build' ? 'hammer-wrench' : selectedAgent === 'plan' ? 'clipboard-text-outline' : 'robot-outline'} size={22} color={palette.text} /></Button>
           <View className={cn(stylesClasses.composerModelSummary)}>
             {fontScale <= 1.3 ? modelPicker : null}
           </View>
@@ -239,7 +243,8 @@ export function ChatComposer({
           setAgentPickerVisible(false);
           updateChatPreferences({ mode });
         }}
-        selectedValue={chatPreferences.mode}
+        selectedValue={selectedAgent}
+        loading={agentsLoading}
         visible={agentPickerVisible}
       /></View>
   );

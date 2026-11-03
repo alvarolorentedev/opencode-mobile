@@ -1,7 +1,6 @@
 import type { Config } from '@/shared/protocol/opencode/types';
-import { defaultChatPreferences } from '@/shared/preferences/opencode-preferences';
 
-import { ModelOption, AgentOption } from '@/shared/contracts/model-options';
+import { getPrimaryAgents, type ModelOption, type AgentOption } from '@/shared/contracts/model-options';
 
 export function getSelectedModelVariant(
   modelId: string | undefined,
@@ -25,24 +24,11 @@ export function getSelectedModelVariant(
 }
 
 export function getInitialMode(agents: AgentOption[], config?: Config, storedMode?: string) {
-  if (storedMode && agents.some((agent) => agent.id === storedMode)) {
-    return storedMode;
-  }
-  // A capability read can be empty while a server reconnects. Keep the stored
-  // agent instead of replacing it with the default until agents are available.
-  if (!agents.length) {
-    return storedMode ?? defaultChatPreferences.mode;
-  }
-
-  const configuredAgent = config?.agent
-    ? Object.entries(config.agent).find(([, value]) => value && value.disable !== true)?.[0]
-    : undefined;
-  if (configuredAgent && agents.some((agent) => agent.id === configuredAgent)) {
-    return configuredAgent;
-  }
-
-  const preferred = agents.find((agent) => agent.id === 'build') || agents.find((agent) => agent.id === 'general');
-  return preferred?.id || agents[0]?.id || defaultChatPreferences.mode;
+  const eligible = getPrimaryAgents(agents);
+  return eligible.find((agent) => agent.id === storedMode)?.id
+    ?? eligible.find((agent) => agent.id === config?.default_agent)?.id
+    ?? eligible.find((agent) => agent.id === 'build')?.id
+    ?? eligible[0]?.id;
 }
 
 export function resolveConfigModelId(models: ModelOption[], configModel?: string) {

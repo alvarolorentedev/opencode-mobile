@@ -12,11 +12,12 @@ import { withAlpha } from '@/shared/ui/theme/color';
 import type { AgentOption } from '@/shared/contracts/model-options';
 import { agentDescriptionKey, orderAgentsForPicker } from '@/features/chat/ui/agent-picker-utils';
 
-export function AgentPicker({ agents, onClose, onSelect, selectedValue, visible }: {
+export function AgentPicker({ agents, onClose, onSelect, selectedValue, visible, loading = false }: {
   agents: AgentOption[];
   onClose: () => void;
   onSelect: (value: string) => void;
-  selectedValue: string;
+  selectedValue?: string;
+  loading?: boolean;
   visible: boolean;
 }) {
   const { t } = useTranslation();
@@ -24,17 +25,19 @@ export function AgentPicker({ agents, onClose, onSelect, selectedValue, visible 
   const orderedAgents = useMemo(() => orderAgentsForPicker(agents), [agents]);
 
   return (
-    <OverlaySheet visible={visible} title={t('chat:composer.chooseAssistantMode')} onClose={onClose} fitContent testID="chat-agent-picker">
+    <OverlaySheet visible={visible} title={t('chat:composer.chooseAgent')} onClose={onClose} fitContent testID="chat-agent-picker">
+      {orderedAgents.length === 0 ? <Text accessibilityRole="alert" className="text-muted-foreground">{t(loading ? 'chat:composer.loadingAgents' : 'chat:composer.noEligibleAgent')}</Text> : null}
       {orderedAgents.map((agent) => {
         const selected = agent.id === selectedValue;
         const descriptionKey = agentDescriptionKey(agent.id);
-        const description = descriptionKey ? t(descriptionKey) : undefined;
+        const description = agent.description || (descriptionKey ? t(descriptionKey) : undefined);
         return (
           <Pressable
             key={agent.id}
             accessibilityRole="radio"
             accessibilityLabel={agent.label}
             accessibilityState={{ checked: selected }}
+            aria-checked={selected}
             onPress={() => onSelect(agent.id)}
             testID={`chat-agent-option-${agent.id}`}
             style={({ pressed }) => [

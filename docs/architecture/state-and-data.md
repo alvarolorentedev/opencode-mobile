@@ -1193,3 +1193,17 @@ recognition permission. The provider-owned wake test has busy, idle, starting,
 listening, detected and error states, no transcript and no prompt callback. A
 generation guard prevents dismissed/backgrounded starts from restoring listening.
 Enrollment uses the same cancellation principle before saving embeddings.
+
+## Agent preference reconciliation
+
+After preference hydration, the AI capability owner validates the stored agent
+against the eligible primary catalog. It retains a valid user choice, otherwise
+uses the eligible configured `default_agent`, Build, or first eligible server
+entry. Project/server changes and late preference hydration revalidate the choice;
+stale clients cannot write it. Empty catalogs and catalogs without an eligible
+replacement preserve stored preferences and expose no effective selection.
+Execution resolves the same choice independently of the effect.
+
+Capability snapshots retain agent mode/hidden and the configured default. Older
+snapshots remain readable without guessing missing metadata; live discovery
+restores eligibility when available. See [ADR 0026](../adr/0026-metadata-driven-agent-selection.md).

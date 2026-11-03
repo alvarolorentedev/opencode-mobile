@@ -9,3 +9,4 @@ export { ProviderConfigDialog } from './ui/provider-config-dialog';
 export type { ProviderOAuthStage } from './ui/provider-config-dialog';
 export type { ProviderOption } from './model/types';
 export type { useCapabilitiesActions } from './state/use-capabilities-actions';
+export { getInitialMode } from './model/opencode-model-selection';

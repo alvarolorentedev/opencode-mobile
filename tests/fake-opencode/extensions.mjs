@@ -146,13 +146,16 @@ export function extensionAgents(state, directory) {
   const rows = new Map();
   const builtins = [
     { id: 'build', name: 'build', mode: 'primary', hidden: false, permissions: [] },
-    { id: 'general', name: 'general', mode: 'all', hidden: false, permissions: [], description: 'Delegate a focused task.' },
+    { id: 'plan', name: 'plan', mode: 'primary', hidden: false, permissions: [] },
+    ...['summary', 'title', 'compaction'].map((id) => ({ id, name: id, mode: 'primary', hidden: true, permissions: [] })),
+    { id: 'general', name: 'general', mode: 'subagent', hidden: false, permissions: [], description: 'Delegate a focused task.' },
     { id: 'explore', name: 'explore', mode: 'subagent', hidden: false, permissions: [], description: 'Search the codebase.' },
   ];
   for (const row of builtins) rows.set(row.id, row);
   const applyConfig = (config) => {
     const agents = config?.agents && typeof config.agents === 'object' && !Array.isArray(config.agents) ? config.agents : {};
     for (const [id, value] of Object.entries(agents)) {
+      if (value?.disabled === true) { rows.delete(id); continue; }
       const current = rows.get(id) || { id, name: id, mode: 'all', hidden: false, permissions: [] };
       rows.set(id, {
         ...current,
@@ -172,11 +175,12 @@ export function extensionAgents(state, directory) {
       if (!recursive && relative.includes('/')) continue;
       const id = markdownName(root, file);
       const parsed = markdown(content);
+      if (parsed.data.disabled === true) { rows.delete(id); continue; }
       rows.set(id, {
         id,
         name: id,
         mode: 'primary',
-        hidden: false,
+        hidden: parsed.data.hidden === true,
         permissions: [],
         ...(parsed.data.description ? { description: parsed.data.description } : {}),
         ...(parsed.data.mode ? { mode: parsed.data.mode } : {}),

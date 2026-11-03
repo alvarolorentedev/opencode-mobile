@@ -37,6 +37,7 @@ const CachedCapabilitiesSchema = z.object({
 
 function persistedConfig(config?: Config): Config | undefined {
   return config && {
+    default_agent: config.default_agent,
     model: config.model, enabled_providers: config.enabled_providers, disabled_providers: config.disabled_providers,
     provider: Object.fromEntries(Object.keys(config.provider ?? {}).map((id) => [id, {}])),
     agent: Object.fromEntries(Object.entries(config.agent ?? {}).map(([id, agent]) => [id, { disable: agent?.disable }])),

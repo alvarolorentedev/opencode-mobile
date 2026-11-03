@@ -220,3 +220,19 @@ Client code and the validation mirror live in `shared/contracts/service-manageme
 Sharing, archive/restore, title summarization, general config writes, persistent MCP enablement, worktree reset, and LSP/formatter diagnostics are not supported on V1 because they have no V2 equivalent.
 
 The default fake server and Playwright backend are native v2. Canonical native fixtures are translated/extended at the v1 fake boundary; filesystem and terminal infrastructure is version-neutral. Static architecture checks prohibit production v1 SDK imports outside compatibility. CI runs `test:ci:static`, `test:fake-server:self` and critical smoke on every push; the tag release runs the full `test:e2e:web` suite plus native artifact verification. Android development and real-server/device acceptance cover editing, OAuth, reconnects and terminals. Changed fake-server/E2E contracts require explicit human validation under AGENTS.md.
+
+## Agent selection
+
+The normalized catalog and `AgentOption` preserve optional mode/hidden metadata
+without inventing defaults. Primary selection requires explicit `primary`/`all`
+and `hidden !== true`, following OpenCode V2's effective registry semantics.
+Disabled agents are removed upstream before listing; there is no runtime disabled
+field to reconstruct. The full catalog remains available for server-owned work;
+mention suggestions hide hidden agents but retain visible subagents.
+
+`default_agent` is typed and retained through V2 configuration normalization
+(last explicit document value) and cached capability snapshots. Prompt and slash
+command actions resolve the eligible selection before execution; an empty or
+unverifiable catalog blocks execution without discarding the draft. Old V1
+servers omitting mode cannot establish eligibility; no name-based inference or
+new compatibility adapter is used. See [ADR 0026](../adr/0026-metadata-driven-agent-selection.md).

@@ -121,7 +121,9 @@
     "requestedBy": "{{name}} 请求"
   },
   "composer": {
-    "chooseAssistantMode": "选择助手模式",
+    "chooseAgent": "选择代理",
+    "loadingAgents": "正在加载代理…",
+    "noEligibleAgent": "没有可选择的代理。请检查服务器的代理配置。",
     "agentDescriptions": {
       "build": "默认代理，可编辑文件并运行工具。",
       "plan": "用于探索和规划的只读代理。",

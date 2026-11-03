@@ -148,7 +148,7 @@ describe('prompt submission ownership', () => {
     const client = {}, currentClient = { current: client }, submission = { current: { active: false } };
     const settings = { serverUrl: 'http://server', username: '' };
     const input = { client, isCurrentClient: (candidate: object) => candidate === currentClient.current, activeProjectPath: '/repo', connectionScope: scopes.getConnectionScope(settings),
-      sessions: [{ id: 's', title: 'chat' }], sessionStatuses: {}, availableModels: [], chatPreferences: preferences.defaultChatPreferences,
+      sessions: [{ id: 's', title: 'chat' }], sessionStatuses: {}, availableAgents: [{ id: 'build', label: 'Build', mode: 'primary' }], availableModels: [], chatPreferences: preferences.defaultChatPreferences,
       settingsRef: { current: settings }, busyNotificationsRef: { current: new Set() }, promptSubmissionRef: submission,
       setSelectedDiffMessageBySession: vi.fn(), refreshSessions: refresh, refreshMessages: refresh,
       refreshSessionDiff: refresh, refreshSessionTodos: refresh, scheduleSessionRefresh: vi.fn(), summarizeSessionTitle: vi.fn(),

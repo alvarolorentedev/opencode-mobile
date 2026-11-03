@@ -5,6 +5,13 @@
 | Task | Read |
 | --- | --- |
 | Chat, composer, transcript | [Chat Screen Detailed Behavior](#chat-screen-detailed-behavior) |
+
+The Choose agent sheet lists only visible agents with explicit primary/all mode.
+Visible subagents remain discoverable through `@` mentions. Invalid saved choices
+recover to an eligible server default, Build, or first eligible server entry;
+empty/unverifiable catalogs preserve preferences and block sending with feedback.
+See [agent selection](../architecture/api-contract.md#agent-selection).
+
 | Settings and preferences | [Settings Screen Detailed Behavior](#settings-screen-detailed-behavior) |
 | Conversation mode | [Conversation Mode Detailed Behavior](#conversation-mode-detailed-behavior) |
 | Notifications | [Notifications Behavior](#notifications-behavior) |

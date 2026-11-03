@@ -1,6 +1,6 @@
 // App-owned presentation models. Transport records come from @opencode/client;
 // v1 wire types are confined to the compatibility boundary.
-import type { TokenUsageInfo, ModelRef } from '@opencode/client';
+import type { AgentInfo, TokenUsageInfo, ModelRef } from '@opencode/client';
 export type { Message, Part, ToolPart, TextPartInput, FilePartInput } from '@/shared/protocol/opencode/message-types';
 export type SessionStatus = {
     type: 'idle';
@@ -98,7 +98,7 @@ export type PermissionRuleset = {
 export type Agent = {
     name: string;
     description?: string;
-    mode: 'primary' | 'subagent' | 'all';
+    mode?: AgentInfo['mode'];
     hidden?: boolean;
     color?: string;
     model?: {
@@ -209,6 +209,7 @@ export type McpStatus = {
     integrationID?: string;
 };
 export type Config = {
+    default_agent?: string;
     model?: string;
     enabled_providers?: string[];
     disabled_providers?: string[];

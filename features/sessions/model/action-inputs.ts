@@ -4,9 +4,9 @@ import type { PendingPermissionRequest, PendingQuestionRequest, ScopedOpencodeCl
 
 import type { SessionMessageRecord } from '@/shared/presentation/format';
 
-import type { FileDiff, Session, SessionStatus, Todo } from '@/shared/protocol/opencode/types';
+import type { Config, FileDiff, Session, SessionStatus, Todo } from '@/shared/protocol/opencode/types';
 
-import type { ModelOption } from '@/shared/contracts/model-options';
+import type { AgentOption, ModelOption } from '@/shared/contracts/model-options';
 
 import type { ChatPreferences } from '@/shared/preferences/opencode-preferences';
 
@@ -28,6 +28,8 @@ export type SessionActionsInput = {
   sessions: Session[];
   sessionsRef: { current: Session[] };
   sessionStatuses: Record<string, SessionStatus>;
+  availableAgents: AgentOption[];
+  currentConfig?: Config;
   availableModels: ModelOption[];
   messagesBySession: Record<string, SessionMessageRecord[]>;
   favoriteSessions: FavoriteSession[];
@@ -67,7 +69,7 @@ export type SessionActionsInput = {
 
 export type SessionCrudInput = Pick<SessionActionsInput,
   'client' | 'isCurrentClient' | 'activeProjectPath' | 'connectionScopeRef' | 'currentSessionId' |
-  'currentSessionIdRef' | 'explicitSessionSelectionRef' | 'locallyCreatedSessionsRef' | 'availableModels' |
+  'currentSessionIdRef' | 'explicitSessionSelectionRef' | 'locallyCreatedSessionsRef' | 'availableModels' | 'availableAgents' | 'currentConfig' |
   'diffScopeBySessionRef' | 'sessions' | 'sessionStatuses' | 'bootstrapPromiseRef' | 'bootstrapTokenRef' |
   'setLastSessionByConnection' | 'setCurrentSessionId' | 'setIsBootstrappingChat' | 'beginHydration' |
   'setSessions' | 'setSessionStatuses' | 'setMessagesBySession' | 'setDiffsBySession' | 'setTodosBySession' |

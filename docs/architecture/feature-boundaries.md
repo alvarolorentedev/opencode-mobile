@@ -63,6 +63,11 @@ device subsystems. Do not duplicate any of these inside a feature.
 
 ## Public feature APIs
 
+AI exposes the pure `getInitialMode` resolver through its named `index.ts` and
+`runtime.ts` entrypoints, so Chat presentation, prompt actions, and Sessions
+command actions share eligible-agent fallback rules without private imports.
+The enforced export list includes only this additional named API.
+
 - `index.ts`: named consumer UI, helpers and types used outside the feature.
 - `context.ts`: the existing context objects and narrow subscription hooks. This
   separate leaf prevents portal scope restoration from loading feature workflows.

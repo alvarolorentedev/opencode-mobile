@@ -121,7 +121,9 @@
     "requestedBy": "Solicitado por {{name}}"
   },
   "composer": {
-    "chooseAssistantMode": "Escolha o modo do assistente",
+    "chooseAgent": "Escolher agente",
+    "loadingAgents": "Carregando agentes…",
+    "noEligibleAgent": "Nenhum agente selecionável disponível. Verifique a configuração de agentes do servidor.",
     "agentDescriptions": {
       "build": "Agente padrão que edita arquivos e executa ferramentas.",
       "plan": "Agente somente leitura para explorar e planejar.",

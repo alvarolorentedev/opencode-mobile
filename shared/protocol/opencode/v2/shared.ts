@@ -72,8 +72,11 @@ export function toConfigView(entries: unknown): Config {
       ? `${stringField((rawModel as Record<string, unknown>).providerID)}/${stringField((rawModel as Record<string, unknown>).model)}`
       : undefined;
 
+  const defaultAgent = (list.findLast((entry) => entry.type === 'document' && typeof (entry.info as Record<string, unknown> | undefined)?.default_agent === 'string')?.info as { default_agent?: string } | undefined)?.default_agent;
+
   return {
     ...info,
+    default_agent: defaultAgent,
     provider: provider as Config['provider'],
     enabled_providers: enabled,
     disabled_providers: disabled,

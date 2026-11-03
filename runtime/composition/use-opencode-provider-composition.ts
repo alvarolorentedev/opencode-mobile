@@ -169,7 +169,7 @@ export function useOpencodeProviderComposition(input: WorkspaceRuntimeInput) {
 
   const project = useProjectActions({ ...domain, connectionId: inputConnection.id, connected: state.connection.status === 'connected', client, catalogClient, isCurrentClient, isCurrentCatalogClient, clearProjectState, isHydrated, refreshMessages: inbox.refreshMessages });
 
-  const capabilities = useCapabilitiesActions({ ...domain, client, isCurrentClient });
+  const capabilities = useCapabilitiesActions({ ...domain, client, isCurrentClient, isHydrated });
   // Event bursts (rename + update, config fan-out, file-save VCS events) share
   // one refresh instead of starting overlapping reads.
   const scheduleSessionsRefresh = useCoalescedRefresh(() => project.refreshSessions(), 150);

@@ -32,7 +32,6 @@ async function loadSessionCrud(runtime: ReturnType<typeof hookRuntime>) {
   const { useSessionCrudActions } = await loadTs('features/sessions/state/use-session-crud-actions.ts', {
     react: runtime.react,
     '@/shared/protocol/services/session-service': services,
-    "@/features/ai/model/opencode-model-selection": { getSelectedModelParts: () => undefined, getSelectedModelVariant: () => undefined },
     "@/features/sessions/services/session-cache": { persistSessionCache: vi.fn(async () => undefined) }
   });
   return { useSessionCrudActions, services };
@@ -68,6 +67,7 @@ function sessionCrudInput(patch: Record<string, unknown> = {}) {
       activeProjectPath: '/repo',
       connectionScopeRef: { current: 'scope' },
       currentSessionId,
+      availableAgents: [{ id: 'build', label: 'Build', mode: 'primary' }],
       availableModels: [],
       diffScopeBySessionRef: { current: {} },
       sessions,
@@ -496,8 +496,9 @@ describe('non-blocking prompt reconciliation', () => {
       connectionScope: 'scope',
       sessions: [{ id: 's', title: 'chat' }],
       sessionStatuses: {},
+      availableAgents: [{ id: 'build', label: 'Build', mode: 'primary' }],
       availableModels: [],
-      chatPreferences: preferences.defaultChatPreferences,
+      chatPreferences: { ...preferences.defaultChatPreferences, mode: 'summary' },
       settingsRef: { current: { serverUrl: 'http://server', username: '' } },
       busyNotificationsRef: { current: new Set() },
       promptSubmissionRef: { current: { active: false } },
@@ -521,6 +522,12 @@ describe('non-blocking prompt reconciliation', () => {
     expect(resolved).toBe(true);
     await expect(sending).resolves.toBe(true);
     expect(submitPrompt).toHaveBeenCalledOnce();
+    expect(submitPrompt).toHaveBeenCalledWith(expect.objectContaining({ agent: 'build' }), 'steer');
+    runtime.update({ availableAgents: [] });
+    await expect(runtime.value.sendPrompt('s', 'Keep this draft')).rejects.toThrow('chat:composer.noEligibleAgent');
+    expect(submitPrompt).toHaveBeenCalledOnce();
+    await runtime.settle();
+    expect(runtime.value.promptError.message).toBe('chat:composer.noEligibleAgent');
     expect(scheduleSessionRefresh).toHaveBeenCalledOnce();
     expect(refreshMessages).toHaveBeenCalledOnce();
     expect(messagesSettled).toBe(false);
@@ -650,6 +657,22 @@ describe('optimistic interaction replies', () => {
     expect(suppressed.has('p1')).toBe(false);
     expect(refreshMessages).toHaveBeenCalledWith('s', true);
 
+    runtime.unmount();
+  });
+});
+
+describe('command agent eligibility', () => {
+  it('repairs stale selections at execution and refuses an unverifiable agent', async () => {
+    const runtime = hookRuntime();
+    const { useSessionCrudActions, services } = await loadSessionCrud(runtime);
+    const { input } = sessionCrudInput({});
+    runtime.mount(useSessionCrudActions, { ...input, chatPreferences: { ...input.chatPreferences, mode: 'summary' },
+      availableAgents: [{ id: 'build', label: 'Build', mode: 'primary' }, { id: 'plan', label: 'Plan', mode: 'all' }], currentConfig: { default_agent: 'plan' } });
+    await runtime.value.executeCommand('s', 'review', '');
+    expect(services.executeCommand).toHaveBeenCalledWith(input.client, 's', 'review', '', expect.objectContaining({ agent: 'plan' }));
+    runtime.update({ availableAgents: [{ id: 'general', label: 'General', mode: 'subagent' }] });
+    await expect(runtime.value.executeCommand('s', 'review', '')).rejects.toThrow('chat:composer.noEligibleAgent');
+    expect(services.executeCommand).toHaveBeenCalledOnce();
     runtime.unmount();
   });
 });

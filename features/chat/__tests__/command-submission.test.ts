@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
+import { getInitialMode } from '@/features/ai/model/opencode-model-selection';
 import { hookRuntime, loadTs } from '../../../tests/helpers/runtime.mjs';
 
 async function controller(contract = 'v2') {
@@ -19,7 +20,7 @@ async function controller(contract = 'v2') {
     '@/shared/presentation/transcript': { buildTranscriptRows: () => [], getTurnPatchDetails: () => [] },
     '@/shared/presentation/usage': { getLatestContextTokens: () => 0 },
     '@/features/sharing/index': {},
-    '@/features/ai/index': { getSelectedModelVariant: noop, getVisibleModels: () => [] },
+    '@/features/ai/index': { getInitialMode, getSelectedModelVariant: noop, getVisibleModels: () => [] },
     '@/features/ai/context': { useCapabilities: () => ({ availableAgents: [], availableModels: [], modelRouting: {} }) },
     '@/features/chat/context': { useChat: () => ({
       executeCommand, executeShell, sendPrompt, commands: [], pendingPrompts: [], currentDiffs: [], currentMessages: [],

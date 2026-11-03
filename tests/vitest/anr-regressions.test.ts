@@ -34,8 +34,8 @@ describe('ANR regression checks', () => {
       } },
     });
     const selection = await load('features/ai/model/opencode-model-selection.ts', {
-    "@/shared/preferences/opencode-preferences": { defaultChatPreferences: { mode: 'build' } }
-  });
+      '@/shared/contracts/model-options': await load('shared/contracts/model-options.ts'),
+    });
     const adapter = await loadTs('shared/protocol/opencode/contracts/server-adapter.ts', {
     '@/shared/protocol/opencode/client/types': { defaultConnectionSettings: { serverUrl: 'http://test' } },
     "@/shared/utilities/error-message": { getErrorMessage: (error: unknown) => String(error) },

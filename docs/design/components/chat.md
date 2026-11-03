@@ -125,11 +125,11 @@ declared once, at the leaves.
 
 - render a rounded text area with a bottom toolbar: attachment, direct approval toggle and agent-mode icon, model/reasoning summary, dictation, and voice/send/stop
 - expose supported Approvals only through a direct toolbar toggle (shield when asking, warning when auto-approving); hide it for unsupported V2 servers
-- open the agent-mode bottom sheet from a mode icon beside Approvals; rows are ordered
-  Build, Plan, General, Explore, custom agents (alphabetical), Summary, Title, Compaction.
-  Built-in modes use short app-local descriptions clamped to two lines; server
-  descriptions are not shown in this sheet. The selected mode is marked and the draft
-  stays in the composer
+- open the Choose agent sheet beside Approvals; show only explicit primary/all
+  agents that are not hidden. Build and Plan come first, followed by eligible
+  agents sorted by label/ID. Server descriptions take precedence over localized
+  built-in fallbacks. Loading/empty catalogs show feedback without a checked row;
+  draft, keyboard, and Back behavior stay local to the composer
 - open the model picker from the selected model/reasoning summary, with a reasoning slider above model search
 - when a classifier is available, the picker exposes the Auto-routing switch;
   the trigger reads `Auto-routing` while it is enabled, and explicit model
@@ -186,7 +186,7 @@ type ChatComposerProps = {
 #### Important parity notes
 
 - todos are server-owned and displayed in the chat overlay with disabled status icons; the UI has no todo mutation action
-- typing `/` shows matching server commands with descriptions; typing `@` shows agents, skills, project files, and references. Selecting a row fills the draft.
+- typing `/` shows matching server commands with descriptions; typing `@` shows visible agents (including subagents), skills, project files, and references. Selecting a row fills the draft.
 - a leading `!` switches the primary action to a V2 session shell command
 - there is no dedicated composer palette button; the text triggers are the only entry point
 - model selection uses a searchable sheet grouped by provider; its reasoning slider shows server variants for the selected OpenCode 2 model, including a synthetic Default, and stays hidden when that model has none
@@ -195,7 +195,7 @@ type ChatComposerProps = {
 ### `features/chat/ui/agent-picker.tsx`
 
 - renders the agent-mode overlay sheet opened from the composer mode icon
-- lists server-provided agents with descriptions, the current selection, and a check mark
+- lists eligible server-provided agents with descriptions, the effective selection, and a check mark; see [ADR 0026](../../adr/0026-metadata-driven-agent-selection.md)
 - selecting a mode persists it through updateChatPreferences({ mode }) and closes the sheet without clearing the draft
 - Back/Escape, backdrop, header swipe and Close all dismiss the sheet through the shared OverlaySheet
 

@@ -5,8 +5,17 @@ import { Buffer } from 'node:buffer';
 import { setTimeout as sleep } from 'node:timers/promises';
 import WebSocket from 'ws';
 import { createState } from './state.mjs';
+import { extensionAgents } from './extensions.mjs';
 import { runProjectFileShell } from './project-files.mjs';
 import { OpenCode } from '@opencode/client';
+
+const agentState = createState('happy-path');
+agentState.extensions.files.set(`${agentState.extensions.root}/opencode.jsonc`, JSON.stringify({ agents: { plan: { disabled: true } } }));
+agentState.extensions.files.set(`${agentState.project.canonical}/.opencode/agents/hidden-helper.md`, '---\nmode: subagent\nhidden: true\n---\nInternal helper.\n');
+agentState.extensions.files.set(`${agentState.project.canonical}/.opencode/agents/disabled-helper.md`, '---\ndisabled: true\n---\nDisabled helper.\n');
+const effectiveAgents = extensionAgents(agentState, agentState.project.canonical);
+assert(!effectiveAgents.some((agent) => agent.id === 'plan' || agent.id === 'disabled-helper'), 'Disabled agents must be absent from the effective registry');
+assert(effectiveAgents.some((agent) => agent.id === 'hidden-helper' && agent.mode === 'subagent' && agent.hidden), 'Hidden helpers must retain metadata for server-owned delegation');
 
 const filesState = createState('happy-path');
 const fileCommand = (target, expected = '') => `sh -c '' opencode-files '/workspace/demo-project' 'src/demo.ts' 'file' '/workspace/secondary-project' '${target}' 'copy' ${expected ? `'${expected}'` : ''}`;
@@ -134,6 +143,7 @@ try {
   assert((await request('/global/health')).version === '1.18.3', 'Unexpected health version');
   assert((await request('/project')).some((project) => project.id === 'project-secondary'), 'Missing secondary project fixture');
   assert(Object.keys(await request('/mcp')).length === 1, 'Expected MCP diagnostic');
+  assert((await request('/agent')).some((agent) => agent.name === 'build' && agent.mode === 'primary'), 'V1 agent catalog must preserve selection metadata');
   assert((await request('/lsp')).length === 1, 'Expected LSP diagnostic');
   assert((await request('/formatter')).length === 1, 'Expected formatter diagnostic');
 
@@ -436,6 +446,8 @@ try {
   assert(v2Listed.tokens.input === 1200 && v2Listed.cost > 0, 'V2 session usage did not accumulate');
   assert(v2Listed.model?.id === 'openai/gpt-4.1-mini', 'V2 session list dropped the model');
   assert((await v2request('/api/skill')).data.some((skill) => skill.id === 'opencode' && skill.description), 'V2 skill discovery missing');
+  const catalog = (await v2request('/api/agent')).data;
+  assert(catalog.filter((agent) => agent.mode !== 'subagent' && !agent.hidden).map((agent) => agent.id).join(',') === 'build,plan', 'V2 primary catalog must exclude subagents and hidden maintenance agents');
   const projectDirectory = '/workspace/demo-project';
   const mdCommandPath = `${projectDirectory}/.opencode/commands/md-test.md`;
   await v2request(`/api/experimental/fs/write?path=${encodeURIComponent(mdCommandPath)}&location[directory]=${encodeURIComponent(projectDirectory)}`, { method: 'POST', body: '---\ndescription: Markdown command\n---\n\nMarkdown $ARGUMENTS.\n', headers: { 'Content-Type': 'text/plain' } });

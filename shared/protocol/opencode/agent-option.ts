@@ -6,5 +6,7 @@ export function toAgentOption(agent: Agent): AgentOption {
     id: agent.name,
     label: agent.name.charAt(0).toUpperCase() + agent.name.slice(1),
     description: agent.description,
+    mode: agent.mode,
+    hidden: agent.hidden,
   };
 }

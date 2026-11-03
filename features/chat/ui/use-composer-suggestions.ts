@@ -103,6 +103,7 @@ export function useComposerSuggestions({
 
     const result: ComposerSuggestionGroup[] = [];
     const agentItems = uniqueSuggestions(agents
+      .filter((agent) => !agent.hidden)
       .filter((agent) => includesQuery([agent.id, agent.label, agent.description], query))
       .slice(0, 8)
       .map((agent) => ({

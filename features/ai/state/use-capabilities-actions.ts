@@ -16,6 +16,7 @@ import { useQueryIdentity } from '@/shared/server-data/client';
 import { probeServerClassifier, type ServerClassifierStatus } from '@/features/ai/services/model-routing-service';
 
 type CapabilitiesActionsInput = {
+  isHydrated: boolean;
   client: ScopedOpencodeClient;
   activeProjectPath?: string;
   connectionScope: string;
@@ -30,6 +31,7 @@ type CapabilitiesActionsInput = {
 };
 
 export function useCapabilitiesActions({
+  isHydrated,
   client,
   activeProjectPath,
   capabilities,
@@ -133,6 +135,7 @@ export function useCapabilitiesActions({
 
   const applyCapabilities = useCallback((result: CachedCapabilities) => {
     setChatPreferences((current) => {
+      if (!isCurrentClient(client)) return current;
       const configuredProviderIds = getConfiguredProviderIds(result.config, result.connected, result.models);
       const configuredModels = result.models.filter((model) => configuredProviderIds.has(model.providerID));
       const enabledModelIds = getEnabledModelIds(configuredModels, current.enabledModelIds);
@@ -144,7 +147,7 @@ export function useCapabilitiesActions({
 
       return {
         ...current,
-        mode: getInitialMode(result.agents, result.config, current.mode),
+        mode: getInitialMode(result.agents, result.config, current.mode) ?? current.mode,
         providerId: safeProviderId,
         modelId: getModelIdForProvider(
           enabledModels,
@@ -156,8 +159,10 @@ export function useCapabilitiesActions({
         autoApprove: client.__opencode.contract === 'v2' ? current.autoApprove : false,
       };
     });
-  }, [client.__opencode.contract, setChatPreferences]);
-  useEffect(() => { if (capabilities && activeProjectPath) applyCapabilities(capabilities); }, [activeProjectPath, applyCapabilities, capabilities]);
+  }, [client, isCurrentClient, setChatPreferences]);
+  useEffect(() => {
+    if (isHydrated && capabilities && activeProjectPath) applyCapabilities(capabilities);
+  }, [activeProjectPath, applyCapabilities, capabilities, chatPreferences.mode, isHydrated]);
 
   const setProviderAuth = useCallback(
     async (providerId: string, values: ProviderAuthValues) => {

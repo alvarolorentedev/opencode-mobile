@@ -113,12 +113,12 @@ describe('provider model selection utilities', () => {
 
   it('preserves stored server choices across empty or partial capability catalogs', () => {
     const models = [model('openai/gpt', 'openai', 'gpt'), model('opencode/deepseek', 'opencode', 'deepseek')];
-    const agents = [{ id: 'build', label: 'Build' }];
+    const agents = [{ id: 'build', label: 'Build', mode: 'primary' as const }];
 
     // Reconnect reads can be empty before the server has loaded providers and
     // agents. The stored choices must survive until a complete read arrives.
-    assert.equal(getInitialMode([], undefined, 'general'), 'general');
-    assert.equal(getInitialMode([], undefined, undefined), 'build');
+    assert.equal(getInitialMode([], undefined, 'general'), undefined);
+    assert.equal(getInitialMode([], undefined, undefined), undefined);
     assert.equal(getInitialMode(agents, undefined, 'general'), 'build');
     assert.equal(getInitialProviderId([], { model: 'openai/gpt' }, 'opencode', 'opencode/deepseek'), 'opencode');
     assert.equal(getInitialModelId([], { model: 'openai/gpt' }, 'opencode/deepseek'), 'opencode/deepseek');

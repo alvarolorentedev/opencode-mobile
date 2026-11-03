@@ -16,6 +16,7 @@ export async function loadTs(relative, imports = {}, globals = {}) {
   resolved.expo ??= { requireOptionalNativeModule: () => null, requireNativeModule: () => null };
   resolved['expo-constants'] ??= { __esModule: true, default: { expoConfig: { extra: {} } } };
   resolved['react-native'] ??= { Platform: { OS: 'web' } };
+  resolved['@/shared/i18n/index'] ??= { i18n: { t: (key) => key }, getFormatLocale: () => 'en' };
   // Pure encoding helpers used by shared contracts; the VM loader has no module
   // resolution for package internals, so provide the same API the app imports.
   resolved['@scure/base'] ??= {

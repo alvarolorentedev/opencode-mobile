@@ -232,6 +232,8 @@ export function ChatView() {
           attachments={composer.attachments}
           autoApproveAvailable={composer.serverCapabilities.autoApprove}
           availableAgents={composer.availableAgents}
+          agentsLoading={composer.agentsLoading}
+          selectedAgent={composer.selectedAgent}
           chatPreferences={composer.chatPreferences}
           connectionStatus={header.connection.status}
           conversation={header.conversation}
