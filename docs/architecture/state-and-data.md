@@ -382,8 +382,10 @@ todo, interaction, capability, server-feature, and diagnostic reads continue in
 the background. `isBootstrappingChat` covers target resolution, while the
 per-session `hydratingSessionIds` map covers the first transcript read (and the
 prompt-inbox read that precedes it) so a slow read for an older chat cannot
-clear the current chat's skeleton. `openSession()` marks the selected session as
-hydrating before starting either read, so the skeleton appears immediately. The
+clear the current chat's skeleton. Only explicit opens and the first bootstrap
+read, which are non-silent, raise it; silent SSE and poll refreshes never toggle
+the skeleton. `openSession()` marks the selected session as hydrating before
+starting either read, so the skeleton appears immediately. The
 composer and chat header are usable during hydration; transcript content fills
 in as it arrives.
 

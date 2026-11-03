@@ -163,6 +163,33 @@ describe('transcript refresh policy', () => {
     expect(runtime.value.messagesBySession.s).toBe(held);
   });
 
+  it('never hydrates the empty state for a silent background refresh', async () => {
+    const gate = deferred<ReturnType<typeof page>>();
+    const getSessionMessages = vi.fn(() => gate.promise);
+    const { runtime, value } = await mountTranscript({}, getSessionMessages);
+
+    const silent = value.refreshMessages('s', true);
+    runtime.flush();
+    expect(runtime.value.hydratingSessionIds.s).not.toBe(true);
+
+    gate.resolve(page([]));
+    await silent;
+    runtime.flush();
+    expect(runtime.value.hydratingSessionIds.s).not.toBe(true);
+
+    // An explicit open still owns the skeleton until its read settles.
+    const explicitGate = deferred<ReturnType<typeof page>>();
+    getSessionMessages.mockImplementationOnce(() => explicitGate.promise);
+    const explicit = value.refreshMessages('s');
+    runtime.flush();
+    expect(runtime.value.hydratingSessionIds.s).toBe(true);
+
+    explicitGate.resolve(page([]));
+    await explicit;
+    runtime.flush();
+    expect(runtime.value.hydratingSessionIds.s).toBe(false);
+  });
+
   it('adopts the fetched page when a burst does not overlap the held window', async () => {
     const getSessionMessages = vi.fn(async (_client: unknown, _id: string, _options?: { before?: string }) => page([textRecord('x'), textRecord('y')]));
     const { runtime, value } = await mountTranscript({ s: [toolRecord('a'), toolRecord('b')] }, getSessionMessages);

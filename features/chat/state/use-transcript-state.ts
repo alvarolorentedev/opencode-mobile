@@ -137,7 +137,10 @@ export function useTranscriptState({
       // first pass after a window reset. A tail refresh records that window
       // below, keeping held records when the newest page overlaps them.
       const windowMissing = messageWindowsRef.current[sessionId] === undefined;
-      const shouldHydrate = !silent || held.length === 0;
+      // Hydration owns the chat skeleton. Silent event/poll refreshes must never
+      // raise it, or an empty session flashes the skeleton on every background
+      // read. Explicit opens and the first bootstrap read are non-silent.
+      const shouldHydrate = !silent;
       const finishHydration = shouldHydrate ? beginHydration(sessionId) : undefined;
       if (!silent) {
         setIsRefreshingMessages(true);
