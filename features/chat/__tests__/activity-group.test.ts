@@ -92,7 +92,16 @@ async function mountGroup(value: transcript.ActivityGroup, sessionRunning = fals
     "@/shared/presentation/format/tool": { getToolDisplayName: (name: string) => (name === 'bash' ? 'Shell' : name === 'read' ? 'Read' : name === 'edit' ? 'Edit' : name === 'patch' ? 'Patch' : name) },
     "@/shared/presentation/transcript": { buildActivityChildRows: transcript.buildActivityChildRows }
   }, runtime.globals);
-  runtime.mount(ActivityGroupRow, { flat: false, fontSize: 16, group: value, palette: {}, sessionRunning, statusLabel });
+  runtime.mount(ActivityGroupRow, {
+    expanded: false,
+    flat: false,
+    fontSize: 16,
+    group: value,
+    onExpandedChange: (expanded: boolean) => { runtime.update({ expanded }); },
+    palette: {},
+    sessionRunning,
+    statusLabel,
+  });
   return runtime;
 }
 
@@ -213,13 +222,13 @@ describe('activity groups', () => {
     expect(find(runtime.value, 'ActivityItemRow')).toHaveLength(0);
   });
 
-  it('does not carry expansion into a run that reuses the row', async () => {
+  it('renders only the level-one header for a pinned copy', async () => {
     const runtime = await mountGroup(group());
     find(runtime.value, 'Pressable')[0].props.onPress?.();
     runtime.flush();
-    expect(find(runtime.value, 'ActivityItemRow')).toHaveLength(3);
-    runtime.update({ group: group({ key: 'g2' }) });
+    runtime.update({ expanded: true, headerOnly: true, pinned: true });
     expect(find(runtime.value, 'ActivityItemRow')).toHaveLength(0);
+    expect(find(runtime.value, 'Pressable')[0].props.testID).toBe('transcript-sticky-activity-g1');
   });
 
   it('labels a reasoning-only run without a tool count', async () => {

@@ -43,6 +43,29 @@ export function getCurrentTurnActivityKey(rows: TranscriptRow[]): string | undef
   return undefined;
 }
 
+// An expanded run pins its level-one header once the run's top scrolls above
+// the viewport, and releases it when the run's bottom passes. Layout values are
+// FlashList child-container coordinates; firstItemOffset converts them to scroll
+// offsets.
+export function getPinnedActivityKey(
+  rows: readonly (TranscriptRow | { type: 'activityStatus' })[],
+  expandedKeys: ReadonlySet<string>,
+  offset: number,
+  firstItemOffset: number,
+  layoutFor: (index: number) => { y: number; height: number } | undefined,
+): string | undefined {
+  let pinned: string | undefined;
+  for (let index = 0; index < rows.length; index += 1) {
+    const row = rows[index];
+    if (row.type !== 'activity' || !expandedKeys.has(row.group.key)) continue;
+    const layout = layoutFor(index);
+    if (!layout) continue;
+    const top = firstItemOffset + layout.y;
+    if (offset > top && offset < top + layout.height) pinned = row.group.key;
+  }
+  return pinned;
+}
+
 export function getChatActivityState({
   awaitingUserInput,
   sendingStateActive,

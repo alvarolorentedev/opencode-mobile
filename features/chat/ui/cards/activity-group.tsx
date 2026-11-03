@@ -2,7 +2,6 @@ import { cn } from '@/shared/ui/cn';
 import { Text } from '@/shared/ui/text';
 import { Spinner } from '@/shared/ui/spinner';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { useRecyclingState } from '@shopify/flash-list';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Pressable, StyleSheet, View } from 'react-native';
@@ -15,15 +14,36 @@ import { buildActivityChildRows, type ActivityGroup } from '@/shared/presentatio
 type Palette = typeof Colors.light;
 
 // A contiguous run of reasoning/tool/patch activity between message bubbles.
-// The header is the first collapse level. Runs always start collapsed:
-// expansion is an explicit user action, and the keyed state keeps it for the
-// life of the row. Active work only changes the progress affordance, never the
-// collapse state, so a run cannot open and close on its own while it streams.
-// `statusLabel` renders a transient live-status row with the same footprint
-// when no real activity run exists; it is not expandable and has no chevron.
-export function ActivityGroupRow({ flat = false, fontSize, group, palette, sessionRunning = false, statusLabel }: { flat?: boolean; fontSize: number; group: ActivityGroup; palette: Palette; sessionRunning?: boolean; statusLabel?: string }) {
+// The header is the first collapse level. Expansion is owned by the transcript
+// list so it survives recycling and a pinned header can share it. Active work
+// only changes the progress affordance, never the collapse state, so a run
+// cannot open and close on its own while it streams. `statusLabel` renders a
+// transient live-status row with the same footprint when no real activity run
+// exists; it is not expandable and has no chevron.
+export function ActivityGroupRow({
+  expanded,
+  flat = false,
+  fontSize,
+  group,
+  headerOnly = false,
+  onExpandedChange,
+  palette,
+  pinned = false,
+  sessionRunning = false,
+  statusLabel,
+}: {
+  expanded: boolean;
+  flat?: boolean;
+  fontSize: number;
+  group: ActivityGroup;
+  headerOnly?: boolean;
+  onExpandedChange: (expanded: boolean) => void;
+  palette: Palette;
+  pinned?: boolean;
+  sessionRunning?: boolean;
+  statusLabel?: string;
+}) {
   const { t } = useTranslation();
-  const [expanded, setExpanded] = useRecyclingState(false, [group.key]);
   const statusOnly = statusLabel !== undefined;
   const running = group.status === 'running';
   const showProgress = running || sessionRunning;
@@ -56,6 +76,7 @@ export function ActivityGroupRow({ flat = false, fontSize, group, palette, sessi
       ? t('chat:activity.thoughtCount', { count: reasoningCount })
       : types.join(', '));
   const actionLabel = t(expanded ? 'chat:activity.collapseActivity' : 'chat:activity.expandActivity');
+  const testID = pinned ? `transcript-sticky-activity-${group.key}` : `transcript-activity-${group.key}`;
   const header = (
     <>
       <Text numberOfLines={2} className={cn(stylesClasses.label, "text-muted-foreground")} variant="description">{label}</Text>
@@ -74,7 +95,7 @@ export function ActivityGroupRow({ flat = false, fontSize, group, palette, sessi
           accessibilityLabel={label}
           accessibilityLiveRegion="polite"
           className={cn(stylesClasses.header)}
-          testID={`transcript-activity-${group.key}`}>
+          testID={testID}>
           {header}
         </View>
       ) : (
@@ -82,13 +103,17 @@ export function ActivityGroupRow({ flat = false, fontSize, group, palette, sessi
           accessibilityLabel={`${label}. ${actionLabel}`}
           accessibilityRole="button"
           accessibilityState={{ expanded }}
-          onPress={() => setExpanded((value) => !value)}
-          style={({ pressed }) => [styles.header, pressed ? { backgroundColor: palette.surfaceAlt } : null]}
-          testID={`transcript-activity-${group.key}`}>
+          onPress={() => onExpandedChange(!expanded)}
+          style={({ pressed }) => [
+            styles.header,
+            pinned ? { backgroundColor: palette.background } : null,
+            pressed ? { backgroundColor: palette.surfaceAlt } : null,
+          ]}
+          testID={testID}>
           {header}
         </Pressable>
       )}
-      {!statusOnly && expanded ? (
+      {!statusOnly && expanded && !headerOnly ? (
         <View className={cn(stylesClasses.items)}>
           {childRows.map((row) => (
             row.kind === 'read'

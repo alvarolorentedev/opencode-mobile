@@ -8,6 +8,7 @@ export const styles = StyleSheet.create({
   headerSessionAnchor: { alignItems: 'center', alignSelf: 'stretch', borderRadius: 10, flexDirection: 'row', gap: 8, justifyContent: 'center', marginRight: 8, minHeight: 48, paddingRight: 4 },
   headerSessionAnchorPressed: { opacity: 0.82 },
   changesChip: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', alignItems: 'center', gap: 12, borderRadius: 999, minHeight: 44, maxWidth: '100%', paddingHorizontal: 18, paddingVertical: 10 },
+  pinnedActivity: { position: 'absolute', left: 0, right: 0, top: 0, zIndex: 2 },
   jumpToLatestWrap: { position: 'absolute', left: 0, right: 0, bottom: 12, alignItems: 'center', zIndex: 3 },
   scroll: { flex: 1 },
   content: { padding: 12, gap: 12, paddingBottom: 20 },

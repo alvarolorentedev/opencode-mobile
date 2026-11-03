@@ -15,7 +15,7 @@ import { AppState, View, type NativeScrollEvent, type NativeSyntheticEvent } fro
 import { TranscriptMessage } from '@/features/chat/ui/chat-cards';
 import { ActivityGroupRow } from '@/features/chat/ui/cards/activity-group';
 import { styles, slimStyles, stylesClasses } from '@/features/chat/ui/chat-view-styles';
-import { getCurrentTurnActivityKey, getEntryModelLabel, STARTER_PROMPT_KEYS } from '@/features/chat/ui/chat-view-utils';
+import { getCurrentTurnActivityKey, getEntryModelLabel, getPinnedActivityKey, STARTER_PROMPT_KEYS } from '@/features/chat/ui/chat-view-utils';
 import { TranscriptSkeleton } from '@/features/chat/ui/content/transcript-skeleton';
 import { Colors } from '@/shared/ui/theme/theme';
 import type { TranscriptEntry } from '@/shared/presentation/format';
@@ -30,6 +30,7 @@ type ActivityStatusRow = { key: string; type: 'activityStatus'; label: string };
 type TranscriptListItem = TranscriptRow | ActivityStatusRow;
 
 const ACTIVITY_STATUS_KEY = 'activity-status:session';
+const noExpansionChange = () => undefined;
 const ACTIVITY_STATUS_GROUP: ActivityGroup = {
   key: 'session-status',
   kind: 'activity',
@@ -133,6 +134,8 @@ export function TranscriptList({
   const previousRowCountRef = useRef(rows.length);
   const [detached, setDetached] = useState(false);
   const [unseen, setUnseen] = useState(false);
+  const [expandedActivityKeys, setExpandedActivityKeys] = useState<ReadonlySet<string>>(() => new Set());
+  const [pinnedActivityKey, setPinnedActivityKey] = useState<string>();
   useLayoutEffect(() => {
     transcriptRowsRef.current = rows;
   });
@@ -148,6 +151,10 @@ export function TranscriptList({
     // eslint-disable-next-line react-hooks/set-state-in-effect -- restoring a retained scroll position changes the visible affordance.
     setDetached(!followsTail);
     setUnseen(false);
+    // A new session must not inherit the previous transcript's expanded runs.
+    setExpandedActivityKeys((current) => (current.size > 0 ? new Set() : current));
+    // The pinned copy belongs to the previous session's scroll position.
+    setPinnedActivityKey(undefined);
   }, [identity, positions]);
 
   const settleToTail = useCallback(() => {
@@ -169,6 +176,57 @@ export function TranscriptList({
   useEffect(() => () => {
     if (settleFrameRef.current !== undefined) cancelAnimationFrame(settleFrameRef.current);
   }, []);
+
+  const setActivityExpanded = useCallback((key: string, expanded: boolean) => {
+    setExpandedActivityKeys((current) => {
+      if (current.has(key) === expanded) return current;
+      const next = new Set(current);
+      if (expanded) next.add(key);
+      else next.delete(key);
+      return next;
+    });
+  }, []);
+
+  // A long expanded run keeps its level-one header reachable: while the run
+  // covers the viewport top, render a pinned copy that collapses it in place.
+  const updatePinnedActivity = useCallback(() => {
+    let next: string | undefined;
+    if (expandedActivityKeys.size > 0) {
+      try {
+        const list = transcriptRef.current;
+        if (list) {
+          next = getPinnedActivityKey(
+            transcriptRowsRef.current,
+            expandedActivityKeys,
+            lastOffsetRef.current,
+            list.getFirstItemOffset(),
+            (index) => list.getLayout(index),
+          );
+        }
+      } catch {
+        // FlashList may not have a layout manager yet during early restore.
+        next = undefined;
+      }
+    }
+    setPinnedActivityKey((current) => (current === next ? current : next));
+  }, [expandedActivityKeys]);
+
+  useEffect(() => {
+    updatePinnedActivity();
+  }, [rows, updatePinnedActivity]);
+
+  const collapsePinnedActivity = useCallback(() => {
+    const key = pinnedActivityKey;
+    if (!key) return;
+    const index = transcriptRowsRef.current.findIndex((row) => row.type === 'activity' && row.group.key === key);
+    setActivityExpanded(key, false);
+    setPinnedActivityKey(undefined);
+    if (index < 0) return;
+    requestAnimationFrame(() => {
+      const list = transcriptRef.current;
+      if (list) void list.scrollToIndex({ index, viewPosition: 0, animated: false }).catch(() => undefined);
+    });
+  }, [pinnedActivityKey, setActivityExpanded]);
 
   // Follow additions only while the user is parked at the bottom; FlashList's
   // maintainVisibleContentPosition keeps the visible position otherwise. Group
@@ -192,12 +250,14 @@ export function TranscriptList({
     if (transcriptRowsRef.current.length === 0) return;
     if (followTailRef.current) {
       settleToTail();
+      updatePinnedActivity();
       return;
     }
     if (lastOffsetRef.current > 0) {
       transcriptRef.current?.scrollToOffset({ offset: lastOffsetRef.current, animated: false });
     }
-  }, [settleToTail]);
+    updatePinnedActivity();
+  }, [settleToTail, updatePinnedActivity]);
 
   // Android detaches inactive tab screens, so returning to the tab can leave the
   // recycled list at offset 0 or undrawn until something forces a layout.
@@ -223,7 +283,8 @@ export function TranscriptList({
     setDetached(!followsTail);
     if (followsTail) setUnseen(false);
     positions?.set(identity, { offset: lastOffsetRef.current, follow: followsTail });
-  }, [identity, positions]);
+    updatePinnedActivity();
+  }, [identity, positions, updatePinnedActivity]);
 
   const jumpToLatest = useCallback(() => {
     followTailRef.current = true;
@@ -236,7 +297,10 @@ export function TranscriptList({
   // While the session runs, the current turn's newest activity run remains the
   // visible progress anchor even after its own tools complete.
   const lastActivityKey = useMemo(() => getCurrentTurnActivityKey(transcriptRows), [transcriptRows]);
-  const extraData = useMemo(() => ({ activityStatusLabel, copiedMessageId, speakingMessageId, activityRunning, lastActivityKey, modelLabels }), [activityStatusLabel, copiedMessageId, speakingMessageId, activityRunning, lastActivityKey, modelLabels]);
+  const extraData = useMemo(() => ({ activityStatusLabel, copiedMessageId, speakingMessageId, activityRunning, lastActivityKey, modelLabels, expandedActivityKeys }), [activityStatusLabel, copiedMessageId, speakingMessageId, activityRunning, lastActivityKey, modelLabels, expandedActivityKeys]);
+  const pinnedRow = pinnedActivityKey
+    ? rows.find((row) => row.type === 'activity' && row.group.key === pinnedActivityKey)
+    : undefined;
 
   return (
     <View className={cn(stylesClasses.transcriptContainer)}>
@@ -269,9 +333,11 @@ export function TranscriptList({
               flatTranscript && (slim ? slimStyles.transcriptItemFlat : styles.transcriptItemFlat),
             ]}>
               <ActivityGroupRow
+                expanded={false}
                 flat={flatTranscript}
                 fontSize={transcriptFontSize}
                 group={ACTIVITY_STATUS_GROUP}
+                onExpandedChange={noExpansionChange}
                 palette={palette}
                 statusLabel={row.label}
               />
@@ -287,9 +353,11 @@ export function TranscriptList({
               flatTranscript && (slim ? slimStyles.transcriptItemFlat : styles.transcriptItemFlat),
             ]}>
               <ActivityGroupRow
+                expanded={expandedActivityKeys.has(row.group.key)}
                 flat={flatTranscript}
                 fontSize={transcriptFontSize}
                 group={row.group}
+                onExpandedChange={(expanded) => setActivityExpanded(row.group.key, expanded)}
                 palette={palette}
                 sessionRunning={activityRunning && row.key === lastActivityKey}
               />
@@ -355,6 +423,20 @@ export function TranscriptList({
       {detached && rows.length > 0 ? (
         <View pointerEvents="box-none" style={styles.jumpToLatestWrap}>
           <Button testID="chat-jump-to-latest" onPress={jumpToLatest} variant="default"><Icon name={"arrow-down"} size={20} /><Text>{unseen ? t('chat:content.newMessages') : t('chat:content.jumpToLatest')}</Text></Button>
+        </View>
+      ) : null}
+      {pinnedRow && pinnedRow.type === 'activity' && expandedActivityKeys.has(pinnedRow.group.key) ? (
+        <View pointerEvents="box-none" style={[styles.pinnedActivity, { backgroundColor: palette.background, paddingHorizontal: slim ? 8 : 12 }]}>
+          <ActivityGroupRow
+            expanded
+            headerOnly
+            fontSize={transcriptFontSize}
+            group={pinnedRow.group}
+            onExpandedChange={collapsePinnedActivity}
+            palette={palette}
+            pinned
+            sessionRunning={activityRunning && pinnedRow.key === lastActivityKey}
+          />
         </View>
       ) : null}
     </View>

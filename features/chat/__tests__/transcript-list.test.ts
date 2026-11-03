@@ -140,6 +140,23 @@ describe('transcript empty state', () => {
     expect(JSON.stringify(list.props.renderItem({ item: list.props.data[0] }))).toContain('OpenCode is working…');
   });
 
+  it('keeps expanded runs keyed to their group instead of a recycled row', async () => {
+    const row = (key: string) => ({
+      key: `activity:${key}`,
+      type: 'activity' as const,
+      group: { key, kind: 'activity' as const, items: [], tools: [], callCount: 0, status: 'idle' as const },
+    });
+    const { update, runtime } = await mountTranscriptList({ transcriptRows: [row('g1')] });
+    const header = (list: any, item: ReturnType<typeof row>) => list.props.renderItem({ item, index: 0 }).props.children.props;
+
+    header(runtime.value.props.children[0], row('g1')).onExpandedChange(true);
+    runtime.flush();
+    expect(header(runtime.value.props.children[0], row('g1')).expanded).toBe(true);
+
+    const next = update({ transcriptRows: [row('g2')] });
+    expect(header(next, row('g2')).expanded).toBe(false);
+  });
+
   it('marks only the last activity row as the session-running anchor', async () => {
     const row = (key: string) => ({
       key: `activity:${key}`,

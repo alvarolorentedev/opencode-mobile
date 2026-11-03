@@ -766,7 +766,7 @@ tool, and patch activity. The preference filters the derived rows; it never
 changes the fetched window, transcript cache, diff data, or retention. At
 `everything` detail, contiguous visible reasoning, tool, and patch details merge
 into one two-level activity run; a message bubble breaks the run. The run key is
-its first detail id, so expansion persists while streamed details grow it. The level-one header
+its first detail id, so expansion persists while streamed details grow it; the transcript list owns that keyed expansion state so a recycled cell cannot inherit it. While an expanded run covers the viewport top, the list pins its level-one header there and collapses the run when that header is tapped. The level-one header
 keeps the total tool-call count and lists every rendered type once, including
 `Thought` when reasoning is present; a reasoning-only run reads `Thought · N`.
 A run with a `running`/`pending` tool shows the header progress indicator but
