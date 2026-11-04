@@ -115,12 +115,13 @@ Revisit only with render profiling evidence, and one mechanism at a time.
 ## 5. V2 non-message timeline records
 
 Deferred on 2026-10-19. The fixed detailed transcript renders message, tool,
-reasoning, patch, and shell activity. The V2 timeline also carries `idle`,
-`system`, `synthetic`, `skill`, `agent-switched`, `model-switched`, and
-`location-switched` records. They are fetched but not rendered; most map to
-empty non-display records. A future non-message timeline renderer would map them
-into transcript details (and would need to decide how to present skill/system
-text).
+reasoning, patch, and shell activity, plus user-facing `synthetic` notices.
+The V2 timeline also carries `idle`, `system`, `skill`, `agent-switched`,
+`model-switched`, and `location-switched` records. They are fetched but not
+rendered; most map to empty non-display records. A future non-message timeline
+renderer would map them into transcript details (and would need to decide how
+to present skill/system text). Internal synthetic prompt context (instruction
+loads and mode reminders) also maps to an empty non-display record.
 
 ## 6. Gateway headers on direct file reads and browser WebSockets
 

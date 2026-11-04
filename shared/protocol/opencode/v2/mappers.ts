@@ -84,6 +84,14 @@ function toToolDetail(messageId: string, sessionID: string, index: number, tool:
   };
 }
 
+// Instruction loads and mode reminders are model-facing prompt context, not
+// transcript content.
+// shortcut: mode reminders carry no metadata, so detection depends on the
+// server's <system-reminder> wrapper; replace with a display flag when exposed.
+export function isInternalSyntheticNotice(input: { metadata?: Record<string, unknown>; text?: string }) {
+  return Boolean(input.metadata?.instruction) || (input.text ?? '').trimStart().startsWith('<system-reminder>');
+}
+
 export function toMessageRecord(message: V2Message, sessionID: string): SessionMessageRecord | undefined {
   const type = stringField(message.type);
   const created = numberField((message.time as Record<string, unknown> | undefined)?.created);
@@ -182,7 +190,13 @@ export function toMessageRecord(message: V2Message, sessionID: string): SessionM
   }
 
   if (type === 'synthetic') {
-    const text = stringField((message as Record<string, unknown>).text);
+    const record = message as Record<string, unknown>;
+    const text = stringField(record.text);
+    if (isInternalSyntheticNotice({ metadata: record.metadata as Record<string, unknown> | undefined, text })) {
+      // Keep the record in the paginated window so inbox notices still resolve
+      // as delivered, but render nothing.
+      return { info: { ...baseInfo, role: 'assistant', providerID: '', modelID: '' }, parts: [] };
+    }
     return {
       info: { ...baseInfo, role: 'assistant', providerID: '', modelID: '', synthetic: true },
       parts: text ? [{ id: `${message.id}-text-0`, sessionID, messageID: message.id, type: 'text', text }] : [],

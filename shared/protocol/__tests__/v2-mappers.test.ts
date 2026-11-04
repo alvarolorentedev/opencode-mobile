@@ -74,10 +74,36 @@ describe('v2 response mappers', () => {
     });
   });
 
+  it('hides internal synthetic prompt context from the transcript', () => {
+    const reminder = toMessageRecord({
+      id: 'msg_reminder',
+      type: 'synthetic',
+      sessionID: 'ses_1',
+      time: { created: 1 },
+      text: '<system-reminder>You are in Plan mode.</system-reminder>',
+    } as never, 'ses_1');
+    const instructions = toMessageRecord({
+      id: 'msg_instructions',
+      type: 'synthetic',
+      sessionID: 'ses_1',
+      time: { created: 2 },
+      text: 'Instructions from: /repo/AGENTS.md\n# AGENTS.md',
+      description: 'Loaded AGENTS.md',
+      metadata: { instruction: { paths: ['/repo/AGENTS.md'] } },
+    } as never, 'ses_1');
+
+    expect(reminder?.parts).toEqual([]);
+    expect(toTranscriptEntry(reminder!).text).toBe('');
+    expect(instructions?.parts).toEqual([]);
+    expect(toTranscriptEntry(instructions!).text).toBe('');
+  });
+
   it('shares one inbox read between pending prompts and notices', async () => {
     const list = vi.fn(async () => [
       { id: 'prompt-1', type: 'user', sessionID: 'session-1', time: { created: 1 }, delivery: 'steer', payload: { text: 'hello', files: [] } },
       { id: 'notice-1', type: 'synthetic', sessionID: 'session-1', time: { created: 2 }, delivery: 'steer', payload: { text: 'No workflows found.' } },
+      { id: 'reminder-1', type: 'synthetic', sessionID: 'session-1', time: { created: 3 }, delivery: 'steer', payload: { text: '<system-reminder>Plan mode.</system-reminder>' } },
+      { id: 'instructions-1', type: 'synthetic', sessionID: 'session-1', time: { created: 4 }, delivery: 'steer', payload: { text: 'Instructions from: /repo/AGENTS.md', metadata: { instruction: { paths: ['/repo/AGENTS.md'] } } } },
     ]);
     h.api = { session: { inbox: { list } } };
     const client = buildV2Client({ serverUrl: 'http://test', directory: '/repo', username: '', password: '' } as never);

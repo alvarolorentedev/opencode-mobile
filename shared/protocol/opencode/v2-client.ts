@@ -3,7 +3,7 @@ import type { OpencodeConnectionSettings, ScopedOpencodeClient } from '@/shared/
 import { resolvePromptContext } from '@/shared/protocol/opencode/prompt-context';
 import { buildV2Raw } from '@/shared/protocol/opencode/v2/raw';
 import { buildProviderAuth } from '@/shared/protocol/opencode/v2/capabilities';
-import { toFileDetail } from '@/shared/protocol/opencode/v2/mappers';
+import { isInternalSyntheticNotice, toFileDetail } from '@/shared/protocol/opencode/v2/mappers';
 import { syncSessionInstructions } from '@/shared/protocol/opencode/v2/shared';
 import type { PendingNotice, PendingPrompt, PromptInput } from '@/shared/protocol/opencode/prompt-inbox';
 import type { SessionInboxInfo, SessionInboxSynthetic, SessionInboxUser } from '@opencode/client';
@@ -12,7 +12,8 @@ export function toPendingPrompt(item: SessionInboxUser): PendingPrompt {
   return { id: item.id, sessionId: item.sessionID, createdAt: item.time.created, text: item.payload.text, delivery: item.delivery, state: 'waiting', attachments: (item.payload.files ?? []).map((file) => { const detail = toFileDetail(file); return { uri: detail.url, mime: detail.mime, filename: detail.filename }; }) };
 }
 
-export function toPendingNotice(item: SessionInboxSynthetic): PendingNotice {
+export function toPendingNotice(item: SessionInboxSynthetic): PendingNotice | undefined {
+  if (isInternalSyntheticNotice({ text: item.payload.text, metadata: item.payload.metadata })) return undefined;
   return { id: item.id, sessionId: item.sessionID, createdAt: item.time.created, text: item.payload.text, ...(item.payload.description ? { description: item.payload.description } : {}) };
 }
 
@@ -33,7 +34,7 @@ export function buildV2Client(settings: OpencodeConnectionSettings, signal?: Abo
     api, context, mcpOAuth: buildMcpOAuth(context), __opencode: { contract: 'v2', directory }, ...buildProviderAuth(context),
     promptInbox: {
       list: async (sessionID) => (await readInbox(sessionID)).filter((item): item is SessionInboxUser => item.type === 'user').map(toPendingPrompt),
-      listNotices: async (sessionID) => (await readInbox(sessionID)).filter((item): item is SessionInboxSynthetic => item.type === 'synthetic').map(toPendingNotice),
+      listNotices: async (sessionID) => (await readInbox(sessionID)).filter((item): item is SessionInboxSynthetic => item.type === 'synthetic').map(toPendingNotice).filter((notice): notice is PendingNotice => Boolean(notice)),
       cancel: async (sessionID, inboxID) => { await api.session.inbox.cancel({ sessionID, inboxID }); },
       submit: async (input: PromptInput, delivery) => {
         const { sessionID, agent, model, variant } = input;

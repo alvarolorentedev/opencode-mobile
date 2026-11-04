@@ -337,7 +337,7 @@ Slash command behavior:
 - selecting a command inserts its name and closes the suggestion
 - on OpenCode 2 every named `/command` submission uses the session command API, including commands not yet in the cached catalog; the server matches the exact name and unknown/failed commands never become ordinary prompts
 - argument quotes, newlines and whitespace after the first separator are preserved; files and selected mentions accompany V2 commands, and failures restore the draft
-- command replies returned as synthetic server notices render as text notices, not user messages or model replies, and are never read aloud as an assistant answer
+- command replies returned as synthetic server notices render as text notices, not user messages or model replies, and are never read aloud as an assistant answer; internal prompt context such as instruction loads and mode reminders stays out of the transcript
 - V1 preserves known-command execution and its existing attachment prompt flow
 - catalogs refresh on project activation, connection restoration, foreground return and server command/config/plugin update events; see the [compatibility boundary](../architecture/api-contract.md#server-plugin-commands)
 
