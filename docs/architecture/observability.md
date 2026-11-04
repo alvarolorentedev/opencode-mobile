@@ -71,7 +71,8 @@ Stable rules:
 - Normal level records `info+`; verbose records `debug+`. Errors are always
   recorded.
 - Settings can inspect recent events, storage usage, failures and metrics;
-  clear history; and export a report.
+  clear history; and export a report. Recent activity flushes pending local
+  writes on refresh and lists both ordinary logs and captured errors.
 
 ## Remote telemetry
 
@@ -82,7 +83,11 @@ backend still makes no network requests because no exporter is constructed.
 
 The exporter is a generic OTLP/HTTP exporter:
 
-- Crash consent sends sanitized `error` records as OTLP logs.
+- Crash consent sends errors reported through `captureError` as OTLP logs.
+  Named logs such as `telemetry.error()` stay local. The log queue checks both
+  the master switch and Crash reports when accepting and exporting records.
+  Turning either off retires the current log batch, including when Performance
+  stays enabled. Re-enabling starts a fresh batch.
 - Performance consent sends sampled spans as OTLP traces and aggregated
   counters/gauges/histograms as OTLP metrics.
 - Routine logs are never sent remotely.
@@ -119,6 +124,27 @@ extracted; never use a read token or a personal Grafana credential.
 
 No Grafana Cloud account, DSN, sponsorship or backend server is required for
 local diagnostics. Other OTLP-compatible backends can use the same adapter.
+
+### Voice capture diagnostics
+
+In Settings → Diagnostics, open **Recent activity** or export a report with
+details. Voice records use the operations `voice.recognition` and
+`voice.enrollment`. The fields identify the source (dictation, conversation, or
+enrollment), capture phase, reason, and outcome. When available, they also carry
+the attempt number, recognizer mode, a numeric recognizer status or known
+recorder error code, and elapsed
+milliseconds. Retry, cancellation, and expected input errors stay local.
+Unexpected terminal failures appear in `errors.jsonl` and are eligible for
+remote logs under Crash reports. Voice diagnostics contain no audio, recognized
+text, embeddings, device identifiers, or native exception messages.
+
+For a configured Android release build, reproduce a terminal voice failure with
+remote telemetry and Crash reports enabled. Confirm the failure locally, then
+allow the 30-second batch interval and look in Grafana Explore under Loki for
+the `opencode-mobile` service, app build, and `operation` field. Match the
+`reason` against the local record. Repeat with Crash reports off and Performance
+on. The failure should still appear locally. Enable Crash reports again and
+check that only a new failure reaches Loki.
 
 ### Source maps and native crashes
 

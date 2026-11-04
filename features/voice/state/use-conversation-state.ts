@@ -111,6 +111,7 @@ export function useConversationState({ connection, chatPreferences, currentSessi
     wakePhraseSessionRef,
   });
   const speechInput = useSpeechInput({
+    source: 'conversation',
     contextualStrings: speechContextualStrings,
     levelStep: 2,
     locale: chatPreferences.speechLocale,
@@ -389,7 +390,6 @@ export function useConversationState({ connection, chatPreferences, currentSessi
     startConversationListening,
     stopLocalWakeRef,
   });
-
   useEffect(() => {
     conversationPhaseRef.current = conversationPhase;
     if (conversationPhase !== 'submitting') {

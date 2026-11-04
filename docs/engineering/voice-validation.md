@@ -18,8 +18,9 @@ The tag release runs the full browser suite and native release verification.
 Relevant Vitest suites:
 
 - `confirmation.test.ts`: localized strict grammar, ambiguity, readback policy.
-- `speech-input.test.ts`: start watchdog, end-before-start, Android compatibility and
+- `speech-input.test.ts`: start watchdog, early empty end, missing teardown callback, Android compatibility and
   Google-recognizer recovery, and the retryable total-failure path.
+- `voice-enrollment.test.ts`: first PCM frame, startup rejection, missing PCM, and cancellation.
 - `recognition-service.test.ts`: recognizer package availability and recovery order.
 - `conversation-confirmation.test.ts`: TTS/echo guard, confirm/retry/edit/cancel,
   timeout, duplicate confirmation, disabled mode.
@@ -92,6 +93,21 @@ Bluetooth and speakerphone routes.
       leave conversation mode flashing its overlay.
 - [ ] A Google recognizer is only selected when it is visible to the app; FOSS
       or AOSP devices without it keep the system default.
+
+### Issue #93 device reproduction
+
+- [ ] On the Samsung S21 Ultra and Asus Zenfone 10 (Android 15), try dictation,
+      System conversation with on-device preference on and off, and voice
+      enrollment. Repeat on Pixel 9a as a control.
+- [ ] An Android recognizer that ends unexpectedly within one second of readiness
+      before speech or a nonempty result gets the bounded compatibility retries.
+      Normal silence and deliberate stops still end normally.
+- [ ] Enrollment shows microphone startup until the first valid frame, then starts
+      the sample timer. After a successful native start with no frames for three
+      seconds, enrollment releases the recorder and offers a retry.
+- [ ] Verify local and remote records using the
+      [voice diagnostics procedure](../architecture/observability.md#voice-capture-diagnostics).
+      Record the app build and result for each device before closing the issue.
 
 ### Settings and migration
 

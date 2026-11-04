@@ -50,7 +50,7 @@ const build: BuildMetadata = {
 
 const records: DiagnosticRecord[] = [
   { v: 1, ts: 1, kind: 'log', level: 'info', name: 'test.log', message: 'safe' },
-  { v: 1, ts: 2, kind: 'error', level: 'error', name: 'app.error', message: 'boom', stack: 'at app.js:1:1' },
+  { v: 1, ts: 2, kind: 'error', level: 'error', name: 'app.error', message: 'Voice enrollment failed', attrs: { operation: 'voice.enrollment', reason: 'first-frame-timeout' } },
   { v: 1, ts: 3, kind: 'span', name: 'http.request', durationMs: 4, traceId: 'a'.repeat(32), spanId: 'b'.repeat(16) },
   { v: 1, ts: 4, kind: 'metric', name: 'http.request.count', value: 2 },
 ];
@@ -82,6 +82,10 @@ describe('diagnostic report export', () => {
     expect(manifest.schemaVersion).toBe(1);
     expect(manifest.counts).toEqual({ log: 1, error: 1, span: 1, metric: 1 });
     expect(new TextDecoder().decode(archive['logs.jsonl'])).toContain('test.log');
+    expect(JSON.parse(new TextDecoder().decode(archive['errors.jsonl']))).toMatchObject({
+      message: 'Voice enrollment failed',
+      attrs: { operation: 'voice.enrollment', reason: 'first-frame-timeout' },
+    });
   });
 
   it('omits detailed files when the user excludes details', async () => {

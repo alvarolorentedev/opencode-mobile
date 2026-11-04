@@ -624,7 +624,11 @@ Behavior exposed today:
 
 The local setup checklist is shown only in On-device voice-input mode. It keeps
 voice enrollment disabled until the models are ready and reveals voice
-verification only after a profile exists. Response scope and next actions live
+verification only after a profile exists. Enrollment waits for microphone
+frames before showing the recording state and offers a retry if capture fails
+to start. An Android System recognizer that ends immediately without speech
+tries the available compatibility modes before showing a retry message.
+Response scope and next actions live
 in the separate Responses section so they do not look like voice-engine
 settings.
 

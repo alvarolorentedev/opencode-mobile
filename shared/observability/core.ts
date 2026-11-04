@@ -199,6 +199,7 @@ export function createObservability(options: Options = {}): Observability {
   const refreshSnapshot = () => {
     if (refreshInFlight) return refreshInFlight;
     refreshInFlight = (async () => {
+      await store.flush();
       const [storage, records] = await Promise.all([store.usage(), store.read(300)]);
       const errors = records.filter((record) => record.kind === 'error');
       const next: ObservabilitySnapshot = {
@@ -259,7 +260,6 @@ export function createObservability(options: Options = {}): Observability {
 
   const flush = async () => {
     await pipeline.forceFlush();
-    await store.flush();
     await refreshSnapshot();
   };
 

@@ -48,6 +48,7 @@ export function useChatViewVoice({
   const conversationActive = conversation.conversation.active;
 
   const speechInput = useSpeechInput({
+    source: 'dictation',
     locale: chatPreferences.speechLocale,
     onEnd: () => dictationAccumulatorRef.current.checkpoint(),
     onResult: (transcript, isFinal) => {

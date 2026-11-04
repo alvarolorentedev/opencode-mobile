@@ -9,6 +9,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { AppState, Image, View } from 'react-native';
 
+import type { VoiceCancellation } from '@/shared/platform/voice/voice-diagnostics';
 import { LOCAL_COMMAND_MODELS, LOCAL_VOICE_BASE_DOWNLOAD_BYTES } from '@/shared/platform/voice/local-wake-word/model-constants';
 import { LOCAL_WAKE_PHRASES } from '@/shared/platform/voice/local-wake-word/types';
 import type { ChatPreferences } from '@/shared/preferences/opencode-preferences';
@@ -37,18 +38,20 @@ export function VoiceInputSetup({ chatPreferences: prefs, initialStep = 1, local
   const stopTest = test?.stop;
   const refresh = localVoice.refresh;
   const refreshMicrophone = localVoice.refreshMicrophone;
-  const cleanup = useCallback(async () => {
-    await cancelEnrollment();
+  const cleanup = useCallback(async (reason: VoiceCancellation) => {
+    await cancelEnrollment(reason);
     await stopTest?.();
   }, [cancelEnrollment, stopTest]);
   useEffect(() => {
     const subscription = AppState.addEventListener('change', (state) => {
-      if (state !== 'active') void cleanup();
-      else { refresh(); void refreshMicrophone(); }
+      if (state === 'background') void cleanup('background');
+      else if (state === 'active') { refresh(); void refreshMicrophone(); }
     });
-    return () => { subscription.remove(); void cleanup(); };
+    return () => { subscription.remove(); void cleanup('screen-exit'); };
   }, [cleanup, refresh, refreshMicrophone]);
-  const busy = localVoice.enrollment.isRecording || localVoice.enrollment.status === 'saving';
+  const status = localVoice.enrollment.status;
+  const cancellable = status === 'starting' || status === 'recording' || status === 'saving';
+  const busy = cancellable || status === 'committing';
   const testing = test?.status === 'starting' || test?.status === 'listening';
   const conversationBusy = test?.status === 'busy';
   const ready = localVoice.status === 'ready' && localVoice.microphone?.granted;
@@ -58,11 +61,11 @@ export function VoiceInputSetup({ chatPreferences: prefs, initialStep = 1, local
     + (localVoice.commandStatus === 'ready' ? 0 : LOCAL_COMMAND_MODELS[prefs.localCommandModel].tarballBytes);
   const size = `~${Math.round(missingBytes / 1_000_000)} MB`;
   const phrase = LOCAL_WAKE_PHRASES[prefs.localWakePhrase].label;
-  function close() { void cleanup(); onClose(); }
-  function back() { void cleanup(); if (step === 1) onClose(); else setStep(step - 1); }
+  function close() { void cleanup('screen-exit'); onClose(); }
+  function back() { void cleanup('screen-exit'); if (step === 1) onClose(); else setStep(step - 1); }
   function finish() {
     if (!ready || conversationBusy) return;
-    void cleanup();
+    void cleanup('screen-exit');
     updateChatPreferences({ voiceWakeMode: 'local', ...(!localVoice.enrollment.hasProfile ? { localSpeakerVerification: false } : {}) });
     onDone();
   }
@@ -76,7 +79,7 @@ export function VoiceInputSetup({ chatPreferences: prefs, initialStep = 1, local
         if (!localVoice.enrollment.hasProfile) updateChatPreferences({ localSpeakerVerification: false });
         setStep(4);
       }} variant="default"><Text>{t(localVoice.enrollment.hasProfile ? 'settings:connection.setup.continue' : 'settings:voice.setup.skipProfile')}</Text></Button>
-      {busy ? <Button onPress={() => void cancelEnrollment()} variant="ghost"><Text>{t('common:actions.cancel')}</Text></Button> : null}
+      {cancellable ? <Button onPress={() => void cancelEnrollment()} variant="ghost"><Text>{t('common:actions.cancel')}</Text></Button> : null}
     </> : <>
       <Button disabled={!ready || conversationBusy || !test} onPress={async () => {
         if (test?.status === 'detected') finish();
@@ -128,8 +131,8 @@ export function VoiceInputSetup({ chatPreferences: prefs, initialStep = 1, local
       {localVoice.status === 'unsupported' ? <FieldDescription  invalid={false}>{t('settings:voice.localWake.unsupportedHint')}</FieldDescription> : null}
     </> : step === 3 ? <SettingTarget label={t('settings:voice.localWake.voiceProfile')}>
       <Text className={cn("text-muted-foreground")} variant="description">{t('settings:voice.setup.profileNote')}</Text>
-      <Text accessibilityLiveRegion="polite" className={cn("text-foreground")}>{t(localVoice.enrollment.status === 'recording' ? 'settings:voice.localWake.recording' : localVoice.enrollment.status === 'saving' ? 'settings:voice.localWake.saving' : localVoice.enrollment.hasProfile ? 'settings:voice.localWake.enrolled' : 'settings:voice.localWake.notEnrolled')}</Text>
-      <Button disabled={busy || !ready || conversationBusy} onPress={async () => { await stopTest?.(); await localVoice.enrollment.enroll(); }} variant="outline">{busy ? <Spinner size="small" /> : null}<Text>{t(localVoice.enrollment.hasProfile ? 'settings:voice.localWake.reEnroll' : 'settings:voice.localWake.enroll')}</Text></Button>
+      <Text accessibilityLiveRegion="polite" className={cn("text-foreground")}>{t(status === 'starting' ? 'settings:voice.setup.test.starting' : status === 'recording' ? 'settings:voice.localWake.recording' : busy ? 'settings:voice.localWake.saving' : localVoice.enrollment.hasProfile ? 'settings:voice.localWake.enrolled' : 'settings:voice.localWake.notEnrolled')}</Text>
+      <Button disabled={busy || !ready || conversationBusy} onPress={() => void localVoice.enrollment.enroll(stopTest)} variant="outline">{busy ? <Spinner size="small" /> : null}<Text>{t(localVoice.enrollment.hasProfile ? 'settings:voice.localWake.reEnroll' : 'settings:voice.localWake.enroll')}</Text></Button>
       {localVoice.enrollment.hasProfile ? <>
         <SettingSwitchRow title={t('settings:voice.localWake.speakerVerification')} description={t('settings:voice.localWake.speakerVerificationDescription')} palette={palette}
           value={prefs.localSpeakerVerification} disabled={busy} onValueChange={(value) => updateChatPreferences({ localSpeakerVerification: value })} />

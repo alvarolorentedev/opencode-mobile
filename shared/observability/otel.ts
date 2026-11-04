@@ -257,7 +257,8 @@ class ConsentLogExporter implements LogRecordExporter {
     this.delegate.export(logs, resultCallback);
   }
   forceFlush() { return this.delegate.forceFlush(); }
-  shutdown() { return this.delegate.shutdown(); }
+  // The delegate is shared across consent batches and closed by the pipeline.
+  shutdown() { return Promise.resolve(); }
 }
 
 class ConsentMetricExporter implements PushMetricExporter {
@@ -304,15 +305,14 @@ class SwitchableSpanProcessor implements SpanProcessor {
 
 class SwitchableLogProcessor implements LogRecordProcessor {
   private processor?: BatchLogRecordProcessor;
-  constructor(private readonly create: () => BatchLogRecordProcessor) {}
+  constructor(private readonly create: (isCurrent: () => boolean) => BatchLogRecordProcessor) {}
   setEnabled(enabled: boolean) {
-    if (enabled) {
-      this.processor ??= this.create();
-      return;
+    if (!enabled) {
+      void this.shutdown();
+    } else if (!this.processor) {
+      const processor: BatchLogRecordProcessor = this.create(() => this.processor === processor);
+      this.processor = processor;
     }
-    const previous = this.processor;
-    this.processor = undefined;
-    if (previous) void previous.shutdown();
   }
   onEmit(record: Parameters<LogRecordProcessor['onEmit']>[0], contextValue?: Parameters<LogRecordProcessor['onEmit']>[1]) {
     this.processor?.onEmit(record);
@@ -370,9 +370,10 @@ export function createOtelPipeline(options: Options): OtelPipeline {
         exportTimeoutMillis: 10_000,
       }))
     : undefined;
+  const allowLogs = allow('crash');
   const remoteLogProcessor = remoteLogExporter
-    ? new SwitchableLogProcessor(() => new BatchLogRecordProcessor({
-        exporter: new ConsentLogExporter(remoteLogExporter, allow('crash')),
+    ? new SwitchableLogProcessor((isCurrent) => new BatchLogRecordProcessor({
+        exporter: new ConsentLogExporter(remoteLogExporter, () => isCurrent() && allowLogs()),
         maxQueueSize: 100,
         maxExportBatchSize: 20,
         scheduledDelayMillis: 30_000,
@@ -419,7 +420,7 @@ export function createOtelPipeline(options: Options): OtelPipeline {
 
   const setRemoteEnabled = (enabled: boolean) => {
     remoteSpanProcessor?.setEnabled(enabled);
-    remoteLogProcessor?.setEnabled(enabled);
+    remoteLogProcessor?.setEnabled(enabled && allowLogs());
   };
 
   return {
@@ -435,7 +436,7 @@ export function createOtelPipeline(options: Options): OtelPipeline {
       emitLog(logger, { ...record, name });
     },
     emitRemoteError(record) {
-      if (!remoteLogProcessor) return;
+      if (!remoteLogProcessor || !allowLogs()) return;
       const name = sanitizeName(record.name);
       let logger = remoteLoggers.get(name);
       if (!logger) {
@@ -451,6 +452,7 @@ export function createOtelPipeline(options: Options): OtelPipeline {
     },
     async shutdown() {
       await Promise.all([tracerProvider.shutdown(), loggerProvider.shutdown(), remoteLoggerProvider?.shutdown() ?? Promise.resolve(), meterProvider.shutdown()]);
+      await remoteLogExporter?.shutdown();
     },
   };
 }

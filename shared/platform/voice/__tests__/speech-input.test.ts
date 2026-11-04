@@ -192,8 +192,12 @@ it('allows an iOS permission alert to become inactive and still start after perm
 
 async function loadAndroidWatchdogHarness({
   services = ['com.samsung.android.bixby.agent', 'com.google.android.tts'],
+  emitAbortEnd = true,
+  getNativeState = async () => 'inactive',
 }: {
   services?: string[];
+  emitAbortEnd?: boolean;
+  getNativeState?: () => Promise<string>;
 } = {}) {
   const runtime = hookRuntime();
   type Listener = (payload: unknown) => void;
@@ -204,6 +208,9 @@ async function loadAndroidWatchdogHarness({
     addEventListener: () => ({ remove() {} }),
   };
   let aborts = 0;
+  let now = 1000;
+  const outcomes: Record<string, unknown>[] = [];
+  const failures: Record<string, unknown>[] = [];
   const native = {
     addListener: (event: string, listener: Listener) => {
       if (!listeners.has(event)) listeners.set(event, new Set());
@@ -214,6 +221,7 @@ async function loadAndroidWatchdogHarness({
     isRecognitionAvailable: () => true,
     requestPermissionsAsync: async () => ({ granted: true }),
     getSpeechRecognitionServices: () => services,
+    getStateAsync: getNativeState,
     getDefaultRecognitionService: () => ({ packageName: 'com.samsung.android.bixby.agent' }),
     start: (options: ExpoSpeechRecognitionOptions) => {
       starts.push(options);
@@ -223,7 +231,7 @@ async function loadAndroidWatchdogHarness({
     abort: () => {
       aborts++;
       emit('error', { error: 'aborted' });
-      emit('end');
+      if (emitAbortEnd) emit('end');
     },
   };
   function emit(event: string, payload: Parameters<Listener>[0] = null) {
@@ -241,10 +249,81 @@ async function loadAndroidWatchdogHarness({
       }, [event, listener]),
     },
     '@/shared/platform/voice/speech-errors': await loadTs('shared/platform/voice/speech-errors.ts'),
-  }, runtime.globals);
-  runtime.mount(speech.useSpeechInput, { preferOnDevice: true, onResult: () => {} });
-  return { runtime, starts, emit, get aborts() { return aborts; } };
+    '@/shared/observability/client': {
+      telemetry: {
+        info: (_name: string, attrs: Record<string, unknown>) => outcomes.push(attrs),
+        captureError: (_error: unknown, attrs: Record<string, unknown>) => failures.push(attrs),
+      },
+    },
+  }, { ...runtime.globals, Date: { now: () => now } });
+  runtime.mount(speech.useSpeechInput, { source: 'conversation', preferOnDevice: true, onResult: () => {} });
+  return { runtime, starts, emit, outcomes, failures, advance: (ms: number) => { now += ms; }, get aborts() { return aborts; } };
 }
+
+it('retries an early empty Android end and reports one failure after an early native error exhausts recovery', async () => {
+  const { runtime, starts, emit, outcomes, failures } = await loadAndroidWatchdogHarness({ services: [] });
+  await runtime.value.start();
+  emit('start');
+  emit('end');
+  await runtime.settle();
+  assert.equal(runtime.value.isStarting, true);
+  assert.equal(outcomes[0].reason, 'early-end');
+  assert.equal(outcomes[0].source, 'conversation');
+
+  runtime.fire(250); await runtime.settle();
+  assert.equal(starts[1].continuous, false);
+  emit('start');
+  emit('error', { error: 'audio-capture', code: 3, message: 'native payload' });
+  emit('end'); await runtime.settle();
+  assert.equal(runtime.value.startFailed, true);
+  assert.equal(failures.length, 1);
+  assert.equal(failures[0].statusCode, 3);
+  assert.equal(failures[0].reason, 'audio-capture');
+  assert.doesNotMatch(JSON.stringify(failures), /native payload/);
+});
+
+it('preserves normal silence, speech, and user cancellation', async () => {
+  const { runtime, emit, outcomes, failures, advance } = await loadAndroidWatchdogHarness();
+  await runtime.value.start();
+  emit('start');
+  advance(1000);
+  emit('end'); await runtime.settle();
+  assert.equal(outcomes.length, 0);
+  assert.equal(runtime.value.startFailed, false);
+
+  await runtime.value.start();
+  emit('speechstart');
+  emit('end'); await runtime.settle();
+  assert.equal(outcomes.length, 0);
+
+  await runtime.value.start();
+  runtime.value.abort();
+  emit('end'); await runtime.settle();
+  assert.deepEqual(outcomes.map(({ outcome }) => outcome), ['cancelled']);
+  assert.equal(failures.length, 0);
+});
+
+it('bounds a missing end callback and waits for confirmed native inactivity before retrying', async () => {
+  let state = 'stopping';
+  const { runtime, starts, emit, failures } = await loadAndroidWatchdogHarness({
+    emitAbortEnd: false,
+    getNativeState: async () => state,
+  });
+  await runtime.value.start();
+  emit('error', { error: 'client', code: 5 });
+  runtime.fire(250); await runtime.settle();
+  assert.equal(starts.length, 1);
+  runtime.fire(3000); await runtime.settle();
+  assert.equal(runtime.value.isStarting, false);
+  assert.equal(runtime.value.startFailed, true);
+  assert.equal(failures[0].reason, 'teardown-timeout');
+
+  state = 'inactive';
+  const restart = runtime.value.start();
+  runtime.fire(3000); await runtime.settle();
+  assert.equal(await restart, true);
+  assert.equal(starts.length, 2);
+});
 
 it('recovers a recognizer that never emits start with compatibility and Google service attempts', async () => {
   const { runtime, starts } = await loadAndroidWatchdogHarness();

@@ -79,6 +79,9 @@ describe('observability core with OpenTelemetry', () => {
 
   it('exposes local records and clears them', async () => {
     const store = fakeStore();
+    const pending: DiagnosticRecord[] = [];
+    store.append.mockImplementation((record) => { pending.push(record); });
+    store.flush.mockImplementation(async () => { store.records.push(...pending.splice(0)); });
     const target = createObservability({
       build,
       store: store as never,
@@ -86,8 +89,14 @@ describe('observability core with OpenTelemetry', () => {
     });
     await target.initialize();
     target.info('test.visible');
+    target.captureError({ message: 'Voice enrollment failed' }, { operation: 'voice.enrollment', reason: 'first-frame-timeout' }, false);
+    expect(store.records).toEqual([]);
     const snapshot = await target.refreshSnapshot();
     expect(snapshot.recent.logs.some((record) => record.name === 'test.visible')).toBe(true);
+    expect(snapshot.recent.errors[0]).toMatchObject({
+      message: 'Voice enrollment failed',
+      attrs: { operation: 'voice.enrollment', reason: 'first-frame-timeout' },
+    });
     await target.clearLocal();
     expect(store.records).toEqual([]);
     await target.shutdown();

@@ -366,6 +366,8 @@
       "removeVoice": "Remover voz",
       "enrolled": "Perfil de voz cadastrado.",
       "notEnrolled": "Ainda não há perfil de voz.",
+      "microphoneStartFailed": "Não foi possível iniciar a gravação. Verifique o acesso ao microfone e tente novamente.",
+      "startFailed": "Não foi possível preparar o perfil de voz. Tente novamente.",
       "recording": "Gravando… fale naturalmente por cerca de dez segundos.",
       "saving": "Criando perfil de voz…",
       "unsupportedHint": "Esta versão não inclui o runtime nativo de voz local.",

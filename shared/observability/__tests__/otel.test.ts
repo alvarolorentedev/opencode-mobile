@@ -103,6 +103,25 @@ describe('OpenTelemetry pipeline adapters', () => {
     await view.pipeline.shutdown();
   });
 
+  it('drops retired and unconsented log records while Performance stays enabled', async () => {
+    const view = setup();
+    view.allow({ telemetry: true, crash: true, performance: true });
+    view.pipeline.setRemoteEnabled(true);
+    const report = (message: string) => view.pipeline.emitRemoteError({ level: 'error', name: 'app.error', message });
+
+    report('queued before revocation');
+    view.allow({ crash: false });
+    view.pipeline.setRemoteEnabled(true);
+    report('created without consent');
+    view.allow({ crash: true });
+    view.pipeline.setRemoteEnabled(true);
+    report('created after consent');
+    await view.pipeline.forceFlush();
+    await view.pipeline.shutdown();
+
+    expect(view.logs.logs.map((log) => log.body)).toEqual(['created after consent']);
+  });
+
   it('does not export remote metrics before performance consent', async () => {
     const view = setup();
     view.pipeline.meter.createCounter('test.counter').add(1);

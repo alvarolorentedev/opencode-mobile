@@ -366,6 +366,8 @@
       "removeVoice": "Stimme entfernen",
       "enrolled": "Stimmprofil hinterlegt.",
       "notEnrolled": "Noch kein Stimmprofil.",
+      "microphoneStartFailed": "Die Aufnahme konnte nicht gestartet werden. Prüfe den Mikrofonzugriff und versuche es erneut.",
+      "startFailed": "Das Stimmprofil konnte nicht vorbereitet werden. Versuche es erneut.",
       "recording": "Aufnahme… sprich etwa zehn Sekunden natürlich.",
       "saving": "Stimmprofil wird erstellt…",
       "unsupportedHint": "Dieser Build enthält die native lokale Sprachlaufzeit nicht.",

@@ -366,6 +366,8 @@
       "removeVoice": "移除声音",
       "enrolled": "已登记声纹。",
       "notEnrolled": "尚无声纹。",
+      "microphoneStartFailed": "无法开始录音。请检查麦克风访问权限，然后重试。",
+      "startFailed": "无法准备语音档案。请重试。",
       "recording": "录音中…请自然说话约十秒。",
       "saving": "正在生成声纹…",
       "unsupportedHint": "此版本不包含本地原生语音运行时。",

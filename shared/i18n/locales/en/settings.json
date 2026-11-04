@@ -366,6 +366,8 @@
       "removeVoice": "Remove voice",
       "enrolled": "Voice profile enrolled.",
       "notEnrolled": "No voice profile yet.",
+      "microphoneStartFailed": "Recording could not start. Check microphone access and try again.",
+      "startFailed": "Could not start setting up your voice profile. Try again.",
       "recording": "Recording… speak naturally for about ten seconds.",
       "saving": "Building voice profile…",
       "unsupportedHint": "This build does not include the native on-device voice runtime.",

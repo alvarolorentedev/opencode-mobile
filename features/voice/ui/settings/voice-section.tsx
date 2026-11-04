@@ -65,7 +65,7 @@ export function VoiceSection(props: VoiceSectionProps) {
   const permission = voiceCapabilities?.permission;
   const cancelEnrollment = localVoice.enrollment.cancel;
   const stopTest = voiceSetupTest?.stop;
-  useEffect(() => () => { void cancelEnrollment(); void stopTest?.(); void stopSpeaking(); }, [cancelEnrollment, stopTest, focused]);
+  useEffect(() => () => { void cancelEnrollment('screen-exit'); void stopTest?.(); void stopSpeaking(); }, [cancelEnrollment, stopTest, focused]);
   function modes(value: string, onChange: (value: string) => void) {
     return <ToggleGroup type="single" value={value} onValueChange={(next) => { if (next) onChange(next); }} className="flex-row flex-wrap">{([
       { label: t('settings:voice.mode.system'), value: 'system' },

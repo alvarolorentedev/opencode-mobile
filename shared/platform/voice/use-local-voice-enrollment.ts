@@ -1,7 +1,8 @@
 import { requestRecordingPermissionsAsync, useAudioStream, type AudioStreamBuffer } from 'expo-audio';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Platform } from 'react-native';
+import { AppState, Platform } from 'react-native';
 
+import { audioCaptureErrorCode, recordVoiceDiagnostic, type VoiceCancellation, type VoiceDiagnosticPhase } from '@/shared/platform/voice/voice-diagnostics';
 import { i18n } from '@/shared/i18n/index';
 import { activateLocalWakeRecordingAsync, deactivateLocalWakeRecordingAsync } from '@/shared/platform/voice/local-wake-word/audio-session';
 import { createResampler, int16ToFloat32, selectSpeechSegment } from '@/shared/platform/voice/local-wake-word/pcm';
@@ -15,8 +16,9 @@ const SAMPLE_RATE = 16000;
 // variance of a single short clip.
 const ENROLLMENT_SECONDS = 12;
 const ENROLLMENT_CHUNKS = 3;
+const FIRST_FRAME_TIMEOUT_MS = 3000;
 
-export type LocalVoiceEnrollmentStatus = 'idle' | 'recording' | 'saving' | 'error';
+export type LocalVoiceEnrollmentStatus = 'idle' | 'starting' | 'recording' | 'saving' | 'committing' | 'error';
 
 export function useLocalVoiceEnrollment() {
   const [hasProfile, setHasProfile] = useState(false);
@@ -26,6 +28,10 @@ export function useLocalVoiceEnrollment() {
   const mountedRef = useRef(true);
   const generationRef = useRef(0);
   const startingRef = useRef(false);
+  const attemptAtRef = useRef<number | undefined>(undefined);
+  const phaseRef = useRef<VoiceDiagnosticPhase>('preflight');
+  const firstFrameRef = useRef(false);
+  const firstFrameTimerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const audioOwnedRef = useRef(false);
   const chunksRef = useRef<Float32Array[]>([]);
   const resamplerRef = useRef(createResampler(SAMPLE_RATE, SAMPLE_RATE));
@@ -47,7 +53,7 @@ export function useLocalVoiceEnrollment() {
   }, []);
 
   const handleAudioBuffer = useCallback((buffer: AudioStreamBuffer) => {
-    if (!recordingRef.current) {
+    if (!recordingRef.current || !Number.isFinite(buffer.sampleRate) || buffer.sampleRate <= 0) {
       return;
     }
     try {
@@ -56,7 +62,15 @@ export function useLocalVoiceEnrollment() {
         resamplerRef.current = createResampler(buffer.sampleRate, SAMPLE_RATE);
         resamplerRateRef.current = buffer.sampleRate;
       }
+      if (samples.length === 0) return;
       chunksRef.current.push(resamplerRef.current.push(samples));
+      if (!firstFrameRef.current) {
+        firstFrameRef.current = true;
+        phaseRef.current = 'sample';
+        clearTimeout(firstFrameTimerRef.current);
+        setStatus('recording');
+        timerRef.current = setTimeout(() => finishRef.current(), ENROLLMENT_SECONDS * 1000);
+      }
     } catch {
       // Ignore malformed frames; a later sample can still produce a profile.
     }
@@ -68,6 +82,7 @@ export function useLocalVoiceEnrollment() {
 
   const stopCapture = useCallback(async () => {
     recordingRef.current = false;
+    clearTimeout(firstFrameTimerRef.current);
     if (timerRef.current) {
       clearTimeout(timerRef.current);
       timerRef.current = undefined;
@@ -100,10 +115,13 @@ export function useLocalVoiceEnrollment() {
     }
     chunksRef.current = [];
     if (samples.length < SAMPLE_RATE) {
+      recordVoiceDiagnostic('failed', { source: 'enrollment', phase: 'sample', reason: 'incomplete-capture' });
+      attemptAtRef.current = undefined;
       setStatus('error');
       setError('The voice sample was too short. Try again and speak for a few seconds.');
       return;
     }
+    phaseRef.current = 'embedding';
     try {
       const chunkLength = Math.floor(samples.length / ENROLLMENT_CHUNKS);
       const embeddings: number[][] = [];
@@ -128,7 +146,10 @@ export function useLocalVoiceEnrollment() {
         }
       }
       if (embeddings.length < 2) {
-        throw new Error('Speak for longer, with at least two clear sentences, then try again.');
+        recordVoiceDiagnostic('blocked', { source: 'enrollment', phase: 'sample', reason: 'insufficient-speech' });
+        setStatus('error');
+        setError('Speak for longer, with at least two clear sentences, then try again.');
+        return;
       }
       // A single recording can contain a second voice or a noisy passage. If
       // the per-chunk embeddings disagree, the profile would reject the real
@@ -136,7 +157,10 @@ export function useLocalVoiceEnrollment() {
       for (let left = 0; left < embeddings.length; left++) {
         for (let right = left + 1; right < embeddings.length; right++) {
           if (cosineSimilarity(embeddings[left], embeddings[right]) < 0.35) {
-            throw new Error(i18n.t('settings:voice.localWake.enrollmentNoisy'));
+            recordVoiceDiagnostic('blocked', { source: 'enrollment', phase: 'sample', reason: 'noisy-sample' });
+            setStatus('error');
+            setError(i18n.t('settings:voice.localWake.enrollmentNoisy'));
+            return;
           }
         }
       }
@@ -145,6 +169,8 @@ export function useLocalVoiceEnrollment() {
         throw new Error('Could not build a voice profile from that sample.');
       }
       if (!mountedRef.current || generation !== generationRef.current) return;
+      phaseRef.current = 'save';
+      setStatus('committing');
       await saveLocalSpeakerProfile(embedding);
       if (!mountedRef.current || generation !== generationRef.current) return;
       setHasProfile(true);
@@ -153,68 +179,116 @@ export function useLocalVoiceEnrollment() {
     } catch (enrollmentError) {
       if (!mountedRef.current || generation !== generationRef.current) return;
       setStatus('error');
+      const phase = phaseRef.current;
+      recordVoiceDiagnostic('failed', { source: 'enrollment', phase, reason: phase === 'save' ? 'profile-save-rejected' : 'embedding-rejected' });
       setError(enrollmentError instanceof Error ? enrollmentError.message : 'Could not enroll this voice.');
+    } finally {
+      if (generation === generationRef.current) attemptAtRef.current = undefined;
     }
   }, [stopCapture]);
   useEffect(() => {
     finishRef.current = () => { void finishEnrollment(); };
   }, [finishEnrollment]);
 
-  const enroll = useCallback(async () => {
+  const enroll = useCallback(async (stopTest?: () => Promise<void>) => {
     if (Platform.OS === 'web') {
       setStatus('error');
       setError('Voice enrollment is not supported on web.');
       return;
     }
-    if (recordingRef.current || startingRef.current) {
+    if (AppState.currentState === 'background' || attemptAtRef.current !== undefined || startingRef.current) {
       return;
     }
     const generation = ++generationRef.current;
     startingRef.current = true;
     setError(undefined);
-    setStatus('recording');
+    setStatus('starting');
+    const startedAt = Date.now();
+    attemptAtRef.current = startedAt;
+    firstFrameRef.current = false;
     chunksRef.current = [];
     resamplerRef.current = createResampler(SAMPLE_RATE, SAMPLE_RATE);
     resamplerRateRef.current = SAMPLE_RATE;
+    phaseRef.current = 'preflight';
     try {
+      if (stopTest) await stopTest();
+      if (!mountedRef.current || generation !== generationRef.current) return;
+      phaseRef.current = 'model';
       await ensureLocalSpeakerRuntime();
       if (!mountedRef.current || generation !== generationRef.current) return;
+      phaseRef.current = 'permission';
       const permission = await requestRecordingPermissionsAsync();
       if (!mountedRef.current || generation !== generationRef.current) return;
       if (!permission.granted) {
-        throw new Error('Microphone permission is required to enroll your voice.');
+        recordVoiceDiagnostic('blocked', { source: 'enrollment', phase: 'permission', reason: 'permission-denied' });
+        attemptAtRef.current = undefined;
+        setStatus('error');
+        setError('Microphone permission is required to enroll your voice.');
+        return;
       }
+      phaseRef.current = 'audio-session';
       audioOwnedRef.current = true;
       await activateLocalWakeRecordingAsync();
       if (!mountedRef.current || generation !== generationRef.current) {
         if (audioOwnedRef.current) await stopCapture();
         return;
       }
+      phaseRef.current = 'stream';
       recordingRef.current = true;
       await stream.start();
       if (!mountedRef.current || generation !== generationRef.current) {
         await stopCapture();
         return;
       }
-      timerRef.current = setTimeout(() => finishRef.current(), ENROLLMENT_SECONDS * 1000);
-    } catch (enrollmentError) {
-      if (!mountedRef.current || generation !== generationRef.current) return;
-      recordingRef.current = false;
-      setStatus('error');
-      setError(enrollmentError instanceof Error ? enrollmentError.message : 'Could not start voice enrollment.');
+      if (!firstFrameRef.current) {
+        firstFrameTimerRef.current = setTimeout(() => {
+          if (generation !== generationRef.current) return;
+          void stopCapture().then(() => {
+            if (!mountedRef.current || generation !== generationRef.current) return;
+            attemptAtRef.current = undefined;
+            recordVoiceDiagnostic('failed', {
+              source: 'enrollment', phase: 'stream', reason: 'first-frame-timeout', durationMs: Date.now() - startedAt,
+            });
+            setStatus('error');
+            setError(i18n.t('settings:voice.localWake.microphoneStartFailed'));
+          });
+        }, FIRST_FRAME_TIMEOUT_MS);
+      }
+    } catch (startupError) {
       await stopCapture();
+      if (!mountedRef.current || generation !== generationRef.current) return;
+      attemptAtRef.current = undefined;
+      const phase = phaseRef.current;
+      recordVoiceDiagnostic('failed', {
+        source: 'enrollment', phase, reason: 'startup-rejected',
+        statusCode: audioCaptureErrorCode(startupError), durationMs: Date.now() - startedAt,
+      });
+      setStatus('error');
+      setError(i18n.t(phase === 'stream' || phase === 'audio-session'
+        ? 'settings:voice.localWake.microphoneStartFailed'
+        : 'settings:voice.localWake.startFailed'));
     } finally {
-      if (generation === generationRef.current) startingRef.current = false;
+      startingRef.current = false;
     }
   }, [stream, stopCapture]);
 
-  const cancel = useCallback(async () => {
-    generationRef.current += 1;
-    startingRef.current = false;
+  const invalidate = useCallback((reason: VoiceCancellation) => {
+    if (attemptAtRef.current !== undefined) {
+      recordVoiceDiagnostic('cancelled', {
+        source: 'enrollment', phase: phaseRef.current, reason, durationMs: Date.now() - attemptAtRef.current,
+      });
+    }
+    attemptAtRef.current = undefined;
     chunksRef.current = [];
+    return ++generationRef.current;
+  }, []);
+  const cancel = useCallback(async (reason: VoiceCancellation = 'user') => {
+    // A profile write already in progress owns the completed sample.
+    if (attemptAtRef.current !== undefined && phaseRef.current === 'save') return;
+    const generation = invalidate(reason);
     await stopCapture();
-    if (mountedRef.current) { setStatus('idle'); setError(undefined); }
-  }, [stopCapture]);
+    if (mountedRef.current && generation === generationRef.current) { setStatus('idle'); setError(undefined); }
+  }, [invalidate, stopCapture]);
 
   const clearProfile = useCallback(async () => {
     await clearLocalSpeakerProfile();
@@ -227,19 +301,10 @@ export function useLocalVoiceEnrollment() {
     mountedRef.current = true;
     return () => {
       mountedRef.current = false;
-      generationRef.current += 1;
-      recordingRef.current = false;
-      if (timerRef.current) {
-        clearTimeout(timerRef.current);
-      }
-      try {
-        stream.stop();
-      } catch {
-        // Ignore unmount races.
-      }
-      if (audioOwnedRef.current) { audioOwnedRef.current = false; void deactivateLocalWakeRecordingAsync().catch(() => undefined); }
+      if (phaseRef.current !== 'save') invalidate('screen-exit');
+      void stopCapture();
     };
-  }, [stream]);
+  }, [invalidate, stopCapture]);
 
   return {
     cancel,

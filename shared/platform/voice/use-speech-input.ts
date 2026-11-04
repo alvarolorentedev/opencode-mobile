@@ -4,20 +4,15 @@ import { ExpoSpeechRecognitionModule, useSpeechRecognitionEvent, type ExpoSpeech
 
 import { canFallbackToNetwork, describeVoiceInputError, type VoiceRecoveryAction } from '@/shared/platform/voice/speech-errors';
 import { nextStartAttempt, readRecognitionServices, type StartAttempt } from '@/shared/platform/voice/recognition-service';
+import { drainRecognition } from '@/shared/platform/voice/recognition-teardown';
+import { recognitionErrorReason, recordVoiceDiagnostic, type VoiceCancellation, type VoiceSource } from '@/shared/platform/voice/voice-diagnostics';
 import { readVoiceCapabilityFlags } from '@/shared/platform/voice/voice-capability-read';
 
-// A short delay lets the native recognizer fully reset after `error` + `end`.
-// It is also shorter than the conversation listening restart delay, so a retry
-// claims the session before the state machine schedules its own restart.
 const RETRY_DELAY_MS = 250;
-// A recognizer should emit `start` shortly after `startListening`. Otherwise the
-// session is unusable even when no error was emitted.
 const START_WATCHDOG_MS = Platform.OS === 'ios' ? 5000 : 3000;
 const START_FAILED_MESSAGE = 'Voice input could not start. The device speech recognizer did not respond. Try again.';
 const isAppBackgrounded = () => AppState.currentState === 'background';
 
-// A dictation/observation session on iOS keeps the app in `playAndRecord`.
-// Pinning the category and options keeps playback routed to the speaker.
 const IOS_RECOGNITION_CATEGORY: SetCategoryOptions = {
   category: 'playAndRecord',
   categoryOptions: ['defaultToSpeaker', 'allowBluetooth'],
@@ -25,7 +20,8 @@ const IOS_RECOGNITION_CATEGORY: SetCategoryOptions = {
 };
 
 type StartOptions = { contextualStrings?: string[]; continuous?: boolean };
-type StartFailure = { code?: ExpoSpeechRecognitionErrorEvent['error']; message?: string };
+type StartFailure = { reason: string; code?: ExpoSpeechRecognitionErrorEvent['error']; nativeCode?: number };
+const EARLY_END_MS = 1000;
 type UseSpeechInputOptions = {
   contextualStrings?: string[];
   levelStep?: number;
@@ -34,6 +30,7 @@ type UseSpeechInputOptions = {
   onResult: (transcript: string, isFinal: boolean) => void;
   onSpeechStart?: () => void;
   preferOnDevice: boolean;
+  source?: Exclude<VoiceSource, 'enrollment'>;
   volumeUpdateIntervalMillis?: number;
 };
 
@@ -44,7 +41,7 @@ type UseSpeechInputOptions = {
 let activeOwner: string | undefined;
 let activeOnDevice = false;
 let recognitionReserved = false;
-let nativeSession: { owner: string; request: number; stopping: boolean; ended: Promise<void> } | undefined;
+let nativeSession: { owner: string; request: number; stopping: boolean; ended: Promise<true>; finish: () => void } | undefined;
 
 export function useSpeechInput({
   contextualStrings,
@@ -54,6 +51,7 @@ export function useSpeechInput({
   onResult,
   onSpeechStart,
   preferOnDevice,
+  source = 'dictation',
   volumeUpdateIntervalMillis = 120,
 }: UseSpeechInputOptions) {
   const [error, setError] = useState<string>();
@@ -65,8 +63,6 @@ export function useSpeechInput({
   const [supportsLocalRecognition, setSupportsLocalRecognition] = useState(() => ExpoSpeechRecognitionModule.supportsOnDeviceRecognition());
   const [isAvailable, setIsAvailable] = useState(() => ExpoSpeechRecognitionModule.isRecognitionAvailable());
   const [level, setLevel] = useState(0);
-  // Stable identity for this hook instance, used to coordinate the shared
-  // native recognizer across the chat and conversation mounts.
   const ownerId = useId();
   const ignoreErrorsUntilRef = useRef(0);
   const startRequestRef = useRef(0);
@@ -76,18 +72,28 @@ export function useSpeechInput({
   useLayoutEffect(() => { onEndRef.current = onEnd; }, [onEnd]);
   const acceptingResultsRef = useRef(false);
   const lastLevelRef = useRef(0);
-  // Once the on-device model proves unusable we stop asking for it.
   const onDeviceFallbackRef = useRef(false);
   const compatibilityModeRef = useRef(false);
   const servicePackageRef = useRef<string | undefined>(undefined);
   const currentAttemptRef = useRef<StartAttempt>({});
-  const hasStartedRef = useRef(false);
+  const readyAtRef = useRef<number | undefined>(undefined);
+  const heardSpeechRef = useRef(false);
+  const attemptRef = useRef(0);
+  const attemptedAtRef = useRef(0);
+  const recordAttempt = useCallback((outcome: 'retry' | 'blocked' | 'failed', failure: StartFailure) => {
+    const attempt = currentAttemptRef.current;
+    recordVoiceDiagnostic(outcome, {
+      source, phase: 'recognition', reason: failure.reason, statusCode: failure.nativeCode,
+      attempt: attemptRef.current, durationMs: Date.now() - attemptedAtRef.current,
+      kind: attempt.servicePackage ? 'google' : attempt.compatibility ? 'compatibility' : activeOnDevice ? 'on-device' : 'default',
+    });
+  }, [source]);
   const startWatchdogRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const lastStartOptionsRef = useRef<StartOptions>({});
   const fallbackTimeoutRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const restrictedRef = useRef(false);
   const canAskAgainRef = useRef(false);
-  const beginStartRecoveryRef = useRef<(attempt: StartAttempt, failure?: StartFailure) => boolean>(() => false);
+  const beginStartRecoveryRef = useRef<(attempt: StartAttempt, failure: StartFailure) => boolean>(() => false);
   const quantizeLevel = useCallback(
     (value: number) => {
       const safeStep = Math.max(0.25, levelStep);
@@ -95,11 +101,6 @@ export function useSpeechInput({
     },
     [levelStep],
   );
-  const shouldIgnoreError = useCallback((event: ExpoSpeechRecognitionErrorEvent) => {
-    if (event.error === 'aborted') return true;
-    if (event.error === 'client' && Date.now() < ignoreErrorsUntilRef.current) return true;
-    return false;
-  }, []);
   const clearStartWatchdog = useCallback(() => {
     if (startWatchdogRef.current) {
       clearTimeout(startWatchdogRef.current);
@@ -127,7 +128,7 @@ export function useSpeechInput({
     try { ExpoSpeechRecognitionModule.abort(); } catch { /* transient native state */ }
   }, [ownerId]);
   const markStarted = useCallback(() => {
-    hasStartedRef.current = true;
+    readyAtRef.current ??= Date.now();
     clearStartWatchdog();
     setStartFailed(false);
     setIsStarting(false);
@@ -143,6 +144,7 @@ export function useSpeechInput({
   });
   useSpeechRecognitionEvent('speechstart', () => {
     if (activeOwner === ownerId && acceptingResultsRef.current) {
+      heardSpeechRef.current = true;
       markStarted();
       onSpeechStart?.();
     }
@@ -151,6 +153,7 @@ export function useSpeechInput({
     if (activeOwner !== ownerId || !acceptingResultsRef.current) return;
     markStarted();
     const transcript = event.results[0]?.transcript?.trim() ?? '';
+    if (transcript) heardSpeechRef.current = true;
     if (!transcript && !event.isFinal) return;
     if (event.isFinal) ignoreErrorsUntilRef.current = Date.now() + 1500;
     onResult(transcript, event.isFinal);
@@ -158,6 +161,7 @@ export function useSpeechInput({
 
   const startRecognition = useCallback(
     async (options: StartOptions = {}, attempt: StartAttempt = {}) => {
+      if (nativeSession?.owner === ownerId && !nativeSession.stopping) return true;
       clearPendingFallback();
       clearStartWatchdog();
       const request = ++startRequestRef.current;
@@ -171,15 +175,23 @@ export function useSpeechInput({
 
       try {
         if (isAppBackgrounded()) return false;
-        if (nativeSession?.owner === ownerId) {
-          if (!nativeSession.stopping) return true;
-          await nativeSession.ended;
-          if (request !== startRequestRef.current) return false;
+        if (nativeSession?.stopping) {
+          const sameOwner = nativeSession.owner === ownerId;
+          const drained = await drainRecognition(nativeSession, sameOwner);
+          if (request !== startRequestRef.current || isAppBackgrounded()) return false;
+          if (!drained && sameOwner) {
+            recordVoiceDiagnostic('failed', { source, phase: 'teardown', reason: 'teardown-timeout' });
+            setError(START_FAILED_MESSAGE);
+            setErrorAction('retry');
+            setStartFailed(true);
+            return false;
+          }
         }
         const capabilities = readVoiceCapabilityFlags();
         setIsAvailable(capabilities.recognitionAvailable);
         setSupportsLocalRecognition(capabilities.onDeviceSupported);
         if (!capabilities.recognitionAvailable) {
+          recordVoiceDiagnostic('blocked', { source, phase: 'preflight', reason: 'recognizer-unavailable' });
           if (activeOwner === ownerId && !nativeSession) recognitionReserved = false;
           const info = describeVoiceInputError('service-not-allowed', undefined, {
             canAskAgain: canAskAgainRef.current,
@@ -204,6 +216,7 @@ export function useSpeechInput({
         canAskAgainRef.current = nextCanAskAgain;
 
         if (!permissions.granted) {
+          recordVoiceDiagnostic('blocked', { source, phase: 'preflight', reason: 'permission-denied' });
           if (activeOwner === ownerId && !nativeSession) recognitionReserved = false;
           const info = describeVoiceInputError('not-allowed', undefined, {
             canAskAgain: nextCanAskAgain,
@@ -238,17 +251,22 @@ export function useSpeechInput({
         recognitionReserved = true;
         activeOnDevice = wantsOnDevice;
         acceptingResultsRef.current = true;
-        hasStartedRef.current = false;
-        let resolveEnd!: () => void;
-        const session = { owner: ownerId, request, stopping: false, ended: new Promise<void>((resolve) => { resolveEnd = resolve; }) };
+        readyAtRef.current = undefined;
+        heardSpeechRef.current = false;
+        attemptedAtRef.current = Date.now();
+        attemptRef.current++;
+        let resolveEnd!: (value: true) => void;
         // This listener survives hook unmount so cancellation drains before ownership moves.
-        const subscription = ExpoSpeechRecognitionModule.addListener('end', () => {
+        const finish = () => {
           if (nativeSession !== session) return;
           nativeSession = undefined;
           subscription.remove();
           const superseded = startRequestRef.current !== session.request;
-          const failedBeforeStart = !hasStartedRef.current && !session.stopping && !superseded;
-          hasStartedRef.current = false;
+          const readyAt = readyAtRef.current;
+          const endedTooSoon = Platform.OS === 'android' && readyAt !== undefined
+            && !heardSpeechRef.current && Date.now() - readyAt < EARLY_END_MS;
+          const unexpectedEnd = !session.stopping && !superseded && (readyAt === undefined || endedTooSoon);
+          const recoveringEmptyAttempt = !heardSpeechRef.current && (fallbackTimeoutRef.current || (superseded && startPendingRef.current));
           clearStartWatchdog();
           recognitionReserved = startPendingRef.current || Boolean(fallbackTimeoutRef.current);
           acceptingResultsRef.current = false;
@@ -259,24 +277,26 @@ export function useSpeechInput({
           } else {
             activeOwner = undefined;
           }
-          resolveEnd();
-          if (mountedRef.current) onEndRef.current?.();
-          if (failedBeforeStart && mountedRef.current) {
-            beginStartRecoveryRef.current(currentAttemptRef.current);
+          resolveEnd(true);
+          if (mountedRef.current && unexpectedEnd) {
+            beginStartRecoveryRef.current(currentAttemptRef.current, { reason: endedTooSoon ? 'early-end' : 'end-before-ready' });
+          } else if (mountedRef.current && !recoveringEmptyAttempt) {
+            onEndRef.current?.();
           }
-        });
+        };
+        const subscription = ExpoSpeechRecognitionModule.addListener('end', finish);
+        const session = { owner: ownerId, request, stopping: false, finish, ended: new Promise<true>((resolve) => { resolveEnd = resolve; }) };
         nativeSession = session;
         rollbackNativeStart = () => {
           subscription.remove();
           if (nativeSession === session) nativeSession = undefined;
-          resolveEnd();
+          resolveEnd(true);
         };
         waitingForNativeStart = true;
-        // Arm before native start so a synchronous `start` event cancels it.
         startWatchdogRef.current = setTimeout(() => {
           startWatchdogRef.current = undefined;
-          if (request !== startRequestRef.current || !mountedRef.current || hasStartedRef.current) return;
-          beginStartRecoveryRef.current(currentAttemptRef.current);
+          if (request !== startRequestRef.current || !mountedRef.current || readyAtRef.current !== undefined) return;
+          beginStartRecoveryRef.current(currentAttemptRef.current, { reason: 'ready-timeout' });
         }, START_WATCHDOG_MS);
         ExpoSpeechRecognitionModule.start({
           addsPunctuation: !effectiveAttempt.compatibility,
@@ -294,16 +314,15 @@ export function useSpeechInput({
           },
         });
         return true;
-      } catch (startError) {
+      } catch {
         clearStartWatchdog();
         if (request !== startRequestRef.current) return false;
         rollbackNativeStart?.();
-        if (activeOwner === ownerId && !nativeSession) recognitionReserved = false;
-        acceptingResultsRef.current = false;
-        setIsListening(false);
-        setError(startError instanceof Error ? startError.message : 'Voice input failed to start.');
-        setErrorCode(undefined);
+        if (waitingForNativeStart) return beginStartRecoveryRef.current(currentAttemptRef.current, { reason: 'native-start-rejected' });
+        recordVoiceDiagnostic('failed', { source, phase: 'preflight', reason: 'preflight-rejected' });
+        setError(START_FAILED_MESSAGE);
         setErrorAction('retry');
+        setStartFailed(true);
         return false;
       } finally {
         if (request === startRequestRef.current) {
@@ -313,22 +332,23 @@ export function useSpeechInput({
         }
       }
     },
-    [clearError, clearPendingFallback, clearStartWatchdog, contextualStrings, locale, ownerId, preferOnDevice, resetLevel, volumeUpdateIntervalMillis],
+    [clearError, clearPendingFallback, clearStartWatchdog, contextualStrings, locale, ownerId, preferOnDevice, resetLevel, source, volumeUpdateIntervalMillis],
   );
-  const beginStartRecovery = useCallback((attempt: StartAttempt, failure?: StartFailure) => {
+  const beginStartRecovery = useCallback((attempt: StartAttempt, failure: StartFailure) => {
     clearStartWatchdog();
     const recovery = nextStartAttempt(attempt, {
       platform: Platform.OS,
       ...readRecognitionServices(),
     });
     clearPendingFallback();
+    recordAttempt(recovery ? 'retry' : 'failed', failure);
     if (!recovery) {
       acceptingResultsRef.current = false;
       setIsStarting(false);
       setIsListening(false);
       resetLevel();
-      setError(failure?.message ?? START_FAILED_MESSAGE);
-      setErrorCode(failure?.code);
+      setError(START_FAILED_MESSAGE);
+      setErrorCode(failure.code);
       setErrorAction('retry');
       setStartFailed(true);
       abortNativeSession();
@@ -351,25 +371,28 @@ export function useSpeechInput({
     }, RETRY_DELAY_MS);
     abortNativeSession();
     return true;
-  }, [abortNativeSession, clearError, clearPendingFallback, clearStartWatchdog, ownerId, resetLevel, startRecognition]);
+  }, [abortNativeSession, clearError, clearPendingFallback, clearStartWatchdog, ownerId, recordAttempt, resetLevel, startRecognition]);
   useLayoutEffect(() => { beginStartRecoveryRef.current = beginStartRecovery; }, [beginStartRecovery]);
 
   useSpeechRecognitionEvent('error', (event) => {
-    if (activeOwner !== ownerId || !acceptingResultsRef.current) return;
+    if (activeOwner !== ownerId || !acceptingResultsRef.current || !nativeSession || nativeSession.stopping) return;
     clearStartWatchdog();
-    setIsStarting(false);
-    if (nativeSession?.owner === ownerId) nativeSession.stopping = true;
-    if (shouldIgnoreError(event)) {
+    nativeSession.stopping = true;
+    if ((event.error === 'aborted' && Platform.OS !== 'android')
+      || (event.error === 'client' && Date.now() < ignoreErrorsUntilRef.current)) {
+      setIsStarting(false);
       setErrorCode(undefined);
       setIsListening(false);
       resetLevel();
       return;
     }
 
-    // The on-device model may be missing while network recognition still works.
+    const failure = { reason: recognitionErrorReason(event.error), code: event.error, nativeCode: Number.isSafeInteger(event.code) ? event.code : undefined };
     if (canFallbackToNetwork(event.error, activeOnDevice) && !onDeviceFallbackRef.current) {
+      recordAttempt('retry', failure);
       onDeviceFallbackRef.current = true;
       activeOnDevice = false;
+      setIsStarting(true);
       setIsListening(false);
       resetLevel();
       clearPendingFallback();
@@ -380,21 +403,23 @@ export function useSpeechInput({
       return;
     }
 
-    // The continuous audio recorder or an OEM recognizer can fail before speech
-    // starts. Try safer Android modes before surfacing the failure.
-    if (
-      !hasStartedRef.current
-      && (event.error === 'audio-capture' || event.error === 'client')
-      && beginStartRecoveryRef.current(currentAttemptRef.current, { code: event.error, message: event.message })
-    ) {
+    const readyAt = readyAtRef.current;
+    if (Platform.OS === 'android' && !heardSpeechRef.current
+      && (readyAt === undefined || Date.now() - readyAt < EARLY_END_MS)
+      && (event.error === 'audio-capture' || event.error === 'client' || event.error === 'aborted')) {
+      beginStartRecoveryRef.current(currentAttemptRef.current, failure);
       return;
     }
+    if (event.error === 'not-allowed') recordAttempt('blocked', failure);
+    else if (event.error === 'client' && source === 'conversation') recordAttempt('retry', failure);
+    else if (!['no-speech', 'speech-timeout'].includes(event.error)) recordAttempt('failed', failure);
 
     const info = describeVoiceInputError(event.error, event.message, {
       canAskAgain: canAskAgainRef.current,
       onDeviceRequested: activeOnDevice,
       restricted: restrictedRef.current,
     });
+    setIsStarting(false);
     setError(info.message);
     setErrorCode(event.error);
     setErrorAction(info.action);
@@ -409,7 +434,10 @@ export function useSpeechInput({
     setLevel(nextLevel);
   });
   const start = useCallback(
-    (options?: StartOptions) => startRecognition(options, {}),
+    (options?: StartOptions) => {
+      attemptRef.current = 0;
+      return startRecognition(options);
+    },
     [startRecognition],
   );
   const stop = useCallback(() => {
@@ -425,11 +453,12 @@ export function useSpeechInput({
     ignoreErrorsUntilRef.current = Date.now() + 1500;
     try {
       ExpoSpeechRecognitionModule.stop();
-    } catch {
-      // Ignore stop errors from transient native state.
-    }
+    } catch { /* transient native state */ }
   }, [clearPendingFallback, clearStartWatchdog, ownerId]);
-  const abort = useCallback(() => {
+  const abort = useCallback((reason: VoiceCancellation = 'user') => {
+    if (activeOwner === ownerId && (acceptingResultsRef.current || fallbackTimeoutRef.current)) {
+      recordVoiceDiagnostic('cancelled', { source, phase: 'recognition', reason });
+    }
     startRequestRef.current++;
     startPendingRef.current = false;
     acceptingResultsRef.current = false;
@@ -445,51 +474,26 @@ export function useSpeechInput({
     ignoreErrorsUntilRef.current = Date.now() + 1500;
     try {
       ExpoSpeechRecognitionModule.abort();
-    } catch {
-      // Ignore abort errors from transient native state.
-    }
-  }, [clearPendingFallback, clearStartWatchdog, ownerId, resetLevel]);
+    } catch { /* transient native state */ }
+  }, [clearPendingFallback, clearStartWatchdog, ownerId, resetLevel, source]);
   useEffect(() => {
     mountedRef.current = true;
     const subscription = AppState.addEventListener('change', (state) => {
-      if (state === 'background') abort();
+      if (state === 'background') abort('background');
     });
     return () => {
       subscription.remove();
       mountedRef.current = false;
-      abort();
+      abort('screen-exit');
       if (activeOwner === ownerId && !nativeSession) activeOwner = undefined;
     };
   }, [abort, ownerId]);
 
-  return useMemo(
-    () => ({
-      abort,
-      error,
-      errorAction,
-      errorCode,
-      isAvailable,
-      isListening,
-      isStarting,
-      level,
-      start,
-      startFailed,
-      stop,
-      supportsLocalRecognition,
-    }),
-    [
-      abort,
-      error,
-      errorAction,
-      errorCode,
-      isAvailable,
-      isListening,
-      isStarting,
-      level,
-      start,
-      startFailed,
-      stop,
-      supportsLocalRecognition,
-    ],
-  );
+  return useMemo(() => ({
+    abort, error, errorAction, errorCode, isAvailable, isListening, isStarting,
+    level, start, startFailed, stop, supportsLocalRecognition,
+  }), [
+    abort, error, errorAction, errorCode, isAvailable, isListening, isStarting,
+    level, start, startFailed, stop, supportsLocalRecognition,
+  ]);
 }

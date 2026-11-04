@@ -37,7 +37,8 @@ export function AppDiagnosticsSection() {
   const [feedback, setFeedback] = useState<string>();
 
   const remote = snapshot.remoteAvailable;
-  const logs = snapshot.recent.logs
+  const logs = [...snapshot.recent.logs, ...snapshot.recent.errors]
+    .sort((a, b) => b.ts - a.ts)
     .filter((entry) => severity === 'all' || (severity === 'warn' ? entry.level === 'warn' || entry.level === 'error' : entry.level === 'error'))
     .slice(0, 6);
   const histograms = snapshot.metrics
@@ -164,7 +165,9 @@ export function AppDiagnosticsSection() {
         <View key={`${entry.ts}-${entry.name}`} className={cn(stylesClasses.logRow)}>
           <Badge variant="secondary"><Text>{entry.level ?? entry.kind}</Text></Badge>
           <Text className="flex-1 text-muted-foreground" variant="description" numberOfLines={2}>
-            {entry.name}{entry.message ? ` · ${entry.message}` : ''}
+            {entry.message ?? entry.name}
+            {entry.attrs?.operation === 'voice.recognition' || entry.attrs?.operation === 'voice.enrollment'
+              ? ` · ${entry.attrs.source} · ${entry.attrs.reason}` : ''}
           </Text>
         </View>
       ))}

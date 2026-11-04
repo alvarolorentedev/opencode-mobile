@@ -366,6 +366,8 @@
       "removeVoice": "Supprimer la voix",
       "enrolled": "Profil vocal enregistré.",
       "notEnrolled": "Aucun profil vocal pour le moment.",
+      "microphoneStartFailed": "Impossible de démarrer l’enregistrement. Vérifiez l’accès au micro et réessayez.",
+      "startFailed": "Impossible de préparer le profil vocal. Réessayez.",
       "recording": "Enregistrement… parlez naturellement pendant une dizaine de secondes.",
       "saving": "Création du profil vocal…",
       "unsupportedHint": "Cette version n’inclut pas le moteur vocal local natif.",
