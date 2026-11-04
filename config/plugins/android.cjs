@@ -7,7 +7,7 @@ const { withAndroidManifest, withAppBuildGradle, withDangerousMod, withGradlePro
 // `:app:packageReleaseBundle` has room. The android/ directory is regenerated
 // by `expo prebuild --clean`, so this must live here, not on disk.
 function applyGradleProperties(items, { isDevelopmentVariant = false } = {}) {
-  const overrides = new Set(['org.gradle.jvmargs', 'rnllamaBuildFromSource']);
+  const overrides = new Set(['org.gradle.jvmargs', 'rnllamaBuildFromSource', 'AsyncStorage_db_size_in_MB']);
   if (!isDevelopmentVariant) overrides.add('reactNativeArchitectures');
   const next = [
     ...items.filter((item) => !(item.type === 'property' && overrides.has(item.key))),
@@ -17,6 +17,8 @@ function applyGradleProperties(items, { isDevelopmentVariant = false } = {}) {
       key: 'org.gradle.jvmargs',
       value: '-Xmx4096m -XX:MaxMetaspaceSize=1024m -Dfile.encoding=UTF-8',
     },
+    // AsyncStorage defaults to a 6MB SQLite cap (SQLITE_FULL on profile save); 64MB holds transcript/session caches.
+    { type: 'property', key: 'AsyncStorage_db_size_in_MB', value: '64' },
   ];
   if (!isDevelopmentVariant) {
     next.push({ type: 'property', key: 'reactNativeArchitectures', value: 'arm64-v8a' });

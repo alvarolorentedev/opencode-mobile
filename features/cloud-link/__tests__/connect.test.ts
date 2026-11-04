@@ -311,7 +311,7 @@ for (const variant of ['development', 'production']) {
     } : name === 'node:fs' ? {
       existsSync: () => true, copyFileSync() {}, statSync: () => ({ size: 128 }),
       readFileSync: (_path: any, encoding?: string) => encoding === 'utf8'
-        ? 'reactNativeArchitectures=arm64-v8a\n'
+        ? 'reactNativeArchitectures=arm64-v8a\nAsyncStorage_db_size_in_MB=64\n'
         : Buffer.alloc(128),
       appendFileSync(_path: any, data: any) { writes.push(String(data)); }, writeFileSync() {},
     } : actualRequire(name),

@@ -140,6 +140,8 @@ Used for most UI components and themed surfaces.
 ### AsyncStorage
 
 Used for persistence of user settings and lightweight workflow continuity state.
+On Android the SQLite-backed store defaults to a 6MB cap; the config plugin sets
+`AsyncStorage_db_size_in_MB=64` so cached transcripts/sessions cannot fail profile saves with `SQLITE_FULL`.
 
 ### Localization
 

@@ -138,6 +138,9 @@ const generatedGradleProperties = fs.readFileSync(gradlePropertiesPath, 'utf8');
 if (!/^reactNativeArchitectures=arm64-v8a$/m.test(generatedGradleProperties)) {
   fail('Generated android/gradle.properties must set reactNativeArchitectures=arm64-v8a for release builds.');
 }
+if (!/^AsyncStorage_db_size_in_MB=64$/m.test(generatedGradleProperties)) {
+  fail('Generated android/gradle.properties must set AsyncStorage_db_size_in_MB=64 for release builds.');
+}
 
 const keystorePassword = requireEnv('ANDROID_KEYSTORE_PASSWORD');
 const keyAlias = requireEnv('ANDROID_KEY_ALIAS');
