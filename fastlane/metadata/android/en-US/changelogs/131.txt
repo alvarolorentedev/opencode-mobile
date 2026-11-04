@@ -1,0 +1,3 @@
+- Archived server projects now appear as read-only with a location-based restore, and adding a project starts from a server folder browser.
+- Extension panels load reliably with authenticated reads, so the plugin button no longer stays hidden.
+- Chat no longer shows internal instruction loads and mode reminders as assistant messages; user-facing command notices still render.
