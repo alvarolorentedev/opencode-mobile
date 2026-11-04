@@ -36,10 +36,12 @@ export function PluginGuiLauncher({ session }: { session?: Session }) {
   }, []);
 
   const plugins = extensions.pluginGui.plugins;
-  // The navbar control exists only when the session has at least one active
-  // plugin advertising a renderable GUI (features.gui). The API has no finer
+  // The navbar control exists when the connection has at least one active
+  // plugin advertising a renderable GUI (features.gui). It is not gated on
+  // the selected session: same-server, globally installed plugins must show
+  // on every chat, including a brand-new empty one. The API has no finer
   // "has a Panel" flag without evaluating the bundle.
-  if (!session || plugins.length === 0) return null;
+  if (plugins.length === 0) return null;
 
   return (
     <>

@@ -73,10 +73,12 @@ Known limits of this first profile:
 
 ## UI
 
-- A puzzle button appears in the chat header, between New chat and Usage, only
-  when the selected session has at least one active plugin advertising a GUI
-  (`features.gui`). One plugin opens directly; several show the picker. The
-  button is absent while the list is loading or empty.
+- A puzzle button appears in the chat header, between New chat and Usage,
+  whenever the connection has at least one active plugin advertising a GUI
+  (`features.gui`). It is not gated on the selected session, so it shows on
+  every chat — including a brand-new empty one — on that connection. One plugin
+  opens directly; several show the picker. The button is absent while the list
+  is loading or empty.
 - The selected plugin renders in a large bottom overlay (about 72% of the
   window) with the host header and WebView. The overlay closes with Back, Close
   or the host's close action.
@@ -85,6 +87,9 @@ Known limits of this first profile:
 - Settings → Extensions still owns plugin installation and removal. GUI launch
   is intentionally in the chat header, not Settings. The standalone
   `/plugin?id=<id>&session=<id>` route remains a deep-link fallback.
+- With no session selected the overlay falls back to the connection directory,
+  so globally installed plugins still render and can offer their own
+  run/session picker.
 - `Panel.mobile` is used as the panel title; `Panel.list` receives the panel id
   in `open`, so a plugin's own stored-tab logic still works.
 
