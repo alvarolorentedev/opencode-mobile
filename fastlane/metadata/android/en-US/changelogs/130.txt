@@ -1,0 +1,3 @@
+- Voice input recovers from early Android capture failures and surfaces setup diagnostics.
+- Remote telemetry is now minimal: only the server contract counter leaves the device, and only unhandled or fatal errors are reported remotely.
+- Fixed a blank app tree on Android when the RTL direction was applied to the gesture root.
