@@ -59,36 +59,22 @@ export async function fetchConnection(input: RequestInfo | URL, init?: RequestIn
   const url = typeof input === 'string' ? input : input instanceof URL ? input.toString() : input.url;
   const method = init?.method ?? (typeof input === 'object' && 'method' in input ? input.method : 'GET');
   const operation = classifyHttpOperation(url, method);
-  const activeSpan = telemetry.startSpan('http.request', { operation, method });
-  const startedAt = Date.now();
   try {
-    const response = await fetchConnectionInner(input, init, settings, lifetimeSignal);
-    const durationMs = Math.max(0, Date.now() - startedAt);
-    telemetry.histogram('http.request.duration', durationMs, 'ms', { operation });
-    telemetry.counter('http.request.count', 1, { operation, outcome: 'success' });
-    activeSpan.end('ok');
-    return response;
+    return await fetchConnectionInner(input, init, settings, lifetimeSignal);
   } catch (error) {
-    const durationMs = Math.max(0, Date.now() - startedAt);
     const cancelled = /cancel/i.test(error instanceof Error ? error.message : String(error));
-    const outcome = cancelled ? 'cancelled' : 'failure';
-    telemetry.histogram('http.request.duration', durationMs, 'ms', { operation });
-    telemetry.counter('http.request.count', 1, { operation, outcome });
     if (!cancelled) {
-      telemetry.logWithSpan(activeSpan, 'warn', 'http.request.failed', {
+      telemetry.warn('http.request.failed', {
         operation,
         failureKind: classifyConnectionFailure(error),
       });
     }
-    activeSpan.end(cancelled ? 'cancelled' : 'error');
     throw error;
   }
 }
 
 async function fetchConnectionInner(input: RequestInfo | URL, init?: RequestInit, settings?: OpencodeConnectionSettings, lifetimeSignal?: AbortSignal) {
   const retryUrl = typeof input === 'string' ? input : input instanceof URL ? input.toString() : input.url;
-  const retryMethod = init?.method ?? (typeof input === 'object' && 'method' in input ? input.method : 'GET');
-  const operation = classifyHttpOperation(retryUrl, retryMethod);
   if (settings?.connect) {
     const error = getConnectCredentialError(settings.connect, settings.password);
     if (error) throw new Error(error);
@@ -133,14 +119,12 @@ async function fetchConnectionInner(input: RequestInfo | URL, init?: RequestInit
           finishStats({ status: response.status });
           return response;
         }
-        telemetry.counter('http.retry', 1, { operation, reason: 'oidc' });
         await response.body?.cancel().catch(() => undefined);
         requestInit = { ...init, headers: await resolveAuthorizedHeaders(settings, inputHeaders) };
         finishStats({ status: response.status, retried: true });
         continue;
       }
       if (!reauthorized && shouldRetryRead({ method, url, attempt, elapsedMs: Date.now() - startedAt, status: response.status })) {
-        telemetry.counter('http.retry', 1, { operation });
         finishStats({ status: response.status, retried: true });
         // Drain tiny retryable gateway errors so the connection can be reused,
         // but never consume a successful body.
@@ -153,7 +137,6 @@ async function fetchConnectionInner(input: RequestInfo | URL, init?: RequestInit
     } catch (error) {
       finishStats({ error });
       if (reauthorized || !shouldRetryRead({ method, url, attempt, elapsedMs: Date.now() - startedAt, error })) throw error;
-      telemetry.counter('http.retry', 1, { operation });
       await abortableDelay(250 + Math.round(Math.random() * 250), signal);
     }
   }

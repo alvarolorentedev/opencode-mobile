@@ -73,18 +73,8 @@ export function useProjectCatalogActions({
 
   const loadProjectCatalog = useCallback(
     async (silent = false, targetClient: ScopedOpencodeClient = catalogClient): Promise<ProjectCatalog> => {
-      const startedAt = Date.now();
-      let result: ProjectCatalog;
-      try {
-        result = await fetchProjectCatalog(cache, identity, targetClient, !silent);
-        telemetry.histogram('workspace.load.duration', Math.max(0, Date.now() - startedAt), 'ms', { kind: silent ? 'refresh' : 'open' });
-        telemetry.counter('workspace.load', 1, { kind: silent ? 'refresh' : 'open', outcome: 'success' });
-        telemetry.markStartup('workspace-loaded', { kind: silent ? 'refresh' : 'open' });
-      } catch (error) {
-        telemetry.histogram('workspace.load.duration', Math.max(0, Date.now() - startedAt), 'ms', { kind: silent ? 'refresh' : 'open' });
-        telemetry.counter('workspace.load', 1, { kind: silent ? 'refresh' : 'open', outcome: 'failure' });
-        throw error;
-      }
+      const result = await fetchProjectCatalog(cache, identity, targetClient, !silent);
+      telemetry.markStartup('workspace-loaded', { kind: silent ? 'refresh' : 'open' });
         if (!isCurrent(targetClient)) {
           return result;
         }

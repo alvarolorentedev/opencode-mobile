@@ -2,7 +2,6 @@ import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 
 import type { ConnectionFailureKind } from '@/shared/protocol/opencode/client';
 import { isRetryableConnectionFailure } from '@/shared/protocol/opencode/client/errors';
-import { telemetry } from '@/shared/observability/client';
 
 const RETRY_DELAYS_MS = [1000, 2000, 5000, 10_000, 20_000] as const;
 
@@ -51,10 +50,6 @@ export function useConnectionRetry({
     const delay = wasOffline ? 500 : RETRY_DELAYS_MS[Math.min(attemptRef.current, RETRY_DELAYS_MS.length - 1)];
     const at = Date.now() + delay;
     const listedAttempt = attemptRef.current + 1;
-    telemetry.counter('connection.retry', 1, {
-      online,
-      ...(kind ? { failureKind: kind } : {}),
-    });
     // Publish after the effect commit. Synchronous state writes in an effect
     // add a render pass without changing the external retry timer.
     const publish = setTimeout(() => {

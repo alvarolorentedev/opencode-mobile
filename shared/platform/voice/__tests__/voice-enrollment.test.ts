@@ -105,6 +105,7 @@ it('reports a rejected native start without its raw message and preserves the pr
     expect.objectContaining({
       operation: 'voice.enrollment', phase: 'stream', reason: 'startup-rejected', statusCode: 'ERR_AUDIO_STREAM_INITIALIZATION',
     }),
+    false,
   );
 });
 
@@ -118,7 +119,7 @@ it('reports missing PCM and releases the recorder after three seconds', async ()
   expect(view.stream.stop).toHaveBeenCalledOnce();
   expect(view.deactivate).toHaveBeenCalledOnce();
   expect(view.save).not.toHaveBeenCalled();
-  expect(view.captureError).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({ reason: 'first-frame-timeout' }));
+  expect(view.captureError).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({ reason: 'first-frame-timeout' }), false);
 });
 
 it('keeps a background cancellation local and ignores late frames', async () => {

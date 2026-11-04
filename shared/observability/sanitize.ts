@@ -51,6 +51,7 @@ const ATTRIBUTE_KEYS = new Set([
   'cacheHit',
   'sessionKind',
   'toolCategory',
+  'contract',
   'notificationKind',
   'permissionStatus',
   'queueDepth',

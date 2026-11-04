@@ -7,10 +7,11 @@ describe('observability sanitization', () => {
     expect(sanitizeAttributes({
       operation: 'transcript',
       outcome: 'success',
+      contract: 'v2',
       prompt: 'secret prompt',
       url: 'https://private.example.test/session/123',
       count: 3,
-    })).toEqual({ operation: 'transcript', outcome: 'success', count: 3 });
+    })).toEqual({ operation: 'transcript', outcome: 'success', contract: 'v2', count: 3 });
   });
 
   it('scrubs URLs, paths, credentials and token-like values from free text', () => {

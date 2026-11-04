@@ -187,12 +187,6 @@ export function createObservability(options: Options = {}): Observability {
     if (startupMarks.has(safePhase)) return;
     startupMarks.add(safePhase);
     const durationMs = Math.max(0, Date.now() - startedAt);
-    let histogram = histograms.get('app.startup.duration');
-    if (!histogram) {
-      histogram = pipeline.meter.createHistogram('app.startup.duration', { unit: 'ms' });
-      histograms.set('app.startup.duration', histogram);
-    }
-    histogram.record(durationMs, otelAttributes({ ...attrs, phase: safePhase }));
     emitLocal({ level: 'info', name: 'app.startup', attrs: { ...attrs, phase: safePhase, durationMs }, message: `startup ${safePhase}` });
   };
 

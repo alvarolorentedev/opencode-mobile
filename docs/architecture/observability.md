@@ -1,6 +1,6 @@
 # Observability and Diagnostics
 
-Related: [ADR 0020](../adr/0020-local-first-observability-and-otlp.md) · [Network resilience](network-resilience.md) · [F-Droid](../engineering/fdroid.md)
+Related: [ADR 0020](../adr/0020-local-first-observability-and-otlp.md) · [ADR 0029](../adr/0029-minimal-remote-telemetry.md) · [Network resilience](network-resilience.md) · [F-Droid](../engineering/fdroid.md)
 
 OpenCode Mobile records diagnostics locally by default and treats remote
 telemetry as an explicit, category-scoped opt-in. The instrumentation API is
@@ -30,14 +30,10 @@ it does not own a second diagnostics store.
 Use the lightweight client from application code:
 
 ```ts
-import { telemetry, withSpan } from '@/shared/observability/client';
+import { telemetry } from '@/shared/observability/client';
 
 telemetry.info('workspace.opened', { kind: 'refresh' });
-telemetry.counter('connection.attempt', 1, { kind: 'cloud-link' });
-await withSpan('workspace.load', { operation: 'project' }, async (span) => {
-  span.setAttribute('outcome', 'success');
-  return loadWorkspace();
-});
+telemetry.counter('server.contract', 1, { contract: 'v2' });
 ```
 
 The client is a no-op until `initializeObservability()` mounts the application
@@ -53,6 +49,9 @@ Stable rules:
   terminal output, URLs, credentials, headers, paths, tokens or user input.
 - Metric labels must be bounded enums or short safe values. Never use project,
   session, request or server identifiers as labels.
+- The only remote metric is `server.contract` with a `v1`/`v2` label, recorded
+  once per server per launch. Do not add metrics or spans without an explicit
+  product request.
 - Trace/span IDs are random per operation; the session ID is random per launch.
   They are correlation aids, not installation identifiers.
 
@@ -77,19 +76,21 @@ Stable rules:
 ## Remote telemetry
 
 Remote export is optional and disabled when no OTLP credentials are configured
-or in FOSS builds. The master switch and the crash/performance categories are
-stored with the existing preferences. Defaults are enabled; a build without a
-backend still makes no network requests because no exporter is constructed.
+or in FOSS builds. The master switch and the crash/usage categories are stored
+with the existing preferences. Defaults are enabled; a build without a backend
+still makes no network requests because no exporter is constructed.
 
 The exporter is a generic OTLP/HTTP exporter:
 
-- Crash consent sends errors reported through `captureError` as OTLP logs.
-  Named logs such as `telemetry.error()` stay local. The log queue checks both
-  the master switch and Crash reports when accepting and exporting records.
-  Turning either off retires the current log batch, including when Performance
-  stays enabled. Re-enabling starts a fresh batch.
-- Performance consent sends sampled spans as OTLP traces and aggregated
-  counters/gauges/histograms as OTLP metrics.
+- Crash consent sends only unhandled exceptions and fatal JavaScript errors
+  reported through `captureError` as OTLP logs. Handled domain failures, HTTP
+  request failures and named logs such as `telemetry.error()` stay local. The
+  log queue checks both the master switch and Crash reports when accepting and
+  exporting records. Turning either off retires the current log batch, including
+  when Usage stays enabled. Re-enabling starts a fresh batch.
+- Usage consent sends only the `server.contract` metric (`v1`/`v2`, recorded
+  once per server per launch) as OTLP metrics. No spans are emitted; HTTP request
+  traces were removed to stay within the Grafana metrics and traces budget.
 - Routine logs are never sent remotely.
 - OTel batch processors use memory-only bounded queues (100 records, batches of
   20, 30 s interval). The SDK owns retry/backoff; queues are shut down and
@@ -134,17 +135,14 @@ enrollment), capture phase, reason, and outcome. When available, they also carry
 the attempt number, recognizer mode, a numeric recognizer status or known
 recorder error code, and elapsed
 milliseconds. Retry, cancellation, and expected input errors stay local.
-Unexpected terminal failures appear in `errors.jsonl` and are eligible for
-remote logs under Crash reports. Voice diagnostics contain no audio, recognized
-text, embeddings, device identifiers, or native exception messages.
+Unexpected terminal failures appear in `errors.jsonl` as local-only records;
+they are never uploaded. Voice diagnostics contain no audio, recognized text,
+embeddings, device identifiers, or native exception messages.
 
-For a configured Android release build, reproduce a terminal voice failure with
-remote telemetry and Crash reports enabled. Confirm the failure locally, then
-allow the 30-second batch interval and look in Grafana Explore under Loki for
-the `opencode-mobile` service, app build, and `operation` field. Match the
-`reason` against the local record. Repeat with Crash reports off and Performance
-on. The failure should still appear locally. Enable Crash reports again and
-check that only a new failure reaches Loki.
+To inspect a terminal voice failure, open Settings → Diagnostics → Recent
+activity or export a report. The failure appears in `errors.jsonl` and recent
+activity. It is not expected in Grafana because handled voice failures stay
+local; only unhandled and fatal errors are uploaded.
 
 ### Source maps and native crashes
 
@@ -191,8 +189,10 @@ See [F-Droid](../engineering/fdroid.md).
 ## Adding instrumentation
 
 1. Prefer an existing owning hook or service; do not add a parallel counter.
-2. Add a metric for volume/latency and a log only for state changes or failures.
-3. Use `withSpan` for operations with a start/end; keep labels bounded.
+2. Do not add metrics or spans by default. Add one only when the product
+   explicitly asks for a bounded signal, and keep labels to short enums.
+3. Use logs for local state changes and failures; routine logs are never
+   uploaded.
 4. Never log payloads, URLs, IDs or user text. Add new attribute keys to the
    allowlist only after a privacy review.
 5. Add a colocated Vitest case when the instrumentation changes a decision or a

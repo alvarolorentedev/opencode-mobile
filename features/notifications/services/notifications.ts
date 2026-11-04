@@ -139,10 +139,8 @@ async function scheduleLocalNotification(title: string, body: string, data?: Rec
       content: { ...buildTaskFinishedContent(title, body), ...(data ? { data } : {}) },
       trigger: Platform.OS === 'android' ? { channelId: TASK_FINISHED_CHANNEL_ID } : null,
     });
-    telemetry.counter('notification.schedule', 1, { kind: 'completion', outcome: 'success' });
     return id;
   } catch (error) {
-    telemetry.counter('notification.schedule', 1, { kind: 'completion', outcome: 'failure' });
     telemetry.warn('notification.schedule.failed', { kind: 'completion' });
     throw error;
   }
@@ -189,9 +187,7 @@ async function scheduleAttentionNotification(pending: PendingNotificationSession
       },
       trigger: Platform.OS === 'android' ? { channelId: TASK_ATTENTION_CHANNEL_ID } : null,
     });
-    telemetry.counter('notification.schedule', 1, { kind: 'attention', outcome: 'success' });
   } catch (error) {
-    telemetry.counter('notification.schedule', 1, { kind: 'attention', outcome: 'failure' });
     telemetry.warn('notification.schedule.failed', { kind: 'attention' });
     throw error;
   }
@@ -268,7 +264,6 @@ if (Platform.OS !== 'web' && !TaskManager.isTaskDefined(CHAT_COMPLETION_TASK_NAM
 
       return BackgroundTask.BackgroundTaskResult.Success;
     } catch {
-      telemetry.counter('notification.monitor', 1, { outcome: 'failure' });
       return BackgroundTask.BackgroundTaskResult.Failed;
     }
   });
@@ -298,7 +293,6 @@ export async function ensureNotificationPermissionsAsync() {
   const permissions = current.granted || !current.canAskAgain
     ? current
     : await Notifications.requestPermissionsAsync();
-  telemetry.counter('notification.permission', 1, { permissionStatus: permissions.granted ? 'granted' : 'denied' });
   return permissions;
 }
 

@@ -73,7 +73,6 @@ export function useOpencodeRealtime({ catalogClient, activeProjectPath, connecte
     reconcilerRef.current?.reset();
     if (!connected || !activeProjectPath || !online) {
       setEventStreamStatus('idle');
-      telemetry.gauge('sse.connected', 0);
       return;
     }
     const controller = new AbortController();
@@ -102,8 +101,6 @@ export function useOpencodeRealtime({ catalogClient, activeProjectPath, connecte
         setEventStreamStatus(retryDelay === RETRY_RESET_MS ? 'connecting' : 'error');
         const attempt = new AbortController();
         attemptController = attempt;
-        const attemptStartedAt = Date.now();
-        telemetry.counter('sse.connect.attempt', 1);
         let streamError: unknown;
         let timedOut = false;
         // A TCP/TLS handshake can stall without ever producing a stream. Bound
@@ -118,8 +115,6 @@ export function useOpencodeRealtime({ catalogClient, activeProjectPath, connecte
             clearTimeout(connectTimer);
             lastEnvelopeAt = Date.now();
             setEventStreamStatus('connected');
-            telemetry.gauge('sse.connected', 1);
-            telemetry.histogram('sse.connect.duration', Math.max(0, Date.now() - attemptStartedAt), 'ms');
             if (!stableSince) stableSince = Date.now();
             if (Date.now() - stableSince >= STABLE_MS) retryDelay = RETRY_RESET_MS;
             if (!reconciled) {
@@ -143,9 +138,6 @@ export function useOpencodeRealtime({ catalogClient, activeProjectPath, connecte
           continue;
         }
         const failureKind = classifyConnectionFailure(streamError ?? new Error('OpenCode event stream ended.'));
-        telemetry.gauge('sse.connected', 0);
-        telemetry.counter('sse.reconnect', 1, { failureKind });
-        telemetry.histogram('sse.reconnect.delay', retryDelay, 'ms', { failureKind });
         if (isAuthConnectionFailure(failureKind)) {
           // Revoked or invalid credentials cannot heal by reconnecting. Stop the
           // loop and let the provider surface recovery; a client/settings change
@@ -198,7 +190,6 @@ export function useOpencodeRealtime({ catalogClient, activeProjectPath, connecte
         backgroundedFor,
         foregroundThreshold: SSE_FOREGROUND_CYCLE_MS,
       })) {
-        telemetry.counter('sse.foreground-cycle', 1);
         requestRestart();
       }
     });
@@ -214,7 +205,6 @@ export function useOpencodeRealtime({ catalogClient, activeProjectPath, connecte
       // One cycle per window; a subscription that never delivers an envelope is
       // retried on the next window instead of looping here.
       lastEnvelopeAt = Date.now();
-      telemetry.counter('sse.watchdog-cycle', 1);
       requestRestart();
     }, WATCHDOG_TICK_MS);
     return () => {
@@ -233,14 +223,11 @@ export function useOpencodeRealtime({ catalogClient, activeProjectPath, connecte
     // stream it is the primary transport. Repeated failed passes back off so an
     // offline or overloaded link does not receive a request every five seconds.
     const streamConnected = eventStreamStatus === 'connected';
-    telemetry.gauge('polling.active', streamConnected ? 0 : 1);
-    if (!streamConnected) telemetry.counter('polling.fallback', 1);
     let cancelled = false;
     let timer: ReturnType<typeof setTimeout> | undefined;
     let failures = 0;
     const tick = async () => {
       if (cancelled) return;
-      telemetry.counter('polling.tick', 1, { eventStreamStatus: streamConnected ? 'connected' : 'degraded' });
       await reconcile();
       if (cancelled) return;
       failures = pollFailedRef.current ? Math.min(failures + 1, 3) : 0;

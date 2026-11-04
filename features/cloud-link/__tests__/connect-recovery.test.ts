@@ -73,10 +73,18 @@ async function fixture({ expired = false, missing = false, storedSession = true,
     isConnectPurchase: () => true, selectConnectOffers: () => [{ key: 'monthly' }],
     connectPurchaseProof: async () => ({ store: 'google', purchaseToken: 'proof' }),
   };
+  const contractMetrics: unknown[][] = [];
+  const telemetry = {
+    counter: (...args: unknown[]) => { contractMetrics.push(args); },
+    info: () => {},
+    warn: () => {},
+    markStartup: () => {},
+  };
   const imports: Record<string, any> = {
     react: runtime.react,
     'react-i18next': { useTranslation: () => ({ t: (key: string) => key }) },
     'react-native': native,
+    '@/shared/observability/client': { telemetry },
     "@/shared/contracts/cloud-link": connect,
     "@/shared/protocol/cloud-link/connect": connect,
     "@/shared/storage/cloud-link": connect,
@@ -159,7 +167,7 @@ async function fixture({ expired = false, missing = false, storedSession = true,
     const connectionProfiles = profileHook.useConnectionProfiles({ clearCapabilitiesSnapshots: async () => {}, settings, switchConnection, updateSettings, profiles: savedProfiles, setProfiles });
     return { ...complete, settings, connection: result.connection, activeProjectPath, connectionProfiles };
   }, {});
-  return { runtime, profile, profiles, get accesses() { return accessCalls; }, get pairClaims() { return pairClaims; }, get catalogs() { return catalogs; }, get resets() { return resets; }, get softResets() { return softResets; },
+  return { runtime, profile, profiles, contractMetrics, get accesses() { return accessCalls; }, get pairClaims() { return pairClaims; }, get catalogs() { return catalogs; }, get resets() { return resets; }, get softResets() { return softResets; },
     failAccess(value: any) { accessFailure = value; }, failCatalog(value: any) { catalogFailure = value; }, blockAccess() { accessGate = deferred<void>(); return accessGate; },
     advance(ms: number) { now += ms; }, appState(state: string) { native.AppState.currentState = state; [...listeners].forEach((listener: any) => listener(state)); runtime.flush(); },
   };
@@ -173,6 +181,10 @@ async function fixture({ expired = false, missing = false, storedSession = true,
   assert.equal(f.accesses, 0);
   assert.equal(f.runtime.value.connection.status, 'connected');
   assert.equal(f.runtime.value.connectionProfiles.profiles.length, 1);
+  assert.equal(f.contractMetrics.length, 1);
+  assert.equal(f.contractMetrics[0][0], 'server.contract');
+  assert.equal(f.contractMetrics[0][1], 1);
+  assert.equal((f.contractMetrics[0][2] as { contract: string }).contract, 'v2');
   f.runtime.unmount();
 }
 // Returning after a network error reconnects without rotating valid credentials.

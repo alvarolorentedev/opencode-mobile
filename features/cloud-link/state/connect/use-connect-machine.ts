@@ -116,18 +116,13 @@ export function useConnectState({ controlPlaneUrl, setControlPlaneUrl, switchCon
     if (!enabled || guard.current || (guard !== lock && lock.current)) return false;
     guard.current = true;
     transition({ type: 'started', preserveError });
-    const startedAt = Date.now();
     const generation = scopeGeneration.current;
     let nextControlPlane: string | undefined;
     try {
       const result = await action();
-      telemetry.histogram('cloud-link.action.duration', Math.max(0, Date.now() - startedAt), 'ms');
-      telemetry.counter('cloud-link.action', 1, { outcome: 'success' });
       return result !== false;
     }
     catch (reason) {
-      telemetry.histogram('cloud-link.action.duration', Math.max(0, Date.now() - startedAt), 'ms');
-      telemetry.counter('cloud-link.action', 1, { outcome: 'failure' });
       telemetry.warn('cloud-link.failed', { reason: reason instanceof ConnectPurchaseEnvironmentChange ? 'environment-change' : 'action' });
       if (generation !== scopeGeneration.current) return false;
       if (reason instanceof ConnectPurchaseEnvironmentChange) nextControlPlane = reason.controlPlaneUrl;
@@ -302,7 +297,6 @@ export function useConnectState({ controlPlaneUrl, setControlPlaneUrl, switchCon
     if (!enabled) return;
     const listener = AppState.addEventListener('change', (state) => {
       if (state !== 'active' || initialization !== 'ready' || activation.current) return;
-      telemetry.counter('cloud-link.foreground-refresh', 1);
       void perform(() => refreshRef.current());
     });
     return () => listener.remove();
@@ -370,7 +364,6 @@ export function useConnectState({ controlPlaneUrl, setControlPlaneUrl, switchCon
   }, [initialization, perform, phase]);
 
   const retry = useCallback(() => {
-    telemetry.counter('cloud-link.retry', 1);
     if (lock.current) return Promise.resolve(false);
     if (!apiRef.current || (initialization === 'error' && !pendingPurchase.current)) {
       setError(undefined); setStoreReady(false); setInitialization('loading');

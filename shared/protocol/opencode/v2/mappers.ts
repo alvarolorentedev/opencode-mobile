@@ -2,15 +2,7 @@ import type { SessionMessageRecord } from '@/shared/presentation/format/types';
 import type { Part, ToolPart } from '@/shared/protocol/opencode/types';
 import type { PendingQuestionPrompt, PendingQuestionRequest } from '@/shared/protocol/opencode/client';
 import { extractErrorMessage, numberField, stringField } from '@/shared/protocol/opencode/v2/fields';
-import { telemetry } from '@/shared/observability/client';
 import type { V2Context, V2Form, V2Message, V2Permission } from '@/shared/protocol/opencode/v2/shared';
-
-const TOOL_CATEGORY_PATTERN = /^(bash|shell|exec|edit|write|read|grep|glob|list|webfetch|fetch|task|todo)/i;
-function classifyToolCategory(name: unknown) {
-  const value = typeof name === 'string' ? name.toLowerCase() : '';
-  const match = TOOL_CATEGORY_PATTERN.exec(value);
-  return match ? match[1].toLowerCase() : 'other';
-}
 
 export function toFileDetail(file: unknown) {
   const record = (file ?? {}) as Record<string, unknown>;
@@ -70,7 +62,6 @@ function toToolDetail(messageId: string, sessionID: string, index: number, tool:
   }
 
   if (status === 'error') {
-    telemetry.counter('tool.interaction.failed', 1, { toolCategory: classifyToolCategory(tool.name) });
     return {
       ...base,
       state: {
@@ -216,9 +207,6 @@ export function toMessageRecord(message: V2Message, sessionID: string): SessionM
       tool: 'shell',
       state: { input: { command }, title: 'Shell' },
     };
-    if (status === 'error' || (exit !== undefined && exit !== 0)) {
-      telemetry.counter('tool.interaction.failed', 1, { toolCategory: 'shell' });
-    }
     const part: ToolPart = status === 'running'
       ? { ...base, state: { ...base.state, status: 'running', time: { start: started } } }
       : status === 'exited' && exit === 0

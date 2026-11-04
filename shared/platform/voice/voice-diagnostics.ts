@@ -39,7 +39,7 @@ export function recordVoiceDiagnostic(outcome: 'retry' | 'cancelled' | 'blocked'
     telemetry.captureError({
       name: 'VoiceCaptureError',
       message: details.source === 'enrollment' ? 'Voice enrollment failed' : 'System voice capture failed',
-    }, attrs);
+    }, attrs, false);
   } else {
     telemetry.info(`voice.${outcome}`, attrs);
   }

@@ -34,6 +34,7 @@ export function useConnectionLifecycle(entry: ConnectionRecord, setup: ConnectSe
   const invalidateWorkflows = useCallback(() => { for (const listener of invalidations.current) listener(); }, []);
   const inFlight = useRef<{ revision: number; promise: Promise<ConnectionState> } | undefined>(undefined);
   const controller = useRef<AbortController | undefined>(undefined);
+  const countedContract = useRef<ServerContract | undefined>(undefined);
   const preparedUpdate = useRef<{ revision: number; settings: OpencodeConnectionSettings } | undefined>(undefined);
   const connect = useCallback((): Promise<ConnectionState> => {
     const { entry, setup, t, identity } = latest.current;
@@ -45,8 +46,6 @@ export function useConnectionLifecycle(entry: ConnectionRecord, setup: ConnectSe
     const id = ++operation.current;
     const current = () => operation.current === id && !attempt.signal.aborted;
     const connectionKind = entry.settings.connect ? 'cloud-link' : 'direct';
-    const startedAt = Date.now();
-    telemetry.counter('connection.attempt', 1, { kind: connectionKind });
     dispatch({ type: 'start', operation: id, message: `Connecting to ${getNormalizedServerUrl(entry.settings.serverUrl)}...` });
     const promise = (async (): Promise<ConnectionState> => {
       let settings = entry.settings;
@@ -71,8 +70,10 @@ export function useConnectionLifecycle(entry: ConnectionRecord, setup: ConnectSe
             await fetchProjectCatalog(cache, { ...identity, connectionScope: getConnectionScope(settings), authRevision: identity.authRevision + (settings.password !== entry.settings.password || settings.username !== entry.settings.username ? 1 : 0) }, client, true);
             if (!current()) return latest.current.state.connection;
             const connection: ConnectionState = { status: 'connected', message: `Connected to ${getNormalizedServerUrl(settings.serverUrl)} (OpenCode ${contract === 'v2' ? '2.x' : '1.x'})`, checkedAt: Date.now() };
-            telemetry.histogram('connection.duration', Math.max(0, Date.now() - startedAt), 'ms', { kind: connectionKind });
-            telemetry.counter('connection.result', 1, { kind: connectionKind, outcome: 'success' });
+            if (countedContract.current !== contract) {
+              countedContract.current = contract;
+              telemetry.counter('server.contract', 1, { contract });
+            }
             telemetry.info('connection.connected', { kind: connectionKind, connected: true });
             telemetry.markStartup('connection-ready', { kind: connectionKind });
             dispatch({ type: 'settle', operation: id, connection, contract });
@@ -92,8 +93,6 @@ export function useConnectionLifecycle(entry: ConnectionRecord, setup: ConnectSe
           }
         }
         const connection: ConnectionState = { status: 'error', kind, message, checkedAt: Date.now(), retryableStartup: Boolean(settings.connect) && isRetryableCloudLinkStartupError(error) };
-        telemetry.histogram('connection.duration', Math.max(0, Date.now() - startedAt), 'ms', { kind: connectionKind });
-        telemetry.counter('connection.result', 1, { kind: connectionKind, outcome: 'failure', failureKind: connection.kind });
         telemetry.warn('connection.failed', { kind: connectionKind, failureKind: connection.kind, retryable: connection.retryableStartup });
         if (connection.kind === 'auth' || connection.kind === 'entitlement') invalidateWorkflows();
         dispatch({ type: 'settle', operation: id, connection });

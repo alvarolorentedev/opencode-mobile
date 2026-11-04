@@ -17,12 +17,7 @@ vi.mock('expo/fetch', () => ({ fetch: (...args: unknown[]) => (globalThis.fetch 
 vi.mock('@/shared/network/data-usage', () => ({ recordBytes: vi.fn(), recordRequest: vi.fn() }));
 vi.mock('@/shared/network/request-stats', () => ({ recordRequestStart: () => () => {} }));
 vi.mock('@/shared/observability/client', () => ({
-  telemetry: {
-    startSpan: () => ({ end: vi.fn() }),
-    histogram: vi.fn(),
-    counter: vi.fn(),
-    logWithSpan: vi.fn(),
-  },
+  telemetry: { warn: vi.fn() },
 }));
 vi.mock('@/shared/contracts/cloud-link', () => ({ getConnectCredentialError: () => undefined }));
 vi.mock('@/shared/protocol/opencode/client/types', () => ({ defaultConnectionSettings: { serverUrl: 'http://localhost' } }));
