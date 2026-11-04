@@ -1,6 +1,6 @@
 import { cn } from '@/shared/ui/cn';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
@@ -16,6 +16,10 @@ export function WorkspaceBreadcrumb({ compact = false, testIDPrefix = 'workspace
   const { activeProject, activeCheckout, multiple } = useProjectCheckouts();
   const [projectVisible, setProjectVisible] = useState(false);
   const [worktreeVisible, setWorktreeVisible] = useState(false);
+  // A worktree picker opened for one project must not reappear when a later
+  // project has checkouts again.
+  // eslint-disable-next-line react-hooks/set-state-in-effect -- switching projects dismisses the previous project's worktree picker.
+  useEffect(() => { setWorktreeVisible(false); }, [activeProject?.path, multiple]);
   const projectLabel = activeProject?.label || t('chat:header.chooseProject');
   const worktreeLabel = activeCheckout?.isMain ? t('project:worktrees.local') : activeCheckout?.name;
   const branch = activeCheckout?.branch;

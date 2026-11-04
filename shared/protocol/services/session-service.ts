@@ -138,6 +138,7 @@ export function executeShell(client: ScopedOpencodeClient, sessionId: string, co
 }
 
 export function listServerProjects(client: ScopedOpencodeClient) { return createSessionAdapter(client).catalogProjects(); }
+export function listArchivedServerProjects(client: ScopedOpencodeClient) { return createSessionAdapter(client).catalogProjects({ archived: true }); }
 export function readCatalogLocation(client: ScopedOpencodeClient) { return createSessionAdapter(client).catalogLocation(); }
 export function combineProjectCatalog(client: ScopedOpencodeClient, projects: Project[], location: Awaited<ReturnType<typeof readCatalogLocation>>) {
   return createSessionAdapter(client).combineCatalog(projects, location);

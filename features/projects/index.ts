@@ -2,6 +2,7 @@ export type { FileClipboard } from './state/use-file-clipboard';
 export type { ProjectActionsInput } from './model/action-inputs';
 export type { ProjectFilesContextValue } from './model/types';
 export { ProjectOptions } from './ui/project-options';
+export { ProjectDirectoryPicker } from './ui/project-directory-picker';
 export { ProjectPicker } from './ui/project-picker';
 export { ProjectPickerButton } from './ui/project-picker';
 export type { ProjectsContextValue } from './model/types';

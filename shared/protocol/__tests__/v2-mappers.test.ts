@@ -109,6 +109,11 @@ describe('v2 response mappers', () => {
       vcs: 'git',
       time: { created: 1, initialized: 2 },
     });
+    expect(toProjectView({ id: 'project-2', canonical: '/workspace/old', time: { created: 1, updated: 2, archived: 3 }, sandboxes: [] } as never).time).toEqual({
+      created: 1,
+      initialized: 2,
+      archived: 3,
+    });
   });
 
   it('maps model capabilities, limits, cost tiers, and reasoning signal', () => {

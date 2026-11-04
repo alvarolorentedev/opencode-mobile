@@ -99,7 +99,19 @@
     "selectLabel": "{{name}}を選択",
     "removeLabel": "{{name}}を削除",
     "empty": "利用可能なプロジェクトはありません。",
-    "changeProjectWithName": "プロジェクトを変更。{{name}}"
+    "changeProjectWithName": "プロジェクトを変更。{{name}}",
+    "showArchived": "アーカイブされたプロジェクトを表示",
+    "showArchivedHint": "フォルダーが見つからなくなった後、OpenCode がアーカイブしたプロジェクト。",
+    "archivedTitle": "OpenCode でアーカイブ済み",
+    "archivedHint": "これらのプロジェクトはサーバーによってアーカイブされました。復元するにはフォルダーが必要です。",
+    "archivedEmpty": "アーカイブされたプロジェクトはありません。",
+    "restore": "復元",
+    "browse": "サーバーのフォルダーを参照",
+    "browseHint": "OpenCode サーバー上のフォルダー。",
+    "up": "上へ",
+    "selectFolder": "このフォルダーを選択",
+    "enterPathManually": "パスを手動で入力",
+    "browseEmpty": "ここにフォルダーはありません。"
   },
   "errors": {
     "refreshProject": "プロジェクトを更新できませんでした。",
@@ -108,6 +120,9 @@
     "createWorktree": "ワークツリーを作成できませんでした。",
     "removeWorktree": "ワークツリーを削除できませんでした。",
     "addProject": "プロジェクトを追加できませんでした。",
-    "downloadFile": "ファイルをダウンロードできませんでした。"
+    "downloadFile": "ファイルをダウンロードできませんでした。",
+    "archivedProjects": "アーカイブされたプロジェクトを読み込めませんでした。",
+    "restoreProject": "プロジェクトを復元できませんでした。",
+    "listDirectory": "サーバーのフォルダーを一覧表示できませんでした。"
   }
 }

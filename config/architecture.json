@@ -94,6 +94,7 @@
     "features/projects/index.ts": [
       "FileClipboard",
       "ProjectActionsInput",
+      "ProjectDirectoryPicker",
       "ProjectFilesContextValue",
       "ProjectOptions",
       "ProjectPicker",

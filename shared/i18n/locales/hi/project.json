@@ -99,7 +99,19 @@
     "selectLabel": "{{name}} चुनें",
     "removeLabel": "{{name}} हटाएं",
     "empty": "कोई प्रोजेक्ट उपलब्ध नहीं।",
-    "changeProjectWithName": "प्रोजेक्ट बदलें। {{name}}"
+    "changeProjectWithName": "प्रोजेक्ट बदलें। {{name}}",
+    "showArchived": "संग्रहीत प्रोजेक्ट दिखाएं",
+    "showArchivedHint": "जिन प्रोजेक्ट का फ़ोल्डर गायब होने पर OpenCode ने उन्हें संग्रहीत किया।",
+    "archivedTitle": "OpenCode पर संग्रहीत",
+    "archivedHint": "सर्वर ने इन प्रोजेक्ट को संग्रहीत किया है। पुनर्स्थापित करने के लिए फ़ोल्डर का होना आवश्यक है।",
+    "archivedEmpty": "कोई संग्रहीत प्रोजेक्ट नहीं।",
+    "restore": "पुनर्स्थापित करें",
+    "browse": "सर्वर फ़ोल्डर ब्राउज़ करें",
+    "browseHint": "OpenCode सर्वर पर फ़ोल्डर।",
+    "up": "ऊपर",
+    "selectFolder": "यह फ़ोल्डर चुनें",
+    "enterPathManually": "पथ मैन्युअल रूप से दर्ज करें",
+    "browseEmpty": "यहाँ कोई फ़ोल्डर नहीं।"
   },
   "errors": {
     "refreshProject": "प्रोजेक्ट रीफ़्रेश नहीं किया जा सका।",
@@ -108,6 +120,9 @@
     "createWorktree": "वर्कट्री बनाई नहीं जा सकी।",
     "removeWorktree": "वर्कट्री हटाई नहीं जा सकी।",
     "addProject": "प्रोजेक्ट जोड़ा नहीं जा सका।",
-    "downloadFile": "फ़ाइल डाउनलोड नहीं हो सकी।"
+    "downloadFile": "फ़ाइल डाउनलोड नहीं हो सकी।",
+    "archivedProjects": "संग्रहीत प्रोजेक्ट लोड नहीं किए जा सके।",
+    "restoreProject": "प्रोजेक्ट पुनर्स्थापित नहीं किया जा सका।",
+    "listDirectory": "सर्वर फ़ोल्डर सूचीबद्ध नहीं किया जा सका।"
   }
 }

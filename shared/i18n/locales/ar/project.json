@@ -99,7 +99,19 @@
     "selectLabel": "حدد {{name}}",
     "removeLabel": "إزالة {{name}}",
     "empty": "لا توجد مشاريع متاحة.",
-    "changeProjectWithName": "تغيير المشروع. {{name}}"
+    "changeProjectWithName": "تغيير المشروع. {{name}}",
+    "showArchived": "إظهار المشاريع المؤرشفة",
+    "showArchivedHint": "المشاريع التي أرشفها OpenCode بعد اختفاء مجلدها.",
+    "archivedTitle": "مؤرشف على OpenCode",
+    "archivedHint": "أرشف الخادم هذه المشاريع. تتطلب الاستعادة وجود المجلد.",
+    "archivedEmpty": "لا توجد مشاريع مؤرشفة.",
+    "restore": "استعادة",
+    "browse": "تصفح مجلدات الخادم",
+    "browseHint": "المجلدات على خادم OpenCode.",
+    "up": "أعلى",
+    "selectFolder": "اختر هذا المجلد",
+    "enterPathManually": "أدخل المسار يدويًا",
+    "browseEmpty": "لا توجد مجلدات هنا."
   },
   "errors": {
     "refreshProject": "لا يمكن تحديث المشروع.",
@@ -108,6 +120,9 @@
     "createWorktree": "لا يمكن إنشاء شجرة العمل.",
     "removeWorktree": "لا يمكن إزالة شجرة العمل.",
     "addProject": "لا يمكن إضافة المشروع.",
-    "downloadFile": "تعذر تنزيل الملف."
+    "downloadFile": "تعذر تنزيل الملف.",
+    "archivedProjects": "لا يمكن تحميل المشاريع المؤرشفة.",
+    "restoreProject": "لا يمكن استعادة المشروع.",
+    "listDirectory": "لا يمكن سرد مجلد الخادم."
   }
 }

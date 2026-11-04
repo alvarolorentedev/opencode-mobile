@@ -60,12 +60,19 @@ export function createState(scenario) {
     id: 'project-secondary',
     canonical: '/workspace/secondary-project',
   };
+  // Archived because its folder disappeared; resolving the directory restores it.
+  const archivedProject = {
+    ...project,
+    id: 'project-archived',
+    canonical: '/workspace/archived-project',
+    time: { ...project.time, archived: now() - 20_000 },
+  };
 
   const state = {
     scenario,
     rootPath,
     project,
-    projects: [project, secondaryProject],
+    projects: [project, secondaryProject, archivedProject],
     nextSessionId: 1,
     nextMessageId: 1,
     nextPendingId: 1,

@@ -99,7 +99,19 @@
     "selectLabel": "Sélectionner {{name}}",
     "removeLabel": "Retirer {{name}}",
     "empty": "Aucun projet disponible.",
-    "changeProjectWithName": "Changer de projet. {{name}}"
+    "changeProjectWithName": "Changer de projet. {{name}}",
+    "showArchived": "Afficher les projets archivés",
+    "showArchivedHint": "Projets archivés par OpenCode après la disparition de leur dossier.",
+    "archivedTitle": "Archivés sur OpenCode",
+    "archivedHint": "Ces projets ont été archivés par le serveur. La restauration nécessite que le dossier existe.",
+    "archivedEmpty": "Aucun projet archivé.",
+    "restore": "Restaurer",
+    "browse": "Parcourir les dossiers du serveur",
+    "browseHint": "Dossiers sur le serveur OpenCode.",
+    "up": "Remonter",
+    "selectFolder": "Choisir ce dossier",
+    "enterPathManually": "Saisir le chemin manuellement",
+    "browseEmpty": "Aucun dossier ici."
   },
   "errors": {
     "refreshProject": "Impossible d'actualiser le projet.",
@@ -108,6 +120,9 @@
     "createWorktree": "Impossible de créer l'arbre de travail.",
     "removeWorktree": "Impossible de retirer l'arbre de travail.",
     "addProject": "Impossible d'ajouter le projet.",
-    "downloadFile": "Impossible de télécharger le fichier."
+    "downloadFile": "Impossible de télécharger le fichier.",
+    "archivedProjects": "Impossible de charger les projets archivés.",
+    "restoreProject": "Impossible de restaurer le projet.",
+    "listDirectory": "Impossible de lister le dossier du serveur."
   }
 }

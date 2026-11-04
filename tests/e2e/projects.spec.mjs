@@ -61,6 +61,7 @@ test('file clipboard survives workspace switches and folder collisions stay bloc
   await entryActions(page, 'src'); await page.getByTestId('project-entry-action-copy').click();
   const project = workspaceProjectButton(page);
   await project.click(); await page.getByTestId('project-add-button').click();
+  await page.getByTestId('project-directory-manual').click();
   await page.getByTestId('project-add-path').fill('/workspace/secondary-project');
   await page.getByTestId('project-add-submit').click();
   await expect(project).toContainText('secondary-project');
@@ -101,6 +102,7 @@ test('Chat and Project use the same project picker @smoke', async ({ page, reque
   // Server projects are listed before the user opens them on this connection.
   await expect(page.getByTestId('project-picker').getByRole('button', { name: 'Select secondary-project' })).toBeVisible();
   await page.getByTestId('project-add-button').click();
+  await page.getByTestId('project-directory-manual').click();
   await page.getByTestId('project-add-path').fill('/workspace/secondary-project');
   await page.getByTestId('project-add-submit').click();
   await expect(page.getByText('secondary-project', { exact: true }).first()).toBeVisible();
@@ -119,6 +121,7 @@ test('Chat and Project use the same project picker @smoke', async ({ page, reque
 
   await projectDropdown.click();
   await page.getByTestId('project-add-button').click();
+  await page.getByTestId('project-directory-manual').click();
   await page.getByTestId('project-add-path').fill('/outside/new-project');
   await page.getByTestId('project-add-submit').click();
   await expect(page.getByText('OpenCode could not open that directory. Check the server path.')).toBeVisible();
@@ -200,6 +203,7 @@ test('OpenCode 2 adds a server project from the shared picker @smoke', async ({ 
     await openChatLibrary(page);
     await page.getByTestId('chat-library-project-button').click();
     await page.getByTestId('project-add-button').click();
+    await page.getByTestId('project-directory-manual').click();
     await page.getByTestId('project-add-path').fill('/workspace/v2-new-project');
     await page.getByTestId('project-add-submit').click();
     await expect(chatWorkspaceContext(page)).toContainText('v2-new-project');
@@ -333,6 +337,14 @@ for (const contract of ['v1', 'v2']) {
       // Server projects are visible before they are opened on this connection.
       await expect(picker.getByRole('button', { name: 'Select secondary-project' })).toBeVisible();
       await picker.getByTestId('project-add-button').click();
+      // The add form starts on the server folder browser.
+      await expect(picker.getByTestId('project-directory-picker')).toBeVisible();
+      await expect(picker.getByTestId('project-directory-entry-src')).toBeVisible();
+      await picker.getByTestId('project-directory-entry-src').click();
+      await expect(picker.getByTestId('project-directory-path')).toContainText('/workspace/demo-project/src');
+      await picker.getByTestId('project-directory-up').click();
+      await expect(picker.getByTestId('project-directory-path')).toContainText('/workspace/demo-project');
+      await picker.getByTestId('project-directory-manual').click();
       await picker.getByTestId('project-add-path').fill('/workspace/secondary-project');
       await picker.getByTestId('project-add-submit').click();
       await page.getByTestId('project-entry-src').click();
@@ -389,7 +401,18 @@ for (const contract of ['v1', 'v2']) {
       // Closing the project removes its local row without touching the server.
       await workspaceProjectButton(page).click();
       await picker.getByTestId('project-remove-/workspace/secondary-project').click();
-      await expect(picker.getByRole('button', { name: 'Select secondary-project' })).toHaveCount(0);
+      await expect(picker.getByTestId('project-remove-/workspace/secondary-project')).toHaveCount(0);
+
+      if (contract === 'v2') {
+        // Server-archived projects stay hidden until the toggle is enabled.
+        await expect(picker.getByRole('button', { name: 'Select archived-project' })).toHaveCount(0);
+        await picker.getByTestId('project-show-archived').click();
+        await expect(picker.getByText('Archived on OpenCode')).toBeVisible();
+        await expect(picker.getByTestId('project-restore-project-archived')).toBeVisible();
+        await picker.getByTestId('project-restore-project-archived').click();
+        await expect(picker.getByTestId('project-restore-project-archived')).toHaveCount(0);
+        await expect(picker.getByRole('button', { name: 'Select archived-project' })).toBeVisible();
+      }
     } finally { server.kill('SIGTERM'); }
   });
 }

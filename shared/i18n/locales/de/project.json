@@ -99,7 +99,19 @@
     "selectLabel": "{{name}} auswählen",
     "removeLabel": "{{name}} entfernen",
     "empty": "Keine Projekte verfügbar.",
-    "changeProjectWithName": "Projekt wechseln. {{name}}"
+    "changeProjectWithName": "Projekt wechseln. {{name}}",
+    "showArchived": "Archivierte Projekte anzeigen",
+    "showArchivedHint": "Projekte, die OpenCode archiviert hat, nachdem ihr Ordner verschwunden ist.",
+    "archivedTitle": "Auf OpenCode archiviert",
+    "archivedHint": "Diese Projekte wurden vom Server archiviert. Zum Wiederherstellen muss der Ordner existieren.",
+    "archivedEmpty": "Keine archivierten Projekte.",
+    "restore": "Wiederherstellen",
+    "browse": "Serverordner durchsuchen",
+    "browseHint": "Ordner auf dem OpenCode-Server.",
+    "up": "Nach oben",
+    "selectFolder": "Diesen Ordner wählen",
+    "enterPathManually": "Pfad manuell eingeben",
+    "browseEmpty": "Keine Ordner hier."
   },
   "errors": {
     "refreshProject": "Der Projekt konnte nicht aktualisiert werden.",
@@ -108,6 +120,9 @@
     "createWorktree": "Der Worktree konnte nicht erstellt werden.",
     "removeWorktree": "Der Worktree konnte nicht entfernt werden.",
     "addProject": "Der Projekt konnte nicht hinzugefügt werden.",
-    "downloadFile": "Die Datei konnte nicht heruntergeladen werden."
+    "downloadFile": "Die Datei konnte nicht heruntergeladen werden.",
+    "archivedProjects": "Archivierte Projekte konnten nicht geladen werden.",
+    "restoreProject": "Das Projekt konnte nicht wiederhergestellt werden.",
+    "listDirectory": "Der Serverordner konnte nicht aufgelistet werden."
   }
 }

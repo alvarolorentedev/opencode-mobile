@@ -13,8 +13,11 @@ import { WorkspaceSelect } from '@/shared/ui/workspace-select';
 import { useWorkspaces } from '@/runtime/workspace';
 import { useWorkspaceProjects } from '@/features/projects/state/use-workspace-projects';
 import { ProjectOptions } from '@/features/projects/ui/project-options';
+import { ArchivedProjectsSection } from '@/features/projects/ui/archived-projects-section';
+import { ProjectDirectoryPicker } from '@/features/projects/ui/project-directory-picker';
 import type { WorkspaceTarget } from '@/shared/contracts/workspace';
 import { OverlaySheet } from '@/shared/ui/overlay-sheet';
+import { Switch } from '@/shared/ui/switch';
 
 import { usePalette } from '@/shared/ui/theme/use-palette';
 
@@ -37,20 +40,25 @@ export function ProjectPicker({ visible, onClose, activePath, onSelected, testID
   const { t } = useTranslation();
 
   const registry = useWorkspaces();
-  const { groups, add, remove } = useWorkspaceProjects();
+  const { groups, add, remove, listDirectories } = useWorkspaceProjects();
   const multipleServers = groups.length > 1;
   const [server, setServer] = useState('');
   const [query, setQuery] = useState('');
   const [addServer, setAddServer] = useState('');
   const [adding, setAdding] = useState(false);
+  const [browsing, setBrowsing] = useState(false);
   const [directory, setDirectory] = useState('');
   const [saving, setSaving] = useState(false);
+  const [showArchived, setShowArchived] = useState(false);
   const [error, setError] = useState<string>();
   const focusConnectionId = groups.some((group) => group.id === registry.focus?.connectionId)
     ? registry.focus?.connectionId ?? ''
     : groups[0]?.id ?? '';
   const addTarget = multipleServers ? addServer : groups[0]?.id;
-  const close = () => { setAdding(false); setDirectory(''); setError(undefined); onClose(); };
+  const startPath = activePath || groups.find((group) => group.id === addTarget)?.projects[0]?.path;
+  const close = () => { setAdding(false); setBrowsing(false); setDirectory(''); setShowArchived(false); setError(undefined); onClose(); };
+  const visibleGroups = groups.filter((group) => !multipleServers || !server || server === group.id);
+  const archivedCapable = visibleGroups.some((group) => group.contract === 'v2');
   const activate = async (target: WorkspaceTarget) => {
     await registry.activate(target);
     onSelected?.();
@@ -58,12 +66,18 @@ export function ProjectPicker({ visible, onClose, activePath, onSelected, testID
   };
   return <OverlaySheet visible={visible} title={t('project:picker.title')} testID={testID} onClose={close}>
     {adding ? <View className={cn(stylesClasses.addForm)}>
-      <Text className={cn("text-muted-foreground")}>{t('project:picker.enterPath')}</Text>
       {multipleServers ? <WorkspaceSelect title={t('common:servers.server')} value={addServer} options={groups.map((group) => ({ value: group.id, label: group.name }))} onChange={setAddServer} /> : null}
-      <TextField testID="project-add-path" label={t('project:picker.serverDirectory')} value={directory} onChangeText={setDirectory} autoCapitalize="none" autoCorrect={false}></TextField>
+      {browsing && addTarget && startPath ? <ProjectDirectoryPicker key={`${addTarget}:${startPath}`} startPath={startPath} testID="project-directory-picker"
+        loadDirectories={(path, signal) => listDirectories(addTarget, path, signal)}
+        onSelect={(path) => { setDirectory(path); setBrowsing(false); }}
+        onCancel={() => setBrowsing(false)} /> : <>
+        <Text className={cn("text-muted-foreground")}>{t('project:picker.enterPath')}</Text>
+        <TextField testID="project-add-path" label={t('project:picker.serverDirectory')} value={directory} onChangeText={setDirectory} autoCapitalize="none" autoCorrect={false}></TextField>
+        {startPath && addTarget ? <Button testID="project-browse-directories" onPress={() => setBrowsing(true)} variant="ghost"><Icon name="folder-search-outline" size={20} /><Text>{t('project:picker.browse')}</Text></Button> : null}
+      </>}
       {error ? <Text className={cn("text-destructive")}>{error}</Text> : null}
       <View className={cn(stylesClasses.formActions)}>
-        <Button disabled={saving} onPress={() => { setAdding(false); setError(undefined); }} variant="ghost"><Text>{t('common:actions.cancel')}</Text></Button>
+        <Button disabled={saving} onPress={() => { setAdding(false); setBrowsing(false); setError(undefined); }} variant="ghost"><Text>{t('common:actions.cancel')}</Text></Button>
         <Button testID="project-add-submit" disabled={saving || !directory.trim() || !addTarget} onPress={() => {
           if (!addTarget) return;
           setSaving(true); setError(undefined);
@@ -74,16 +88,33 @@ export function ProjectPicker({ visible, onClose, activePath, onSelected, testID
     <TextField testID="project-search" label={t('common:servers.searchProjects')} placeholder={t('common:servers.searchProjects')} value={query} onChangeText={setQuery}></TextField>
     {multipleServers ? <WorkspaceSelect title={t('common:servers.allServers')} value={server} options={[{ value: '', label: t('common:servers.allServers') }, ...groups.map((group) => ({ value: group.id, label: group.name }))]} onChange={setServer} /> : null}
     {!groups.length ? <Text className={cn("text-muted-foreground")}>{t('project:picker.empty')}</Text> : null}
-    {groups.filter((group) => !multipleServers || !server || server === group.id).map((group) => <View key={group.id} className={cn("gap-2.5")}>
+    {visibleGroups.map((group) => <View key={group.id} className={cn("gap-2.5")}>
       {multipleServers ? <Text  variant="title">{group.name}</Text> : null}
       <ProjectOptions projects={group.projects.filter((project) => `${project.label} ${project.path}`.toLowerCase().includes(query.trim().toLowerCase()))}
         activePath={registry.focus?.connectionId === group.id ? group.projects.find((project) => project.checkouts.some((checkout) => checkout.directory === activePath))?.path : undefined}
         onSelect={(path) => { void activate({ connectionId: group.id, projectPath: path }).catch((reason) => setError(String(reason))); }}
         onRemove={(path) => { void remove({ connectionId: group.id, projectPath: path }).catch((reason) => setError(String(reason))); }}
-        canRemove={(path) => Boolean(group.projects.find((project) => project.path === path)?.opened)} />
+        canRemove={(path) => group.openedPaths.includes(path)} />
     </View>)}
+    {archivedCapable ? <View className={cn(stylesClasses.archivedToggle)}>
+      <View className={cn(stylesClasses.archivedToggleText)}>
+        <Text>{t('project:picker.showArchived')}</Text>
+        <Text className={cn("text-muted-foreground")}>{t('project:picker.showArchivedHint')}</Text>
+      </View>
+      <Switch testID="project-show-archived" checked={showArchived} onCheckedChange={setShowArchived} accessibilityLabel={t('project:picker.showArchived')} />
+    </View> : null}
+    {showArchived ? visibleGroups.filter((group) => group.contract === 'v2').map((group) => <View key={`archived-${group.id}`} className={cn("gap-2.5")}>
+      {multipleServers ? <Text variant="title">{group.name}</Text> : null}
+      <ArchivedProjectsSection connectionId={group.id} testID={`archived-projects-${group.id}`} />
+    </View>) : null}
     {error ? <Text className={cn("text-destructive")}>{error}</Text> : null}
-    <Button testID="project-add-button" disabled={!groups.length} onPress={() => { setAddServer(server || focusConnectionId); setAdding(true); }} variant="ghost"><Icon name={"plus"} size={20} /><Text>{t('project:picker.add')}</Text></Button>
+    <Button testID="project-add-button" disabled={!groups.length} onPress={() => {
+      const target = server || focusConnectionId;
+      setAddServer(target);
+      setDirectory('');
+      setBrowsing(Boolean(activePath || groups.find((group) => group.id === target)?.projects[0]?.path));
+      setAdding(true);
+    }} variant="ghost"><Icon name={"plus"} size={20} /><Text>{t('project:picker.add')}</Text></Button>
     </>}
   </OverlaySheet>;
 }
@@ -91,5 +122,7 @@ export function ProjectPicker({ visible, onClose, activePath, onSelected, testID
 const stylesClasses = {
   "button": "flex-row items-center gap-1.25 min-h-11 px-1.5",
   "addForm": "gap-3",
-  "formActions": "flex-row justify-end flex-wrap gap-2"
+  "formActions": "flex-row justify-end flex-wrap gap-2",
+  "archivedToggle": "flex-row items-center gap-3 border-t border-border pt-3",
+  "archivedToggleText": "flex-1 gap-1"
 } as const;

@@ -27,7 +27,7 @@ export type PromptInput = Parameters<NonNullable<ScopedOpencodeClient['compatibi
 
 export type SessionAdapter = {
   submitPrompt: (input: PromptInput) => Promise<void>;
-  catalogProjects: () => Promise<Project[]>;
+  catalogProjects: (options?: { archived?: boolean }) => Promise<Project[]>;
   catalogLocation: () => Promise<{ currentProjectPath: string; serverRootPath: string; project: Project }>;
   combineCatalog: (projects: Project[], location: { currentProjectPath: string; serverRootPath: string; project: Project }) => { currentProjectPath: string; serverRootPath: string; serverProjects: Project[] };
   resolveProjectLocation: () => Promise<ResolvedProjectLocation>;
@@ -139,11 +139,14 @@ export function createSessionAdapter(client: ScopedOpencodeClient): SessionAdapt
       if (!compatibility) throw new Error('Prompt admission is unavailable.');
       await compatibility.session.promptAsync(input);
     },
-    catalogProjects: async () => {
-      if (compatibility) return v1.catalogProjects(compatibility);
-      const projects = await client.api!.project.list();
+    catalogProjects: async (options) => {
+      if (compatibility) return options?.archived ? [] : v1.catalogProjects(compatibility);
+      // The native default is archived:false; only the archived view passes
+      // the filter so older V2 servers keep their normal project list.
+      const projects = await client.api!.project.list(options?.archived ? { archived: true } : undefined);
       if (!Array.isArray(projects)) throw new Error('MalformedResponse: OpenCode did not return its project catalog.');
-      return projects.map(toProjectView);
+      const views = projects.map(toProjectView);
+      return options?.archived ? views.filter((project) => Boolean(project.time.archived)) : views;
     },
     catalogLocation: async () => {
       if (compatibility) return v1.catalogLocation(compatibility);

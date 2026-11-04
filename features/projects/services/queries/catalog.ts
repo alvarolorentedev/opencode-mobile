@@ -1,6 +1,6 @@
 import { withReadSignal, type ScopedOpencodeClient } from '@/shared/protocol/opencode/client';
 
-import { combineProjectCatalog, listServerProjects, readCatalogLocation } from '@/shared/protocol/services/session-service';
+import { combineProjectCatalog, listArchivedServerProjects, listServerProjects, readCatalogLocation } from '@/shared/protocol/services/session-service';
 
 import { queryOptions, type QueryClient } from '@tanstack/react-query';
 
@@ -9,6 +9,14 @@ import { connectionQueryKey, projectQueryKey, type QueryIdentity } from '@/share
 export function projectsOptions(identity: QueryIdentity, client: ScopedOpencodeClient) {
   return queryOptions({ queryKey: [...connectionQueryKey(identity, client.__opencode.contract), 'server', 'projects'],
     queryFn: ({ signal }) => listServerProjects(withReadSignal(client, signal)) });
+}
+
+// Server-archived projects are read on demand and never persisted. The key
+// shares the `projects` resource so project.updated invalidates it too.
+export function archivedProjectsOptions(identity: QueryIdentity, client: ScopedOpencodeClient) {
+  return queryOptions({ queryKey: [...connectionQueryKey(identity, client.__opencode.contract), 'server', 'projects', 'archived'],
+    staleTime: 0,
+    queryFn: ({ signal }) => listArchivedServerProjects(withReadSignal(client, signal)) });
 }
 
 export function locationOptions(identity: QueryIdentity, client: ScopedOpencodeClient) {

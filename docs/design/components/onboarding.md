@@ -38,6 +38,12 @@ Responsibility:
 - presentational project-row list shared by `ProjectPicker` and the onboarding project step
 - renders an optional close control that removes a project locally; callers own empty/loading states and whether closing is offered
 
+### `features/projects/ui/project-directory-picker.tsx`
+
+- browse-first server folder picker shared by the project overlay and the onboarding project step
+- path row with Up, direct child folders, manual-path fallback, and a "Select this folder" action
+- reads with the connection-scoped `file.list`; unresolvable folders stay on manual entry
+
 ### `features/onboarding/model/onboarding-state.ts`
 
 - `CURRENT_ONBOARDING_VERSION`, parse/serialize for the completion marker

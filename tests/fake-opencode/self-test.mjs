@@ -411,6 +411,12 @@ try {
   const addedLocation = await v2Api.location.get({ location: { directory: addedDirectory } });
   assert(addedLocation.project.canonical === addedDirectory, 'V2 location resolution must report the added directory');
   assert((await v2Api.project.list()).some((project) => project.canonical === addedDirectory), 'V2 location boots must persist the added project');
+  const archivedDirectory = '/workspace/archived-project';
+  assert(!(await v2Api.project.list()).some((project) => project.canonical === archivedDirectory), 'Archived projects must stay out of the default catalog');
+  assert((await v2Api.project.list({ archived: true })).some((project) => project.canonical === archivedDirectory && project.time.archived), 'Archived catalogs must include archived projects');
+  const restoredLocation = await v2Api.location.get({ location: { directory: archivedDirectory } });
+  assert(restoredLocation.project.canonical === archivedDirectory, 'Restoring must resolve the archived directory');
+  assert((await v2Api.project.list()).some((project) => project.canonical === archivedDirectory), 'Resolving an archived directory must restore it');
   const nestedLocation = await v2Api.location.get({ location: { directory: '/workspace/demo-project/src' } });
   assert(nestedLocation.project.canonical === '/workspace/demo-project' && nestedLocation.project.directory === '/workspace/demo-project', 'V2 nested locations must resolve to their owning project');
   const createdWorktree = await v2Api.worktree.create({ projectID: 'project-demo', name: 'v2-smoke' });

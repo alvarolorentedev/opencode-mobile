@@ -99,7 +99,19 @@
     "selectLabel": "Selecionar {{name}}",
     "removeLabel": "Remover {{name}}",
     "empty": "Nenhum projeto disponível.",
-    "changeProjectWithName": "Trocar projeto. {{name}}"
+    "changeProjectWithName": "Trocar projeto. {{name}}",
+    "showArchived": "Mostrar projetos arquivados",
+    "showArchivedHint": "Projetos que o OpenCode arquivou quando a pasta desapareceu.",
+    "archivedTitle": "Arquivados no OpenCode",
+    "archivedHint": "O servidor arquivou estes projetos. Para restaurar, a pasta precisa existir.",
+    "archivedEmpty": "Nenhum projeto arquivado.",
+    "restore": "Restaurar",
+    "browse": "Explorar pastas do servidor",
+    "browseHint": "Pastas no servidor OpenCode.",
+    "up": "Acima",
+    "selectFolder": "Selecionar esta pasta",
+    "enterPathManually": "Inserir caminho manualmente",
+    "browseEmpty": "Nenhuma pasta aqui."
   },
   "errors": {
     "refreshProject": "Não foi possível atualizar o projeto.",
@@ -108,6 +120,9 @@
     "createWorktree": "Não foi possível criar o worktree.",
     "removeWorktree": "Não foi possível remover o worktree.",
     "addProject": "Não foi possível adicionar o projeto.",
-    "downloadFile": "Não foi possível baixar o arquivo."
+    "downloadFile": "Não foi possível baixar o arquivo.",
+    "archivedProjects": "Não foi possível carregar os projetos arquivados.",
+    "restoreProject": "Não foi possível restaurar o projeto.",
+    "listDirectory": "Não foi possível listar a pasta do servidor."
   }
 }

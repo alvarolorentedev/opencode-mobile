@@ -17,6 +17,8 @@ export type WorkspaceServerGroup = {
   name: string;
   enabled: boolean;
   status: string;
+  contract?: 'v1' | 'v2';
+  openedPaths: string[];
   projects: WorkspaceProject[];
 };
 
@@ -112,6 +114,7 @@ export function buildWorkspaceProjectGroups(
       name: entry.name,
       enabled: entry.enabled,
       status: runtimes[0]?.values.connectionValue.connection.status ?? 'idle',
+      openedPaths: [],
       projects: [...byRoot.values()].sort((left, right) => compareLabels(left.label, right.label)),
     };
   }).filter((group) => group.enabled && group.status === 'connected');

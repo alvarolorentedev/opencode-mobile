@@ -617,6 +617,12 @@ project in `serverProjects` (the server's `project.list()`), all enriched with
 server labels and IDs. Opening records the path locally; the server catalog is
 never persisted as device state.
 
+Server-archived projects are a separate on-demand read in the picker:
+`project.list({ archived: true })` filtered to `time.archived`. They are not
+added to the derived project list and are never persisted. Restoring resolves
+the archived directory with `location.get`, then invalidates the shared
+`projects` query resource so both the normal and archived lists reconcile.
+
 Closing the last opened project clears focus while retaining its runtime
 snapshot. `projectClosedValues()` removes that project and its session scoped
 values from the focused/read path, so Chat, Settings, Terminal and New Chat show

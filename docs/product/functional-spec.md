@@ -64,6 +64,8 @@ Behavior:
 - selecting a project clears the current session selection
 - the provider later rehydrates or creates the appropriate session for that project
 - a selected worktree is kept as the active location only while the server resolves it; otherwise the app falls back to the most recent opened project
+- an archived-projects switch appears on OpenCode 2 connections. The normal list remains the server's default (`project.list()` excludes archived projects); enabling the switch fetches `project.list({ archived: true })` and shows only entries with `time.archived` under "Archived on OpenCode". The list is read on demand, not persisted. Restore calls `location.get` for the archived directory; it succeeds only when the folder exists again and reports the server error otherwise. There is no user-triggered server archive action, and V1 connections hide the switch
+- Add project opens the server folder browser first: it lists direct child folders with the current path and an Up action, and "Select this folder" fills the directory field. "Enter path manually" keeps the typed-path flow available. Folder browsing uses the connection-scoped `file.list` adapter; servers that cannot list a folder fall back to manual entry
 - Add project accepts a directory on the OpenCode server, boots it with `location.get` so the serve persists the project, refreshes the catalog, and selects the location the server resolved (the project root for nested input), opening it in the picker; an invalid directory stays in the form with an error
 
 ### 3. Open or Create a Chat Session

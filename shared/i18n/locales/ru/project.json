@@ -99,7 +99,19 @@
     "selectLabel": "Выбрать {{name}}",
     "removeLabel": "Убрать {{name}}",
     "empty": "Проектов нет.",
-    "changeProjectWithName": "Сменить проект. {{name}}"
+    "changeProjectWithName": "Сменить проект. {{name}}",
+    "showArchived": "Показать архивные проекты",
+    "showArchivedHint": "Проекты, которые OpenCode архивировал после исчезновения их папки.",
+    "archivedTitle": "Архивировано в OpenCode",
+    "archivedHint": "Сервер архивировал эти проекты. Для восстановления папка должна существовать.",
+    "archivedEmpty": "Архивных проектов нет.",
+    "restore": "Восстановить",
+    "browse": "Обзор папок сервера",
+    "browseHint": "Папки на сервере OpenCode.",
+    "up": "Вверх",
+    "selectFolder": "Выбрать эту папку",
+    "enterPathManually": "Ввести путь вручную",
+    "browseEmpty": "Здесь нет папок."
   },
   "errors": {
     "refreshProject": "Не удалось обновить проект.",
@@ -108,6 +120,9 @@
     "createWorktree": "Не удалось создать рабочую копию.",
     "removeWorktree": "Не удалось удалить рабочую копию.",
     "addProject": "Не удалось добавить проект.",
-    "downloadFile": "Не удалось скачать файл."
+    "downloadFile": "Не удалось скачать файл.",
+    "archivedProjects": "Не удалось загрузить архивные проекты.",
+    "restoreProject": "Не удалось восстановить проект.",
+    "listDirectory": "Не удалось получить список папки сервера."
   }
 }

@@ -359,3 +359,20 @@ Exit plan:
   upgrade, drop the Android hunk, and keep the iOS alias hunk only if the
   bridge/handler key mismatch is still present. Re-run the native ABI test and
   validate preview and message playback on a device.
+
+## 14. Project archive is server-automatic
+
+OpenCode archives a project when every known directory has been missing for an
+hour, and resolving the directory again unarchives it. The V2 protocol exposes
+no request that archives or deletes a project on demand: `project.update`
+accepts canonical, name, icon, and commands only. The picker therefore treats
+archived projects as a read-only server state behind a toggle and offers
+restore, not archive. The device-local close action remains a separate concept
+and never changes the server catalog.
+
+Exit plan:
+
+- If the server adds a project archive/delete endpoint, add it to the V2 client
+  and map the picker action to it with the same destructive confirmation and
+  invalidation as the other project mutations.
+- Do not emulate archive by editing the canonical directory or deleting files.

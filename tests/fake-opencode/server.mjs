@@ -145,6 +145,17 @@ function event(type, data) {
   };
 }
 
+function projectInfo(project) {
+  return {
+    id: project.id,
+    canonical: project.canonical,
+    ...(project.vcs ? { vcs: project.vcs } : {}),
+    ...(project.name ? { name: project.name } : {}),
+    time: { created: project.time.created, updated: project.time.updated || project.time.initialized || project.time.created, ...(project.time.archived ? { archived: project.time.archived } : {}) },
+    sandboxes: project.sandboxes || [],
+  };
+}
+
 function emitV2Event(mapped) {
   if (suppressEvents || stallEvents) return;
   const payload = `data: ${JSON.stringify(mapped)}\n\n`;
@@ -486,17 +497,18 @@ const server = http.createServer(async (req, res) => {
       const requested = requestUrl.searchParams.get('location[directory]');
       const project = resolveProject(state, requested);
       if (!project) { sendJson(res, 400, { error: 'Directory is outside the server workspace.' }); return; }
+      if (project.time.archived) {
+        project.time.archived = undefined;
+        project.time.updated = getNow();
+        emitV2Event(event('project.updated', projectInfo(project)));
+      }
       sendJson(res, 200, { directory: requested || project.canonical, project: { id: project.id, directory: resolveProjectDirectory(state, requested) || project.canonical, canonical: project.canonical } });
       return;
     }
 
     if (req.method === 'GET' && pathname === '/api/project') {
-      sendJson(res, 200, state.projects.map((project) => ({
-        id: project.id,
-        canonical: project.canonical,
-        time: { created: project.time.created, updated: project.time.initialized || project.time.created },
-        sandboxes: [],
-      })));
+      const includeArchived = requestUrl.searchParams.get('archived') === 'true';
+      sendJson(res, 200, state.projects.filter((project) => includeArchived || !project.time.archived).map(projectInfo));
       return;
     }
 

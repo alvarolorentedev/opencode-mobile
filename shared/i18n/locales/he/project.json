@@ -99,7 +99,19 @@
     "selectLabel": "בחר {{name}}",
     "removeLabel": "הסר את {{name}}",
     "empty": "אין פרויקטים זמינים.",
-    "changeProjectWithName": "שנה פרויקט. {{name}}"
+    "changeProjectWithName": "שנה פרויקט. {{name}}",
+    "showArchived": "הצג פרויקטים בארכיון",
+    "showArchivedHint": "פרויקטים ש-OpenCode העביר לארכיון לאחר שהתיקייה שלהם נעלמה.",
+    "archivedTitle": "בארכיון ב-OpenCode",
+    "archivedHint": "השרת העביר את הפרויקטים האלה לארכיון. שחזור דורש שהתיקייה תהיה קיימת.",
+    "archivedEmpty": "אין פרויקטים בארכיון.",
+    "restore": "שחזר",
+    "browse": "עיין בתיקיות השרת",
+    "browseHint": "תיקיות בשרת OpenCode.",
+    "up": "למעלה",
+    "selectFolder": "בחר תיקייה זו",
+    "enterPathManually": "הזן נתיב ידנית",
+    "browseEmpty": "אין תיקיות כאן."
   },
   "errors": {
     "refreshProject": "לא ניתן היה לרענן את הפרויקט.",
@@ -108,6 +120,9 @@
     "createWorktree": "לא ניתן ליצור את עץ העבודה.",
     "removeWorktree": "לא ניתן להסיר את עץ העבודה.",
     "addProject": "לא ניתן להוסיף את הפרויקט.",
-    "downloadFile": "לא ניתן היה להוריד את הקובץ."
+    "downloadFile": "לא ניתן היה להוריד את הקובץ.",
+    "archivedProjects": "לא ניתן לטעון פרויקטים בארכיון.",
+    "restoreProject": "לא ניתן לשחזר את הפרויקט.",
+    "listDirectory": "לא ניתן להציג את תיקיית השרת."
   }
 }

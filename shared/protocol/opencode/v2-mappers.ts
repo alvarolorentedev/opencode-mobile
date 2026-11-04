@@ -13,7 +13,7 @@ export function toProjectView(project: Project): ProjectView {
     vcs: project.vcs,
     ...(project.name ? { name: project.name } : {}),
     ...(project.sandboxes ? { sandboxes: project.sandboxes } : {}),
-    time: { created: project.time.created, initialized: project.time.updated },
+    time: { created: project.time.created, initialized: project.time.updated, ...(project.time.archived ? { archived: project.time.archived } : {}) },
   };
 }
 

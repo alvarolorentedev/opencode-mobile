@@ -81,6 +81,7 @@ coverage, and documentation links.
 | [0027](0027-sandboxed-mobile-plugin-gui-host.md) | Sandboxed mobile host for OpenCode GUI plugins | Accepted |
 | [0028](0028-runtime-rtl-from-interface-language.md) | Runtime RTL direction follows the interface language | Accepted |
 | [0029](0029-minimal-remote-telemetry.md) | Minimal remote telemetry budget | Accepted |
+| [0030](0030-server-archived-projects.md) | Server-archived project visibility without a client archive write | Accepted |
 
 ## Template
 

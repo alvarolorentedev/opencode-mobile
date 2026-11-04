@@ -276,7 +276,8 @@ const server = http.createServer(async (req, res) => {
     }
 
     if (req.method === 'GET' && pathname === '/project') {
-      sendJson(res, 200, state.projects);
+      // V1 has no archive concept; keep the shared fixture out of its catalog.
+      sendJson(res, 200, state.projects.filter((project) => !project.time.archived));
       return;
     }
 
