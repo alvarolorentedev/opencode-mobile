@@ -1,0 +1,3 @@
+- The app now speaks Arabic and Hebrew, with the whole interface mirrored right-to-left.
+- The extension button appears on every chat, including empty ones, so global plugins are always reachable.
+- Chat keeps cached sessions on Android with a larger local database, and renders synthetic command notices as transcript text without waking the agent.
