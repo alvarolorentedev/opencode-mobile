@@ -6,6 +6,8 @@ import { Portal as PrimitivePortal, PortalHost } from '@rn-primitives/portal';
 import { WorkspaceScope, WorkspaceScopeContext } from '@/runtime/ui';
 import type { WorkspaceTarget } from '@/shared/contracts/workspace';
 import { useDismissOnBack } from '@/shared/ui/hooks/use-dismiss-on-back';
+import { useTranslation } from 'react-i18next';
+import { getLanguageDirection } from '@/shared/i18n/languages';
 
 type Host = { name: string; register: (id: string, close: () => void) => () => void };
 const HostContext = createContext<Host | undefined>(undefined);
@@ -37,6 +39,8 @@ export function useOverlayDismiss(visible: boolean, close: () => void) {
 
 // A native Modal is a separate window: nested portals and Back belong to it.
 export function ModalSurface({ children, onRequestClose, ...props }: Omit<ModalProps, 'onRequestClose'> & { onRequestClose?: () => void }) {
+  const { i18n } = useTranslation();
+  const direction = getLanguageDirection(i18n.resolvedLanguage || i18n.language);
   const id = useId();
   const dismissals = useRef(new Map<string, () => void>());
   const [host] = useState<Host>(() => ({ name: id, register: (key, close) => {
@@ -47,10 +51,10 @@ export function ModalSurface({ children, onRequestClose, ...props }: Omit<ModalP
     const top = [...dismissals.current.values()].at(-1);
     if (top) top(); else onRequestClose?.();
   }
-  const content = <HostContext.Provider value={host}>{children}<PortalHost name={id} /></HostContext.Provider>;
+  const content = <View style={{ flex: 1, direction }}><HostContext.Provider value={host}>{children}<PortalHost name={id} /></HostContext.Provider></View>;
   if (Platform.OS === 'web') return <Dialog.Root open={props.visible !== false} onOpenChange={(open) => { if (!open) dismiss(); }}>
     <Dialog.Portal><DialogFrame aria-label={props.accessibilityLabel} aria-describedby={undefined} onInteractOutside={(event) => event.preventDefault()}>
-      <View className="fixed inset-0 z-50 bg-background">{content}</View>
+      <View className="fixed inset-0 z-50 bg-background" style={{ direction }}>{content}</View>
     </DialogFrame></Dialog.Portal>
   </Dialog.Root>;
   return <Modal {...props} onRequestClose={dismiss}>{content}</Modal>;

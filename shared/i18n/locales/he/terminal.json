@@ -1,0 +1,52 @@
+{
+  "screen": {
+    "connectTitle": "התחבר ל-OpenCode",
+    "chooseProject": "בחר פרויקט",
+    "selectProject": "בחר פרויקט לפני פתיחת מסוף.",
+    "openProjects": "פתח פרויקטים",
+    "title": "טרמינל"
+  },
+  "console": {
+    "selectTerminal": "בחר מסוף",
+    "create": "צור מסוף",
+    "openOrCreate": "פתח או צור מסוף כדי להתחיל.",
+    "terminateTitle": "לסיים את המסוף?",
+    "terminateAction": "לסיים",
+    "new": "טרמינל חדש",
+    "interactiveHint": "הקלד ישירות בטרמינל. השתמש באביזר עבור מפתחות מסוף.",
+    "pasteTitle": "להדביק במסוף?",
+    "pasteMessage": "הדבקה זו מכילה מספר שורות או תווי בקרה ועשויה לבצע פקודות. לְהַמשִׁיך?",
+    "terminateMessage": "{{terminal}} ({{id}})\n{{server}} / {{project}}",
+    "copied": "הועתק ללוח"
+  },
+  "sessions": {
+    "title": "טרמינלים",
+    "empty": "עדיין אין טרמינלים. השתמש ב-+ כדי ליצור אחד.",
+    "openLabel": "פתח את {{terminal}}"
+  },
+  "errors": {
+    "load": "לא ניתן היה לטעון מסופים.",
+    "create": "לא ניתן ליצור את הטרמינל.",
+    "open": "לא ניתן היה לפתוח את הטרמינל.",
+    "connect": "לא ניתן להתחבר.",
+    "refresh": "לא ניתן היה לרענן את המסופים."
+  },
+  "accessory": {
+    "paste": "הדבק",
+    "copy": "העתק",
+    "latest": "הפלט האחרון",
+    "input": "קלט מסוף",
+    "more": "עוד מפתחות מסוף",
+    "armed": "חמושים",
+    "locked": "נעול",
+    "off": "כבוי"
+  },
+  "status": {
+    "connecting": "מתחבר",
+    "connected": "מחובר",
+    "reconnecting": "מתחבר מחדש",
+    "exited": "יצא",
+    "error": "שגיאה",
+    "idle": "בטלה"
+  }
+}

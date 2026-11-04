@@ -14,6 +14,14 @@ import enProject from '@/shared/i18n/locales/en/project.json';
 import enSettings from '@/shared/i18n/locales/en/settings.json';
 import enShare from '@/shared/i18n/locales/en/share.json';
 import enTerminal from '@/shared/i18n/locales/en/terminal.json';
+import arChat from '@/shared/i18n/locales/ar/chat.json';
+import arCommon from '@/shared/i18n/locales/ar/common.json';
+import arNotifications from '@/shared/i18n/locales/ar/notifications.json';
+import arOnboarding from '@/shared/i18n/locales/ar/onboarding.json';
+import arProject from '@/shared/i18n/locales/ar/project.json';
+import arSettings from '@/shared/i18n/locales/ar/settings.json';
+import arShare from '@/shared/i18n/locales/ar/share.json';
+import arTerminal from '@/shared/i18n/locales/ar/terminal.json';
 import deChat from '@/shared/i18n/locales/de/chat.json';
 import deCommon from '@/shared/i18n/locales/de/common.json';
 import deNotifications from '@/shared/i18n/locales/de/notifications.json';
@@ -38,6 +46,14 @@ import frProject from '@/shared/i18n/locales/fr/project.json';
 import frSettings from '@/shared/i18n/locales/fr/settings.json';
 import frShare from '@/shared/i18n/locales/fr/share.json';
 import frTerminal from '@/shared/i18n/locales/fr/terminal.json';
+import heChat from '@/shared/i18n/locales/he/chat.json';
+import heCommon from '@/shared/i18n/locales/he/common.json';
+import heNotifications from '@/shared/i18n/locales/he/notifications.json';
+import heOnboarding from '@/shared/i18n/locales/he/onboarding.json';
+import heProject from '@/shared/i18n/locales/he/project.json';
+import heSettings from '@/shared/i18n/locales/he/settings.json';
+import heShare from '@/shared/i18n/locales/he/share.json';
+import heTerminal from '@/shared/i18n/locales/he/terminal.json';
 import hiChat from '@/shared/i18n/locales/hi/chat.json';
 import hiCommon from '@/shared/i18n/locales/hi/common.json';
 import hiNotifications from '@/shared/i18n/locales/hi/notifications.json';
@@ -90,6 +106,16 @@ export const resources = {
     share: enShare,
     terminal: enTerminal,
   },
+  ar: {
+    chat: arChat,
+    common: arCommon,
+    notifications: arNotifications,
+    onboarding: arOnboarding,
+    project: arProject,
+    settings: arSettings,
+    share: arShare,
+    terminal: arTerminal,
+  },
   de: {
     chat: deChat,
     common: deCommon,
@@ -119,6 +145,16 @@ export const resources = {
     settings: frSettings,
     share: frShare,
     terminal: frTerminal,
+  },
+  he: {
+    chat: heChat,
+    common: heCommon,
+    notifications: heNotifications,
+    onboarding: heOnboarding,
+    project: heProject,
+    settings: heSettings,
+    share: heShare,
+    terminal: heTerminal,
   },
   hi: {
     chat: hiChat,

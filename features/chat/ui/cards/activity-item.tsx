@@ -1,6 +1,7 @@
 import { cn } from '@/shared/ui/cn';
 import { Text } from '@/shared/ui/text';
 import { Spinner } from '@/shared/ui/spinner';
+import { Icon } from '@/shared/ui/icon';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useRecyclingState } from '@shopify/flash-list';
 import * as Clipboard from '@/shared/platform/clipboard';
@@ -140,7 +141,7 @@ export function ActivityItemRow({ fontSize, item, palette }: { fontSize: number;
         ) : null}
         {meta ? <Text className={cn(stylesClasses.meta, "text-muted-foreground")} variant="label">{meta}</Text> : null}
         {!secondary && !meta ? <View className={cn(stylesClasses.spacer)} /> : null}
-        {expandable ? <MaterialCommunityIcons name={expanded ? 'chevron-down' : 'chevron-right'} size={15} color={palette.muted} /> : null}
+        {expandable ? <Icon name={expanded ? 'chevron-down' : 'chevron-right'} size={15} color={palette.muted} /> : null}
       </Pressable>
       {expanded ? (
         item.kind === 'patch' ? (

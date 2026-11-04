@@ -1,12 +1,13 @@
 import { cn } from '@/shared/ui/cn';
 import Constants from 'expo-constants';
-import { DarkTheme, DefaultTheme, Stack, ThemeProvider, usePathname } from 'expo-router';
+import { DarkTheme, DefaultTheme, LocaleProvider, Stack, ThemeProvider, usePathname } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
 import * as SystemUI from 'expo-system-ui';
 import { useEffect, useLayoutEffect, useMemo } from 'react';
 import { ActivityIndicator, Platform, View } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import { useTranslation } from 'react-i18next';
 import { PortalHost } from '@/shared/ui/portal';
 import '@/global.css';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
@@ -22,6 +23,7 @@ import { setSystemPath } from '@/shared/platform/system-path';
 import { initializeObservability, observability, preferencesFromChatPreferences } from '@/shared/observability';
 import { installObservabilityLifecycle } from '@/shared/observability/lifecycle';
 import '@/shared/i18n/index';
+import { getLanguageDirection } from '@/shared/i18n/languages';
 import { isConnectEnabled } from '@/shared/contracts/cloud-link';
 import { AppearanceProvider } from '@/shared/ui/theme/appearance-context';
 import { useOnboarding } from '@/features/onboarding/context';
@@ -42,6 +44,15 @@ void SplashScreen.preventAutoHideAsync().catch(() => undefined);
 
 export default function RootLayout() {
   const isE2EMode = Boolean(Constants.expoConfig?.extra?.e2eMode);
+  const { i18n } = useTranslation();
+  const language = i18n.resolvedLanguage || i18n.language || 'en';
+  const direction = getLanguageDirection(language);
+
+  useEffect(() => {
+    if (Platform.OS !== 'web' || !globalThis.document?.documentElement) return;
+    globalThis.document.documentElement.lang = language;
+    globalThis.document.documentElement.dir = direction;
+  }, [direction, language]);
 
   useEffect(() => {
     observability.markStartup('root-render');
@@ -70,12 +81,14 @@ export default function RootLayout() {
   }, [isE2EMode]);
 
   return (
-    <GestureHandlerRootView className={cn(stylesClasses.root)}>
-      <SafeAreaProvider>
-        <OpencodeProvider>
-          <AppearanceHost />
-        </OpencodeProvider>
-      </SafeAreaProvider>
+    <GestureHandlerRootView className={cn(stylesClasses.root)} style={{ direction }}>
+      <LocaleProvider direction={direction}>
+        <SafeAreaProvider>
+          <OpencodeProvider>
+            <AppearanceHost />
+          </OpencodeProvider>
+        </SafeAreaProvider>
+      </LocaleProvider>
     </GestureHandlerRootView>
   );
 }

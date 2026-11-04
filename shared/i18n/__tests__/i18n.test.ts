@@ -75,7 +75,7 @@ describe('i18n locale contract', () => {
 
     // `I18N_ALLOW_MISSING=1` (npm run test:i18n:loose) is a local-iteration escape
     // hatch: keys absent from a non-English locale fall back to English at runtime,
-    // so WIP strings do not force eight file edits. CI runs without it and enforces
+    // so WIP strings do not force edits to every locale. CI runs without it and enforces
     // full parity.
     const allowMissing = process.env.I18N_ALLOW_MISSING === '1';
     const missingKeySummary: string[] = [];
@@ -95,7 +95,13 @@ describe('i18n locale contract', () => {
         const languageKeys = Object.keys(languageFlat).sort();
 
         const missing = sourceKeys.filter((key) => !(key in languageFlat));
-        const extra = languageKeys.filter((key) => !(key in sourceFlat[namespace]));
+        const sourcePluralBases = new Set(sourceKeys.map(pluralBase).filter((base): base is string => Boolean(base)));
+        const extra = languageKeys.filter((key) => {
+          if (key in sourceFlat[namespace]) return false;
+          const base = pluralBase(key);
+          const category = key.slice(key.lastIndexOf('_') + 1);
+          return !(base && sourcePluralBases.has(base) && requiredPlurals.has(category as Intl.LDMLPluralRule));
+        });
         if (allowMissing) {
           if (missing.length > 0) {
             missingKeySummary.push(`${language}/${namespace} (${missing.length})`);

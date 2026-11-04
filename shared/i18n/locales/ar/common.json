@@ -1,0 +1,86 @@
+{
+  "tabs": {
+    "chat": "الدردشة",
+    "terminal": "المحطة",
+    "projects": "المشاريع",
+    "settings": "الإعدادات"
+  },
+  "actions": {
+    "cancel": "إلغاء",
+    "save": "حفظ",
+    "close": "إغلاق",
+    "back": "العودة",
+    "next": "التالي",
+    "done": "تم",
+    "retry": "أعد المحاولة",
+    "delete": "حذف",
+    "dismiss": "استبعاد",
+    "refresh": "تحديث",
+    "remove": "إزالة",
+    "open": "مفتوح",
+    "copy": "نسخ",
+    "connect": "الاتصال",
+    "reconnect": "أعد الاتصال",
+    "disconnect": "قطع الاتصال",
+    "edit": "تحرير",
+    "stop": "توقف",
+    "closeWithName": "إغلاق {{title}}",
+    "openSettings": "افتح الإعدادات"
+  },
+  "select": {
+    "chooseOption": "اختر خيارًا"
+  },
+  "labels": {
+    "connected": "متصل",
+    "enabled": "ممكّن",
+    "off": "إيقاف",
+    "active": "نشط",
+    "unavailable": "غير متاح",
+    "unknown": "غير معروف",
+    "none": "لا شيء",
+    "notSet": "لم يتم ضبطه",
+    "systemDefault": "الافتراضي للنظام"
+  },
+  "updates": {
+    "available": "التحديث متاح",
+    "later": "في وقت لاحق",
+    "failed": "لا يمكن التحديث. يرجى المحاولة مرة أخرى في وقت لاحق.",
+    "opening": "جارٍ فتح التحديث…",
+    "availableDescription": "قم بتثبيت أحدث إصدار من خلال متجر التطبيقات.",
+    "openStore": "افتح متجر التطبيقات"
+  },
+  "servers": {
+    "allServers": "جميع الخوادم",
+    "allProjects": "جميع المشاريع",
+    "server": "الخادم",
+    "projectContext": "سياق المشروع",
+    "serverSettings": "إعدادات الخادم",
+    "appSettings": "إعدادات التطبيق",
+    "forServer": "تنطبق التغييرات على {{name}}",
+    "searchProjects": "مشاريع البحث",
+    "lastSynced": "عرض آخر المشاريع التي تمت مزامنتها",
+    "newTerminalHint": "اختر أين تبدأ هذه المحطة.",
+    "workingDirectory": "دليل العمل",
+    "chatUnchanged": "تبقى محادثتك على {{name}}.",
+    "pending": "في انتظار ({{count}})",
+    "savedRules": "القواعد المحفوظة ({{count}})",
+    "onlyThisServer": "لهذا الخادم فقط",
+    "appDiagnostics": "تشخيص التطبيق · جميع الخوادم",
+    "discardDrafts": "سيتم تجاهل مسودات الدردشة والمحرر غير المحفوظة على هذا الخادم.",
+    "status": {
+      "idle": "غير متصل",
+      "connecting": "الاتصال",
+      "connected": "متصل",
+      "error": "غير متاح"
+    },
+    "appSettingsSummary": "محرر، عام وتحديثات",
+    "serverToolsSummary": "خوادم MCP والتشخيصات"
+  },
+  "voice": {
+    "startFailed": "تعذر بدء الإدخال الصوتي. لم يستجب أداة التعرف على الكلام الخاصة بالجهاز. حاول ثانية."
+  },
+  "validation": {
+    "required": "هذا الحقل مطلوب.",
+    "invalid": "أدخل قيمة صالحة."
+  }
+}

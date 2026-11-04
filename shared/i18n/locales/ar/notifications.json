@@ -1,0 +1,27 @@
+{
+  "taskFinished": {
+    "title": "أنهى OpenCode مهمة",
+    "bodyFallback": "اكتملت المهمة",
+    "failedTitle": "فشلت مهمة OpenCode",
+    "failedBodyFallback": "انتهت المهمة بخطأ"
+  },
+  "activity": {
+    "working": "العمل",
+    "thinking": "التفكير",
+    "needsInput": "يحتاج إلى مدخلاتك",
+    "retrying": "إعادة المحاولة",
+    "queued": "في قائمة الانتظار",
+    "finished": "جاهز للمراجعة",
+    "failed": "فشلت المهمة",
+    "stopped": "توقفت المهمة",
+    "reconnecting": "إعادة الاتصال",
+    "paused": "توقفت المراقبة مؤقتا. افتح التطبيق لاستئنافه.",
+    "stopMonitoring": "توقف عن المراقبة",
+    "channel": "نشاط المهمة",
+    "untitled": "مهمة بلا عنوان",
+    "tasks": "تشغيل المهام {{count}}"
+  },
+  "attention": {
+    "channel": "المهمة تحتاج إلى الاهتمام"
+  }
+}

@@ -1,0 +1,1151 @@
+{
+  "screen": {
+    "categories": {
+      "connection": "חיבור",
+      "ai": "AI וספקים",
+      "notifications": "התראות",
+      "voice": "קול ואודיו",
+      "advanced": "מתקדם",
+      "support": "תמיכה",
+      "permissions": "אישורים",
+      "subscription": "מנוי",
+      "cloudLink": "קישור ענן",
+      "extensions": "הרחבות",
+      "responses": "תגובות",
+      "appearance": "מראה",
+      "chat": "צ'אט ותגובות",
+      "about": "אודות ותמיכה"
+    },
+    "summaries": {
+      "configuredCount": "{{value}} מוגדר",
+      "replyPlaybackOn": "ניגון תשובה מופעל",
+      "replyPlaybackOff": "ניגון התשובות כבוי",
+      "support": "דרג את האפליקציה, שלח משוב, קבל עזרה",
+      "permissions": "{{value}} נשמר",
+      "extensions": "MCPs, תוספים, סוכנים, כישורים ופקודות",
+      "responses": "היקף התגובה והפעולות הבאות",
+      "voiceSystem": "דיבור מערכת · {{phrase}}",
+      "voiceLocal": "במכשיר · {{phrase}}",
+      "responsesOn": "{{scope}} · הפעולות הבאות פועלות",
+      "responsesOff": "{{scope}} · הפעולות הבאות כבויות",
+      "appearance": "נושא, צבע וצפיפות ממשק",
+      "diagnostics": "תקינות חיבור ופתרון תקלות"
+    },
+    "groups": {
+      "app": "העדפות אפליקציה",
+      "connections": "חיבורים",
+      "server": "שרת נבחר"
+    },
+    "intro": "התאם אישית את האפליקציה ונהל את הקשרים שלך.",
+    "search": {
+      "placeholder": "הגדרות חיפוש",
+      "clear": "נקה חיפוש",
+      "empty": "אין הגדרות תואמות. נסה מילה אחרת.",
+      "results": "הגדרות תואמות: {{count}}"
+    },
+    "keywords": {
+      "appearance": "צבע נושא התצוגה צבע כהה אור קומפקטי צפיפות",
+      "responses": "הודעות צ'אט טקסט גודל גופן תשובות סגנון תגובה לנווט להוסיף תור בועות ציר זמן פעילות כלים נימוק עריכות פרט",
+      "voice": "קול אודיו דיבור צליל מיקרופון כניסת השמעה שפת ערות אישור",
+      "notifications": "התראות מתריעות על ווידג'טים של סוללה",
+      "language": "ממשק תרגום מקומי של שפה",
+      "support": "עזרה משוב תמיכת עדכוני עוזר הגדרת גרסה",
+      "connection": "חיבורים שרת כתובת סיסמה אישורים חבר מחדש QR",
+      "cloud-link": "חיבור מרחוק שירותי מנוי של Cloud Link",
+      "ai": "ספקי AI חשבונות מודלים של ניתוב מסווג אימות",
+      "extensions": "הרחבות MCP plugins פקודות מיומנויות סוכנים",
+      "permissions": "הרשאות אישורים שמורים כללים מאפשרים אוטומטית",
+      "advanced": "שימוש בשגיאות סקר בזמן אמת בחיבור לרשת"
+    }
+  },
+  "support": {
+    "title": "תמיכה",
+    "description": "דרג את OpenCode Mobile ב-Google Play, שלח משוב לשיפור או קבל עזרה מדף התמיכה.",
+    "rate": "דרג אותנו בחנות Play",
+    "feedback": "תן לנו משוב",
+    "openSupport": "פתח את דף התמיכה"
+  },
+  "connection": {
+    "currentConnection": "חיבור נוכחי",
+    "noServerUrl": "לא הוגדרה כתובת URL של שרת",
+    "notSavedYet": "עדיין לא נשמר. הוסף חיבור כדי לשמור אותו למועד מאוחר יותר.",
+    "lastChecked": "נבדק לאחרונה {{time}}",
+    "serverUrlValue": "כתובת אתר של שרת: {{url}}",
+    "usernameValue": "שם משתמש: {{username}}",
+    "usernameEmpty": "(אין)",
+    "addConnection": "הוסף חיבור",
+    "editConnection": "ערוך חיבור",
+    "addDescription": "הוסף חיבורים כדי לעבור בין שרתים מבלי להקליד מחדש את כתובת האתר והסיסמה.",
+    "saveAndConnect": "שמור והתחבר",
+    "deleteTitle": "מחק חיבור",
+    "deleteMessage": "להסיר את \"{{name}}\" מהחיבורים השמורים?",
+    "deleteWebConfirm": "מחק חיבור\n\n{{message}}",
+    "fields": {
+      "serverUrl": "כתובת האתר של השרת",
+      "username": "שם משתמש",
+      "password": "סיסמה"
+    },
+    "errors": {
+      "serverUrl": "הזן את כתובת האתר של השרת.",
+      "invalidUrl": "הזן כתובת שרת מלאה, כגון http://192.168.1.10:4096.",
+      "save": "לא ניתן לשמור את החיבור הזה.",
+      "headerName": "הזן שם כותרת חוקי.",
+      "headerValue": "ערכי כותרת אינם יכולים להכיל מעברי שורה.",
+      "headerDuplicate": "ניתן להשתמש בכל שם כותרת פעם אחת בלבד.",
+      "headerReserved": "כותרת זו מנוהלת על ידי האפליקציה ולא ניתן לעקוף אותה.",
+      "headerLimit": "השתמש ב-10 כותרות מותאמות אישית לכל היותר.",
+      "generic": "משהו השתבש במהלך הדיבור אל OpenCode.",
+      "tunnelStarting": "מנהרת Cloudflare עדיין מתחילה (שגיאה 1033). נסה שוב בקרוב.",
+      "notApi": "השרת ב-{{url}} לא החזיר תגובה של OpenCode API.{{apiHint}}{{versionHint}}",
+      "endpointNotFound": "נקודת קצה OpenCode לא נמצאה ב-{{url}}.{{apiHint}}{{versionHint}}",
+      "webPage": "השרת ב-{{url}} החזיר דף אינטרנט במקום OpenCode API.{{apiHint}}{{versionHint}}",
+      "apiHint": "אם כתובת זו משרתת ממשק משתמש אינטרנט, השתמש במקום זאת ב-URL הבסיס של ה-API שלה, בדרך כלל {{url}}/api.",
+      "versionHint": " אפליקציה זו תומכת בשרתי OpenCode 1.x ו-2.x; ודא שכתובת האתר הבסיסית של ה-API נכונה.",
+      "certificateUntrusted": "אישור השרת אינו מהימן. ייבא את אישור ה-CA עבור שרת זה.",
+      "certificateExpired": "פג תוקפו של אישור השרת.",
+      "certificateHostnameMismatch": "אישור השרת אינו תואם לכתובת זו.",
+      "certificateInvalid": "לא ניתן לאמת את אישור השרת.",
+      "oidcIssuer": "הזן כתובת אתר חוקית של מנפיק OpenID Connect.",
+      "oidcClientId": "הזן את מזהה הלקוח הרשום עבור האפליקציה הזו.",
+      "oidcScopes": "השתמש בהיקפים מופרדים ברווחים עם תווים הניתנים להדפסה.",
+      "oidcRedirectUri": "הזן URI חוקי להפניה מחדש.",
+      "oidcSignIn": "היכנס שוב עם OpenID Connect כדי להשתמש בשרת זה.",
+      "oidcSignInFailed": "הכניסה ל-OpenID Connect נכשלה. בדוק את המנפיק ומזהה הלקוח.",
+      "oidcTokenHeader": "הזן שם כותרת חוקי מלבד הרשאה.",
+      "oidcUnavailable": "ספק OpenID Connect אינו זמין באופן זמני. נסה שוב מאוחר יותר.",
+      "oidcNetwork": "לא ניתן היה להגיע לספק OpenID Connect. בדוק את הרשת שלך ונסה שוב.",
+      "oidcTimeout": "תם הזמן הקצוב לספק OpenID Connect. נסה שוב מאוחר יותר.",
+      "oidcSecureUrl": "OpenID Connect דורש כתובת URL של HTTPS. HTTP מותר רק עבור localhost, 127.0.0.1 או [::1]."
+    },
+    "setup": {
+      "step": "שלב {{step}} מתוך 2",
+      "addressTitle": "כתובת שרת",
+      "detailsTitle": "פרטי חיבור",
+      "addressHint": "התחבר לשרת OpenCode שלך.",
+      "continue": "המשך",
+      "change": "שנה",
+      "detected": "זוהה OpenCode {{version}}",
+      "identify": "הזן אישורים כדי לזהות את השרת.",
+      "customUsername": "שם משתמש מותאם אישית",
+      "passwordHint": "הזן את סיסמת השרת שלך.",
+      "optionalName": "שם (אופציונלי)",
+      "nameHint": "השאר ריק כדי להשתמש ב-IP של השרת או בדומיין.",
+      "showPassword": "הצג סיסמה",
+      "hidePassword": "הסתר את הסיסמה",
+      "scan": "סרוק קוד QR מקומי",
+      "pairCommand": "במחשב שלך, הפעל Opencode pair.",
+      "sameNetwork": "השאר את שני המכשירים באותה רשת.",
+      "scanAutomatic": "סרוק כדי לשמור ולהתחבר אוטומטית.",
+      "scanAgain": "סרוק שוב",
+      "unreachable": "לא ניתן היה להגיע לשרת. בדוק את הכתובת והרשת ולאחר מכן נסה שוב.",
+      "credentialsRejected": "אישורים נדחו. בדוק את הסיסמה ושם המשתמש, או סרוק קוד QR חדש.",
+      "pairingErrors": {
+        "invalid": "זה לא קוד התאמה של OpenCode. הפעל זוג opencode וסרוק שוב.",
+        "expired": "קוד ההתאמה הזה פג או שכבר היה בשימוש. הפעל שוב צמד opencode.",
+        "unreachable": "לא ניתן היה להגיע לשרת. בדוק ששני המכשירים נמצאים באותה רשת, או הזן את הכתובת באופן ידני.",
+        "loopback": "קוד זה מכיל רק כתובת מארח מקומית. הפעל את שם המארח של ערכת שירות Opencode 0.0.0.0, ולאחר מכן התחל שירות Opencode וצמד Opencode במחשב שלך."
+      }
+    },
+    "headers": {
+      "title": "כותרות מותאמות אישית",
+      "add": "הוסף כותרת",
+      "name": "שם כותרת",
+      "value": "ערך",
+      "remove": "הסר את הכותרת",
+      "hint": "נשלח עם כל בקשה לשרת זה. הערכים מאוחסנים בצורה מאובטחת במכשיר זה.",
+      "showValues": "הצג ערכים",
+      "hideValues": "הסתר ערכים"
+    },
+    "reconnectSuccess": "מחובר ל-{{url}}.",
+    "certificate": {
+      "title": "אישור CA פרטי",
+      "hint": "אופציונלי. רק חיבור זה ייתן אמון באישור זה. השתמש באישור CA, או באישור חתום עצמי/שרת כדי להצמיד את האישור המדויק.",
+      "import": "אישור ייבוא",
+      "replace": "החלף",
+      "remove": "הסר",
+      "issuer": "מנפיק: {{issuer}}",
+      "expires": "פג תוקף: {{date}}",
+      "fingerprint": "SHA-256: {{fingerprint}}",
+      "chain": "כולל תעודות {{count}}",
+      "pinnedWarning": "אמון קשור לתעודה המדויקת הזו. ייבא אחד חדש עם חידוש אישור השרת.",
+      "kind": {
+        "ca": "אישור CA",
+        "selfSigned": "תעודה בחתימה עצמית",
+        "server": "תעודת שרת"
+      },
+      "errors": {
+        "expired": "תוקף האישור הזה פג.",
+        "tooLarge": "קובץ האישור גדול מדי.",
+        "invalid": "זה אינו אישור X.509 תקף.",
+        "read": "לא ניתן היה לקרוא את האישור שנבחר.",
+        "notTrusted": "האישור המיובא אינו נותן אמון בשרת זה."
+      }
+    },
+    "oidc": {
+      "enable": "השתמש ב-OpenID Connect",
+      "hint": "היכנס דרך הספק שלך במקום סיסמת שרת.",
+      "issuer": "כתובת אתר של מנפיק",
+      "issuerHint": "מזהה המנפיק של הספק, למשל https://login.example.com/realms/main.",
+      "clientId": "מזהה לקוח",
+      "scopes": "היקפים",
+      "scopesHint": "מופרדים בחלל. שמור על גישה לא מקוונת כדי שההפעלה תתחדש מבלי לפתוח מחדש את הדפדפן.",
+      "tokenHeader": "כותרת אסימון",
+      "tokenHeaderHint": "אסימון הגישה הגולמי נשלח בכותרת זו. השאר ריק עבור X-Auth-Request-Access-Token. כאשר מוגדרת סיסמה, ההרשאה שומרת על אישור בסיסי.",
+      "redirectUri": "כתובת URL להפניה מחדש",
+      "redirectHint": "רשום את ה-URI המדויק הזה אצל הספק שלך: {{uri}}",
+      "signIn": "היכנס",
+      "signInAgain": "היכנס שוב",
+      "cancelled": "הכניסה בוטלה.",
+      "status": {
+        "unknown": "עדיין לא מחובר.",
+        "signed-in": "מחובר. האסימון מתחדש אוטומטית.",
+        "expired": "פג תוקף ההפעלה. היכנס שוב.",
+        "signed-out": "היכנס כדי לאשר את השרת הזה.",
+        "signing-in": "מחכה לדפדפן..."
+      }
+    }
+  },
+  "providers": {
+    "accounts": "חשבונות",
+    "addAnotherAccount": "הוסף חשבון נוסף",
+    "removeAccount": "הסר חשבון",
+    "selectMethod": "בחר שיטת התחברות",
+    "apiKey": "מפתח API",
+    "pasteApiKey": "הדבק את מפתח ה-API שלך",
+    "chooseModels": "בחר אילו דגמים מוגדרים יופיעו בצ'אט. הדגם האחרון שתבחר בצ'אט נשאר נבחר לצ'אטים חדשים.",
+    "configuredProviders": "ספקים מוגדרים",
+    "addProvider": "הוסף ספק",
+    "connectFirst": "התחבר תחילה לספקי עומס.",
+    "configureAtLeastOne": "הגדר לפחות ספק אחד לבחור ברירות מחדל.",
+    "selectedCount": "נבחר {{selected}} מתוך {{total}}",
+    "reasoningSupported": "נימוק נתמך",
+    "standardModel": "דגם סטנדרטי",
+    "noModels": "לא נמצאו דגמים עבור הספקים שהגדרת.",
+    "configuredSuccess": "{{provider}} הוגדר בהצלחה.",
+    "signInFinished": "הכניסה {{provider}} הסתיימה. סטטוס הספק עבר רענון.",
+    "couldNotConfigure": "לא ניתן להגדיר את הספק.",
+    "couldNotRemove": "לא ניתן להסיר את פרטי הכניסה של הספק.",
+    "credentialsRemoved": "אישורי {{provider}} הוסרו.",
+    "removeTitle": "להסיר את {{provider}}?",
+    "removeMessage": "אישורים מאוחסנים ותצורת ספק יוסרו.",
+    "signInTitle": "השלם את הכניסה של ספק",
+    "authorizationCode": "קוד הרשאה",
+    "complete": "שלם",
+    "continue": "המשך",
+    "cancelSetup": "בטל את הגדרת הספק",
+    "configureProvider": "הגדר את {{provider}}",
+    "oauthHint": "זה פותח את זרימת הכניסה של ספק בדפדפן שלך.",
+    "signInPendingHint": "סיים את הכניסה בדפדפן שלך. מסך זה מתעדכן אוטומטית.",
+    "pairingCode": "קוד זיווג",
+    "openLink": "פתח קישור",
+    "copyLink": "העתק קישור",
+    "authorizationCodeHint": "לאחר הכניסה, העתק את הקוד המוצג והדבק אותו כאן.",
+    "setupUnavailable": "פרטי ההגדרה עבור ספק זה אינם זמינים כעת.",
+    "couldNotComplete": "לא ניתן היה להשלים את הכניסה.",
+    "removeCredentials": "הסר אישורים של {{provider}}",
+    "promptDelivery": {
+      "label": "הודעות שנשלחו תוך כדי עבודה",
+      "steer": {
+        "label": "לנווט",
+        "description": "החל את ההודעה בשלב הבא של התגובה הנוכחית."
+      },
+      "queue": {
+        "label": "צרף",
+        "description": "תור את ההודעה לתור מאוחר יותר."
+      }
+    }
+  },
+  "providerCopy": {
+    "openai": {
+      "label": "OpenAI",
+      "description": "דגמי GPT מבית OpenAI, כולל החשיבה החדשה ביותר ואפשרויות מולטי-מודאליות."
+    },
+    "anthropic": {
+      "label": "אנתרופית",
+      "description": "קלוד מודלים מאנתרופיק לקידוד, ניתוח ועבודה ארוכת-הקשר."
+    },
+    "github-copilot": {
+      "label": "GitHub Copilot",
+      "description": "השתמש בגישת GitHub Copilot שלך כדי להיכנס ולאפשר דגמי יסוד נתמכים."
+    },
+    "google": {
+      "label": "גוגל",
+      "description": "דגמי מזל תאומים מגוגל למשימות מולטי-מודאליות ומשימות בעלות הקשר גדול."
+    },
+    "groq": {
+      "label": "גרוק",
+      "description": "הסקה מתארחת מהירה עבור דגמים פתוחים וגבוליים נתמכים."
+    },
+    "openrouter": {
+      "label": "OpenRouter",
+      "description": "נתב בקשות בין מספר ספקים ומשפחות דגמים מחשבון אחד."
+    },
+    "mistral": {
+      "label": "מיסטרל",
+      "description": "Mistral AI אירח מודלים לעומסי עבודה למטרות כלליות ולקידוד."
+    },
+    "xai": {
+      "label": "xAI",
+      "description": "דגמי גרוק מבית xAI."
+    },
+    "azure": {
+      "label": "Azure OpenAI",
+      "description": "מודלים תואמי OpenAI שנפרסו דרך Azure."
+    }
+  },
+  "notifications": {
+    "status": {
+      "checking": "בודק",
+      "enabled": "מופעל",
+      "needsSetup": "צריך הגדרה"
+    },
+    "background": {
+      "checking": "בודק",
+      "ready": "מוכן",
+      "limited": "מוגבל"
+    },
+    "summary": {
+      "enabled": "התראות מופעלות",
+      "off": "הודעות כבויות",
+      "background": "רקע {{status}}"
+    },
+    "enable": "אפשר התראות",
+    "settings": "הגדרות התראות",
+    "appSettings": "הגדרות האפליקציה",
+    "appSettingsDescription": "סקור את הגדרות המערכת עבור האפליקציה הזו.",
+    "batteryOptimization": "אופטימיזציה של הסוללה",
+    "batteryOptimizationDescription": "אפשר לאפליקציה לפעול בצורה אמינה יותר ברקע.",
+    "batterySaver": "חיסכון בסוללה",
+    "batterySaverDescription": "חיסכון בסוללה יכול לעכב תזכורות.",
+    "enabledFeedback": "הודעות מופעלות במכשיר זה.",
+    "disabledFeedback": "ההתראות עדיין מושבתות. פתח את הגדרות המערכת כדי להפעיל אותן באופן ידני."
+  },
+  "voice": {
+    "onDeviceInput": {
+      "title": "העדיפו זיהוי במכשיר",
+      "description": "העדיפו הכרה מקומית; ליפול בחזרה לענן במידת הצורך."
+    },
+    "autoPlay": {
+      "title": "קרא תשובות בקול",
+      "description": "קרא את תשובות הצ'אט בקול. מצב שיחה תמיד קורא."
+    },
+    "workingSound": {
+      "title": "צליל עובד",
+      "description": "הפעל לולאה רגועה בזמן שהעוזר עדיין עובד על תשובה."
+    },
+    "wakePhrase": {
+      "label": "ביטוי התעוררות",
+      "helper": "מצב שיחה שולח הודעה רק לאחר שהוא שומע את הביטוי הזה. שתי מילים או יותר עובדות הכי טוב."
+    },
+    "modelDownloads": {
+      "timeout": "תם הזמן הקצוב להורדה. החיבור נתקע - נסה שוב באמצעות Wi-Fi או אות חזק יותר.",
+      "offline": "לא ניתן היה להגיע לשרת ההורדות. בדוק את חיבור האינטרנט שלך ונסה שוב.",
+      "server": "שרת ההורדות לא הצליח לספק את הקובץ. נסה שוב מאוחר יותר.",
+      "storage": "אין מספיק מקום פנוי להתקנת דגם זה.",
+      "incomplete": "ההורדה לא הסתיימה. נסה שוב.",
+      "integrity": "הקובץ שהורד ניזוק. נסה שוב.",
+      "unknown": "לא ניתן היה להוריד את הדגם. בדוק את החיבור שלך ונסה שוב.",
+      "installFailed": "לא ניתן היה להתקין את הדגם. נסה שוב."
+    },
+    "localWake": {
+      "title": "קול במכשיר",
+      "description": "הפעל מודל מילת התעוררות מקומי ובדיקת קול אופציונלית. הורדות {{size}} של דגמים מאומנים מראש; נופל בחזרה לשער הביטוי אם אינו זמין.",
+      "statusMissing": "דגמים לא מותקנים",
+      "statusInstalling": "מתקין...",
+      "statusReady": "מודלים מותקנים",
+      "statusUnsupported": "לא נתמך במבנה הזה",
+      "statusError": "ההתקנה נכשלה",
+      "install": "התקנת דגמים ({{size}})",
+      "remove": "הסר דגמים",
+      "phraseLabel": "ביטוי התעוררות",
+      "phraseHelper": "גלאי הערות תומך בביטויים המצורפים באנגלית אלה. מודל הפקודה שנבחר מטפל בשפת הפקודה; אין צורך בהכשרה.",
+      "speakerVerification": "אמת את הקול שלי",
+      "speakerVerificationDescription": "דחה את ביטוי ההתעוררות כאשר הוא אינו מושמע על ידי הקול הרשום.",
+      "enroll": "רשום קול",
+      "reEnroll": "הקלט שוב",
+      "removeVoice": "הסר קול",
+      "enrolled": "פרופיל קול נרשם.",
+      "notEnrolled": "עדיין אין פרופיל קולי.",
+      "recording": "הקלטה... דברו בטבעיות במשך כעשר שניות.",
+      "saving": "בניית פרופיל קול...",
+      "unsupportedHint": "מבנה זה אינו כולל את זמן הריצה המקורי של הקול במכשיר.",
+      "commandModelLabel": "מודל זיהוי פקודות",
+      "commandModelHelper": "בחר את הדגם במכשיר המשמש לפקודות. מודלים רב לשוניים מורידים קובץ גדול יותר.",
+      "fallback": "Fallback: שער ביטוי מערכת \"{{phrase}}\".",
+      "baseModels": "חבילת בסיס",
+      "voiceProfile": "פרופיל קול",
+      "enrollRequiresModels": "התקן תחילה דגמים ולאחר מכן רשום את הקול שלך.",
+      "installBase": "התקן חבילת בסיס ({{size}})",
+      "installCommand": "התקן דגם פקודה ({{size}})",
+      "enrollmentNoisy": "ההקלטה הזו הכילה קולות שונים או יותר מדי רעשי רקע. נסה שוב בחדר שקט."
+    },
+    "speechLocale": {
+      "label": "שפה",
+      "helper": "השאר ריק כדי להשתמש בשפת ברירת המחדל של המערכת עבור קלט קולי והשמעה."
+    },
+    "responseScope": {
+      "label": "היקף תגובה",
+      "brief": {
+        "label": "קצר",
+        "description": "תשובות קצרות וצפופות להלוך ולחזור טבעי."
+      },
+      "balanced": {
+        "label": "מאוזן",
+        "description": "תשובות תמציתיות עם קצת יותר הקשר כשהן מועילות."
+      },
+      "detailed": {
+        "label": "מפורט",
+        "description": "הסברים ארוכים יותר ופרטים תומכים יותר."
+      }
+    },
+    "nextActions": {
+      "title": "פעולות הבאות פשוטות",
+      "description": "סיים תשובות עם המלצה קצרה כשיש מהלך הבא ברור."
+    },
+    "speechRate": {
+      "label": "קצב דיבור"
+    },
+    "workingSoundVariant": {
+      "label": "צליל עובד",
+      "soft": {
+        "label": "צלצול רך",
+        "description": "גוון שכבות חם עם דופק עדין."
+      },
+      "glass": {
+        "label": "גוון זכוכית",
+        "description": "לולאת סביבה בהירה וקלה יותר."
+      }
+    },
+    "workingSoundVolume": {
+      "label": "עוצמת קול עובד"
+    },
+    "voiceSelect": {
+      "label": "קול",
+      "automatic": "אוטומטי",
+      "enhanced": "משופר · {{language}}"
+    },
+    "enhancedVoices": "התקן קולות משופרים או פרימיום בהגדרות הטקסט לדיבור של המכשיר שלך לקבלת קול המערכת הטבעי ביותר.",
+    "playbackEngine": {
+      "label": "מנוע השמעה",
+      "systemDescription": "משתמש בקול המובנה של המכשיר. זמין תמיד.",
+      "localDescription": "משתמש בקול עצבי שהורד. בחר דגם למטה."
+    },
+    "localTts": {
+      "title": "השמעה במכשיר",
+      "description": "מודלים יורדים רק כאשר אתה בוחר אותם. קול המערכת זמין תמיד.",
+      "piper": "קומפקטי",
+      "kokoro": "טבעי",
+      "piperDescription": "מהיר וקל משקל",
+      "kokoroDescription": "האנגלית הכי טבעית, הורדה גדולה יותר",
+      "download": "הורד ({{size}})",
+      "installing": "מתקין...",
+      "installed": "מותקן",
+      "notInstalled": "לא מותקן",
+      "use": "השתמש",
+      "preview": "תצוגה מקדימה",
+      "speaker": "קול",
+      "storage": "{{size}} בשימוש על ידי קולות במכשיר",
+      "downloadHint": "הורדות מאומתות ומאוחסנות במכשיר זה.",
+      "japaneseUnavailable": "היפנית משתמשת בקול המערכת מכיוון שאין דגם של פייפר זמין.",
+      "fallbackToSystem": "הקול במכשיר אינו זמין. משחק עם קול המערכת.",
+      "languageMismatch": "דגם זה מדבר {{language}}. הגדר את מקום הדיבור כך שיתאים, או שההשמעה משתמשת בקול המערכת.",
+      "installFirst": "בחר והתקן תחילה דגם במכשיר."
+    },
+    "footer": "אנדרואיד יכולה לבדוק מעת לעת הפעלות פועלות ברקע ולפרסם הודעת סיום. דיבור ברקע ולכידת מיקרופון רציפה אינם נתמכים.",
+    "check": {
+      "title": "בדיקה קולית",
+      "permission": "גישה למיקרופון ודיבור",
+      "recognition": "זיהוי דיבור",
+      "onDevice": "זיהוי מערכת במכשיר",
+      "restricted": "מוגבל על ידי מדיניות המכשיר",
+      "restrictedHint": "זיהוי דיבור מוגבל במכשיר זה. פנה למנהל המכשיר שלך.",
+      "unavailableHint": "הפעל את Siri & Dictation בהגדרות המכשיר שלך.",
+      "deniedHint": "הגישה נדחתה. פתח את ההגדרות כדי להפעיל אותו באופן ידני.",
+      "enable": "אפשר קלט קולי",
+      "test": "השמעת מבחן",
+      "testPhrase": "השמעת קול פועלת.",
+      "testFailed": "השמעת דיבור נכשלה. בדוק את הקול שנבחר ואת עוצמת הקול של המכשיר.",
+      "allowed": "מותר",
+      "available": "זמין"
+    },
+    "mode": {
+      "label": "קלט קולי",
+      "system": "מערכת",
+      "local": "במכשיר",
+      "systemDescription": "משתמש במזהה הדיבור של הטלפון. זה עשוי להשתמש בענן של הספק.",
+      "localDescription": "משתמש בדגמים שהורדו. האודיו נשאר במכשיר."
+    },
+    "playback": {
+      "title": "השמעה",
+      "helper": "חל גם על מערכת וגם על קול במכשיר."
+    },
+    "readInterim": {
+      "title": "קרא עדכוני התקדמות",
+      "description": "קרא עדכונים כמו \"על זה...\". תשובות סופיות נקראות תמיד."
+    },
+    "setup": {
+      "title": "קלט קולי במכשיר",
+      "step": "שלב {{step}} של {{total}}",
+      "followSystem": "עקוב אחר המערכת",
+      "setUpInput": "הגדר קלט במכשיר",
+      "manageInput": "נהל קלט במכשיר",
+      "notActive": "סיים את ההגדרה כדי להפעיל קלט במכשיר.",
+      "chooseVoice": "בחר קול",
+      "manageDownloads": "נהל הורדות",
+      "more": "הגדרות שמע נוספות",
+      "advanced": "אפשרויות מתקדמות",
+      "notNow": "לא עכשיו",
+      "downloadContinue": "הורד והמשך",
+      "tools": "כלים קוליים",
+      "downloadSize": "{{size}} להורדה · Wi-Fi מומלץ",
+      "englishModel": "Moonshine · מהיר, לפקודות באנגלית",
+      "multilingualModel": "לחישה · לפקודות במספר שפות",
+      "microphone": "גישה למיקרופון",
+      "allow": "אפשר",
+      "sequence": "התעורר ← דיבור ← שלח",
+      "serverNote": "זיהוי דיבור פועל בטלפון שלך. הבקשה שלך עדיין עוברת לשרת OpenCode שלך.",
+      "profileNote": "אופציונלי: הקלט דגימה של 12 שניות כך שרק הקול שלך יוכל להעיר את האפליקציה. הפרופיל הקולי נשאר בטלפון שלך. דילוג מאפשר לכל אחד לומר את ביטוי ההתעוררות.",
+      "skipProfile": "דלג על פרופיל קול",
+      "skipTest": "דלג על מבחן וסיום",
+      "startTest": "התחל בדיקה",
+      "stopTest": "עצור את הבדיקה",
+      "testNote": "הבדיקה לא תשלח בקשה. האזנה למיקרופון נפסקת כאשר אתה עוזב את המסך הזה.",
+      "busy": "עצור את מצב השיחה לפני הגדרת קלט קולי.",
+      "intro": {
+        "title": "הקול שלך, ללא ידיים",
+        "description": "אמור \"{{phrase}}\", ואז אמור ל-OpenCode מה לעשות."
+      },
+      "prepare": {
+        "title": "הכן את הטלפון שלך",
+        "description": "בחר שפה, אפשר את המיקרופון והורד את הכלים הקוליים פעם אחת."
+      },
+      "profile": {
+        "title": "הפוך אותו לשלך",
+        "description": "בחר אם האפליקציה תגיב רק לקול שלך."
+      },
+      "test": {
+        "title": "נסה את \"{{phrase}}\"",
+        "description": "התחל את הבדיקה, ואז אמור את ביטוי ההתעוררות בעוצמת דיבור רגילה.",
+        "idle": "מוכן כשאתה",
+        "starting": "מפעיל את המיקרופון...",
+        "listening": "מקשיב לביטוי ההתעוררות...",
+        "detected": "זוהה ביטוי התעוררות. אתה מוכן!",
+        "error": "לא ניתן להפעיל את הבדיקה. בדוק את הגישה למיקרופון ונסה שוב.",
+        "busy": "עצור את מצב השיחה כדי להפעיל את הבדיקה."
+      }
+    },
+    "confirmCommands": {
+      "title": "אשר פקודות קוליות לפני השליחה",
+      "description": "סקור או אשר דיבור מזוהה לפני שליחתו אל OpenCode."
+    },
+    "requireWakePhrase": {
+      "title": "דרוש ביטוי ערות",
+      "description": "כשהוא כבוי, מצב השיחה מאזין מיד ונפעיל מחדש לאחר כל תשובה. אישור עדיין מגן על פקודות.",
+      "systemWarning": "עם זיהוי מערכת, דיבור סביבתי עשוי להישלח לספק הדיבור שלך. השתמש בקלט במכשיר להאזנה פרטית."
+    }
+  },
+  "diagnostics": {
+    "title": "אבחון",
+    "server": "שרת",
+    "openCodeVersion": "OpenCode {{version}}",
+    "healthUnavailable": "נקודת קצה בריאותית לא זמינה",
+    "healthy": "בריא",
+    "realtimeUpdates": "עדכונים בזמן אמת",
+    "eventStreamConnected": "זרם אירועים גלובלי מחובר",
+    "pollingFallback": "החלפת סקרים פעילה",
+    "subsystems": "תת-מערכות",
+    "subsystemsMcp": "MCP {{value}}",
+    "notAvailable": "לא",
+    "refresh": "רענן את האבחון",
+    "networkUsage": "שימוש ברשת",
+    "networkUsageValue": "בקשות {{requests}} · {{size}} גדלי תגובות ידועים כיום",
+    "networkUsageReset": "אפס",
+    "lastError": "שגיאה אחרונה באפליקציה",
+    "lastErrorValue": "{{message}} · {{time}}",
+    "lastErrorNone": "לא נרשמו שגיאות באפליקציה",
+    "lastErrorFatal": "קטלני",
+    "lastErrorHandled": "מטופל",
+    "network": "רשת",
+    "networkValue": "{{type}} · {{state}}{{generation}}",
+    "networkOnline": "באינטרנט",
+    "networkOffline": "במצב לא מקוון",
+    "networkConstrained": "מוגבל",
+    "networkNormal": "רגיל",
+    "reconnect": "חיבור אוטומטי מחדש",
+    "reconnectValue": "נסה {{attempt}} של {{max}}",
+    "requestLatency": "בקש זמן אחזור",
+    "requestLatencyValue": "p50 {{p50}} ms · p95 {{p95}} ms · {{failed}} נכשל · {{retries}} ניסה שוב",
+    "appTitle": "אבחון אפליקציה",
+    "appDescription": "ההקלטה המקומית נשארת במכשיר הזה. טלמטריה מרחוק היא אופציונלית ונשלטת בנפרד.",
+    "localTitle": "הקלט אבחון במכשיר זה",
+    "localDescription": "יומנים, עקבות ומדדים מובנים מאוחסנים באופן מקומי עד 7 ימים. הנחיות, קוד, פלט מסוף ואישורים לעולם אינם נרשמים.",
+    "levelLabel": "רמת הקלטה",
+    "levelNormal": "רגיל",
+    "levelVerbose": "מילולית",
+    "storageTitle": "אחסון מקומי",
+    "storageValue": "{{size}} · {{files}} קבצים · {{days}} שימור יום",
+    "retentionTitle": "שימור",
+    "retentionValue": "שמור עד {{days}} ימים או {{size}}",
+    "remoteTitle": "טלמטריה מרחוק",
+    "remoteDescription": "שיתוף מרחוק אינו זמין ללא קצה אחורי מוגדר ובתבניות FOSS. לא נשלחים תוכן הודעה, הנחיות או קוד.",
+    "remoteMasterTitle": "שתף טלמטריה אנונימית",
+    "remoteMasterDescription": "אפשר לנתוני קריסה וביצועים מחוטאים לצאת מהמכשיר הזה. אתה יכול לשנות זאת בכל עת.",
+    "remoteCrashTitle": "דוחות קריסה אנונימיים",
+    "remoteCrashDescription": "שלח הודעות שגיאה מחוטאות ועקבות מחסניות. לעולם לא כולל הנחיות, תגובות, קוד מקור או אישורים.",
+    "remotePerformanceTitle": "אבחון ביצועים",
+    "remotePerformanceDescription": "שלח תזמוני אתחול, חיבור ובקשה מדוגמים. לעולם לא כולל מזהי פרויקט, הפעלה או שרת.",
+    "previewTitle": "פעילות אחרונה",
+    "filterLabel": "הצג",
+    "filterAll": "הכל",
+    "filterWarnings": "אזהרות",
+    "filterErrors": "שגיאות",
+    "previewEmpty": "עדיין אין אירועי אבחון תואמים.",
+    "metricValue": "p95 {{value}} · דוגמאות {{count}}",
+    "recentFailure": "הכישלון האחרון",
+    "includeDetailsTitle": "כלול אירועים מפורטים בייצוא",
+    "includeDetailsDescription": "כאשר כבוי, הדוח מכיל רק את המניפסט, הספירות והמטא נתונים של הסביבה.",
+    "exportAction": "דוח ייצוא",
+    "exporting": "מתכונן...",
+    "exportReady": "הדוח נשמר במטמון האפליקציה. השיתוף אינו זמין בפלטפורמה זו.",
+    "exportShared": "דיווח מוכן לשיתוף.",
+    "exportFailed": "לא ניתן ליצור את דוח האבחון.",
+    "clearTitle": "לנקות היסטוריית אבחון?",
+    "clearMessage": "פעולה זו מסירה את כל היומנים, המעקבים, המדדים והשגיאות המתועדים באופן מקומי מהמכשיר הזה. הגדרות הטלמטריה המרוחקות לא השתנו.",
+    "clearAction": "ברור",
+    "clearing": "מנקה...",
+    "cleared": "היסטוריית האבחון המקומית נוקתה.",
+    "clearFailed": "לא ניתן היה לנקות אבחון מקומי."
+  },
+  "mcp": {
+    "title": "שרתי MCP",
+    "couldNotUpdate": "לא ניתן היה לעדכן שרתי MCP.",
+    "configurationUnavailable": "פרטי התצורה אינם זמינים",
+    "invalidCommand": "הזן את הפקודה המקומית כמערך מחרוזת JSON.",
+    "local": "מקומי",
+    "remote": "מרחוק",
+    "serverName": "שם השרת",
+    "commandArguments": "ארגומנטים של פקודה (JSON)",
+    "url": "כתובת אתר",
+    "addLocalServer": "הוסף שרת מקומי",
+    "addRemoteServer": "הוסף שרת מרוחק",
+    "noServers": "לא הוגדרו שרתי MCP.",
+    "statusConfigured": "מוגדר",
+    "statusDisabled": "נכים",
+    "oauth": "OAuth"
+  },
+  "language": {
+    "title": "שפה",
+    "description": "השתמש בשפת המערכת או בחר אחת עבור ממשק האפליקציה."
+  },
+  "appearance": {
+    "theme": {
+      "label": "מצב ערכת נושא",
+      "description": "בחר בהיר או כהה, או עקוב אחר הגדרות המערכת.",
+      "system": "עקוב אחר המערכת",
+      "light": "אור",
+      "dark": "כהה"
+    },
+    "accent": {
+      "label": "נושא",
+      "description": "בחר נושא צבע. זה משנה משטחים, מבטאים ובועות צ'אט ברחבי האפליקציה.",
+      "green": "ירוק",
+      "blue": "כחול",
+      "red": "אדום",
+      "purple": "סגול",
+      "pink": "ורוד",
+      "gray": "אפור"
+    },
+    "chatTextSize": "גודל טקסט של צ'אט",
+    "chatTextSizeDescription": "התאם את גודל טקסט ההודעה בצ'אט. טקסט קטן יותר מציג יותר מהשיחה בבת אחת.",
+    "timelineDetail": {
+      "label": "פירוט ציר הזמן",
+      "description": "בחר כמה פעילות תופיע בפיד: הודעות, נימוקים, כלים ועריכות.",
+      "messages": {
+        "label": "הודעות בלבד",
+        "description": "הצג רק בועות הודעות וקבצים מצורפים."
+      },
+      "reasoning": {
+        "label": "נימוק",
+        "description": "הצג הודעות בתוספת הנמקה של העוזר."
+      },
+      "everything": {
+        "label": "הכל",
+        "description": "הצג את ציר הזמן המלא, כולל הנמקה, כלים, עריכות ופעילות אחרת."
+      }
+    },
+    "flatThread": {
+      "title": "שיחה שטוחה",
+      "description": "הצג הודעות ברוחב מלא ללא בועות כך שיותר מהשיחה תתאים למסך."
+    },
+    "slimInterface": {
+      "title": "ממשק דק",
+      "description": "כווץ את הלחצנים, המרווחים והכותרות בצ'אט, בטרמינל ובפרויקט כך שיותר טקסט יתאים למסך."
+    }
+  },
+  "connect": {
+    "entry": "התאמה עם Cloud Link",
+    "title": "קישור ענן",
+    "description": "סרוק את קוד ה-QR של מחבר המכשיר שלך או פתח את קישור ההתאמה שלו. חיבורים ידניים נשארים זמינים.",
+    "pairingLink": "זיווג קישור עמוק",
+    "openLink": "פתח קישור התאמה",
+    "machines": "המכונות שלך",
+    "noMachines": "לא נרשמו מכונות עבור משתמש זה.",
+    "revoke": "בטל מכונה",
+    "revokeConfirm": "למחוק את המכונה הזו עבור כל מכשיר? המנהרה הציבורית שלו תימחק.",
+    "forget": "תשכח מקומית",
+    "forgetConfirm": "להסיר את החיבור הזה ואת האישורים שלו מהמכשיר הזה? מכשירים אחרים ישמרו על הגישה.",
+    "expiresAt": "תוקף האישורים פג: {{date}}",
+    "savedConnection": "חיבור נשמר: {{name}}",
+    "manage": "ניהול Cloud Link",
+    "cameraLoading": "מצלמה פותחת",
+    "cameraUnavailable": "המצלמה לא זמינה. פתח את הקישור העמוק של המחבר במקום זאת.",
+    "progress": {
+      "idle": "טוען...",
+      "claiming": "תובע התאמה...",
+      "saving": "שומר אישורים בצורה מאובטחת...",
+      "connecting": "מתחבר למכונה...",
+      "waitingForApproval": "אשר את החיבור הזה במחשב שלך.",
+      "delayed": "עדיין אין אישור. אשר במחשב שלך, או סרוק קוד QR חדש.",
+      "paired": "טוען...",
+      "catalog": "טוען מינויים לחנות...",
+      "purchasing": "מחכה לחנות…",
+      "pending": "ממתין לאישור רכישה...",
+      "restoring": "משחזר רכישות...",
+      "verifying": "מאמת את המינוי...",
+      "savingSession": "שומר את הפעלת Cloud Link בצורה מאובטחת...",
+      "finalizing": "מסיים את העסקה בחנות..."
+    },
+    "subscriptionActive": "המנוי שלך ל-Cloud Link פעיל.",
+    "restore": "שחזור רכישות",
+    "accessUnavailable": "הגישה לא זמינה. קנה או שחזר כדי להפעיל מחדש את המכונה הזו.",
+    "scanHint": "סרוק את קוד ה-QR של המחשב שלך כדי להתחבר.",
+    "scanNewQr": "סרוק את קוד ה-QR החדש במחשב שלך",
+    "scanLocal": "סרוק קוד QR",
+    "scanLocalHint": "התחבר למחשב באותה רשת.",
+    "manual": "ידני",
+    "manualHint": "הזן את כתובת האתר והאישורים של השרת שלך.",
+    "nativeOnly": "Cloud Link זמין באפליקציית iOS ו- Android.",
+    "benefits": "התחבר עם קוד QR, גש למחשב שלך מרחוק דרך Cloud Link, ושחזר את המכונות שלך במכשיר אחר עם רכישות שחזור.",
+    "subscribe": "הירשם",
+    "options": "אפשרויות חיבור",
+    "learnMore": "למידע נוסף על Cloud Link",
+    "onboarding": {
+      "step": "{{step}} של {{total}}",
+      "step1": {
+        "title": "המחשב שלך.\nבְּכָל מָקוֹם.",
+        "subtitle": "השתמש ב-OpenCode במחשב מהטלפון שלך.",
+        "action": "התחל"
+      },
+      "step2": {
+        "title": "הגדר את שלך\nמחשב",
+        "subtitle": "הורד את Cloud Link במחשב שלך.",
+        "action": "Cloud Link פועל"
+      },
+      "step3": {
+        "title": "הפעל\nקישור ענן",
+        "subtitle": "הירשם כדי לחבר את האפליקציה הזו למחשב שלך דרך האינטרנט.",
+        "action": "הירשם והמשך"
+      },
+      "step4": {
+        "title": "זוג שלך\nמחשב",
+        "subtitle": "סרוק את קוד ה-QR המוצג ב-Cloud Link במחשב שלך.",
+        "action": "סרוק קוד QR"
+      },
+      "explanation": "Cloud Link מחבר את המכשירים שלך דרך האינטרנט. השאר את המחשב שלך מופעל ו-Cloud Link פועל.",
+      "instruction1": "התקן במחשב שלך",
+      "instruction2": "הירשם באפליקציה זו",
+      "instruction3": "סרוק להתאמה",
+      "openOnComputer": "במחשב שלך, פתח את:",
+      "copySetupUrl": "העתק את כתובת האתר של הגדרת המחשב",
+      "copied": "כתובת ה-URL של ההגדרה הועתקה",
+      "copyError": "לא ניתן היה להעתיק את כתובת האתר. פתח את opencodecloud.link במחשב שלך.",
+      "downloadHint": "הורד ופתח את Cloud Link, ולאחר מכן השאר את קוד ה-QR ההתאמה שלו על המסך.",
+      "remote": "התחבר דרך האינטרנט",
+      "pair": "התאם את המחשב שלך לאפליקציה זו",
+      "billing": "החיוב מטופל על ידי חנות האפליקציות שלך.",
+      "checkoutHint": "פותח את חנות האפליקציות שלך כדי לאשר רכישה.",
+      "approveHint": "לאחר מכן אשר את החיבור במחשב שלך.",
+      "usePairingLink": "השתמש בקישור התאמה"
+    }
+  },
+  "editor": {
+    "title": "עורך"
+  },
+  "general": {
+    "title": "כללי",
+    "resetOnboarding": "בדוק את ההגדרה"
+  },
+  "autoUpdate": {
+    "title": "עדכן בדיקות",
+    "enable": {
+      "title": "בדוק אם יש עדכונים",
+      "description": "הציעו גרסאות חדשות כשהן זמינות בחנות."
+    },
+    "checkPeriod": {
+      "label": "בדוק תקופה",
+      "available": {
+        "label": "כאשר זמין",
+        "description": "הצג גרסה חדשה ברגע שהחנות מדווחת עליה."
+      },
+      "daily": {
+        "label": "יומי",
+        "description": "בדוק אם יש גרסה חדשה לכל היותר פעם ביום."
+      },
+      "weekly": {
+        "label": "שבועי",
+        "description": "בדוק אם יש גרסה חדשה לכל היותר פעם בשבוע."
+      }
+    }
+  },
+  "permissions": {
+    "title": "הרשאות שמורות",
+    "description": "כללים שנוצרו על ידי \"אפשר תמיד\". הסרה של אחד גורמת לשרת לשאול שוב.",
+    "empty": "אין הרשאות שמורות.",
+    "remove": "הסר",
+    "removeTitle": "הסר הרשאה שמורה",
+    "removeMessage": "להפסיק לאפשר אוטומטית את {{resource}}?"
+  },
+  "subscription": {
+    "inactive": "אין מנוי פעיל",
+    "accessThrough": "גישה דרך {{date}}",
+    "description": "גישה מרחוק למכונות OpenCode שלך.",
+    "manage": "ניהול מנוי",
+    "opensApple": "פותח מינויים ל-App Store",
+    "opensGoogle": "פותח את Google Play",
+    "restoreDescription": "שחזור רכישה קיימת",
+    "machines": "מכונות",
+    "machinesDescription": "הצג ונהל מכונות מחוברות"
+  },
+  "services": {
+    "title": "שירותים חשופים",
+    "description": "הוסף, החלף והסר את נתיבי השירות שהמחבר שלך חושף דרך המנהרה שלו. השינויים יחולו בזמן אמת.",
+    "loadFailed": "לא ניתן לטעון שירותים חשופים.",
+    "add": "הוסף שירות",
+    "addTitle": "שירות חדש",
+    "editTitle": "ערוך שירות",
+    "empty": "עדיין לא נחשפו שירותים.",
+    "capacity": "אתה יכול לחשוף עד שירותי {{max}}.",
+    "saveFailed": "לא ניתן לשמור את השירות הזה.",
+    "removed": "הוסר {{name}}.",
+    "removeFailed": "לא ניתן להסיר את השירות הזה.",
+    "removeTitle": "להסיר את {{name}}?",
+    "removeMessage": "המחבר מפסיק לנתב את הנתיב הזה באופן מיידי.",
+    "removeConfirm": "להסיר את {{name}}? המחבר מפסיק לנתב את הנתיב הזה באופן מיידי.",
+    "copyLink": "העתק קישור",
+    "linkCopied": "קישור השירות הועתק.",
+    "linkUnavailable": "לא ניתן לבנות קישור לשירות זה.",
+    "machine": "מכונה",
+    "notActive": "מציג שירותים עבור {{name}} - זה לא החיבור הפעיל שלך.",
+    "useMachine": "עבור למכונה הזו",
+    "noMachine": "חבר מכשיר Cloud Link כדי לנהל את השירותים החשופים שלו.",
+    "credentialsExpired": "פג תוקף הגישה של Cloud Link עבור מחשב זה או שחסרה. התחבר מחדש כדי לנהל את השירותים שלה.",
+    "reconnectFailed": "לא ניתן לחבר מחדש את המכונה הזו.",
+    "unavailableService": "שירות זה אינו נמצא עוד במחבר.",
+    "unavailableServiceHint": "חזור ופתח מחדש את רשימת השירותים החשופים.",
+    "legacyConnector": "מחבר שולחן העבודה הזה קדם ליציאות שירות ייעודיות. עדכן אותו כדי להגיש אפליקציות בשורש היציאה ובחר יציאות.",
+    "unknownConnector": "מחבר שולחן העבודה הזה ישן יותר ממה שהאפליקציה מצפה. עדכן אותו לשימוש ביציאות ושירותי שורש ייעודיים.",
+    "enabledHint": "נתיב את התנועה בשביל זה דרך המנהרה.",
+    "rootPathHint": "השאר את הנתיב ריק כדי לשרת את כל שורש היציאה - השתמש בזה עבור אפליקציות עם כתובות URL מוחלטות.",
+    "portOccupied": "בשימוש",
+    "portShared": "משותף",
+    "stripPrefixHint": "הסר את קידומת הנתיב המותאם לפני ההעברה.",
+    "fields": {
+      "id": "תעודה מזהה",
+      "name": "שם",
+      "port": "נמל",
+      "path": "נתיב",
+      "target": "יעד",
+      "access": "גישה",
+      "enabled": "מופעל",
+      "stripPrefix": "קידומת רצועת נתיב"
+    },
+    "access": {
+      "private": "פרטי",
+      "public": "ציבורי"
+    },
+    "errors": {
+      "required": "שדה זה חובה.",
+      "idFormat": "השתמש ב-1-32 אותיות קטנות, ספרות או מקפים.",
+      "nameLength": "השתמש ב-64 תווים או פחות.",
+      "pathRoot": "הנתיב לא יכול להיות שורש השרת.",
+      "pathReserved": "הקידומת /_cloudlink שמורה.",
+      "pathFormat": "השתמש בנתיב כמו /test/api ללא שאילתה, פרגמנט או קידוד.",
+      "portRequired": "בחר יציאת שירות.",
+      "portInvalid": "בחר באחת מיציאות השירות של המחבר שלך.",
+      "portInUse": "יציאה זו כבר נמצאת בשימוש על ידי שירות אחר.",
+      "portPathInUse": "היציאה והנתיב האלה כבר נמצאים בשימוש על ידי שירות אחר.",
+      "targetFormat": "השתמש בכתובת כמו 127.0.0.1:3000.",
+      "targetLoopback": "היעד חייב להיות loopback (127.0.0.1 או ::1).",
+      "targetReserved": "הנמל הזה שמור לשירותים חשופים.",
+      "targetPort": "השתמש ביציאה לא מוסמכת בין 1024 ל-65535."
+    }
+  },
+  "extensions": {
+    "gui": {
+      "title": "ממשקי GUI של תוספים",
+      "description": "לוחות שנתרמו על ידי תוספים מותקנים. קוד הפלאגין פועל בתצוגה מבודדת ולעולם לא מקבל את האישורים שלך.",
+      "empty": "שום תוסף מותקן לא תורם GUI.",
+      "loading": "טוען GUI של תוסף...",
+      "unavailable": "GUI של תוסף זה אינו זמין בנייד.",
+      "failed": "GUI של תוסף נכשל: {{message}}",
+      "noPanel": "לפלאגין הזה אין פאנל לנייד.",
+      "sessionRequired": "פתח סשן צ'אט לפני פתיחת פאנל תוספים."
+    },
+    "title": "הרחבות",
+    "description": "נהל שרתי MCP, תוספים, סוכנים, מיומנויות ופקודות חתך עבור שרת זה.",
+    "scope": {
+      "project": "הפרויקט הזה",
+      "general": "כל הפרויקטים"
+    },
+    "scopeDescription": {
+      "project": "הרחבות אלו חלות רק על {{project}}.",
+      "general": "הרחבות אלו חלות על כל פרויקט בשרת זה."
+    },
+    "safety": {
+      "writable": "ניתן לכתיבה. שינויים מגובים ומוחלפים בצורה אטומית.",
+      "markdownAgents": "ספריית סוכנים: {{path}}",
+      "markdownCommands": "ספריית פקודות: {{path}}",
+      "missing": "לא זמין",
+      "readOnly": "לקריאה בלבד",
+      "target": "קובץ תצורה: {{path}}",
+      "backup": "גיבוי אחרון: {{path}}",
+      "restore": "שחזר את הגיבוי האחרון",
+      "restoreMessage": "לשחזר את התצורה האחרונה שנשמרה? הקובץ הנוכחי מגובה תחילה."
+    },
+    "tabs": {
+      "mcp": "MCPs",
+      "plugins": "תוספים",
+      "agents": "סוכנים",
+      "skills": "מיומנויות",
+      "commands": "פקודות"
+    },
+    "shared": "משותף לכל הפרויקטים",
+    "sharedHint": "פריטים משותפים מנוהלים בהיקף המגדיר אותם.",
+    "removeTitle": "הסר את התוסף",
+    "saving": "שומר וממתין לטעינה מחדש של השרת...",
+    "unavailable": "ניהול הרחבות אינו זמין עבור שרת זה.",
+    "mcp": {
+      "addTitle": "הוסף שרת MCP",
+      "add": "הוסף שרת MCP",
+      "empty": "אין שרתי MCP בהיקף זה.",
+      "runtime": "שרת MCP לזמן ריצה בלבד",
+      "configured": "מוגדר",
+      "removeMessage": "האם להסיר את שרת MCP \"{{name}}\" מההיקף הזה?"
+    },
+    "plugins": {
+      "addTitle": "הוסף תוסף",
+      "package": "חבילה או נתיב תוסף מקומי",
+      "warning": "תוספים מבצעים קוד בשרת. הוסף רק חבילות שאתה סומך עליהן.",
+      "add": "הוסף תוסף",
+      "empty": "אין תוספים בהיקף זה.",
+      "outdated": "עדכון זמין",
+      "removeMessage": "האם להסיר את התוסף \"{{name}}\" מההיקף הזה?"
+    },
+    "skills": {
+      "addTitle": "הוסף מיומנות",
+      "editTitle": "ערוך את {{name}}",
+      "id": "מזהה מיומנות",
+      "name": "שם",
+      "descriptionLabel": "תיאור",
+      "instructions": "הוראות",
+      "fileContent": "תוכן SKILL.md",
+      "autoinvokeOn": "ניתן לגילוי על ידי הדגם",
+      "autoinvokeOff": "מוסתר מהדגם כברירת מחדל",
+      "add": "צור מיומנות",
+      "empty": "אין כישורים בהיקף זה.",
+      "removeMessage": "להעביר את המיומנות \"{{name}}\" לאשפה של ההרחבה?"
+    },
+    "commands": {
+      "addTitle": "הוסף פקודת נטוי",
+      "editTitle": "ערוך /{{name}}",
+      "name": "שם פקודה",
+      "descriptionLabel": "תיאור",
+      "template": "תבנית",
+      "templateHint": "השתמש ב-$ARGUMENTS או ב-$1, $2 עבור ארגומנטים. בלוקים של מעטפת בתבניות פועלות בשרת.",
+      "empty": "אין פקודות בהיקף זה.",
+      "removeMessage": "להסיר את הפקודה \"/{{name}}\" מההיקף הזה?",
+      "markdownHint": "פקודות חדשות נשמרות כקובצי Markdown.",
+      "jsoncHint": "פקודה זו נשמרת ב-opencode.jsonc."
+    },
+    "format": {
+      "markdown": "Markdown",
+      "jsonc": "JSONC"
+    },
+    "origin": {
+      "config": "JSONC",
+      "file": "Markdown",
+      "server": "שרת",
+      "shadowed": "נדחק על ידי קובץ Markdown"
+    },
+    "agents": {
+      "addTitle": "הוסף סוכן",
+      "editTitle": "ערוך את {{name}}",
+      "id": "שם הסוכן",
+      "descriptionLabel": "תיאור",
+      "modeValue": "מצב: {{mode}}",
+      "modeLabel": "מצב סוכן",
+      "model": "דגם",
+      "modelValue": "דגם: {{model}}",
+      "permissions": "הרשאות",
+      "permissionsValue": "הרשאות:\n{{value}}",
+      "instructions": "הוראות",
+      "advanced": "Frontmatter מתקדם",
+      "advancedHint": "שדות YAML מלבד תיאור, מצב, דגם והרשאות. הם נשמרים כאשר אתה שומר.",
+      "markdownHint": "נשמר ב-.opencode/agents כ-Markdown.",
+      "jsoncHint": "נשמר ב-opencode.jsonc תחת סוכנים.",
+      "empty": "אין סוכנים בהיקף זה.",
+      "view": "הצג",
+      "add": "צור סוכן",
+      "none": "אין",
+      "inherited": "עבר בירושה",
+      "configDefined": "מוגדר ב-opencode.jsonc",
+      "noDescription": "אין תיאור",
+      "removeMessage": "להסיר את הסוכן \"{{name}}\" מההיקף הזה?",
+      "mode": {
+        "primary": "ראשוני",
+        "subagent": "סוכן משנה",
+        "all": "הכל"
+      }
+    },
+    "generalConfirmTitle": "ערוך תצורה גלובלית",
+    "generalConfirmMessage": "זה משנה את התצורה של כל פרויקט בשרת זה. תחילה נוצר גיבוי.\n\n{{path}}",
+    "generalConfirmAction": "המשך",
+    "editor": {
+      "discardTitle": "למחוק שינויים?",
+      "discardHint": "השינויים שלא נשמרו יאבדו.",
+      "discard": "בטל שינויים",
+      "back": "חזרה להרחבות",
+      "setup": "הגדרה",
+      "instructions": "הוראות",
+      "advanced": "מתקדם",
+      "storage": "פורמט אחסון",
+      "inheritModel": "תורשה דגם",
+      "inheritModelHint": "תן ל-OpenCode לבחור את הדגם.",
+      "customModel": "מזהה דגם מותאם אישית",
+      "customModelHint": "דגם זה מוגדר ב-Advanced. התצורה שלו נשמרת.",
+      "noModels": "אין דגמים מוגדרים. הגדר ספק ב-AI וספקים, או הזן מזהה דגם מותאם אישית ב-Advanced.",
+      "availability": "זמין ל",
+      "custom": "מותאם אישית",
+      "inherited": "עבר בירושה",
+      "inheritPermissions": "ירש את כללי ההרשאה של השרת.",
+      "rulesHint": "כללים מוערכים בסדר הקיים שלהם. הסרת כל הכללים משחזרת את הירושה.",
+      "ruleAction": "פעולה",
+      "ruleResource": "דפוס משאבים",
+      "ruleEffect": "החלטה",
+      "ask": "תשאל",
+      "allow": "אפשר",
+      "deny": "הכחיש",
+      "addRule": "הוסף כלל",
+      "legacyRules": "תצורה זו משתמשת בכללים מותאמים אישית או מדור קודם. ערוך את המקור כדי לשמור על הפורמט שלו.",
+      "source": "מקור הרשאה",
+      "sourceHint": "ערוך את הקובץ SKILL.md המלא. חומר חזית לא ידוע נשמר בעת שימוש בשדות.",
+      "editSource": "ערוך מקור",
+      "useFields": "השתמש בשדות",
+      "autoinvoke": "הזמנה אוטומטית",
+      "autoinvokeHint": "אפשר לדגם לגלות את המיומנות הזו באופן אוטומטי.",
+      "connectionType": "סוג חיבור",
+      "executable": "בר הפעלה",
+      "argumentsHint": "פועל על השרת. הזן כל ארגומנט בנפרד, ללא ציטוט מעטפת.",
+      "argument": "טיעון {{number}}",
+      "removeArgument": "הסר ארגומנט {{number}}",
+      "addArgument": "הוסף ארגומנט",
+      "pluginHint": "הזן חבילה כגון @scope/plugin@1.0.0 או נתיב שרת מקומי כגון ./plugins/example.js.",
+      "configDetails": "פרטי תצורה",
+      "mode": {
+        "primary": "צ'אט ראשי",
+        "subagent": "סוכנים אחרים",
+        "all": "שניהם"
+      },
+      "modeHint": {
+        "primary": "בחר בצ'אט הראשי.",
+        "subagent": "התקשר על ידי סוכן אחר למשימות ממוקדות.",
+        "all": "זמין בצ'אט ולסוכנים אחרים."
+      },
+      "mcpType": {
+        "remote": "שרת מרוחק",
+        "local": "פקודה בשרת"
+      },
+      "mcpStatus": {
+        "connected": "מחובר",
+        "disabled": "מנותק",
+        "pending": "מתחבר...",
+        "failed": "נכשל",
+        "needs_auth": "נדרשת כניסה",
+        "needs_client_registration": "נדרש רישום לקוח"
+      }
+    },
+    "source": {
+      "general": "כל הפרויקטים",
+      "project": "הפרויקט הזה",
+      "inherited": "עבר בירושה",
+      "runtime": "זמן ריצה",
+      "system": "מערכת"
+    }
+  },
+  "modelRouting": {
+    "title": "ניתוב דגם אוטומטי",
+    "description": "סווגו כל הנחיה ובחרו דגם לפי מורכבות. דילוג על הניתוב כאשר המסווג אינו זמין.",
+    "enable": {
+      "title": "אפשר ניתוב אוטומטי",
+      "description": "בחר מודל עבור כל הנחיה בהתבסס על המורכבות שלה.",
+      "unavailable": "הגדר מיון למטה לפני הפעלת הניתוב."
+    },
+    "classifier": {
+      "label": "מסווג",
+      "local": {
+        "label": "דגם במכשיר",
+        "description": "פועל בטלפון הזה. הדגם מוריד פעם אחת."
+      },
+      "server": {
+        "label": "מסווג OpenCode",
+        "description": "קורא לדגם דרך OpenCode לפני שליחת ההנחיה."
+      }
+    },
+    "local": {
+      "statusLabel": "דגם במכשיר",
+      "status": {
+        "unsupported": "לא נתמך בפלטפורמה זו",
+        "installing": "מוריד",
+        "ready": "מוכן",
+        "missing": "לא מותקן",
+        "error": "ההתקנה נכשלה"
+      },
+      "installed": "מותקן ({{size}})",
+      "remove": "הסר את הדגם",
+      "download": "דגם הורדה ({{size}})",
+      "license": "{{model}} · {{license}}. הדגם פועל רק במכשיר זה."
+    },
+    "server": {
+      "modelLabel": "דגם מסווג",
+      "cheapest": "הכי זול שיש",
+      "check": "בדוק את המסווג",
+      "status": {
+        "unknown": "לא נבדק. בדוק את המסווג כדי לאפשר ניתוב.",
+        "checking": "בודק את המסווג...",
+        "available": "מסווג זמין.",
+        "unsupported": "שרת זה אינו חושף את נקודת הקצה המסווגת.",
+        "unavailable": "המסווג אינו זמין. בדוק את החיבור ונסה שוב.",
+        "auth": "היכנס לשרת זה לפני השימוש במסווג."
+      }
+    },
+    "tiers": {
+      "simple": {
+        "label": "דגם פשוט"
+      },
+      "standard": {
+        "label": "דגם סטנדרטי"
+      },
+      "complex": {
+        "label": "דגם מורכב"
+      },
+      "automatic": "אוטומטי",
+      "automaticDescription": "בחר מבין הדגמים המופעלים",
+      "automaticValue": "אוטומטי · {{model}}",
+      "unavailable": "לא זמין"
+    },
+    "protect": {
+      "title": "הגן על צ'אטים ארוכים",
+      "description": "הימנע משדרוג לאחור של מודלים בשיחות ארוכות שבהן החיסכון ב-prompt-cache עשוי להיות גדול יותר."
+    }
+  }
+}

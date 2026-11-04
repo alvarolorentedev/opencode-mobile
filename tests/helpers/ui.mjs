@@ -5,6 +5,7 @@ import { createFormControl } from 'react-hook-form';
 // Presentation-only stand-ins for the existing deterministic hook driver.
 // Real components and RHF hooks are exercised by Storybook and browser flows.
 export const uiImports = {
+  'react-i18next': { useTranslation: () => ({ t: (key) => key, i18n: { language: 'en', resolvedLanguage: 'en' } }) },
   '@/shared/ui/cn': { cn: (...values) => twMerge(clsx(values)) },
   '@/shared/ui/text': { Text: 'Text' },
   '@/shared/ui/button': { Button: 'Button' },

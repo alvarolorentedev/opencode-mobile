@@ -1,0 +1,86 @@
+{
+  "tabs": {
+    "chat": "צ'אט",
+    "terminal": "טרמינל",
+    "projects": "פרויקטים",
+    "settings": "הגדרות"
+  },
+  "actions": {
+    "cancel": "בטל",
+    "save": "שמור",
+    "close": "סגור",
+    "back": "חזרה",
+    "next": "הבא",
+    "done": "בוצע",
+    "retry": "נסה שוב",
+    "delete": "מחק",
+    "dismiss": "לבטל",
+    "refresh": "רענן",
+    "remove": "הסר",
+    "open": "פתוח",
+    "copy": "העתק",
+    "connect": "התחבר",
+    "reconnect": "התחבר מחדש",
+    "disconnect": "ניתוק",
+    "edit": "ערוך",
+    "stop": "עצור",
+    "closeWithName": "סגור את {{title}}",
+    "openSettings": "פתח את ההגדרות"
+  },
+  "select": {
+    "chooseOption": "בחר אפשרות"
+  },
+  "labels": {
+    "connected": "מחובר",
+    "enabled": "מופעל",
+    "off": "כבוי",
+    "active": "פעיל",
+    "unavailable": "לא זמין",
+    "unknown": "לא ידוע",
+    "none": "אין",
+    "notSet": "לא מוגדר",
+    "systemDefault": "ברירת המחדל של המערכת"
+  },
+  "updates": {
+    "available": "עדכון זמין",
+    "later": "מאוחר יותר",
+    "failed": "לא ניתן היה לעדכן. אנא נסה שוב מאוחר יותר.",
+    "opening": "פותח את העדכון...",
+    "availableDescription": "התקן את הגרסה העדכנית ביותר דרך ה-App Store.",
+    "openStore": "פתח את App Store"
+  },
+  "servers": {
+    "allServers": "כל השרתים",
+    "allProjects": "כל הפרויקטים",
+    "server": "שרת",
+    "projectContext": "הקשר של הפרויקט",
+    "serverSettings": "הגדרות שרת",
+    "appSettings": "הגדרות האפליקציה",
+    "forServer": "השינויים חלים על {{name}}",
+    "searchProjects": "חיפוש פרויקטים",
+    "lastSynced": "מציג את הפרויקטים האחרונים שסונכרנו",
+    "newTerminalHint": "בחר היכן מתחיל הטרמינל הזה.",
+    "workingDirectory": "ספריית עבודה",
+    "chatUnchanged": "הצ'אט שלך נשאר ב-{{name}}.",
+    "pending": "בהמתנה ({{count}})",
+    "savedRules": "כללים שמורים ({{count}})",
+    "onlyThisServer": "לשרת זה בלבד",
+    "appDiagnostics": "אבחון אפליקציה · כל השרתים",
+    "discardDrafts": "טיוטות צ'אט ועורך שלא נשמרו בשרת הזה יימחקו.",
+    "status": {
+      "idle": "מנותק",
+      "connecting": "מתחבר",
+      "connected": "מחובר",
+      "error": "לא זמין"
+    },
+    "appSettingsSummary": "עורך, כללי ועדכונים",
+    "serverToolsSummary": "שרתי MCP ואבחון"
+  },
+  "voice": {
+    "startFailed": "לא ניתן היה להפעיל קלט קולי. מזהה הדיבור של המכשיר לא הגיב. נסה שוב."
+  },
+  "validation": {
+    "required": "שדה זה חובה.",
+    "invalid": "הזן ערך חוקי."
+  }
+}

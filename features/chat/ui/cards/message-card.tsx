@@ -144,8 +144,8 @@ const styles = StyleSheet.create({
     minWidth: 0,
     backgroundColor: 'transparent',
   },
-  messageBubbleUser: { borderBottomRightRadius: 10, marginLeft: '8%', marginRight: 8 },
-  messageBubbleAssistant: { borderBottomLeftRadius: 10, marginRight: '8%', marginLeft: 8 },
+  messageBubbleUser: { borderBottomEndRadius: 10, marginStart: '8%', marginEnd: 8 },
+  messageBubbleAssistant: { borderBottomStartRadius: 10, marginEnd: '8%', marginStart: 8 },
   messageBubbleCopied: { shadowOpacity: 0.12, shadowRadius: 12, shadowOffset: { width: 0, height: 6 } }
 });
 

@@ -1,6 +1,7 @@
 import { cn } from '@/shared/ui/cn';
 import { Text } from '@/shared/ui/text';
 import { Spinner } from '@/shared/ui/spinner';
+import { Icon } from '@/shared/ui/icon';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -83,7 +84,7 @@ export function ActivityGroupRow({
       <View className={cn(stylesClasses.spacer)} />
       {group.status === 'error' ? <MaterialCommunityIcons name="alert-circle-outline" size={15} color={palette.danger} /> : null}
       {showProgress ? <Spinner size={12} color={palette.tint} /> : null}
-      {statusOnly ? null : <MaterialCommunityIcons name={expanded ? 'chevron-down' : 'chevron-right'} size={16} color={palette.muted} />}
+      {statusOnly ? null : <Icon name={expanded ? 'chevron-down' : 'chevron-right'} size={16} color={palette.muted} />}
     </>
   );
 

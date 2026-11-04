@@ -1,6 +1,6 @@
 import { cn } from '@/shared/ui/cn';
 import { Text } from '@/shared/ui/text';
-import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { Icon } from '@/shared/ui/icon';
 import { useRecyclingState } from '@shopify/flash-list';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -46,7 +46,7 @@ export function ActivityDiffCard({ diff, fontSize, palette }: { diff: Transcript
         <Text numberOfLines={1} ellipsizeMode="middle" className={cn(stylesClasses.file, "text-muted-foreground")} variant="label">{diff.file}</Text>
         <Text className={cn("text-success")} variant="label">+{diff.additions}</Text>
         <Text className={cn("text-destructive")} variant="label">−{diff.deletions}</Text>
-        <MaterialCommunityIcons name={expanded ? 'chevron-down' : 'chevron-right'} size={15} color={palette.muted} />
+        <Icon name={expanded ? 'chevron-down' : 'chevron-right'} size={15} color={palette.muted} />
       </Pressable>
       {expanded ? (
         <View className={cn(stylesClasses.body)} style={[{ borderTopColor: palette.border }]}>
@@ -82,7 +82,7 @@ export function ActivityDiffCard({ diff, fontSize, palette }: { diff: Transcript
 
 const styles = StyleSheet.create({
   badgeText: { color: '#ffffff', fontSize: 8, fontWeight: '700', letterSpacing: -0.2 },
-  lineRow: { alignItems: 'flex-start', borderLeftWidth: 3, flexDirection: 'row', gap: 6, paddingHorizontal: 8, paddingVertical: 2 },
+  lineRow: { alignItems: 'flex-start', borderLeftWidth: 3, direction: 'ltr', flexDirection: 'row', gap: 6, paddingHorizontal: 8, paddingVertical: 2 },
   marker: { fontFamily: 'monospace', textAlign: 'center', width: 12 },
   code: { fontFamily: 'monospace', fontSize: 11, lineHeight: 17 }
 });

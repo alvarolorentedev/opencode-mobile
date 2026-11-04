@@ -1,0 +1,52 @@
+{
+  "screen": {
+    "connectTitle": "الاتصال بـ OpenCode",
+    "chooseProject": "اختر مشروعًا",
+    "selectProject": "حدد مشروعًا قبل فتح المحطة.",
+    "openProjects": "المشاريع المفتوحة",
+    "title": "المحطة"
+  },
+  "console": {
+    "selectTerminal": "حدد المحطة",
+    "create": "إنشاء محطة",
+    "openOrCreate": "افتح أو أنشئ محطة طرفية للبدء.",
+    "terminateTitle": "إنهاء المحطة؟",
+    "terminateAction": "إنهاء",
+    "new": "محطة جديدة",
+    "interactiveHint": "اكتب مباشرة في المحطة. استخدم الملحق للمفاتيح الطرفية.",
+    "pasteTitle": "لصق في المحطة؟",
+    "pasteMessage": "يحتوي هذا اللصق على عدة أسطر أو أحرف تحكم ويمكنه تنفيذ الأوامر. يكمل؟",
+    "terminateMessage": "{{terminal}} ({{id}})\n{{server}} / {{project}}",
+    "copied": "تم النسخ إلى الحافظة"
+  },
+  "sessions": {
+    "title": "المحطات",
+    "empty": "لا توجد محطات بعد. استخدم + لإنشاء واحد.",
+    "openLabel": "افتح {{terminal}}"
+  },
+  "errors": {
+    "load": "لا يمكن تحميل المحطات.",
+    "create": "لا يمكن إنشاء المحطة.",
+    "open": "لا يمكن فتح المحطة.",
+    "connect": "لا يمكن الاتصال.",
+    "refresh": "لا يمكن تحديث المحطات الطرفية."
+  },
+  "accessory": {
+    "paste": "لصق",
+    "copy": "نسخ",
+    "latest": "أحدث الإخراج",
+    "input": "المدخلات الطرفية",
+    "more": "المزيد من المفاتيح الطرفية",
+    "armed": "مسلح",
+    "locked": "مغلق",
+    "off": "خارج"
+  },
+  "status": {
+    "connecting": "الاتصال",
+    "connected": "متصل",
+    "reconnecting": "إعادة الاتصال",
+    "exited": "خرج",
+    "error": "خطأ",
+    "idle": "خامل"
+  }
+}

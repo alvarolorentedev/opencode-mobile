@@ -1,6 +1,6 @@
 import { cn } from '@/shared/ui/cn';
 import { Text } from '@/shared/ui/text';
-import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { Icon } from '@/shared/ui/icon';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Pressable, StyleSheet, View } from 'react-native';
@@ -21,7 +21,7 @@ export function SessionDiffCard({ diff, expanded, onPress }: { diff: FileDiff; e
   return (
     <View className={cn("border-border")} style={[styles.diffAccordion]}>
       <Pressable accessibilityRole="button" accessibilityState={{ expanded }} aria-expanded={expanded} onPress={onPress} className={cn(stylesClasses.diffFileRow, "bg-surface")}>
-        <MaterialCommunityIcons name={expanded ? 'chevron-down' : 'chevron-right'} size={18} color={palette.muted} />
+        <Icon name={expanded ? 'chevron-down' : 'chevron-right'} size={18} color={palette.muted} />
         <Text numberOfLines={1} ellipsizeMode="middle" className={cn(stylesClasses.diffFileName, "text-foreground")} variant="description">{diff.file || t('chat:cards.unknownFile')}</Text>
         <Text className={cn("text-success")} variant="label">+{diff.additions}</Text>
         <Text className={cn("text-destructive")} variant="label">−{diff.deletions}</Text>
@@ -84,6 +84,7 @@ const styles = StyleSheet.create({
   diffAccordion: { borderBottomWidth: 1 },
   changedFilesCard: { borderBottomWidth: 1, gap: 6, paddingHorizontal: 16, paddingVertical: 12 },
   diffLineRow: {
+    direction: 'ltr',
     flexDirection: 'row',
     alignItems: 'flex-start',
     gap: 6,

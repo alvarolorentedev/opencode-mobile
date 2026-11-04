@@ -11,8 +11,10 @@ import * as React from 'react';
 import { Platform, ScrollView, StyleSheet, useWindowDimensions, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Spacing } from '@/shared/ui/theme/design-tokens';
+import { getLanguageDirection } from '@/shared/i18n/languages';
 import { FadeIn, FadeOut, ReduceMotion } from 'react-native-reanimated';
 import { FullWindowOverlay as RNFullWindowOverlay } from 'react-native-screens';
+import { useTranslation } from 'react-i18next';
 
 type Option = SelectPrimitive.Option;
 
@@ -86,6 +88,8 @@ function SelectContent({
   const { open, onOpenChange, triggerPosition } = SelectPrimitive.useRootContext();
   const dimensions = useWindowDimensions();
   const safeArea = useSafeAreaInsets();
+  const { i18n } = useTranslation();
+  const direction = getLanguageDirection(i18n.resolvedLanguage || i18n.language);
   useOverlayDismiss(open, () => onOpenChange(false));
   const workspace = React.useContext(WorkspaceScopeContext);
   const content = (
@@ -95,6 +99,7 @@ function SelectContent({
           asChild={Platform.OS !== 'web'}>
           <NativeOnlyAnimatedView
             className="z-50"
+            style={{ direction }}
             entering={FadeIn.reduceMotion(ReduceMotion.System)}
             exiting={FadeOut.reduceMotion(ReduceMotion.System)}
             as="Pressable">

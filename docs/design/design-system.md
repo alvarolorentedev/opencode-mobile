@@ -181,12 +181,16 @@ order and visible keyboard focus. Avoid exposing both a row and its decorative
 switch as separate controls. Announce search destinations without activating
 them. Never claim screen-reader compliance from screenshots alone.
 
-Keep strings in all nine supported locales and run `npm run gen:i18n` after
+Keep strings in every supported locale and run `npm run gen:i18n` after
 catalog changes. A feature is not complete until every new or changed
 user-facing string is translated in every supported locale, with matching
 interpolation placeholders and plural categories; English fallback copy in a
 shipped locale is an incomplete feature, not an acceptable default. Do not build
 sentences by concatenating translated fragments.
+For Arabic and Hebrew, derive layout and navigation direction from the resolved
+interface language, use logical start/end placement, and keep code, terminal,
+paths, URLs, and identifiers readable in mixed-direction text. Check dialogs and
+selection overlays as well as route screens.
 Check long translations, 200% text scaling, 320-point width, 390-point phones,
 landscape, tablets, keyboard-open forms, safe areas and nested dialogs. Verify
 light/dark and all accent themes; use existing palette contrast tests as a floor.

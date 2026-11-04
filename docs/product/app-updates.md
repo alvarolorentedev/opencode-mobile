@@ -5,7 +5,7 @@ store actions and blocker registration. `shared/platform/app-updates.ts` is the 
 boundary. The tab shell renders a compact nonmodal banner above the tabs
 on Chat, Project, Settings and Terminal; onboarding, pairing and session routes do
 not offer updates. The banner uses source-owned controls, the light/dark theme, including
-its fixed accent, and all nine locales. It wraps its actions on narrow screens
+its fixed accent, and all supported locales. It wraps its actions on narrow screens
 and retains access to the tabs. It occupies layout space above the default tab
 bar, keeping both the composer and navigation visible. The root shell owns route
 eligibility, the handoff gate and failure snackbar.

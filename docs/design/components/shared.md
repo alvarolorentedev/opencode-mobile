@@ -17,6 +17,9 @@ production consumer. Reuse the following before creating a control:
 | Overlays and feedback | `overlay-sheet.tsx`, `catalog-select.tsx`, `alert-dialog.tsx`, `use-confirmation.tsx`, `feedback.tsx`, `portal.tsx` |
 | App composition | `screen-header.tsx`, `list-row.tsx`, `shared/ui/settings/setting-rows.tsx` |
 
+The [text direction story](../../../shared/ui/text.stories.tsx) covers Arabic and
+Hebrew text, including inline code.
+
 All paths in the table are relative to `shared/ui/` except the explicitly
 named settings composition. Complex form schemas live in
 their owning feature model directories; API orchestration and persistence retain their

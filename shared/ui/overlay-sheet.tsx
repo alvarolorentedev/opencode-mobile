@@ -14,6 +14,7 @@ import Animated from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { useDismissKeyboardOnOpen } from '@/shared/ui/hooks/use-dismiss-keyboard-on-open';
+import { getLanguageDirection } from '@/shared/i18n/languages';
 import { usePalette } from '@/shared/ui/theme/use-palette';
 import { useSwipeDismiss } from '@/shared/ui/use-swipe-dismiss';
 
@@ -36,7 +37,8 @@ export function OverlaySheet({ visible, title, onClose, children, headerAction, 
   const insets = useSafeAreaInsets();
   useUpdateBlocker(visible && blockUpdates);
   const { height } = useWindowDimensions();
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
+  const direction = getLanguageDirection(i18n.resolvedLanguage || i18n.language);
   const palette = usePalette();
   // Android back dismisses the open sheet instead of navigating the screen behind it.
   useOverlayDismiss(visible && dismissible, onClose);
@@ -53,7 +55,7 @@ export function OverlaySheet({ visible, title, onClose, children, headerAction, 
   }
 
   const content = (
-      <KeyboardAvoidingView behavior="padding" className={cn(stylesClasses.overlay)} style={[{ paddingTop: compact ? Math.max(64 + insets.top, height * 0.45) : 64 + insets.top }]} testID={testID}>
+      <KeyboardAvoidingView behavior="padding" className={cn(stylesClasses.overlay)} style={[{ direction, paddingTop: compact ? Math.max(64 + insets.top, height * 0.45) : 64 + insets.top }]} testID={testID}>
         {dismissible ? <Pressable accessibilityLabel={t('common:actions.closeWithName', { title })} onPress={onClose} style={StyleSheet.absoluteFill}>
           <Animated.View style={[styles.backdrop, { backgroundColor: palette.backdrop }, backdropStyle]} />
         </Pressable> : null}

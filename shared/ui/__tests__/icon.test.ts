@@ -12,6 +12,7 @@ MaterialCommunityIcons.glyphMap = { check: 1 };
 const { Icon } = await loadTs('shared/ui/icon.tsx', {
   ...uiImports,
   react: { useContext: () => undefined },
+  'react-i18next': { useTranslation: () => ({ i18n: { resolvedLanguage: 'en' } }) },
   'react/jsx-runtime': jsx,
   '@expo/vector-icons/MaterialCommunityIcons': { __esModule: true, default: MaterialCommunityIcons },
   uniwind: { withUniwind: () => (props: Element['props']) => element('StyledIcon', props) },

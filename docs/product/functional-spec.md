@@ -692,9 +692,10 @@ Purpose:
 
 Behavior exposed today:
 
-- options are built from the supported language list (English source plus Spanish, Hindi, German, French, Simplified Chinese, Portuguese, and Japanese)
+- options are built from the supported language list (English source plus Arabic, Hebrew, Russian, Spanish, Hindi, German, French, Simplified Chinese, Portuguese, and Japanese)
 - `System default` follows the OS locale; an explicit choice overrides it
 - the choice is persisted with chat preferences and applied immediately
+- Arabic and Hebrew use right-to-left layout and navigation direction
 - the interface language also drives `Intl` date, number, currency, and relative-time formatting
 
 ### Update Section

@@ -1,0 +1,27 @@
+{
+  "taskFinished": {
+    "title": "OpenCode סיים משימה",
+    "bodyFallback": "המשימה הושלמה",
+    "failedTitle": "משימת OpenCode נכשלה",
+    "failedBodyFallback": "המשימה הסתיימה בשגיאה"
+  },
+  "activity": {
+    "working": "עובד",
+    "thinking": "חושבים",
+    "needsInput": "צריך את הקלט שלך",
+    "retrying": "מנסה שוב",
+    "queued": "בתור",
+    "finished": "מוכן לסקירה",
+    "failed": "המשימה נכשלה",
+    "stopped": "המשימה נעצרה",
+    "reconnecting": "מתחבר מחדש",
+    "paused": "הניטור הושהה. פתח את האפליקציה כדי להמשיך.",
+    "stopMonitoring": "תפסיק לפקח",
+    "channel": "פעילות משימות",
+    "untitled": "משימה ללא כותרת",
+    "tasks": "משימות {{count}} פועלות"
+  },
+  "attention": {
+    "channel": "משימה דורשת תשומת לב"
+  }
+}

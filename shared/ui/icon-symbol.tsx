@@ -4,6 +4,8 @@ import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { SymbolWeight, SymbolViewProps } from 'expo-symbols';
 import { ComponentProps } from 'react';
 import { OpaqueColorValue, type StyleProp, type TextStyle } from 'react-native';
+import { useTranslation } from 'react-i18next';
+import { getLanguageDirection } from '@/shared/i18n/languages';
 
 type IconMapping = Record<Extract<SymbolViewProps['name'], string>, ComponentProps<typeof MaterialIcons>['name']>;
 type IconSymbolName = keyof typeof MAPPING;
@@ -42,5 +44,7 @@ export function IconSymbol({
   style?: StyleProp<TextStyle>;
   weight?: SymbolWeight;
 }) {
-  return <MaterialIcons color={color} size={size} name={MAPPING[name]} style={style} />;
+  const { i18n } = useTranslation();
+  const rtlChevron = name === 'chevron.right' && getLanguageDirection(i18n.resolvedLanguage || i18n.language) === 'rtl';
+  return <MaterialIcons color={color} size={size} name={rtlChevron ? 'chevron-left' : MAPPING[name]} style={style} />;
 }

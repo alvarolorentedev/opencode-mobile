@@ -150,9 +150,10 @@ const config: ExpoConfig = {
       // added under shared/i18n/locales.
       'expo-localization',
       {
+        supportsRTL: true,
         supportedLocales: {
-          ios: ['en', 'ru', 'es', 'hi', 'de', 'fr', 'zh', 'pt', 'ja'],
-          android: ['en', 'ru', 'es', 'hi', 'de', 'fr', 'zh', 'pt', 'ja'],
+          ios: ['en', 'ar', 'he', 'ru', 'es', 'hi', 'de', 'fr', 'zh', 'pt', 'ja'],
+          android: ['en', 'ar', 'he', 'ru', 'es', 'hi', 'de', 'fr', 'zh', 'pt', 'ja'],
         },
       },
     ],

@@ -3,6 +3,13 @@
 
 export const DEFAULT_LANGUAGE = 'en';
 
+const RTL_LANGUAGE_CODES = new Set(['ar', 'he']);
+
+export function getLanguageDirection(language?: string): 'ltr' | 'rtl' {
+  const languageCode = language?.trim().toLowerCase().split('-')[0];
+  return languageCode && RTL_LANGUAGE_CODES.has(languageCode) ? 'rtl' : 'ltr';
+}
+
 export type SupportedLanguage = {
   code: string;
   nativeName: string;
@@ -13,6 +20,8 @@ export type SupportedLanguage = {
 // app.config.ts.
 export const SUPPORTED_LANGUAGES: SupportedLanguage[] = [
   { code: 'en', nativeName: 'English' },
+  { code: 'ar', nativeName: 'العربية' },
+  { code: 'he', nativeName: 'עברית' },
   { code: 'ru', nativeName: 'Русский' },
   { code: 'es', nativeName: 'Español' },
   { code: 'hi', nativeName: 'हिन्दी' },
