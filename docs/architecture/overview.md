@@ -139,6 +139,13 @@ per-runtime.
 - `runtime/shell/app-shell.tsx`
   Root providers, theming, side-effect bootstrap, hydration splash, and the
   onboarding/app routing gate described below.
+
+The shell derives RTL from the resolved interface language. Keep
+`GestureHandlerRootView` direction-neutral: on Android, applying its `direction`
+style leaves the React view tree blank. Apply the direction to a plain flexing
+`View` inside it, and keep Expo Router's `LocaleProvider` for navigation
+direction. See [ADR 0028](../adr/0028-runtime-rtl-from-interface-language.md).
+
 - `app/(tabs)/_layout.tsx`
   Bottom tabs only.
 - `app/onboarding/_layout.tsx`

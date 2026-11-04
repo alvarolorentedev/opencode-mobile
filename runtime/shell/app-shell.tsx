@@ -81,14 +81,17 @@ export default function RootLayout() {
   }, [isE2EMode]);
 
   return (
-    <GestureHandlerRootView className={cn(stylesClasses.root)} style={{ direction }}>
-      <LocaleProvider direction={direction}>
-        <SafeAreaProvider>
-          <OpencodeProvider>
-            <AppearanceHost />
-          </OpencodeProvider>
-        </SafeAreaProvider>
-      </LocaleProvider>
+    <GestureHandlerRootView className={cn(stylesClasses.root)}>
+      {/* Android renders an empty app tree when direction is applied to this gesture root. */}
+      <View style={{ flex: 1, direction }}>
+        <LocaleProvider direction={direction}>
+          <SafeAreaProvider>
+            <OpencodeProvider>
+              <AppearanceHost />
+            </OpencodeProvider>
+          </SafeAreaProvider>
+        </LocaleProvider>
+      </View>
     </GestureHandlerRootView>
   );
 }
