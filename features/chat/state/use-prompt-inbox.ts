@@ -4,11 +4,12 @@ import { getErrorMessage } from '@/shared/utilities/error-message';
 import { classifyConnectionFailure } from '@/shared/protocol/opencode/client/errors';
 import type { ScopedOpencodeClient } from '@/shared/protocol/opencode/client';
 import type { SessionMessageRecord } from '@/shared/presentation/format';
-import type { PendingPrompt, PromptDelivery, PromptInput } from '@/shared/protocol/opencode/prompt-inbox';
+import type { PendingNotice, PendingPrompt, PromptDelivery, PromptInput } from '@/shared/protocol/opencode/prompt-inbox';
 import type { TranscriptRefreshMode } from '@/shared/contracts/domain';
-import { getSessionInbox, submitLegacyPrompt } from '@/shared/protocol/services/session-service';
+import { getSessionInbox, getSessionNotices, submitLegacyPrompt } from '@/shared/protocol/services/session-service';
 
 const EMPTY_PROMPTS: Record<string, PendingPrompt[]> = {};
+const EMPTY_NOTICES: Record<string, PendingNotice[]> = {};
 
 type QueuedInput = { input: PromptInput; delivery: PromptDelivery; text: string; createdAt: number };
 
@@ -61,7 +62,7 @@ export function usePromptInbox({
   connected?: boolean;
   online?: boolean;
 }) {
-  const [snapshot, setSnapshot] = useState<{ client: object; prompts: Record<string, PendingPrompt[]> }>({ client, prompts: {} });
+  const [snapshot, setSnapshot] = useState<{ client: object; prompts: Record<string, PendingPrompt[]>; notices: Record<string, PendingNotice[]> }>({ client, prompts: {}, notices: {} });
   const [queueSize, setQueueSize] = useState(0);
   const snapshotRef = useRef(snapshot);
   const revisions = useRef<Record<string, number>>({});
@@ -69,6 +70,7 @@ export function usePromptInbox({
   const queuedInputs = useRef(new Map<string, QueuedInput>());
   const flushing = useRef(false);
   const pendingPromptsBySession = snapshot.client === client ? snapshot.prompts : EMPTY_PROMPTS;
+  const pendingNoticesBySession = snapshot.client === client ? snapshot.notices : EMPTY_NOTICES;
 
   useLayoutEffect(() => { snapshotRef.current = snapshot; });
   const syncQueueSize = useCallback(() => setQueueSize(queuedInputs.current.size), []);
@@ -84,7 +86,18 @@ export function usePromptInbox({
     if (!isCurrentClient(client)) return;
     setSnapshot((current) => {
       const prompts = current.client === client ? current.prompts : {};
-      return { client, prompts: { ...prompts, [sessionId]: change(prompts[sessionId] ?? []) } };
+      return { client, notices: current.client === client ? current.notices : {}, prompts: { ...prompts, [sessionId]: change(prompts[sessionId] ?? []) } };
+    });
+  }, [client, isCurrentClient]);
+
+  const updateNotices = useCallback((sessionId: string, notices: PendingNotice[]) => {
+    if (!isCurrentClient(client)) return;
+    setSnapshot((current) => {
+      const currentNotices = current.client === client ? current.notices : {};
+      const previous = currentNotices[sessionId] ?? [];
+      if (previous.length === notices.length && previous.every((notice, index) => notice.id === notices[index].id)) return current;
+      const prompts = current.client === client ? current.prompts : {};
+      return { client, prompts, notices: { ...currentNotices, [sessionId]: notices } };
     });
   }, [client, isCurrentClient]);
 
@@ -106,18 +119,24 @@ export function usePromptInbox({
     revisions.current[sessionId] = revision;
     // Read the inbox first: a delivery committed between reads will already be
     // in the following transcript snapshot. Failed inbox reads retain the stack.
-    const pending = await getSessionInbox(client, sessionId).catch(() => undefined);
+    const [pending, notices] = await Promise.all([
+      getSessionInbox(client, sessionId).catch(() => undefined),
+      getSessionNotices(client, sessionId).catch(() => undefined),
+    ]);
     const records = await readMessages(sessionId, silent, options);
-    if (pending && revisions.current[sessionId] === revision) {
+    if (revisions.current[sessionId] === revision) {
       const delivered = new Set(records.map((record) => record.info.id));
-      update(sessionId, (previous) => [
-        ...previous.filter((prompt) => prompt.state === 'sending' || prompt.state === 'queued' || prompt.state === 'uncertain'),
-        ...pending.filter((prompt) => !delivered.has(prompt.id)),
-      ].sort((a, b) => a.createdAt - b.createdAt));
-      reconcileLocal(sessionId, pending, records);
+      if (pending) {
+        update(sessionId, (previous) => [
+          ...previous.filter((prompt) => prompt.state === 'sending' || prompt.state === 'queued' || prompt.state === 'uncertain'),
+          ...pending.filter((prompt) => !delivered.has(prompt.id)),
+        ].sort((a, b) => a.createdAt - b.createdAt));
+        reconcileLocal(sessionId, pending, records);
+      }
+      if (notices) updateNotices(sessionId, notices.filter((notice) => !delivered.has(notice.id)));
     }
     return records;
-  }, [client, readMessages, reconcileLocal, update]);
+  }, [client, readMessages, reconcileLocal, update, updateNotices]);
 
   const submitPrompt = useCallback(async (input: PromptInput, delivery: PromptDelivery) => {
     if (!client.promptInbox) {
@@ -241,5 +260,5 @@ export function usePromptInbox({
     update(sessionId, (previous) => previous.filter((prompt) => prompt.id !== promptId));
   }, [client, isCurrentClient, syncQueueSize, update]);
 
-  return { pendingPromptsBySession, refreshMessages, submitPrompt, cancelPrompt, flushQueuedPrompts: flushQueued };
+  return { pendingPromptsBySession, pendingNoticesBySession, refreshMessages, submitPrompt, cancelPrompt, flushQueuedPrompts: flushQueued };
 }

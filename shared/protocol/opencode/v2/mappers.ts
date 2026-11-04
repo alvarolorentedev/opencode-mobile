@@ -190,6 +190,14 @@ export function toMessageRecord(message: V2Message, sessionID: string): SessionM
     };
   }
 
+  if (type === 'synthetic') {
+    const text = stringField((message as Record<string, unknown>).text);
+    return {
+      info: { ...baseInfo, role: 'assistant', providerID: '', modelID: '', synthetic: true },
+      parts: text ? [{ id: `${message.id}-text-0`, sessionID, messageID: message.id, type: 'text', text }] : [],
+    };
+  }
+
   if (type === 'shell') {
     const record = message as Record<string, unknown>;
     const status = stringField(record.status, 'running');

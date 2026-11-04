@@ -322,6 +322,7 @@ export function useOpencodeProviderComposition(input: WorkspaceRuntimeInput) {
     mcpAuthPrompt: state.mcpAuthPrompt,
     dismissMcpAuth,
     pendingPromptsBySession: inbox.pendingPromptsBySession,
+    pendingNoticesBySession: inbox.pendingNoticesBySession,
     cancelPrompt: inbox.cancelPrompt,
     ...terminal,
     ...worktree,

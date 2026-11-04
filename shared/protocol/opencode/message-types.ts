@@ -34,6 +34,9 @@ export type Message = (MessageBase & {
     parentID?: string;
     providerID: string;
     modelID: string;
+    // Server notices (for example a plugin command reply) are stored as
+    // synthetic input. They render as text but are not model output.
+    synthetic?: boolean;
     cost?: number;
     tokens?: TokenUsageInfo;
     finish?: string;

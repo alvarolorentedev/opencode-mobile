@@ -373,7 +373,7 @@ export function TranscriptList({
             flatTranscript && (slim ? slimStyles.transcriptItemFlat : styles.transcriptItemFlat),
           ]}>
             <TranscriptMessage
-              canSpeak={entry.role === 'assistant' && Boolean(entry.text.trim())}
+              canSpeak={entry.role === 'assistant' && !entry.notice && Boolean(entry.text.trim())}
               copied={copiedMessageId === entry.id}
               entry={entry}
               flat={flatTranscript}

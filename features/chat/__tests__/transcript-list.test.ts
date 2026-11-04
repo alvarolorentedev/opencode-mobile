@@ -169,6 +169,23 @@ describe('transcript empty state', () => {
     expect(JSON.stringify(list.props.renderItem({ item: rows[1] }))).toContain('"sessionRunning":true');
   });
 
+  it('does not offer read-aloud for server notice rows', async () => {
+    const row = {
+      key: 'message:notice',
+      type: 'message' as const,
+      entry: {
+        id: 'notice',
+        role: 'assistant' as const,
+        createdAt: 0,
+        text: 'No workflows found in .opencode/workflows.',
+        details: [],
+        notice: true,
+      },
+    };
+    const { list } = await mountTranscriptList({ transcriptRows: [row] });
+    expect(JSON.stringify(list.props.renderItem({ item: row }))).toContain('"canSpeak":false');
+  });
+
   it('passes the resolved model label to assistant message rows', async () => {
     const row = {
       key: 'message:m1',

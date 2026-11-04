@@ -15,6 +15,10 @@ export function submitLegacyPrompt(client: ScopedOpencodeClient, input: PromptIn
 export function getSessionInbox(client: ScopedOpencodeClient, sessionId: string) {
   return coalesceRead(client, `inbox:${sessionId}`, () => client.promptInbox!.list(sessionId));
 }
+export function getSessionNotices(client: ScopedOpencodeClient, sessionId: string) {
+  if (!client.promptInbox?.listNotices) return Promise.resolve([]);
+  return coalesceRead(client, `inbox-notices:${sessionId}`, () => client.promptInbox!.listNotices(sessionId));
+}
 export function resolveProjectLocation(client: ScopedOpencodeClient): Promise<ResolvedProjectLocation> {
   return createSessionAdapter(client).resolveProjectLocation();
 }

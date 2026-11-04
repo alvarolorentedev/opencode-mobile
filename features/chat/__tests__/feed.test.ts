@@ -134,7 +134,7 @@ describe('provider-owned prompt inbox', () => {
     const runtime = hookRuntime();
     const { usePromptInbox } = await loadTs('features/chat/state/use-prompt-inbox.ts', {
     react: runtime.react,
-    "@/shared/protocol/services/session-service": { getSessionInbox: (candidate: any, id: string) => candidate.promptInbox.list(id), submitLegacyPrompt: (candidate: any, input: unknown) => candidate.compatibility.session.promptAsync(input) },
+    "@/shared/protocol/services/session-service": { getSessionInbox: (candidate: any, id: string) => candidate.promptInbox.list(id), getSessionNotices: (candidate: any, id: string) => candidate.promptInbox.listNotices?.(id) ?? Promise.resolve([]), submitLegacyPrompt: (candidate: any, input: unknown) => candidate.compatibility.session.promptAsync(input) },
     "@/shared/protocol/opencode/client/errors": { classifyConnectionFailure: () => 'unknown' },
     "@/shared/utilities/error-message": { getErrorMessage: (error: unknown) => error instanceof Error ? error.message : String(error) }
   });
@@ -197,6 +197,19 @@ describe('provider-owned prompt inbox', () => {
     await runtime.value.cancelPrompt('s', 'm1'); runtime.flush();
     expect(client.promptInbox.cancel).toHaveBeenCalledWith('s', 'm1');
     expect(runtime.value.pendingPromptsBySession.s).toHaveLength(0);
+  });
+
+  it('exposes pending synthetic notices and drops them once delivered', async () => {
+    const notice = { id: 'n1', sessionId: 's', createdAt: 1, text: 'No workflows found in .opencode/workflows.' };
+    const client = { promptInbox: { list: async () => [], listNotices: vi.fn(async () => [notice]) } };
+    let messages: any[] = [];
+    const runtime = await mount(client, vi.fn(async () => messages));
+    await runtime.value.refreshMessages('s'); runtime.flush();
+    expect(runtime.value.pendingNoticesBySession.s).toEqual([notice]);
+
+    messages = [{ info: { id: 'n1', role: 'assistant', sessionID: 's', time: { created: 1 }, providerID: '', modelID: '', synthetic: true }, parts: [] }];
+    await runtime.value.refreshMessages('s'); runtime.flush();
+    expect(runtime.value.pendingNoticesBySession.s).toEqual([]);
   });
 
   it('removes failed submissions and preserves V1 sending behavior', async () => {

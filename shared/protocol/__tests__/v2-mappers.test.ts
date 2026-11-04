@@ -2,6 +2,7 @@ import { getProviders, setProviderCredentialsForClient, removeProviderCredential
 import { toAgentView, toConfigView, getProviderAuthMethods } from '@/shared/protocol/opencode/v2/shared';
 import { describe, it, expect, vi } from 'vitest';
 
+import { toTranscriptEntry } from '@/shared/presentation/format/transcript';
 import { toModelOptionRecord, toProjectView, toSessionView } from '@/shared/protocol/opencode/v2-mappers';
 import { mapSavedPermission, toMessageRecord } from '@/shared/protocol/opencode/v2/mappers';
 import { buildV2Client } from '@/shared/protocol/opencode/v2-client';
@@ -52,6 +53,39 @@ describe('v2 response mappers', () => {
       attempt: 3,
       error: { name: 'SessionError', data: { message: 'The provider response ended unexpectedly.' } },
     });
+  });
+
+  it('maps a synthetic server notice as displayable text without model output', () => {
+    const mapped = toMessageRecord({
+      id: 'msg_synthetic',
+      type: 'synthetic',
+      sessionID: 'ses_1',
+      time: { created: 1 },
+      text: 'No workflows found in .opencode/workflows.',
+    } as never, 'ses_1');
+
+    expect(mapped?.info).toMatchObject({ role: 'assistant', providerID: '', modelID: '', synthetic: true });
+    expect(mapped?.parts).toEqual([{
+      id: 'msg_synthetic-text-0', sessionID: 'ses_1', messageID: 'msg_synthetic', type: 'text',
+      text: 'No workflows found in .opencode/workflows.',
+    }]);
+    expect(toTranscriptEntry(mapped!)).toMatchObject({
+      role: 'assistant', notice: true, text: 'No workflows found in .opencode/workflows.',
+    });
+  });
+
+  it('shares one inbox read between pending prompts and notices', async () => {
+    const list = vi.fn(async () => [
+      { id: 'prompt-1', type: 'user', sessionID: 'session-1', time: { created: 1 }, delivery: 'steer', payload: { text: 'hello', files: [] } },
+      { id: 'notice-1', type: 'synthetic', sessionID: 'session-1', time: { created: 2 }, delivery: 'steer', payload: { text: 'No workflows found.' } },
+    ]);
+    h.api = { session: { inbox: { list } } };
+    const client = buildV2Client({ serverUrl: 'http://test', directory: '/repo', username: '', password: '' } as never);
+
+    const [prompts, notices] = await Promise.all([client.promptInbox!.list('session-1'), client.promptInbox!.listNotices('session-1')]);
+    expect(list).toHaveBeenCalledTimes(1);
+    expect(prompts.map((prompt: any) => prompt.id)).toEqual(['prompt-1']);
+    expect(notices).toEqual([{ id: 'notice-1', sessionId: 'session-1', createdAt: 2, text: 'No workflows found.' }]);
   });
 
   it('maps a saved permission rule', () => {

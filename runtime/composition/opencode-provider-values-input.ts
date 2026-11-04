@@ -1,4 +1,4 @@
-import type { PendingPrompt } from '@/shared/protocol/opencode/prompt-inbox';
+import type { PendingNotice, PendingPrompt } from '@/shared/protocol/opencode/prompt-inbox';
 import type { WorktreeCatalog } from '@/features/projects/index';
 import type { Dispatch, SetStateAction } from 'react';
 import type { TerminalRuntime, TerminalStatus } from '@/features/terminal/index';
@@ -70,6 +70,7 @@ export type ProviderValuesInput = ActionInputs & {
   setActiveSessionsVisible: Dispatch<SetStateAction<boolean>>;
   currentSessionId?: string;
   pendingPromptsBySession: Record<string, PendingPrompt[]>;
+  pendingNoticesBySession: Record<string, PendingNotice[]>;
   cancelPrompt: (sessionId: string, promptId: string) => Promise<void>;
   messagesBySession: Record<string, SessionMessageRecord[]>;
   diffScopeBySession: Record<string, DiffScope>;

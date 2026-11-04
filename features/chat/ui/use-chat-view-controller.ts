@@ -203,7 +203,7 @@ export function useChatViewController() {
   }, [activeProject?.path, connectionScope, consumeShared, currentSessionId, pathname, sharedPending, sharedInput.busy, inputRef, setAttachments, setDraft]);
 
   const latestAssistantEntry = useMemo(
-    () => [...displayTranscript].reverse().find((entry) => entry.role === 'assistant' && entry.text.trim()),
+    () => [...displayTranscript].reverse().find((entry) => entry.role === 'assistant' && !entry.notice && entry.text.trim()),
     [displayTranscript],
   );
   const {

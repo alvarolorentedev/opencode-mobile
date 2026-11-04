@@ -122,6 +122,7 @@ export function toTranscriptEntry(record: SessionMessageRecord): TranscriptEntry
     text: textBlocks.join('\n\n').trim(),
     details,
     error: getMessageError(record),
+    ...(record.info.role === 'assistant' && record.info.synthetic ? { notice: true } : {}),
     ...(model ? { model } : {}),
   };
   transcriptEntryCache.set(record, entry);

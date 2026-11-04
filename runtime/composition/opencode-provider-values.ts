@@ -21,6 +21,23 @@ import type { PreferencesContextValue } from '@/shared/preferences/types';
 import type { ProjectsContextValue, ProjectFilesContextValue } from '@/features/projects/index';
 import type { TerminalContextValue } from '@/features/terminal/index';
 import type { ProviderValuesInput } from '@/runtime/composition/opencode-provider-values-input';
+import type { PendingNotice } from '@/shared/protocol/opencode/prompt-inbox';
+import type { SessionMessageRecord } from '@/shared/presentation/format';
+
+function pendingNoticeRecord(notice: PendingNotice): SessionMessageRecord {
+  return {
+    info: {
+      id: notice.id,
+      sessionID: notice.sessionId,
+      time: { created: notice.createdAt },
+      role: 'assistant',
+      providerID: '',
+      modelID: '',
+      synthetic: true,
+    },
+    parts: notice.text ? [{ id: `${notice.id}-text-0`, sessionID: notice.sessionId, messageID: notice.id, type: 'text', text: notice.text }] : [],
+  };
+}
 
 export function useOpencodeProviderValues(input: ProviderValuesInput) {
   const {
@@ -166,6 +183,7 @@ export function useOpencodeProviderValues(input: ProviderValuesInput) {
     serverContract,
     sharedInput,
     servicesValue,
+    pendingNoticesBySession,
   } = input;
 
   const activeSession = useMemo(
@@ -173,10 +191,15 @@ export function useOpencodeProviderValues(input: ProviderValuesInput) {
     [currentSessionId, sessions],
   );
 
-  const currentMessages = useMemo(
-    () => (currentSessionId ? messagesBySession[currentSessionId] || [] : []),
-    [currentSessionId, messagesBySession],
-  );
+  const currentMessages = useMemo(() => {
+    if (!currentSessionId) return [];
+    const records = messagesBySession[currentSessionId] || [];
+    const delivered = new Set(records.map((record) => record.info.id));
+    // Inbox notices stay display-only until the session's next turn promotes
+    // them to durable synthetic messages.
+    const notices = (pendingNoticesBySession?.[currentSessionId] ?? []).filter((notice) => !delivered.has(notice.id));
+    return notices.length === 0 ? records : [...records, ...notices.map(pendingNoticeRecord)];
+  }, [currentSessionId, messagesBySession, pendingNoticesBySession]);
   const pendingPrompts = useMemo(() => {
     const delivered = new Set(currentMessages.map((record) => record.info.id));
     return (pendingPromptsBySession?.[currentSessionId ?? ''] ?? []).filter((prompt) => !delivered.has(prompt.id));
