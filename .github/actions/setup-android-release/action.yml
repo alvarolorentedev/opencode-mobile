@@ -6,6 +6,10 @@ inputs:
     description: Temurin Java version
     required: false
     default: '17'
+  cache-read-only:
+    description: Restore the Gradle cache without writing a cache entry for this ref.
+    required: false
+    default: 'false'
 
 runs:
   using: composite
@@ -19,7 +23,9 @@ runs:
     - name: Setup Gradle
       uses: gradle/actions/setup-gradle@v4
       with:
-        cache-read-only: false
+        # Tag runs can only read default-branch caches, so release.yml restores
+        # the cache warmed by android-cache.yml instead of writing per-tag entries.
+        cache-read-only: ${{ inputs.cache-read-only == 'true' }}
         gradle-home-cache-cleanup: true
 
     - name: Setup Android SDK
@@ -37,9 +43,12 @@ runs:
           echo "::error::ANDROID_HOME and ANDROID_SDK_ROOT are both unset"
           exit 1
         fi
-        for pkg in 'cmake;3.22.1' 'ndk;27.1.12297006'; do
+        for pkg in 'cmake;3.22.1' 'cmake;3.30.5' 'ndk;27.1.12297006'; do
           case "$pkg" in
             'cmake;3.22.1') [ -x "$SDK_ROOT/cmake/3.22.1/bin/cmake" ] && continue ;;
+            # React Native's Hermes engine pins this version; installing it here
+            # keeps AGP from fetching it inside every Gradle build.
+            'cmake;3.30.5') [ -x "$SDK_ROOT/cmake/3.30.5/bin/cmake" ] && continue ;;
             'ndk;27.1.12297006') [ -d "$SDK_ROOT/ndk/27.1.12297006" ] && continue ;;
           esac
           for attempt in 1 2 3 4 5; do
@@ -49,7 +58,8 @@ runs:
             rm -rf "$SDK_ROOT/.temp"
             case "$pkg" in
               ndk\;*) rm -rf "$SDK_ROOT/ndk/27.1.12297006" ;;
-              cmake\;*) rm -rf "$SDK_ROOT/cmake/3.22.1" ;;
+              'cmake;3.22.1') rm -rf "$SDK_ROOT/cmake/3.22.1" ;;
+              'cmake;3.30.5') rm -rf "$SDK_ROOT/cmake/3.30.5" ;;
             esac
             if [ "$attempt" -eq 5 ]; then
               echo "::error::Failed to install $pkg after 5 attempts"

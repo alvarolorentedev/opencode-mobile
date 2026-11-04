@@ -40,6 +40,10 @@ version, ARM64-only ABI, native libraries, R8/ProGuard safety, the WorkManager
 constructor, FOSS exclusions and 16 KB page-size alignment before uploading to
 Google Play internal testing, TestFlight and the GitHub Release.
 
+`android-cache.yml` runs twice a week to rebuild the release Gradle tasks on
+`main` and keep the build cache that `release.yml` restores. It is not a merge
+gate and publishes nothing.
+
 Static artifact verification cannot guarantee successful device startup. Play
 internal testing and TestFlight are the real-device validation environments.
 There is no emulator or self-hosted device job. Release artifacts expire; the

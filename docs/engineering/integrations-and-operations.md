@@ -432,7 +432,17 @@ requires the commit to belong to `main`, runs full validation once, builds
 Android Play, FOSS and signed iOS in parallel, statically verifies the artifacts,
 uploads to Google Play internal testing and TestFlight, and publishes the GitHub Release
 after all mandatory jobs pass. Nothing is automatically promoted to a production
-store track.
+store track. TestFlight uploads validate implicitly, so the pipeline does not
+run a separate `altool --validate-app` round-trip.
+
+GitHub Actions scopes caches per ref, so a release tag can only restore caches
+written for `main`, never those of an earlier tag. `config/plugins/android.cjs`
+therefore sets `org.gradle.caching=true`, and `android-cache.yml` runs twice a
+week (plus manual dispatch) on `main` to rebuild the release Gradle tasks with
+the generated debug keystore and keep that cache warm. The release and FOSS jobs
+restore it read-only (`cache-read-only` in `setup-android-release`). Without the
+warm workflow the build cache stays cold and every release recompiles Hermes,
+React Native and the native modules.
 
 Static verification cannot guarantee successful device startup. Play internal
 testing and TestFlight are the real-device validation environments. There is no

@@ -221,6 +221,8 @@ jobs:
 
       - name: Setup Android release toolchain
         uses: ./.github/actions/setup-android-release
+        with:
+          cache-read-only: 'true'
 
       - name: Install dependencies
         run: npm ci
@@ -315,6 +317,8 @@ jobs:
 
       - name: Setup Android release toolchain
         uses: ./.github/actions/setup-android-release
+        with:
+          cache-read-only: 'true'
 
       - name: Install dependencies
         run: npm ci
@@ -620,11 +624,8 @@ jobs:
           KEY_PATH="$HOME/.private_keys/AuthKey_${APPSTORE_API_KEY_ID}.p8"
           printf '%s\n' "$APPSTORE_API_PRIVATE_KEY" > "$KEY_PATH"
           chmod 600 "$KEY_PATH"
-          xcrun altool --validate-app \
-            --type ios \
-            --file release-assets/opencode-mobile.ipa \
-            --apiKey "$APPSTORE_API_KEY_ID" \
-            --apiIssuer "$APPSTORE_API_ISSUER_ID"
+          # altool validates the build as part of the upload; a separate
+          # --validate-app run only adds another Apple processing round-trip.
           xcrun altool --upload-app \
             --type ios \
             --file release-assets/opencode-mobile.ipa \

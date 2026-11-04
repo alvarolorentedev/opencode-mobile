@@ -32,6 +32,7 @@ describe('Expo config plugins', () => {
       { type: 'comment', value: 'keep' },
       { type: 'property', key: 'rnllamaBuildFromSource', value: 'false' },
       { type: 'property', key: 'org.gradle.jvmargs', value: '-Xmx4096m -XX:MaxMetaspaceSize=1024m -Dfile.encoding=UTF-8' },
+      { type: 'property', key: 'org.gradle.caching', value: 'true' },
       { type: 'property', key: 'AsyncStorage_db_size_in_MB', value: '64' },
       { type: 'property', key: 'reactNativeArchitectures', value: 'arm64-v8a' },
     ]);

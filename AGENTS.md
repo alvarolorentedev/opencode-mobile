@@ -128,7 +128,9 @@ from Vitest or TypeScript. Do not increase the test-typecheck exclusion budget.
 `ci.yml` runs static checks, Vitest/architecture, fake-server validation, Storybook,
 FOSS preparation and critical Playwright smoke flows on every push to `main` and every
 PR. `release.yml` runs the full browser E2E suite and native release builds once on a
-`v*` tag. Use the [test-selection matrix](docs/engineering/validation/strategy.md#test-selection-matrix)
+`v*` tag. `android-cache.yml` rebuilds the Android release tasks twice a week so
+`release.yml` can restore a warm Gradle build cache; it publishes nothing. Use the
+[test-selection matrix](docs/engineering/validation/strategy.md#test-selection-matrix)
 to choose focused local checks; the full suite is not a per-push requirement.
 
 A red CI run blocks merge. Confirm and harden flaky failures instead of adding retries.

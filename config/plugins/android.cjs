@@ -7,7 +7,7 @@ const { withAndroidManifest, withAppBuildGradle, withDangerousMod, withGradlePro
 // `:app:packageReleaseBundle` has room. The android/ directory is regenerated
 // by `expo prebuild --clean`, so this must live here, not on disk.
 function applyGradleProperties(items, { isDevelopmentVariant = false } = {}) {
-  const overrides = new Set(['org.gradle.jvmargs', 'rnllamaBuildFromSource', 'AsyncStorage_db_size_in_MB']);
+  const overrides = new Set(['org.gradle.jvmargs', 'rnllamaBuildFromSource', 'AsyncStorage_db_size_in_MB', 'org.gradle.caching']);
   if (!isDevelopmentVariant) overrides.add('reactNativeArchitectures');
   const next = [
     ...items.filter((item) => !(item.type === 'property' && overrides.has(item.key))),
@@ -17,6 +17,10 @@ function applyGradleProperties(items, { isDevelopmentVariant = false } = {}) {
       key: 'org.gradle.jvmargs',
       value: '-Xmx4096m -XX:MaxMetaspaceSize=1024m -Dfile.encoding=UTF-8',
     },
+    // Reuse compiled native outputs between builds. gradle/actions/setup-gradle
+    // persists this local build cache; release tags can only restore caches
+    // warmed from main, so .github/workflows/android-cache.yml keeps it fresh.
+    { type: 'property', key: 'org.gradle.caching', value: 'true' },
     // AsyncStorage defaults to a 6MB SQLite cap (SQLITE_FULL on profile save); 64MB holds transcript/session caches.
     { type: 'property', key: 'AsyncStorage_db_size_in_MB', value: '64' },
   ];
