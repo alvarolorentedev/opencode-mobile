@@ -100,15 +100,20 @@ export function useExtensionsState({
     pluginGui: {
       plugins: guiPlugins,
       load: async () => {
-        if (client.__opencode.contract !== 'v2' || !isCurrentClient(client) || !active) return;
+        if (client.__opencode.contract !== 'v2') return;
+        // Subscribe even before the workspace is active: the launcher mounts
+        // once, and the query must exist when the connection becomes current.
         setRequested(true);
-        await cache.fetchQuery(pluginsOptions(identity, client));
+        if (!isCurrentClient(client) || !active) return;
+        // Force a fresh list so a pre-install cached result cannot hide the
+        // button for the default stale window after returning from Settings.
+        await cache.fetchQuery({ ...pluginsOptions(identity, client), staleTime: 0 });
       },
       read: (id: string) => {
         if (client.__opencode.contract !== 'v2' || !isCurrentClient(client)) {
           return Promise.reject(new Error('Plugin GUIs require OpenCode 2.'));
         }
-        return readPluginGui(settings, id);
+        return readPluginGui({ ...settings, directory: client.__opencode.directory || settings.directory }, id);
       },
       rpc: async (request: { rpcID: string; method: string; input?: unknown; directory?: string }) => {
         if (client.__opencode.contract !== 'v2' || !isCurrentClient(client) || !client.api?.rpc) {

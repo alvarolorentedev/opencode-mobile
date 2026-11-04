@@ -1,4 +1,4 @@
-import { createPrefixFetch } from '@/shared/protocol/opencode/client/fetch';
+import { createPrefixFetch, getRequestHeaders } from '@/shared/protocol/opencode/client/fetch';
 import type { OpencodeConnectionSettings } from '@/shared/protocol/opencode/client';
 import { resolveV2Base } from '@/shared/protocol/opencode/v2/shared';
 import type { PluginGuiBundle } from '@/features/extensions/model/plugin-gui';
@@ -28,7 +28,9 @@ export async function readPluginGui(
 
   const response = await request(url.toString(), {
     method: 'GET',
-    headers: { accept: 'application/json' },
+    // This endpoint bypasses the generated SDK, so it must reuse the same
+    // Basic/custom headers as every other connection request.
+    headers: { ...(getRequestHeaders(settings) ?? {}), accept: 'application/json' },
   });
   if (!response.ok) {
     throw new Error(`Could not read the plugin GUI (${response.status}).`);
