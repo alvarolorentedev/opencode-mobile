@@ -144,12 +144,13 @@ describe('persistence hydration and write-back', () => {
       classifier: 'server',
       classifierModelId: 'openai/nano',
       tiers: { simple: 'openai/nano', standard: 'auto', complex: 'openai/deep' },
+      tierVariants: { simple: null, standard: null, complex: null },
       protectLongChats: false,
     };
     assert.deepEqual(JSON.parse(JSON.stringify(parseChatPreferences(JSON.stringify({ autoModel })))), { autoModel });
     assert.deepEqual(
       JSON.parse(JSON.stringify(parseChatPreferences(JSON.stringify({ autoModel: { enabled: 'yes', classifier: 'other', tiers: { simple: '  openai/nano  ' } } })))),
-      { autoModel: { enabled: false, classifier: 'local', tiers: { simple: 'openai/nano', standard: 'auto', complex: 'auto' }, protectLongChats: true } },
+      { autoModel: { enabled: false, classifier: 'local', tiers: { simple: 'openai/nano', standard: 'auto', complex: 'auto' }, tierVariants: { simple: null, standard: null, complex: null }, protectLongChats: true } },
     );
 
     const write = createPersistenceWriter(), gate = deferred<void>(), writes: string[] = [];

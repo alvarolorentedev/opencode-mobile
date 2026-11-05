@@ -163,6 +163,30 @@ describe('auto model resolution', () => {
     assert.equal(allowed?.model.id, 'openai/nano');
   });
 
+  it('resolves the configured thinking level and falls back when it is unsupported', () => {
+    const reasoning = model({
+      id: 'openai/reasoning',
+      variants: [{ id: 'low' }, { id: 'high' }],
+      supportsReasoning: true,
+    });
+    const configured = resolveAutoModelSelection({
+      tier: 'complex',
+      preferences: preferences({ tiers: { complex: 'openai/reasoning' }, tierVariants: { simple: null, standard: null, complex: 'high' } }),
+      models: [reasoning],
+      defaultModelId: 'openai/reasoning',
+    });
+    assert.equal(configured?.variant, 'high');
+
+    const fallback = resolveAutoModelSelection({
+      tier: 'complex',
+      preferences: preferences({ tiers: { complex: 'openai/reasoning' }, tierVariants: { simple: null, standard: null, complex: 'missing' } }),
+      models: [reasoning],
+      defaultModelId: 'openai/reasoning',
+      modelVariantSelections: { 'openai/reasoning': 'low' },
+    });
+    assert.equal(fallback?.variant, 'low');
+  });
+
   it('marks an unchanged model without inventing a switch', () => {
     const selected = resolveAutoModelSelection({
       tier: 'standard',

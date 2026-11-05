@@ -128,7 +128,7 @@ describe('multi-server contracts', () => {
 
     // Routing preferences must survive a workspace registry round-trip; a stale
     // or dropped value here is what makes an enabled setting look reset on launch.
-    const autoModel = { enabled: true, classifier: 'server', classifierModelId: 'openai/nano', tiers: { simple: 'openai/nano', standard: 'auto', complex: 'openai/deep' }, protectLongChats: false };
+    const autoModel = { enabled: true, classifier: 'server', classifierModelId: 'openai/nano', tiers: { simple: 'openai/nano', standard: 'auto', complex: 'openai/deep' }, tierVariants: { simple: null, standard: null, complex: 'high' }, protectLongChats: false };
     const withRouting = { ...entry, preferences: { autoModel } };
     const routingRoundTrip = parseWorkspaces(serializeWorkspaces([withRouting], { connectionId: entry.id, projectPath: '/same' }));
     expect(routingRoundTrip.connections[0].preferences.autoModel).toEqual(autoModel);

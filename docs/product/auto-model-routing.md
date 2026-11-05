@@ -75,14 +75,18 @@ Routing never switches models mid-turn for steer or queue submissions.
   classifier: 'local' | 'server';
   classifierModelId?: string;
   tiers: { simple: string; standard: string; complex: string };
+  tierVariants: { simple: string | null; standard: string | null; complex: string | null };
   protectLongChats: boolean;
 }
 ```
 
-Tier values are `auto` or a model ID. The object is server-scoped through the
-workspace registry and saved connection profiles. Unavailable model IDs are kept
-in preferences and treated as unavailable at send time rather than being
-rewritten during a slow or incomplete capability refresh.
+Tier values are `auto` or a model ID. `tierVariants` stores an optional
+thinking level for each tier; `null` keeps the per-model composer variant or the
+model default. A configured variant wins only when the routed model exposes it;
+otherwise routing falls back without failing. The object is server-scoped
+through the workspace registry and saved connection profiles. Unavailable model
+IDs are kept in preferences and treated as unavailable at send time rather than
+being rewritten during a slow or incomplete capability refresh.
 
 The persisted `enabled` and `classifier` values are also user-owned. Transient
 availability (an empty or slow model catalog, an offline connection, a pending
@@ -104,8 +108,8 @@ the server is not reachable yet.
   the routed model remains visible after the session switches for a later turn.
   The label uses the catalog model name and falls back to the raw model ID.
 - Settings → AI & providers: classifier mode, on-device pack status/download/
-  remove, OpenCode classifier model and probe, per-tier model mapping, and the
-  long-chat cache guard.
+  remove, OpenCode classifier model and probe, per-tier model mapping with an
+  optional per-tier thinking level, and the long-chat cache guard.
 - Onboarding: the same AI & providers panel is reused, so the routing choice is
   available during first-run setup.
 

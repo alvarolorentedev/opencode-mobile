@@ -183,7 +183,10 @@ export function resolveAutoModelSelection(input: {
     return undefined;
   }
 
-  const selectedVariant = input.modelVariantSelections?.[model.id];
+  const tierVariant = input.preferences.tierVariants?.[input.tier];
+  const selectedVariant = tierVariant && model.variants.some((candidate) => candidate.id === tierVariant)
+    ? tierVariant
+    : input.modelVariantSelections?.[model.id];
   const variant = selectedVariant && model.variants.some((candidate) => candidate.id === selectedVariant)
     ? selectedVariant
     : undefined;

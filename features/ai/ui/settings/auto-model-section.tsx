@@ -9,6 +9,7 @@ import { useTranslation } from 'react-i18next';
 import { Platform, View } from 'react-native';
 
 import { getAutoModelSuggestions } from '@/features/ai/model/opencode-auto-model';
+import { getModelVariantLabel } from '@/features/ai/model/model-variant-label';
 import { getVisibleModels } from '@/features/ai/model/opencode-model-selection';
 import type { ModelComplexity } from '@/shared/preferences/auto-model';
 import { AUTO_MODEL_PACK } from '@/features/ai/model/auto-model/catalog';
@@ -113,7 +114,13 @@ export function AutoModelSection({
   }
 
   function updateTier(tier: ModelComplexity, value: string) {
-    update({ tiers: { ...autoModel.tiers, [tier]: value } });
+    update({ tiers: { ...autoModel.tiers, [tier]: value }, tierVariants: { ...autoModel.tierVariants, [tier]: null } });
+  }
+
+  function tierModel(tier: ModelComplexity) {
+    const value = autoModel.tiers[tier];
+    const modelId = value === 'auto' ? suggestions[tier] : value;
+    return modelId ? visibleModels.find((model) => model.id === modelId) : undefined;
   }
 
   function modelOptions() {
@@ -210,20 +217,35 @@ export function AutoModelSection({
         </View>
       )}
 
-      {COMPLEXITIES.map((tier) => (
-        <SettingSelectField
-          key={tier}
-          disabled={!visibleModels.length}
-          label={t(`settings:modelRouting.tiers.${tier}.label`)}
-          onValueChange={(value) => updateTier(tier, value)}
-          options={modelOptions()}
-          palette={palette}
-          searchable
-          selectedValue={autoModel.tiers[tier]}
-          testID={`settings-auto-model-tier-${tier}`}
-          valueLabel={tierLabel(tier)}
-        />
-      ))}
+      {COMPLEXITIES.map((tier) => {
+        const model = tierModel(tier);
+        const selectedVariant = autoModel.tierVariants?.[tier] ?? '';
+        return <View key={tier} className={cn(stylesClasses.tierGroup)}>
+          <SettingSelectField
+            disabled={!visibleModels.length}
+            label={t(`settings:modelRouting.tiers.${tier}.label`)}
+            onValueChange={(value) => updateTier(tier, value)}
+            options={modelOptions()}
+            palette={palette}
+            searchable
+            selectedValue={autoModel.tiers[tier]}
+            testID={`settings-auto-model-tier-${tier}`}
+            valueLabel={tierLabel(tier)}
+          />
+          {model?.variants.length ? <SettingSelectField
+            label={t('chat:composer.reasoning')}
+            onValueChange={(value) => update({ tierVariants: { ...autoModel.tierVariants, [tier]: value || null } })}
+            options={[
+              { value: '', label: t('settings:modelRouting.tiers.automatic') },
+              ...model.variants.map((variant) => ({ value: variant.id, label: getModelVariantLabel(variant.id, t) })),
+            ]}
+            palette={palette}
+            selectedValue={selectedVariant}
+            testID={`settings-auto-model-tier-${tier}-variant`}
+            valueLabel={selectedVariant ? getModelVariantLabel(selectedVariant, t) : t('settings:modelRouting.tiers.automatic')}
+          /> : null}
+        </View>;
+      })}
 
       <SettingSwitchRow
         description={t('settings:modelRouting.protect.description')}
@@ -238,5 +260,6 @@ export function AutoModelSection({
 
 const stylesClasses = {
   "section": "gap-3 pt-2 pb-2",
-  "panel": "rounded-[14px] border gap-2 p-3"
+  "panel": "rounded-[14px] border gap-2 p-3",
+  "tierGroup": "gap-2"
 } as const;
