@@ -97,7 +97,6 @@
     "serverDirectory": "Папка на сервере",
     "add": "Добавить проект",
     "selectLabel": "Выбрать {{name}}",
-    "removeLabel": "Убрать {{name}}",
     "empty": "Проектов нет.",
     "changeProjectWithName": "Сменить проект. {{name}}",
     "showArchived": "Показать архивные проекты",

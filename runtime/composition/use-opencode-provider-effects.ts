@@ -27,7 +27,6 @@ export function useOpencodeProviderEffects({
   conversationSessionId,
   pruneTranscript,
   connection,
-  connectionScope,
   activeProjectPath,
   currentSessionId,
   currentSessionIdRef,
@@ -35,7 +34,6 @@ export function useOpencodeProviderEffects({
   sessions,
   sessionsRef,
   sessionStatuses,
-  lastSessionByConnection,
   setCurrentSessionId,
   setMessagesBySession,
   setDiffsBySession,
@@ -84,13 +82,11 @@ export function useOpencodeProviderEffects({
       return;
     }
 
-    const rememberedSessionId = activeProjectPath
-      ? lastSessionByConnection[connectionScope]?.[activeProjectPath]
-      : undefined;
-    const fallbackSessionId = currentSessions.find((session) => session.id === rememberedSessionId)?.id || currentSessions[0]?.id;
+    // The server list is newest-first, so the most recent session wins.
+    const fallbackSessionId = currentSessions[0]?.id;
     currentSessionIdRef.current = fallbackSessionId;
     setCurrentSessionId(fallbackSessionId);
-  }, [activeProjectPath, connectionScope, currentSessionId, currentSessionIdRef, explicitSessionSelectionRef, lastSessionByConnection, sessions, sessionsRef, setCurrentSessionId]);
+  }, [activeProjectPath, currentSessionId, currentSessionIdRef, explicitSessionSelectionRef, sessions, sessionsRef, setCurrentSessionId]);
 
   useEffect(() => {
     const explicit = explicitSessionSelectionRef.current;

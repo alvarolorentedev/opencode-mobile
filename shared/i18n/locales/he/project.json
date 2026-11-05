@@ -97,7 +97,6 @@
     "serverDirectory": "ספריית שרת",
     "add": "הוסף פרויקט",
     "selectLabel": "בחר {{name}}",
-    "removeLabel": "הסר את {{name}}",
     "empty": "אין פרויקטים זמינים.",
     "changeProjectWithName": "שנה פרויקט. {{name}}",
     "showArchived": "הצג פרויקטים בארכיון",

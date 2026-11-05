@@ -83,6 +83,8 @@ coverage, and documentation links.
 | [0029](0029-minimal-remote-telemetry.md) | Minimal remote telemetry budget | Accepted |
 | [0030](0030-server-archived-projects.md) | Server-archived project visibility without a client archive write | Accepted |
 | [0031](0031-flexible-updates-with-explicit-install.md) | Flexible store updates with explicit install | Accepted |
+| [0032](0032-web-parity-project-picker.md) | Project picker matches web Used/Other semantics | Superseded by ADR 0033 |
+| [0033](0033-server-driven-projects-and-sessions.md) | Server-driven projects and sessions without local registries | Accepted |
 
 ## Template
 

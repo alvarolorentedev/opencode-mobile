@@ -97,7 +97,6 @@
     "serverDirectory": "دليل الخادم",
     "add": "إضافة مشروع",
     "selectLabel": "حدد {{name}}",
-    "removeLabel": "إزالة {{name}}",
     "empty": "لا توجد مشاريع متاحة.",
     "changeProjectWithName": "تغيير المشروع. {{name}}",
     "showArchived": "إظهار المشاريع المؤرشفة",

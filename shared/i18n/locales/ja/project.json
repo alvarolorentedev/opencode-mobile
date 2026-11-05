@@ -97,7 +97,6 @@
     "serverDirectory": "サーバーディレクトリ",
     "add": "プロジェクトを追加",
     "selectLabel": "{{name}}を選択",
-    "removeLabel": "{{name}}を削除",
     "empty": "利用可能なプロジェクトはありません。",
     "changeProjectWithName": "プロジェクトを変更。{{name}}",
     "showArchived": "アーカイブされたプロジェクトを表示",

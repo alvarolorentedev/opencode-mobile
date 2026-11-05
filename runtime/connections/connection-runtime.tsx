@@ -13,7 +13,7 @@ import { connectionTransition , useConnectionRetry } from '@/features/connection
 import type { ConnectionLifecycle } from '@/features/connections/index';
 import type { ConnectionState } from '@/shared/contracts/domain';
 import { replaceQueryPartition } from '@/shared/server-data/keys';
-import { fetchProjectCatalog } from '@/features/projects/runtime';
+import { fetchProjectCatalog, projectsOptions } from '@/features/projects/runtime';
 import { useQueryActivity, useQueryIdentity } from '@/shared/server-data/client';
 import { useActiveSessions } from '@/features/sessions/runtime';
 import { useCoalescedRefresh } from '@/runtime/realtime/use-coalesced-refresh';
@@ -241,6 +241,15 @@ export function ConnectionRuntime({ entry, setup, updateSettings, online, hydrat
   const catalog = useMemo<WorkspaceCatalog>(() => ({ sessions: sessions.catalogSessions, statuses: sessions.catalogStatuses, refresh: sessions.refreshActiveSessions, removeSession: sessions.removeSession }), [sessions.catalogSessions, sessions.catalogStatuses, sessions.refreshActiveSessions, sessions.removeSession]);
   const { refreshActiveSessions } = sessions;
   useEffect(() => { if (lifecycle.connection.status === 'connected') void refreshActiveSessions(); }, [lifecycle.connection.status, refreshActiveSessions]);
+  // Warm the connection-wide project list once per connect. Project queries
+  // are demand-gated per runtime, so without this a picker opened for a
+  // connection the user has not focused yet would stay empty. The list is
+  // small; mounted runtimes pick the cached result up through their shared
+  // query key and realtime invalidation still reconciles it.
+  useEffect(() => {
+    if (lifecycle.connection.status !== 'connected') return;
+    void cache.fetchQuery(projectsOptions(identity, catalogClient)).catch(() => undefined);
+  }, [cache, catalogClient, identity, lifecycle.connection.status]);
   useLayoutEffect(() => { onCatalog(entry.id, catalog); }, [catalog, entry.id, onCatalog]);
   const value = useMemo(() => ({ ...lifecycle, catalogClient, catalog, isCurrentCatalogClient }), [lifecycle, catalogClient, catalog, isCurrentCatalogClient]);
   return <ConnectionRuntimeContext.Provider value={value}>{children}</ConnectionRuntimeContext.Provider>;

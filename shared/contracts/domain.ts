@@ -23,10 +23,6 @@ export type OpencodeProject = {
   path: string;
 };
 
-// Opened projects per connection scope, most-recent-first. The picker renders
-// this list; the server's project catalog only enriches the entries.
-export type ProjectPathsByConnection = Record<string, string[]>;
-
 // Explicit persisted model for a pinned session. `sessionId` and `projectPath`
 // are the identifiers required to reopen it; `connectionScope` says which
 // server + user owns it, so identical paths or session IDs on another server

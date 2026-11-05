@@ -1,7 +1,6 @@
 import { z } from 'zod';
 import { describe, expect, it, vi } from 'vitest';
 import { loadTs, hookRuntime } from '../../tests/helpers/runtime.mjs';
-import { projectClosedValues } from '@/runtime/workspace/workspace-projection';
 
 const identity = { getConnectionScope: (value: any) => `${value.serverUrl}:${value.username}`, getConnectionUiScope: (value: any) => `${value.serverUrl}:${value.username}` };
 const keys = { sessionKey: (value: any) => JSON.stringify([value.connectionId, value.projectPath, value.sessionId]) };
@@ -30,7 +29,6 @@ describe('multi-server contracts', () => {
     const { useWorkspaceValues } = await loadTs('runtime/workspace/use-workspace-values.ts', {
     react: driver.react,
     '@/shared/contracts/connection-scope': identity,
-    "@/runtime/workspace/workspace-projection": { projectClosedValues }
   });
     const settings = { serverUrl: 'http://a', username: '' };
     const base = {
@@ -190,7 +188,7 @@ it('restarts a silent shared stream even when a widget consumer stays attached',
   expect((await widget.next()).done).toBe(true);
 });
 
-it('keeps lifecycle decisions current and closes projects without resetting retained runtimes', async () => {
+it('keeps lifecycle decisions current without resetting retained runtimes', async () => {
   const driver = hookRuntime();
   const entries = ['a', 'b'].map((id) => ({ id, name: id, settings: { serverUrl: `http://${id}`, username: '', password: '', directory: '' }, projects: ['/repo', '/other'], preferences: {}, enabled: true }));
   const paths = { 'http://a:': ['/repo', '/other'], 'http://b:': ['/repo'] };
@@ -232,13 +230,6 @@ it('keeps lifecycle decisions current and closes projects without resetting reta
   await driver.value.openExternalSession({ connectionId: 'b', projectPath: '/repo', sessionId: 'collision' });
   expect(b.values.currentSessionValue.openDeepLinkSession).toHaveBeenCalledWith({ sessionId: 'collision', projectPath: '/repo' }, expect.any(AbortSignal));
   expect(original.values.currentSessionValue.openDeepLinkSession).not.toHaveBeenCalled();
-  driver.value.select({ connectionId: 'a', projectPath: '/repo' }); driver.flush();
-  await driver.value.closeProject({ connectionId: 'a', projectPath: '/repo' }); driver.flush();
-  expect(driver.value.focus).toEqual({ connectionId: 'a', projectPath: '/other' });
-  expect(shell.projectPathsByConnectionRef.current['http://a:']).toEqual(['/other']);
-  expect(driver.value.snapshots['["a","/repo"]']).toBe(original);
-  expect(original.suspend).not.toHaveBeenCalled();
-  expect(original.values.conversationValue.toggleConversationMode).toHaveBeenCalledTimes(4);
   await driver.value.disconnect('a'); driver.flush();
   expect(isEnabled('a')).toBe(false); expect(isEnabled('b')).toBe(true);
   expect(original.suspend).toHaveBeenCalledOnce(); expect(other.suspend).toHaveBeenCalledOnce(); expect(b.suspend).not.toHaveBeenCalled();
@@ -347,13 +338,13 @@ it('moves chat focus to a connected server when the focused server fails', async
   const snapshot = (id: string, status: string) => ({ enabled: true, native: { settings: entries.find((entry) => entry.id === id)!.settings }, suspend: vi.fn(),
     values: { projectsValue: { activeProjectPath: '/repo' }, conversationValue: { conversation: { active: false }, toggleConversationMode: vi.fn(async () => {}) }, connectionValue: { connection: { status } } } });
   driver.value.publish('["a","/repo"]', snapshot('a', 'connected'));
-  driver.value.publish('["b","/repo"]', snapshot('b', 'connected'));
+  driver.value.publish('["b",""]', snapshot('b', 'connected'));
   await driver.settle();
-  expect(driver.value.focus).toEqual({ connectionId: 'b', projectPath: '/repo' });
-  driver.value.publish('["b","/repo"]', snapshot('b', 'error'));
+  expect(driver.value.focus).toEqual({ connectionId: 'b', projectPath: '' });
+  driver.value.publish('["b",""]', snapshot('b', 'error'));
   await driver.settle();
   expect(driver.value.focus).toEqual({ connectionId: 'a', projectPath: '/repo' });
-  driver.value.publish('["b","/repo"]', snapshot('b', 'connected'));
+  driver.value.publish('["b",""]', snapshot('b', 'connected'));
   driver.value.select({ connectionId: 'b', projectPath: '/repo' });
   await driver.settle();
   expect(driver.value.focus).toEqual({ connectionId: 'b', projectPath: '/repo' });
@@ -377,83 +368,6 @@ it('flattens terminal catalogs once per server PTY and keeps the owning workspac
   expect(rows.map((row: any) => row.serverName)).toEqual(['a', 'b']);
   expect(rows[0].actions).toBe(owner.values.terminalValue);
   expect(rows[1].actions).toBe(otherServer.values.terminalValue);
-});
-
-it('clears focus and keeps the retained runtime when the last opened project closes', async () => {
-  const driver = hookRuntime();
-  const entries = [{ id: 'a', name: 'a', settings: { serverUrl: 'http://a', username: '', password: '', directory: '' }, projects: ['/repo'], preferences: {}, enabled: true }];
-  const paths = { 'http://a:': ['/repo'] };
-  const shell: any = { settings: entries[0].settings, onboardingVersion: 1, chatPreferences: {}, projectPathsByConnection: paths,
-    projectPathsByConnectionRef: { current: paths }, setProjectPathsByConnection: vi.fn(), setSettings: vi.fn() };
-  const writer = Object.assign(async () => {}, { preserveUnread: vi.fn() });
-  const workspaceFocus = await loadTs('runtime/workspace/workspace-focus.ts');
-  const { useWorkspaceConnections } = await loadTs('runtime/workspace/use-workspace-connections.ts', {
-    react: driver.react,
-    '@react-native-async-storage/async-storage': { __esModule: true, default: { getItem: async () => 'stored', setItem: async () => {} } },
-    '@/runtime/workspace/workspace-focus': workspaceFocus,
-    "@/shared/contracts/connection-scope": { ...identity, getConnectionUiScope: (value: any) => value.serverUrl.slice(7) },
-    "@/shared/storage/connection-profiles": { createProfileId: () => 'new', getProfilePassword: async () => '', loadConnectionProfiles: async () => [], mutateConnectionProfiles: vi.fn(async () => {}), saveProfilePassword: vi.fn(), deleteProfilePassword: vi.fn() },
-    "@/shared/contracts/connection-profiles": { findMatchingProfile: () => undefined, pickModelPreferences: () => ({}) },
-    "@/shared/storage/connection-headers": { getProfileHeaders: async () => ({}), saveProfileHeaders: vi.fn(), deleteProfileHeaders: vi.fn() },
-    "@/shared/protocol/opencode/client/types": { defaultConnectionSettings: { serverUrl: 'http://default', username: '' } },
-    "@/shared/contracts/server-url": { getServerHostname: (value: string) => value },
-    "@/shared/storage/persistence-hydration": { createPersistenceWriter: () => writer },
-    "@/shared/network/shared-event-stream": { createSharedEventStream: () => () => {} },
-    "@/shared/storage/workspace-storage": { WORKSPACES_STORAGE_KEY: 'workspaces', parseWorkspaces: () => ({ connections: entries, focus: { connectionId: 'a', projectPath: '/repo' } }), serializeWorkspaces: () => 'stored' },
-    "@/shared/contracts/workspace": { workspaceKey: ({ connectionId, projectPath }: any) => JSON.stringify([connectionId, projectPath]) }
-  }, driver.globals);
-  driver.mount(({ shell }: any) => useWorkspaceConnections(shell, true), { shell });
-  await driver.settle();
-  const runtime = { enabled: true, native: { settings: entries[0].settings }, suspend: vi.fn(),
-    values: { projectsValue: { activeProjectPath: '/repo' }, conversationValue: { conversation: { active: false }, toggleConversationMode: vi.fn(async () => {}) }, connectionValue: { connection: { status: 'connected' } } } };
-  driver.value.publish('["a","/repo"]', runtime); driver.flush();
-  await driver.value.closeProject({ connectionId: 'a', projectPath: '/repo' }); driver.flush();
-  expect(driver.value.focus).toBeUndefined();
-  expect(shell.projectPathsByConnectionRef.current['http://a:']).toEqual([]);
-  expect(driver.value.snapshots['["a","/repo"]']).toBe(runtime);
-  expect(runtime.suspend).not.toHaveBeenCalled();
-  driver.unmount();
-});
-
-it('projects a closed project out of every project-scoped workspace domain', () => {
-  const base: any = {
-    projectsValue: { projects: [{ path: '/repo' }], activeProjectPath: '/repo', activeProject: { path: '/repo' }, isRefreshingProjectCatalog: true },
-    projectFilesValue: {
-      projectFileStatuses: [{ path: 'src/a.ts' }], projectFile: { selected: { path: 'src/a.ts' } },
-      vcsInfo: { branch: 'main' }, worktrees: { entries: [{ directory: '/repo/wt' }], loading: true },
-    },
-    currentSessionValue: { currentSessionId: 's', activeSession: { id: 's' }, createSession: async () => ({ id: 'new' }), ensureActiveSession: async () => 's' },
-    sessionLibraryValue: { sessions: [{ id: 's' }], sessionStatuses: { s: { type: 'idle' } }, sessionPreviewById: { s: 'preview' } },
-    chatValue: {
-      pendingPrompts: [{ id: 'p' }], currentMessages: [{ id: 'm' }], currentTranscript: [{ id: 'm' }],
-      currentUsage: { total: 1 }, latestAssistantTurnUsage: { total: 1 }, currentDiffs: [{ file: 'a' }], diffTurns: [{ id: 'm' }],
-      selectedDiffMessageId: 'm', currentTodos: [{ id: 't' }], currentPendingPermissions: [{ id: 'perm' }], currentPendingQuestions: [{ id: 'q' }],
-      isRefreshingMessages: true, transcriptReadError: 'error', isRefreshingDiffs: true, isBootstrappingChat: true,
-      transcriptPaging: { hasOlder: true, isLoadingOlder: true }, commands: [{ name: 'cmd' }], availableSkills: [{ name: 'skill' }],
-      availableReferences: [{ name: 'ref' }], sendingState: { active: true, sessionId: 's' }, promptError: { message: 'failed' },
-    },
-    conversationValue: { conversation: { active: true, phase: 'listening', inputPhase: 'listening', readbackPhase: 'speaking', isListening: true, level: 0.8, statusLabel: 'Listening' } },
-    terminalValue: { terminals: [{ id: 'pty' }], activeTerminalId: 'pty', terminalRuntime: { scope: 1, instances: [{ ptyId: 'pty' }] } },
-  };
-  const closed = projectClosedValues(base);
-  expect(closed.projectsValue.projects).toEqual([]);
-  expect(closed.projectsValue.activeProjectPath).toBeUndefined();
-  expect(closed.projectFilesValue.projectFileStatuses).toEqual([]);
-  expect(closed.projectFilesValue.projectFile.selected).toBeUndefined();
-  expect(closed.projectFilesValue.vcsInfo).toBeUndefined();
-  expect(closed.projectFilesValue.worktrees.entries).toEqual([]);
-  expect(closed.currentSessionValue.currentSessionId).toBeUndefined();
-  expect(closed.sessionLibraryValue.sessions).toEqual([]);
-  expect(closed.sessionLibraryValue.sessionStatuses).toEqual({});
-  expect(closed.chatValue.currentMessages).toEqual([]);
-  expect(closed.chatValue.currentTranscript).toEqual([]);
-  expect(closed.chatValue.currentPendingPermissions).toEqual([]);
-  expect(closed.chatValue.currentPendingQuestions).toEqual([]);
-  expect(closed.chatValue.transcriptPaging.hasOlder).toBe(false);
-  expect(closed.chatValue.sendingState.active).toBe(false);
-  expect(closed.conversationValue.conversation.active).toBe(false);
-  expect(closed.terminalValue.terminals).toEqual([]);
-  expect(closed.terminalValue.terminalRuntime.instances).toEqual([]);
 });
 
 it('reads the shared active-session catalog only for the owning runtime', async () => {

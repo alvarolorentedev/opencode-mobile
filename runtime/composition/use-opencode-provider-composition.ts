@@ -88,8 +88,8 @@ export function useOpencodeProviderComposition(input: WorkspaceRuntimeInput) {
   const serverData = useWorkspaceServerData(client, state.connection.status === 'connected', isCurrentClient);
   const domain = { ...state, ...serverData };
   const projects = useMemo(
-    () => buildOpencodeProjects(state.projectPathsByConnection[state.connectionScope] ?? [], serverData.serverProjects),
-    [state.connectionScope, state.projectPathsByConnection, serverData.serverProjects],
+    () => buildOpencodeProjects(serverData.serverProjects),
+    [serverData.serverProjects],
   );
 
   const transcript = useTranscriptState({ ...domain, client, isCurrentClient });

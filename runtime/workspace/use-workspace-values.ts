@@ -2,9 +2,8 @@ import { useMemo } from 'react';
 
 import { getConnectionScope, getConnectionUiScope } from '@/shared/contracts/connection-scope';
 import type { ConnectionContextValue } from '@/features/connections/index';
-import type { ConnectionState, ProjectPathsByConnection, SessionDeepLinkTarget } from '@/shared/contracts/domain';
+import type { ConnectionState, SessionDeepLinkTarget } from '@/shared/contracts/domain';
 import type { SharedInput } from '@/features/sharing/index';
-import { projectClosedValues } from '@/runtime/workspace/workspace-projection';
 import type { WorkspaceTarget } from '@/shared/contracts/workspace';
 import type { WorkspaceValues } from '@/runtime/workspace/workspace-types';
 
@@ -17,7 +16,6 @@ export type WorkspaceValueOverrides = {
   connectSetup: ConnectionContextValue['connectSetup'];
   servicesValue: ConnectionContextValue['services'];
   sharedInput: SharedInput;
-  projectPathsByConnection: ProjectPathsByConnection;
   retry: (id: string) => Promise<ConnectionState>;
   activate: (target: WorkspaceTarget) => Promise<void>;
   switchConnection: ConnectionContextValue['switchConnection'];
@@ -41,7 +39,6 @@ export function useWorkspaceValues(
     connectSetup,
     servicesValue,
     sharedInput,
-    projectPathsByConnection,
     retry,
     activate,
     switchConnection,
@@ -57,16 +54,7 @@ export function useWorkspaceValues(
     () => (settings ? getConnectionScope(settings) : ''),
     [settings],
   );
-  const openedProjectPaths = projectPathsByConnection[connectionScope];
-  const baseValues = useMemo(() => {
-    if (!values) return undefined;
-    const path = values.projectsValue.activeProjectPath;
-    // The opened-project list is the source of truth. A retained runtime may
-    // still hold the last closed project's state while its drafts stay alive.
-    return openedProjectPaths && path && !openedProjectPaths.includes(path)
-      ? projectClosedValues(values)
-      : values;
-  }, [values, openedProjectPaths]);
+  const baseValues = values;
 
   const baseOnboarding = baseValues?.onboardingValue;
   const onboardingValue = useMemo(() => (baseOnboarding ? {

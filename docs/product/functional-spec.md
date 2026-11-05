@@ -58,12 +58,12 @@ Chat shows the active project and worktree as read-only context under the sessio
 
 Behavior:
 
-- the picker lists the projects opened on this device + connection first, then every other project returned by the server, so a fresh device can select a server project without typing its path; `project.list()` supplies labels and IDs
-- opening a project (selecting, adding, or following a link) records it for the connection; closing it removes the local entry without touching the server
+- the picker renders the server catalog (`project.list()` supplies labels and IDs) in server order; there is no opened list, no close action, and no locally remembered project, so the phone can never show a project the server does not report
+- opening a project (selecting, adding, or following a link) only changes the active selection; nothing is recorded locally
 - the current server project may be labeled `Current`; the selected app project may be labeled `Active`
 - selecting a project clears the current session selection
 - the provider later rehydrates or creates the appropriate session for that project
-- a selected worktree is kept as the active location only while the server resolves it; otherwise the app falls back to the most recent opened project
+- a selected worktree is kept as the active location only while the server resolves it; otherwise the app falls back to the server default location or the most recently active server project
 - an archived-projects switch appears on OpenCode 2 connections. The normal list remains the server's default (`project.list()` excludes archived projects); enabling the switch fetches `project.list({ archived: true })` and shows only entries with `time.archived` under "Archived on OpenCode". The list is read on demand, not persisted. Restore calls `location.get` for the archived directory; it succeeds only when the folder exists again and reports the server error otherwise. There is no user-triggered server archive action, and V1 connections hide the switch
 - Add project opens the server folder browser first: it lists direct child folders with the current path and an Up action, and "Select this folder" fills the directory field. "Enter path manually" keeps the typed-path flow available. Folder browsing uses the connection-scoped `file.list` adapter; servers that cannot list a folder fall back to manual entry
 - Add project accepts a directory on the OpenCode server, boots it with `location.get` so the serve persists the project, refreshes the catalog, and selects the location the server resolved (the project root for nested input), opening it in the picker; an invalid directory stays in the form with an error
@@ -75,7 +75,6 @@ The app maintains one active session at a time for the active project.
 Bootstrapping behavior:
 
 - if a transient deep-link target exists for the project (see below), that session is opened instead
-- if a remembered session exists for the project and still exists on the server, it is reopened
 - otherwise the latest available session is used
 - if no session exists, one is created automatically
 
@@ -96,8 +95,8 @@ The app supports deep links that open a specific session:
 Behavior:
 
 - the link opens the session belonging to the given server project path
-- if the project differs from the active project, the app switches to it (and persists it as the active project)
-- a project path is available when it is the active project, is opened on this connection, is a server project canonical, or the server resolves it as a checkout/worktree; repositories with multiple checkouts share a project ID, so canonical-path equality is not required
+- if the project differs from the active project, the app switches to it (selection only; nothing is persisted)
+- a project path is available when it is the active project, is a server project canonical, or the server resolves it as a checkout/worktree; repositories with multiple checkouts share a project ID, so canonical-path equality is not required
 - if the session is not found in that project, a `Could not open session` error screen is shown with the server message
 - the link does not carry a server identity; it resolves against the currently configured server
 - this resolver is for external entry points only (notifications, widgets, quick actions, and OS links); tapping a library row inside the app uses workspace navigation and never validates against the session list

@@ -73,6 +73,18 @@ describe('workspace project groups', () => {
     ]);
   });
 
+  it('drops retained runtimes the server catalog no longer reports', () => {
+    const groups = buildWorkspaceProjectGroups([{ id: 'server-1', name: 'Server', enabled: true } as never], {
+      '["server-1","/gone"]': snapshot({
+        path: '/gone',
+        root: '/gone',
+        activePath: '/gone',
+        projects: [{ id: 'project-1', label: 'repo', path: '/repo' }],
+      }),
+    });
+    expect(groups[0].projects.map((project) => project.path)).toEqual(['/repo']);
+  });
+
   it('omits disabled and non-connected connections', () => {
     const groups = buildWorkspaceProjectGroups([
       { id: 'connected', name: 'Connected', enabled: true } as never,

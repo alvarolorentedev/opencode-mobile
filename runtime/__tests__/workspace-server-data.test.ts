@@ -66,7 +66,12 @@ describe('retained workspace query demand', () => {
     await cache.invalidateQueries({ queryKey: ['opencode', 'a'] });
     await driver.settle();
     expect(reads.map((read) => read.mock.calls.length)).toEqual(reads.map(() => 1));
-    expect(cache.getQueryCache().getAll().every((query) => query.getObserversCount() === 0)).toBe(true);
+    // The project catalog observers stay subscribed while inactive so a
+    // connection-level warm fetch is visible without waking heavier queries.
+    // They never fetch while disabled; only the catalog keys keep observers.
+    const backgroundObserved = cache.getQueryCache().getAll().filter((query) => query.getObserversCount() > 0);
+    expect(backgroundObserved).toHaveLength(2);
+    expect(backgroundObserved.every((query) => query.queryKey.includes('projects') || query.queryKey.at(-1) === 'location')).toBe(true);
     active = true; driver.flush(); await driver.settle();
     expect(reads.map((read) => read.mock.calls.length)).toEqual(reads.map(() => 2));
     driver.unmount(); cache.clear();

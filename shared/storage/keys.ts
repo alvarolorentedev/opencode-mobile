@@ -10,14 +10,13 @@ export const ACTIVE_PROJECT_STORAGE_KEY = 'opencode-mobile.active-project';
 // run; version 0 marks "started but not completed" so a relaunch is not
 // mistaken for a pre-onboarding upgrade. See features/onboarding/model/onboarding-state.ts.
 export const ONBOARDING_VERSION_STORAGE_KEY = 'opencode-mobile.onboarding-version';
-export const LAST_SESSION_BY_PROJECT_STORAGE_KEY = 'opencode-mobile.last-session-by-project';
 export const PENDING_NOTIFICATION_SESSIONS_STORAGE_KEY = 'opencode-mobile.pending-notification-sessions';
 export const FAVORITE_SESSIONS_STORAGE_KEY = 'opencode-mobile.favorite-sessions';
-// Opened projects per connection scope (most-recent-first directory paths).
-// Mirrors the desktop Home list: the picker shows projects the user opened on
-// this device, while `project.list()` only enriches them. See
-// features/projects/services/projects-storage.ts.
+// Retired keys. Older builds persisted the device-local opened-project list
+// and last session per project here; the server catalogs are the source of
+// truth now. New writes never happen; hydrate removes any stored values once.
 export const PROJECTS_STORAGE_KEY = 'opencode-mobile.projects';
+export const LAST_SESSION_BY_PROJECT_STORAGE_KEY = 'opencode-mobile.last-session-by-project';
 // Bounded, non-secret task snapshot for the Android home widget. The widget
 // handler runs headless without provider state, so the app writes this on
 // confirmed provider changes and the handler renders from it. See

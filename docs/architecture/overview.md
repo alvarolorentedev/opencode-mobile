@@ -274,7 +274,7 @@ The completion version, preference schema and first-run migration are unchanged.
   Derived selectors and the memoized domain context values rendered by
   `OpencodeProvider`.
 - `runtime/composition/use-project-actions.ts`
-  Project catalog, opened-project add/close, project selection, session/file
+  Project catalog, project selection, session/file
   refresh, file search/open/save/download, and diagnostics actions.
 - `features/projects/state/use-project-browser.ts`
   Directory/search query selection and project-scope guards, composed by the
@@ -729,14 +729,14 @@ are reshaped to carry keys. Notification copy is already translated inside
 The normal startup flow is:
 
 1. Root layout mounts providers and keeps the native splash up.
-2. `useOpencodePersistence()` hydrates settings, chat preferences, active project, the connection-scoped opened projects, the last-session map, and the onboarding completion marker from AsyncStorage.
+2. `useOpencodePersistence()` hydrates settings, chat preferences, favorites, and the onboarding completion marker from AsyncStorage.
 3. The routing gate resolves: existing configured installs show `(tabs)`; a fresh install shows the onboarding assistant. A fresh install does not auto-connect.
 4. After hydration, once onboarding is completed, `OpencodeProvider` calls `connect()`.
-5. `connect()` loads the project catalog using a catalog-scoped client with no directory, seeds the connection's opened-project list from the server's current project when it was never initialized, and keeps the opened and active projects in sync. Runtime catalog refreshes pass the runtime's directory to `location.get`, so a worktree keeps its own resolved checkout instead of falling back to the server's root project.
+5. `connect()` loads the project catalog using a catalog-scoped client with no directory and derives the active project from the server (server default location first, then the most recently active server project). Runtime catalog refreshes pass the runtime's directory to `location.get`, so a worktree keeps its own resolved checkout instead of falling back to the server's root project.
 6. Connection state becomes `connected` or `error`.
 7. If a project exists, the provider fetches sessions and chat capabilities.
 8. A follow-up effect calls `ensureActiveSession()` for the active project.
-9. `ensureActiveSession()` honors a transient deep-link target (set by `openDeepLinkSession`), then reopens the remembered session, falls back to the newest returned session, or creates a new one. A deep-link target that does not match any session never triggers session creation. The selected session ID is committed before transcript, diff, todo, interaction, capability, feature, or diagnostic reads; those reads continue in the background. An explicit `openSession()` writes the selection ref immediately and invalidates any in-flight bootstrap, so a render-delayed startup pass cannot replace the chat the user just chose.
+9. `ensureActiveSession()` honors a transient deep-link target (set by `openDeepLinkSession`), then falls back to the newest returned session, or creates a new one. A deep-link target that does not match any session never triggers session creation. The selected session ID is committed before transcript, diff, todo, interaction, capability, feature, or diagnostic reads; those reads continue in the background. An explicit `openSession()` writes the selection ref immediately and invalidates any in-flight bootstrap, so a render-delayed startup pass cannot replace the chat the user just chose.
 10. The Chat tab renders the selected session's header and a transcript skeleton while the first page lands. It then fills in transcript, diffs, todos, pending interactions, and controls as the background reads settle.
 
 In-app navigation and deep links are separate paths. Library rows, favorites, and approval shortcuts call the workspace registry's `navigate(target)`, which prepares the owning runtime and calls the local `openSession()`; it never reads the server session list. External entry points (notification taps, home widgets, quick actions, and OS `opencodemobile://session/...` links) route through `features/sessions/ui/session-link-screen.tsx`, which calls `openDeepLinkSession()` to resolve and validate the connection, project, and session before switching. `tests/vitest/architecture.test.ts` keeps `openDeepLinkSession` out of in-app components.
@@ -767,7 +767,7 @@ switch is deliberately ordered:
 4. reconnect with the target settings passed explicitly to `runConnect()` instead of reading a render-delayed ref, then
 5. hydrate only state whose connection scope matches the new settings.
 
-Persisted session caches, remembered sessions, favorites, and pending
+Persisted session caches, favorites, and pending
 notifications are all keyed by connection scope, so a switch can never surface
 or mutate another server's state even when both servers expose the same project
 path.
@@ -1162,7 +1162,7 @@ safety gates and FOSS exclusion.
 
 `use-workspace-connections.ts` owns explicit connect/disconnect, restoration, and composite connection/project identity. A runtime stays mounted when another chat or tab is selected. Its clients, generations, transcript windows, prompt inbox, approvals, file browser and PTY connections remain separate. `shared-event-stream.ts` fans one server subscription out to retained projects; events are still filtered by directory and the existing polling/reconciliation paths remain active.
 
-Hydration, compatibility settings writes, device sharing, Cloud Link setup/billing, updates, language, audio and native surfaces have one app-wide owner. Favorites, opened projects and remembered sessions keep their existing connection-scoped persistence. Activity observation has one owner per server, with one app-wide Android notification publisher combining counts and releasing only the disconnected server. Native shortcuts carry each row's connection scope; widget publication remains app-wide.
+Hydration, compatibility settings writes, device sharing, Cloud Link setup/billing, updates, language, audio and native surfaces have one app-wide owner. Favorites keep their existing connection-scoped persistence; projects and sessions are always derived from the server catalogs. Activity observation has one owner per server, with one app-wide Android notification publisher combining counts and releasing only the disconnected server. Native shortcuts carry each row's connection scope; widget publication remains app-wide.
 
 The chat library combines the unscoped server catalogs with live project state. It keeps current/running/recency order, uses composite keys and labels each row with its server. Project selection changes chat/project focus. Terminal selection and Settings inspection are independent. RN Primitives portals explicitly restore their caller's workspace scope; otherwise their children would inherit the app host's current chat server.
 

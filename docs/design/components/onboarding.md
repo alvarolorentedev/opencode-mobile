@@ -36,7 +36,7 @@ Responsibility:
 ### `features/projects/ui/project-options.tsx`
 
 - presentational project-row list shared by `ProjectPicker` and the onboarding project step
-- renders an optional close control that removes a project locally; callers own empty/loading states and whether closing is offered
+- rows select server projects only; there is no close control because project selection is never stored locally. Callers own empty/loading states
 
 ### `features/projects/ui/project-directory-picker.tsx`
 

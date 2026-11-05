@@ -118,7 +118,6 @@ Primary fields:
 - `sessions`
 - `sessionStatuses`
 - `currentSessionId`
-- `lastSessionByConnection`
 
 Meaning:
 
@@ -128,7 +127,7 @@ Meaning:
 - `sessionStatuses` stores per-session runtime status from the server
 - `currentSessionId` is the selected/open session
 - an explicit selection stays selected while the project session list catches up with a catalog row; once the list includes it, normal reconciliation handles later removal
-- `lastSessionByConnection` persists the remembered session ID per connection scope and project path, so the same path on two servers remembers different sessions
+- opening a project with no explicit selection picks the newest session in the server list; nothing remembers the previous chat
 
 ## Session Content Caches
 
@@ -399,7 +398,7 @@ window.
 
 An explicit `openSession()` invalidates any in-flight initial bootstrap and
 writes `currentSessionIdRef` synchronously, so a render-delayed bootstrap cannot
-reselect the remembered chat after the user created or opened a different one.
+override the chat the user just created or opened.
 `explicitSessionSelectionRef` bridges the render gap until the new session is in
 the live `sessionsRef`; pending deep-link targets still validate against the
 server.
@@ -469,10 +468,7 @@ Persisted values:
 - `opencode-mobile.connect-control-plane` (last automatically resolved Cloud Link environment; defaults to production, accepts only production/staging, hydrated before pairing/Cloud Link startup)
 - `opencode-mobile.connection-profiles` (saved connections with name and the optional server-scoped preferences: provider/model, enabled models, per-provider and variant selections, agent mode, auto-approve, and auto-routing tiers; passwords and custom gateway headers live in secure storage)
 - `opencode-mobile.chat-preferences` (chat preferences, including the global UI `language`; not connection-scoped)
-- `opencode-mobile.active-project`
-- `opencode-mobile.projects` (opened projects per connection scope, most-recent-first directory paths; an explicit empty list means the user closed every project and is not re-seeded)
 - `opencode-mobile.onboarding-version` (completion-only first-run marker; see below)
-- `opencode-mobile.last-session-by-project` (nested `connectionScope -> projectPath -> sessionId`; legacy flat maps are discarded on hydration)
 - `opencode-mobile.pending-notification-sessions` (non-secret connection references, keyed by connection scope + session ID)
 - `opencode-mobile.widget-snapshot` (bounded Android replies, awaiting-action and plan snapshot: connection scope, language/privacy preference, per-surface observation times, three rows/steps, counts, validated links and optional 160-character previews; no authentication credentials, raw request metadata or tool output)
 - `opencode-mobile.sessions.<connectionScope>.<projectPath>` / `opencode-mobile.session-statuses.<connectionScope>.<projectPath>` (per connection + project cache)
@@ -516,11 +512,11 @@ list.
 Hydration rules:
 
 - persisted settings validate known string fields and Cloud Link identity before merging over defaults
-- persisted DTOs use `zod` schemas at their storage boundary (session, transcript, capabilities, favorites, projects, remembered sessions, onboarding, updates, notifications, connection settings, and chat preferences). Schema parsing strips unknown fields, drops invalid individual entries where the prior parser did, and clears a malformed envelope. Widget snapshots and connection headers remain manual because they enforce bounded projection/redaction and RFC 7230 header rules rather than a record shape.
+- persisted DTOs use `zod` schemas at their storage boundary (session, transcript, capabilities, favorites, onboarding, updates, notifications, connection settings, and chat preferences). Schema parsing strips unknown fields, drops invalid individual entries where the prior parser did, and clears a malformed envelope. Widget snapshots and connection headers remain manual because they enforce bounded projection/redaction and RFC 7230 header rules rather than a record shape.
 - persisted chat preferences validate individual strings, booleans, arrays, maps, and enum values; numeric controls are clamped to their supported ranges before merging over defaults and current provider state
 - saved connection profiles are hydrated on demand and fully validated, including `modelPreferences`; entries with any malformed field are dropped and unknown fields are ignored
-- active project path is restored if present, and the connection's opened projects restore with it; on connect an unlisted active path falls back to the most recent opened project unless the server resolves it (a deep link or worktree)
-- last-session map is restored if present and is nested by connection scope; the legacy flat map fails validation and is removed
+- the active project is never persisted: on connect the retained placeholder runtime derives it from the server catalog (server default location first, then the most recently active project). The retained legacy opened-project and last-session keys are removed once on hydrate
+- last-session maps are not restored; opening a project without an explicit selection picks the newest session in the server list
 - each persisted key hydrates independently; a storage or credential read failure preserves the unread key and suppresses unchanged default write-back until the user changes that value or relaunches. Malformed or invalid JSON is removed without blocking other keys
 - write-back is ordered per key and skips identical successful writes. Errors are reported and failed writes remain retryable. Secure credential writes finish before active connection metadata is written
 - per connection + project session caches hydrate on app open and on every connection or project switch so the project list paints before the server answers; they are written only from confirmed fetch results, so a cached empty list means the server reported no sessions for that project. A late hydration result is discarded unless both the connection scope and project path are still current.
@@ -612,10 +608,19 @@ Several important UI-facing values are derived instead of stored directly.
 
 ### Projects
 
-Derived from the connection-scoped opened project paths, followed by every other
-project in `serverProjects` (the server's `project.list()`), all enriched with
-server labels and IDs. Opening records the path locally; the server catalog is
-never persisted as device state.
+Derived from the server's `project.list()` catalog, enriched with server labels
+and IDs and rendered in server order (most recently active first). Nothing
+about project selection is persisted: the app keeps no opened-project list, no
+active-project pointer, and no close action, so the picker can never show a
+project the server does not report.
+
+On connect the retained placeholder runtime derives the active project from the
+server catalog: the server default location first, then the most recently
+active project. An explicit target (deep link, worktree, or user selection)
+that the server still resolves is kept even when it is not in the catalog;
+anything else falls back to the server derivation. Retained runtimes whose root
+left the server catalog are dropped from the picker rows (until any catalog
+arrives, active roots are kept so a cold start never flashes empty).
 
 Server-archived projects are a separate on-demand read in the picker:
 `project.list({ archived: true })` filtered to `time.archived`. They are not
@@ -623,17 +628,16 @@ added to the derived project list and are never persisted. Restoring resolves
 the archived directory with `location.get`, then invalidates the shared
 `projects` query resource so both the normal and archived lists reconcile.
 
-Closing the last opened project clears focus while retaining its runtime
-snapshot. `projectClosedValues()` removes that project and its session scoped
-values from the focused/read path, so Chat, Settings, Terminal and New Chat show
-the no-project state without unmounting the runtime or deleting drafts. Reconnect
-uses the opened-project list, not the retained runtime's stale project entry.
+Workspace runtimes mount on demand for the focused project (plus the retained
+placeholder that boots the connection). Switching projects keeps the previous
+runtime mounted in memory for the session; nothing about mounted projects is
+persisted, so a restart always re-derives from the server.
 
 Properties include:
 
 - label from the server project's name, else the final path segment
-- `id` when the server catalog knows the path
-- ordered by the local opened list (most recent first)
+- `id` from the server catalog
+- server order (most recently active first), as reported by `project.list()`
 
 ### Active Project
 

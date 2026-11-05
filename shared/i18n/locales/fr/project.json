@@ -97,7 +97,6 @@
     "serverDirectory": "Répertoire du serveur",
     "add": "Ajouter un projet",
     "selectLabel": "Sélectionner {{name}}",
-    "removeLabel": "Retirer {{name}}",
     "empty": "Aucun projet disponible.",
     "changeProjectWithName": "Changer de projet. {{name}}",
     "showArchived": "Afficher les projets archivés",

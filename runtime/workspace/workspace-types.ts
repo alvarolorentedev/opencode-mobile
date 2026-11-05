@@ -16,8 +16,8 @@ import type { ConnectionRecord } from '@/shared/contracts/workspace';
 
 export type SharedWorkspaceState = Pick<WorkspaceShellState,
   'controlPlaneUrl' | 'setControlPlaneUrl' | 'onboardingVersion' | 'setOnboardingVersion' |
-  'onboardingActive' | 'setOnboardingActive' | 'lastSessionByConnection' | 'setLastSessionByConnection' |
-  'favoriteSessions' | 'setFavoriteSessions' | 'projectPathsByConnection' | 'setProjectPathsByConnection' | 'projectPathsByConnectionRef'> & { fileClipboard?: import('@/features/projects/index').FileClipboard };
+  'onboardingActive' | 'setOnboardingActive' |
+  'favoriteSessions' | 'setFavoriteSessions'> & { fileClipboard?: import('@/features/projects/index').FileClipboard };
 
 export type WorkspaceRuntimeInput = {
   connection: ConnectionRecord;

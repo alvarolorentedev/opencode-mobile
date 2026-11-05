@@ -97,7 +97,6 @@
     "serverDirectory": "服务器目录",
     "add": "添加项目",
     "selectLabel": "选择 {{name}}",
-    "removeLabel": "移除 {{name}}",
     "empty": "没有可用的项目。",
     "changeProjectWithName": "更改项目。{{name}}",
     "showArchived": "显示已归档项目",

@@ -80,7 +80,6 @@ function sessionCrudInput(patch: Record<string, unknown> = {}) {
       setIsBootstrappingChat: (value: any) => {
         bootstrapping = typeof value === 'function' ? value(bootstrapping) : value;
       },
-      setLastSessionByConnection: () => undefined,
       setCurrentSessionId: (value: any) => {
         currentSessionId = typeof value === 'function' ? value(currentSessionId) : value;
         currentSessionIdRef.current = currentSessionId;
@@ -125,7 +124,6 @@ describe('local-first session selection', () => {
       activeProjectPath: '/repo', connectionScope: 'scope',
       currentSessionId: 'target', currentSessionIdRef, explicitSessionSelectionRef,
       sessions: previous, sessionsRef,
-      lastSessionByConnection: { scope: { '/repo': 'target' } },
       setCurrentSessionId,
       sessionRefreshTimeoutsRef: { current: {} }, sessionRefreshOptionsRef: { current: {} },
     });
@@ -172,7 +170,6 @@ describe('local-first session selection', () => {
       sessions: [{ id: 'target' }],
       sessionsRef: { current: [{ id: 'target' }] },
       messagesBySession: {},
-      lastSessionByConnection: {},
       pendingDeepLinkTargetRef: { current: undefined },
       bootstrapPromiseRef: { current: null },
       bootstrapTokenRef: { current: undefined },
@@ -189,7 +186,6 @@ describe('local-first session selection', () => {
         currentSessionId = typeof value === 'function' ? value(currentSessionId) : value;
         currentSessionIdRef.current = currentSessionId;
       },
-      setLastSessionByConnection: () => undefined,
       setIsBootstrappingChat: (value: any) => {
         bootstrapping = typeof value === 'function' ? value(bootstrapping) : value;
       },
@@ -225,7 +221,6 @@ describe('local-first session selection', () => {
       sessions: [{ id: 'target' }],
       sessionsRef: { current: [{ id: 'target' }] },
       messagesBySession: { target: [{ info: { id: 'cached' } }] },
-      lastSessionByConnection: {},
       pendingDeepLinkTargetRef: { current: undefined },
       bootstrapPromiseRef: { current: null },
       bootstrapTokenRef: { current: undefined },
@@ -238,7 +233,6 @@ describe('local-first session selection', () => {
       refreshChatCapabilities: async () => undefined,
       refreshServerFeatures: async () => undefined,
       setCurrentSessionId: () => undefined,
-      setLastSessionByConnection: () => undefined,
       setIsBootstrappingChat: () => undefined,
     };
 
@@ -270,7 +264,6 @@ describe('local-first session selection', () => {
       sessions: [],
       sessionsRef: { current: [] },
       messagesBySession: {},
-      lastSessionByConnection: {},
       pendingDeepLinkTargetRef: { current: undefined },
       bootstrapPromiseRef: { current: null },
       bootstrapTokenRef: { current: undefined },
@@ -287,7 +280,6 @@ describe('local-first session selection', () => {
         currentSessionId = typeof value === 'function' ? value(currentSessionId) : value;
         currentSessionIdRef.current = currentSessionId;
       },
-      setLastSessionByConnection: () => undefined,
       setIsBootstrappingChat: (value: any) => {
         bootstrapping = typeof value === 'function' ? value(bootstrapping) : value;
       },
@@ -327,7 +319,6 @@ describe('local-first session selection', () => {
       sessions: [],
       sessionsRef: { current: [] },
       messagesBySession: {},
-      lastSessionByConnection: {},
       pendingDeepLinkTargetRef: { get current() { return pendingTarget; } },
       bootstrapPromiseRef: { current: null },
       bootstrapTokenRef: { current: undefined },
@@ -340,7 +331,6 @@ describe('local-first session selection', () => {
       refreshChatCapabilities: async () => undefined,
       refreshServerFeatures: async () => undefined,
       setCurrentSessionId: () => undefined,
-      setLastSessionByConnection: () => undefined,
       setIsBootstrappingChat: () => undefined,
     };
     runtime.mount(useSessionBootstrapActions, input);

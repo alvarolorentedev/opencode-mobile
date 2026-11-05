@@ -22,8 +22,12 @@ export function useWorkspaceServerData(client: ScopedOpencodeClient, active: boo
   const [agents] = useQueries({ queries: [{ ...agentsOptions(identity, client), enabled }].filter(() => demanded) });
   const [skills] = useQueries({ queries: [{ ...skillsOptions(identity, client), enabled }].filter(() => demanded) });
   const [references] = useQueries({ queries: [{ ...referencesOptions(identity, client), enabled }].filter(() => demanded) });
-  const [projects] = useQueries({ queries: [{ ...projectsOptions(identity, client), enabled: active }].filter(() => demanded) });
-  const [location] = useQueries({ queries: [{ ...locationOptions(identity, client), enabled: active }].filter(() => demanded) });
+  // The project catalog is connection-wide and tiny. Its observers stay
+  // mounted even when this runtime is not demanded so a connection-level
+  // warm fetch (see ConnectionRuntime) is visible to pickers and sheets
+  // without waking the runtime's heavier queries.
+  const [projects] = useQueries({ queries: [{ ...projectsOptions(identity, client), enabled: active }] });
+  const [location] = useQueries({ queries: [{ ...locationOptions(identity, client), enabled: active }] });
   const [commands] = useQueries({ queries: [{ ...commandsOptions(identity, client), enabled }].filter(() => demanded) });
   const [statuses] = useQueries({ queries: [{ ...fileStatusOptions(identity, client), enabled }].filter(() => demanded) });
   const [vcs] = useQueries({ queries: [{ ...vcsInfoOptions(identity, client), enabled }].filter(() => demanded) });

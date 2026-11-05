@@ -14,23 +14,10 @@ export function getProjectLabel(path: string) {
   return segments.at(-1) || normalized || 'Project';
 }
 
-// The picker seeds the connection's opened projects first, then fills in every
-// other project the server knows about so a fresh device can pick a server
-// project without typing its path. Metadata comes from the server catalog.
-export function buildOpencodeProjects(openedPaths: string[], serverProjects: Project[]): OpencodeProject[] {
-  const remoteByPath = new Map(serverProjects.map((project) => [project.worktree, project]));
+// The picker renders the server catalog only. Labels come from the server.
+export function buildOpencodeProjects(serverProjects: Project[]): OpencodeProject[] {
   const projects: OpencodeProject[] = [];
   const seen = new Set<string>();
-  for (const path of openedPaths) {
-    if (seen.has(path)) continue;
-    seen.add(path);
-    const remote = remoteByPath.get(path);
-    projects.push({
-      ...(remote ? { id: remote.id } : {}),
-      label: remote?.name || getProjectLabel(path),
-      path,
-    });
-  }
   for (const remote of serverProjects) {
     if (seen.has(remote.worktree)) continue;
     seen.add(remote.worktree);

@@ -4,7 +4,6 @@ import { buildClient, type ScopedOpencodeClient } from '@/shared/protocol/openco
 import type { SessionStatus } from '@/shared/protocol/opencode/types';
 import type { ProjectCatalogInput } from '@/features/projects/model/action-inputs';
 import type { ProjectCatalog } from '@/shared/contracts/domain';
-import { PROJECTS_MAX } from '@/features/projects/services/projects-storage';
 import { fetchProjectCatalog } from '@/features/projects/services/queries/catalog';
 import { telemetry } from '@/shared/observability/client';
 import { useQueryActivity, useQueryIdentity } from '@/shared/server-data/client';
@@ -21,8 +20,6 @@ export function useProjectCatalogActions({
   setActiveProjectPath,
   activeProjectPathRef,
   clearProjectState,
-  projectPathsByConnectionRef,
-  setProjectPathsByConnection,
   connectionScope,
   connectionScopeRef,
   isHydrated,
@@ -36,24 +33,11 @@ export function useProjectCatalogActions({
   const active = useQueryActivity();
   const cache = useQueryClient();
   const identity = useQueryIdentity();
-  const writeProjects = useCallback((scope: string, paths: string[]) => {
-    const next = { ...projectPathsByConnectionRef.current, [scope]: paths.slice(0, PROJECTS_MAX) };
-    projectPathsByConnectionRef.current = next;
-    setProjectPathsByConnection(next);
-  }, [projectPathsByConnectionRef, setProjectPathsByConnection]);
   // Runtime refreshes use the scoped client so `location.get` reports that
   // runtime's directory/worktree. Connect probes still use the catalog client.
   const isCurrent = useCallback((candidate: ScopedOpencodeClient) => (
     isCurrentClient(candidate) || isCurrentCatalogClient(candidate)
   ), [isCurrentCatalogClient, isCurrentClient]);
-
-  // Opening records a project for the connection so the picker can show it
-  // again. Selection is separate: removing a project must not reopen it.
-  const openProject = useCallback((path: string) => {
-    const scope = connectionScopeRef.current;
-    const current = projectPathsByConnectionRef.current[scope] ?? [];
-    writeProjects(scope, [path, ...current.filter((item) => item !== path)]);
-  }, [connectionScopeRef, projectPathsByConnectionRef, writeProjects]);
 
   const selectProject = useCallback((path: string) => {
     const normalizedPath = path.trim();
@@ -61,7 +45,6 @@ export function useProjectCatalogActions({
       return;
     }
 
-    openProject(normalizedPath);
     if (normalizedPath === activeProjectPathRef.current) {
       return;
     }
@@ -69,7 +52,7 @@ export function useProjectCatalogActions({
     scopeGenerationRef.current += 1;
     setActiveProjectPath(normalizedPath);
     clearProjectState();
-  }, [activeProjectPathRef, clearProjectState, openProject, scopeGenerationRef, setActiveProjectPath]);
+  }, [activeProjectPathRef, clearProjectState, scopeGenerationRef, setActiveProjectPath]);
 
   const loadProjectCatalog = useCallback(
     async (silent = false, targetClient: ScopedOpencodeClient = catalogClient): Promise<ProjectCatalog> => {
@@ -79,36 +62,28 @@ export function useProjectCatalogActions({
           return result;
         }
 
-        const scope = connectionScopeRef.current;
-        const opened = projectPathsByConnectionRef.current[scope];
+        // The server catalog is the list. The active path is kept when the
+        // server still resolves it (a deep link or a worktree) or when it is
+        // the server default; otherwise the most recently active server
+        // project wins. Nothing is recorded locally.
         let nextProject = activeProjectPathRef.current;
-        // The opened list is the picker's source of truth. An active path that
-        // is not opened on this connection is kept only when the server still
-        // resolves it (a deep link or a pre-upgrade selection).
-        if (nextProject && !opened?.includes(nextProject)) {
-          const listed = result.serverProjects.some((project) => project.worktree === nextProject) || nextProject === result.currentProjectPath;
-          const known = listed || await svcIsKnownProjectLocation(buildClient({ ...settingsRef.current, directory: nextProject }, targetClient.__opencode.contract));
+        if (nextProject && nextProject !== result.currentProjectPath
+          && !result.serverProjects.some((project) => project.worktree === nextProject)) {
+          const known = await svcIsKnownProjectLocation(buildClient({ ...settingsRef.current, directory: nextProject }, targetClient.__opencode.contract));
           if (!isCurrent(targetClient)) {
             return result;
           }
           if (!known) nextProject = undefined;
         }
         if (!nextProject) {
-          nextProject = opened?.[0] ?? (opened === undefined ? result.currentProjectPath || result.serverProjects[0]?.worktree : undefined);
+          nextProject = result.currentProjectPath || result.serverProjects[0]?.worktree;
         }
         if (nextProject) {
-          if (!opened?.includes(nextProject)) {
-            writeProjects(scope, [nextProject, ...(opened ?? [])]);
-          }
           if (nextProject !== activeProjectPathRef.current) {
             scopeGenerationRef.current += 1;
             clearProjectState();
             setActiveProjectPath(nextProject);
           }
-        } else if (opened === undefined) {
-          // Initialize the connection even when the server reports nothing, so
-          // a later refresh does not auto-open a project the user closed.
-          writeProjects(scope, []);
         } else if (activeProjectPathRef.current) {
           scopeGenerationRef.current += 1;
           clearProjectState();
@@ -116,7 +91,7 @@ export function useProjectCatalogActions({
         }
         return result;
     },
-    [cache, identity, activeProjectPathRef, catalogClient, clearProjectState, connectionScopeRef, isCurrent, projectPathsByConnectionRef, scopeGenerationRef, setActiveProjectPath, settingsRef, writeProjects],
+    [cache, identity, activeProjectPathRef, catalogClient, clearProjectState, isCurrent, scopeGenerationRef, setActiveProjectPath, settingsRef],
   );
 
   const refreshProjectCatalog = useCallback(

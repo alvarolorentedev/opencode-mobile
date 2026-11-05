@@ -40,7 +40,7 @@ export function ProjectPicker({ visible, onClose, activePath, onSelected, testID
   const { t } = useTranslation();
 
   const registry = useWorkspaces();
-  const { groups, add, remove, listDirectories } = useWorkspaceProjects();
+  const { groups, add, listDirectories } = useWorkspaceProjects();
   const multipleServers = groups.length > 1;
   const [server, setServer] = useState('');
   const [query, setQuery] = useState('');
@@ -64,6 +64,7 @@ export function ProjectPicker({ visible, onClose, activePath, onSelected, testID
     onSelected?.();
     close();
   };
+  const matches = (path: string, label: string) => `${label} ${path}`.toLowerCase().includes(query.trim().toLowerCase());
   return <OverlaySheet visible={visible} title={t('project:picker.title')} testID={testID} onClose={close}>
     {adding ? <View className={cn(stylesClasses.addForm)}>
       {multipleServers ? <WorkspaceSelect title={t('common:servers.server')} value={addServer} options={groups.map((group) => ({ value: group.id, label: group.name }))} onChange={setAddServer} /> : null}
@@ -90,11 +91,9 @@ export function ProjectPicker({ visible, onClose, activePath, onSelected, testID
     {!groups.length ? <Text className={cn("text-muted-foreground")}>{t('project:picker.empty')}</Text> : null}
     {visibleGroups.map((group) => <View key={group.id} className={cn("gap-2.5")}>
       {multipleServers ? <Text  variant="title">{group.name}</Text> : null}
-      <ProjectOptions projects={group.projects.filter((project) => `${project.label} ${project.path}`.toLowerCase().includes(query.trim().toLowerCase()))}
+      <ProjectOptions projects={group.projects.filter((project) => matches(project.path, project.label))}
         activePath={registry.focus?.connectionId === group.id ? group.projects.find((project) => project.checkouts.some((checkout) => checkout.directory === activePath))?.path : undefined}
-        onSelect={(path) => { void activate({ connectionId: group.id, projectPath: path }).catch((reason) => setError(String(reason))); }}
-        onRemove={(path) => { void remove({ connectionId: group.id, projectPath: path }).catch((reason) => setError(String(reason))); }}
-        canRemove={(path) => group.openedPaths.includes(path)} />
+        onSelect={(path) => { void activate({ connectionId: group.id, projectPath: path }).catch((reason) => setError(String(reason))); }} />
     </View>)}
     {archivedCapable ? <View className={cn(stylesClasses.archivedToggle)}>
       <View className={cn(stylesClasses.archivedToggleText)}>

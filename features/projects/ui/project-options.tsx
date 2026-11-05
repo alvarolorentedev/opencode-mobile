@@ -8,22 +8,19 @@ import { usePalette } from '@/shared/ui/theme/use-palette';
 
 /**
  * Presentational project row list shared by the project picker overlay and
- * the onboarding project step. Callers own empty/loading states; `onRemove`
- * closes a project for this connection without touching the server.
+ * the onboarding project step. Rows only select; there is no close action
+ * because project selection is never stored locally. Callers own
+ * empty/loading states.
  */
 export function ProjectOptions({
   projects,
   activePath,
   onSelect,
-  onRemove,
-  canRemove,
   disabled = false,
 }: {
   projects: OpencodeProject[];
   activePath?: string;
   onSelect: (path: string) => void;
-  onRemove?: (path: string) => void;
-  canRemove?: (path: string) => boolean;
   disabled?: boolean;
 }) {
   const { t } = useTranslation();
@@ -55,16 +52,6 @@ export function ProjectOptions({
               <NativeText numberOfLines={1} className={cn("text-muted-foreground")}>{project.path}</NativeText>
             </View>
           </Pressable>
-          {onRemove && (canRemove?.(project.path) ?? true) ? (
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel={t('project:picker.removeLabel', { name: project.label })}
-              testID={`project-remove-${project.path}`}
-              onPress={() => onRemove(project.path)}
-              className={cn(stylesClasses.projectRemove)}>
-              <MaterialCommunityIcons name="close" size={20} color={palette.muted} />
-            </Pressable>
-          ) : null}
         </View>
       ))}
     </>
@@ -75,6 +62,5 @@ const stylesClasses = {
   "project": "min-h-17 rounded-[16px] border flex-row items-center",
   "projectSelect": "flex-1 min-w-0 px-3.5 py-2.5 flex-row items-center gap-3",
   "projectText": "flex-1 gap-0.75",
-  "projectTitle": "text-[16px] font-semibold",
-  "projectRemove": "min-h-11 min-w-11 items-center justify-center"
+  "projectTitle": "text-[16px] font-semibold"
 } as const;

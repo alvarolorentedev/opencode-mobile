@@ -124,9 +124,9 @@ await assert.rejects(browserRuntime.value.openDirectory('../outside'), /Invalid 
 await searchFiles(''); browserRuntime.flush();
 assert.equal(browserRuntime.value.path, 'docs', 'clearing search retains the browsed directory');
 
-// The picker renders the projects opened on this connection; the server
-// catalog seeds and validates them. A path the server still resolves (a
-// worktree or a deep link) is kept and opened, an unlisted one is dropped.
+// The project list comes from the server. The active path is kept when the
+// server still resolves it; otherwise the server current project wins, then
+// the first listed server project. Nothing is recorded locally.
 let projectCatalog: any = {
   currentProjectPath: '/workspace/main-clone',
   serverRootPath: '/workspace',
@@ -137,14 +137,11 @@ const projectCatalogHook = await loadTs('features/projects/state/use-project-cat
     react: { useCallback: (fn: any) => fn, useEffect: () => {}, useRef: (current: any) => ({ current }) },
     "@/shared/protocol/opencode/client": { buildClient: () => ({}) },
     "@/features/sessions/services/session-cache": { hydrateSessionCache: () => {} },
-    "@/features/projects/services/projects-storage": { PROJECTS_MAX: 50 },
     "@/shared/protocol/services/session-service": { listServerProjects: async () => projectCatalog.serverProjects, readCatalogLocation: async () => projectCatalog, combineProjectCatalog: () => projectCatalog, resolveProjectLocation: async () => ({ worktree: '/workspace/added' }), isKnownProjectLocation: async () => knownProjectLocation }
   });
-function makeProjectCatalogActions(activePath: any, isCurrent = () => true, openedPaths?: any) {
-  const state: any = { activePath, cleared: 0, projects: [], currentPath: undefined, opened: openedPaths ? { scope: [...openedPaths] } : {} };
+function makeProjectCatalogActions(activePath: any, isCurrent = () => true) {
+  const state: any = { activePath, cleared: 0 };
   const activeProjectPathRef = { current: activePath };
-  const serverProjectsRef = { current: [] };
-  const projectPathsByConnectionRef = { current: state.opened };
   const scopeGenerationRef = { current: 0 };
   state.actions = projectCatalogHook.useProjectCatalogActions({
     hydrateSessionCache: () => {},
@@ -155,11 +152,8 @@ function makeProjectCatalogActions(activePath: any, isCurrent = () => true, open
     activeProjectPathRef,
     setActiveProjectPath: (path: any) => { state.activePath = path; activeProjectPathRef.current = path; },
     clearProjectState: () => { state.cleared++; },
-    projectPathsByConnectionRef, setProjectPathsByConnection: (value: any) => { state.opened = value; projectPathsByConnectionRef.current = value; },
-    serverProjectsRef, setServerProjects: (projects: any) => { state.projects = projects; serverProjectsRef.current = projects; },
-    setCurrentProjectPath: (path: any) => { state.currentPath = path; }, setServerRootPath: () => {},
     connectionScope: 'scope', connectionScopeRef: { current: 'scope' }, isHydrated: false,
-    setSessions: () => {}, setSessionStatuses: () => {}, setIsRefreshingProjectCatalog: () => {},
+    setSessions: () => {}, setSessionStatuses: () => {},
     scopeGenerationRef, serverContract: 'v2', settingsRef: { current: {} },
   });
   state.scopeGenerationRef = scopeGenerationRef;
@@ -167,42 +161,30 @@ function makeProjectCatalogActions(activePath: any, isCurrent = () => true, open
 }
 const seededProject = makeProjectCatalogActions(undefined);
 await seededProject.actions.refreshProjectCatalog();
-assert.equal(seededProject.activePath, '/workspace/main-clone', 'a fresh connection seeds the server current project');
-assert.deepEqual([...seededProject.opened.scope], ['/workspace/main-clone'], 'seeding opens the selected project');
-const droppedProject = makeProjectCatalogActions('/workspace/other-clone', () => true, ['/workspace/main-clone']);
+assert.equal(seededProject.activePath, '/workspace/main-clone', 'a fresh connection selects the server current project');
+const droppedProject = makeProjectCatalogActions('/workspace/other-clone');
 await droppedProject.actions.refreshProjectCatalog();
-assert.equal(droppedProject.activePath, '/workspace/main-clone', 'an unlisted project falls back to the most recent opened project');
+assert.equal(droppedProject.activePath, '/workspace/main-clone', 'an unlisted project falls back to the server current project');
 assert.equal(droppedProject.cleared, 1, 'dropping an unlisted project clears project state');
 assert.equal(droppedProject.scopeGenerationRef.current, 1, 'dropping an unlisted project advances the project generation');
 knownProjectLocation = true;
-const retainedWorktree = makeProjectCatalogActions('/worktrees/task', () => true, ['/workspace/main-clone']);
+const retainedWorktree = makeProjectCatalogActions('/worktrees/task');
 await retainedWorktree.actions.refreshProjectCatalog();
 assert.equal(retainedWorktree.activePath, '/worktrees/task', 'a server-resolved worktree remains selected');
-assert.deepEqual([...retainedWorktree.opened.scope], ['/worktrees/task', '/workspace/main-clone'], 'keeping a worktree opens it for this connection');
 assert.equal(retainedWorktree.cleared, 0, 'a server-resolved worktree does not clear project state');
 assert.equal(retainedWorktree.scopeGenerationRef.current, 0, 'a server-resolved worktree does not advance the project generation');
 knownProjectLocation = false;
-const openedProject = makeProjectCatalogActions(undefined, () => true, ['/workspace/other-clone']);
-await openedProject.actions.refreshProjectCatalog();
-assert.equal(openedProject.activePath, '/workspace/other-clone', 'a fresh selection prefers the most recent opened project');
-assert.equal(openedProject.opened.scope[0], '/workspace/other-clone');
-const closedAll = makeProjectCatalogActions(undefined, () => true, []);
-await closedAll.actions.refreshProjectCatalog();
-assert.equal(closedAll.activePath, undefined, 'a connection with every project closed stays empty');
-assert.deepEqual([...closedAll.opened.scope], [], 'an explicitly empty list does not re-seed from the server');
 projectCatalog = { ...projectCatalog, currentProjectPath: undefined };
 const firstListedProject = makeProjectCatalogActions(undefined);
 await firstListedProject.actions.refreshProjectCatalog();
 assert.equal(firstListedProject.activePath, '/workspace/main-clone', 'the first server project seeds an empty connection');
 projectCatalog = { ...projectCatalog, currentProjectPath: '/workspace/main-clone' };
-const staleProjectResponse = makeProjectCatalogActions('/workspace/other-clone', () => false, ['/workspace/other-clone']);
+const staleProjectResponse = makeProjectCatalogActions('/workspace/other-clone', () => false);
 await staleProjectResponse.actions.refreshProjectCatalog();
-assert.equal(staleProjectResponse.activePath, '/workspace/other-clone');
-assert.equal(staleProjectResponse.projects.length, 0, 'stale catalog responses remain ignored');
-const addedWorktree = makeProjectCatalogActions('/workspace/main-clone', () => true, ['/workspace/main-clone']);
+assert.equal(staleProjectResponse.activePath, '/workspace/other-clone', 'stale catalog responses leave the active project alone');
+const addedWorktree = makeProjectCatalogActions('/workspace/main-clone', () => true);
 assert.equal(await addedWorktree.actions.addProject('/worktrees/task'), '/worktrees/task');
 assert.equal(addedWorktree.activePath, '/worktrees/task', 'adding a directory selects the requested worktree rather than its owning project root');
-assert.deepEqual([...addedWorktree.opened.scope], ['/worktrees/task', '/workspace/main-clone'], 'adding a directory opens it for this connection');
 const olderFile = actions.openProjectFile('selection-first'), newerFile = actions.openProjectFile('selection-last');
 fileReads.get('selection-last').resolve({ type: 'text', content: 'latest selection' }); await newerFile;
 fileReads.get('selection-first').resolve({ type: 'text', content: 'obsolete selection' });
@@ -1003,12 +985,12 @@ const sessionContext: any = {
   currentSessionId: undefined, sessions: [{ id: 'cached' }], sessionsRef: { current: [{ id: 'cached' }] }, messagesBySession: {},
   pendingDeepLinkTargetRef: { current: { sessionId: 'target', projectPath: '/repo' } },
   bootstrapPromiseRef: { current: null }, bootstrapTokenRef: {},
-  lastSessionByConnection: {}, connectionScope: 'scope', createSession: async () => { createdSessions++; },
+  connectionScope: 'scope', createSession: async () => { createdSessions++; },
   explicitSessionSelectionRef: { current: undefined },
   setIsBootstrappingChat: () => {}, refreshMessages: async () => {}, refreshSessionDiff: async () => {},
   refreshSessionTodos: async () => {}, refreshPendingInteractions: async () => {}, refreshChatCapabilities: async () => {},
   refreshServerFeatures: async () => {}, refreshDiagnostics: async () => {}, isCurrentClient: () => true,
-  setCurrentSessionId: (id: any) => { sessionContext.currentSessionIdRef.current = id; }, setLastSessionByConnection: () => {},
+  setCurrentSessionId: (id: any) => { sessionContext.currentSessionIdRef.current = id; },
   deepLinkOperationRef: {}, currentSessionIdRef: {}, serverProjectsRef: { current: [{ worktree: '/repo' }] },
   projectPathsByConnectionRef: { current: { scope: [] } },
   isAvailableProjectDirectory: async (candidate: any) => resolvableDirectories.has(candidate.directory),

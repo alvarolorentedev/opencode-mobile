@@ -139,7 +139,7 @@ async function fixture({ expired = false, missing = false, storedSession = true,
     isCurrentCatalogClient: (client: any) => input.catalogGenerationRef.current.get(client) === input.serverGenerationRef.current,
     loadProjectCatalog: async () => { catalogs++; if (catalogFailure) throw new Error(typeof catalogFailure === 'string' ? catalogFailure : 'offline'); return { currentProjectPath: '/fixture', serverProjects: [], serverRootPath: '/fixture' }; },
   };
-  for (const key of ['setServerProjects', 'setCurrentProjectPath', 'setServerRootPath', 'setSessions', 'setSessionStatuses', 'setCurrentConfig', 'setAvailableProviders', 'setProviderAuthMethodsById', 'setAvailableModels', 'setAvailableAgents', 'setMessagesBySession', 'setDiffsBySession', 'setTodosBySession', 'setFavoriteSessions', 'setLastSessionByConnection', 'setChatPreferences', 'setDiagnostics', 'setSendingState']) input[key] = noop;
+  for (const key of ['setServerProjects', 'setCurrentProjectPath', 'setServerRootPath', 'setSessions', 'setSessionStatuses', 'setCurrentConfig', 'setAvailableProviders', 'setProviderAuthMethodsById', 'setAvailableModels', 'setAvailableAgents', 'setMessagesBySession', 'setDiffsBySession', 'setTodosBySession', 'setFavoriteSessions', 'setChatPreferences', 'setDiagnostics', 'setSendingState']) input[key] = noop;
   runtime.mount(() => {
     const [settings, setSettings] = runtime.react.useState({ serverUrl: profile.serverUrl, username: profile.username, password: missing ? '' : claim.device_secret, directory: '', connect: profile.connect });
     const [activeProjectPath] = runtime.react.useState('/fixture');

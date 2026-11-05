@@ -35,8 +35,6 @@ export type SessionActionsInput = {
   favoriteSessions: FavoriteSession[];
   pendingPermissionsBySession: Record<string, PendingPermissionRequest[]>;
   pendingQuestionsBySession: Record<string, PendingQuestionRequest[]>;
-  lastSessionByConnection: Record<string, Record<string, string>>;
-  setLastSessionByConnection: Dispatch<SetStateAction<Record<string, Record<string, string>>>>;
   setCurrentSessionId: Dispatch<SetStateAction<string | undefined>>;
   setSessions: Dispatch<SetStateAction<Session[]>>;
   setSessionStatuses: Dispatch<SetStateAction<Record<string, SessionStatus>>>;
@@ -71,7 +69,7 @@ export type SessionCrudInput = Pick<SessionActionsInput,
   'client' | 'isCurrentClient' | 'activeProjectPath' | 'connectionScopeRef' | 'currentSessionId' |
   'currentSessionIdRef' | 'explicitSessionSelectionRef' | 'locallyCreatedSessionsRef' | 'availableModels' | 'availableAgents' | 'currentConfig' |
   'diffScopeBySessionRef' | 'sessions' | 'sessionStatuses' | 'bootstrapPromiseRef' | 'bootstrapTokenRef' |
-  'setLastSessionByConnection' | 'setCurrentSessionId' | 'setIsBootstrappingChat' | 'beginHydration' |
+  'setCurrentSessionId' | 'setIsBootstrappingChat' | 'beginHydration' |
   'setSessions' | 'setSessionStatuses' | 'setMessagesBySession' | 'setDiffsBySession' | 'setTodosBySession' |
   'setPendingPermissionsBySession' | 'setPendingQuestionsBySession' | 'setFavoriteSessions' | 'refreshSessions' |
   'refreshMessages' | 'refreshSessionDiff' | 'refreshSessionTodos' | 'refreshVcsDiff' |
@@ -85,11 +83,11 @@ export type SessionInteractionInput = Pick<SessionActionsInput,
   'setPendingQuestionsBySession' | 'suppressedPendingRequestIdsRef' | 'refreshMessages' | 'refreshSavedPermissions'>;
 
 export type SessionBootstrapInput = Pick<SessionActionsInput,
-  'activeProjectPath' | 'connection' | 'connectionScope' | 'client' | 'currentSessionId' | 'currentSessionIdRef' |
-  'explicitSessionSelectionRef' | 'sessionsRef' | 'messagesBySession' | 'lastSessionByConnection' |
+  'activeProjectPath' | 'connection' | 'client' | 'currentSessionId' | 'currentSessionIdRef' |
+  'explicitSessionSelectionRef' | 'sessionsRef' | 'messagesBySession' |
   'pendingDeepLinkTargetRef' | 'bootstrapPromiseRef' | 'bootstrapTokenRef' | 'isCurrentClient' | 'refreshSessions' |
   'refreshMessages' | 'refreshSessionDiff' | 'refreshSessionTodos' | 'refreshPendingInteractions' |
-  'refreshChatCapabilities' | 'refreshServerFeatures' | 'setCurrentSessionId' | 'setLastSessionByConnection' |
+  'refreshChatCapabilities' | 'refreshServerFeatures' | 'setCurrentSessionId' |
   'setIsBootstrappingChat'> & {
   createSession: (title?: string) => Promise<Session>;
 };

@@ -25,7 +25,6 @@ export function useSessionCrudActions({
   sessionStatuses,
   bootstrapPromiseRef,
   bootstrapTokenRef,
-  setLastSessionByConnection,
   setCurrentSessionId,
   setIsBootstrappingChat,
   beginHydration,
@@ -63,16 +62,6 @@ export function useSessionCrudActions({
       currentSessionIdRef.current = sessionId;
       explicitSessionSelectionRef.current = sessionId;
       setCurrentSessionId(sessionId);
-      if (activeProjectPath) {
-        const scope = connectionScopeRef.current;
-        setLastSessionByConnection((current) => ({
-          ...current,
-          [scope]: {
-            ...current[scope],
-            [activeProjectPath]: sessionId,
-          },
-        }));
-      }
       // Mark the session as hydrating before the prompt-inbox read, which can
       // take as long as the transcript read on a slow link. Otherwise the chat
       // briefly shows its empty starter state while the selected session loads.
@@ -89,7 +78,7 @@ export function useSessionCrudActions({
         }
       }).catch(() => undefined).finally(finishHydration);
     },
-    [activeProjectPath, beginHydration, bootstrapPromiseRef, bootstrapTokenRef, connectionScopeRef, currentSessionIdRef, diffScopeBySessionRef, explicitSessionSelectionRef, refreshMessages, refreshPendingInteractions, refreshSessionDiff, refreshSessionTodos, refreshVcsDiff, setCurrentSessionId, setIsBootstrappingChat, setLastSessionByConnection],
+    [beginHydration, bootstrapPromiseRef, bootstrapTokenRef, currentSessionIdRef, diffScopeBySessionRef, explicitSessionSelectionRef, refreshMessages, refreshPendingInteractions, refreshSessionDiff, refreshSessionTodos, refreshVcsDiff, setCurrentSessionId, setIsBootstrappingChat],
   );
 
   const createSession = useCallback(

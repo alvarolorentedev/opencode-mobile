@@ -1,7 +1,6 @@
 export type { ApprovalsContextValue } from './model/types';
 export { ChatLibrary } from './ui/chat-library';
 export type { CurrentSessionContextValue } from './model/types';
-export type { LastSessionByConnection } from './services/last-session-storage';
 export { NewChatSheet } from './ui/new-chat-sheet';
 export { PendingInteractionsCard } from './ui/approvals/pending-interactions-card';
 export { PermissionRequestCard } from './ui/approvals/permission-request-card';

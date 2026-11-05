@@ -664,7 +664,6 @@ providers/conversation/use-conversation-timers.ts,features/voice/state/conversat
 providers/conversation/use-latest.ts,features/voice/state/conversation/use-latest.ts,moved
 providers/conversation/use-local-wake-controller.ts,features/voice/state/conversation/use-local-wake-controller.ts,moved
 providers/favorites-storage.ts,features/sessions/services/favorites-storage.ts,moved
-providers/last-session-storage.ts,features/sessions/services/last-session-storage.ts,moved
 providers/onboarding-state.ts,features/onboarding/model/onboarding-state.ts,moved
 providers/opencode-auto-model.ts,features/ai/model/opencode-auto-model.ts,moved
 providers/opencode-capabilities.ts,shared/protocol/opencode/capabilities.ts,moved
@@ -729,7 +728,6 @@ providers/opencode-provider.tsx,shared/preferences/types.ts,split
 providers/opencode-provider.tsx,shared/protocol/opencode/types.ts,split
 providers/persisted-preferences.ts,shared/storage/persisted-preferences.ts,moved
 providers/persistence-hydration.ts,shared/storage/persistence-hydration.ts,moved
-providers/projects-storage.ts,features/projects/services/projects-storage.ts,moved
 providers/queries/catalogs.ts,shared/server-data/catalogs.ts,split
 providers/queries/catalogs.ts,features/ai/services/queries/agents.ts,split
 providers/queries/catalogs.ts,features/ai/services/queries/capabilities.ts,split
@@ -838,7 +836,6 @@ providers/workspace-lifecycle.ts,runtime/workspace/workspace-lifecycle.ts,moved
 providers/workspace-native.tsx,runtime/composition/workspace-native.tsx,moved
 providers/workspace-presentation.ts,runtime/presentation/workspace-presentation.ts,moved
 providers/workspace-project-groups.ts,features/projects/model/workspace-project-groups.ts,moved
-providers/workspace-projection.ts,runtime/workspace/workspace-projection.ts,moved
 providers/workspace-provider.tsx,runtime/workspace/workspace-provider.tsx,moved
 providers/workspace-runtime.tsx,runtime/workspace/workspace-runtime.tsx,moved
 providers/workspace-storage.ts,shared/storage/workspace-storage.ts,moved
@@ -961,7 +958,6 @@ tests/vitest/format.test.ts,shared/protocol/__tests__/format.test.ts,moved
 tests/vitest/haptics.test.ts,shared/platform/__tests__/haptics.test.ts,moved
 tests/vitest/i18n.test.ts,shared/i18n/__tests__/i18n.test.ts,moved
 tests/vitest/ios-personal-team-config.test.ts,tests/vitest/ios-personal-team-config.test.ts,retained
-tests/vitest/last-session.test.ts,features/sessions/__tests__/last-session.test.ts,moved
 tests/vitest/local-command-capture.test.ts,shared/platform/voice/__tests__/local-command-capture.test.ts,moved
 tests/vitest/local-wake-word-hook.test.ts,shared/platform/voice/__tests__/local-wake-word-hook.test.ts,moved
 tests/vitest/local-wake-word.test.ts,shared/platform/voice/__tests__/local-wake-word.test.ts,moved

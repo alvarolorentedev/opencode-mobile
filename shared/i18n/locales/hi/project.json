@@ -97,7 +97,6 @@
     "serverDirectory": "सर्वर निर्देशिका",
     "add": "प्रोजेक्ट जोड़ें",
     "selectLabel": "{{name}} चुनें",
-    "removeLabel": "{{name}} हटाएं",
     "empty": "कोई प्रोजेक्ट उपलब्ध नहीं।",
     "changeProjectWithName": "प्रोजेक्ट बदलें। {{name}}",
     "showArchived": "संग्रहीत प्रोजेक्ट दिखाएं",

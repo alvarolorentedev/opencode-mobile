@@ -18,7 +18,6 @@ export type WorkspaceServerGroup = {
   enabled: boolean;
   status: string;
   contract?: 'v1' | 'v2';
-  openedPaths: string[];
   projects: WorkspaceProject[];
 };
 
@@ -59,6 +58,17 @@ export function buildWorkspaceProjectGroups(
   // reconnected without appearing in settings or project selectors.
   return connections.map((entry) => {
     const runtimes = byConnection.get(entry.id) ?? [];
+    // The server catalog is the list, like the web client. Retained runtimes
+    // for directories the server no longer reports must not become rows.
+    // Until any runtime on the connection reports a catalog, keep the active
+    // roots so a cold start never flashes an empty picker.
+    const serverKnown = new Set<string>();
+    for (const runtime of runtimes) {
+      const values = runtime.values as unknown as ProjectSnapshotValues;
+      for (const project of values.projectsValue.projects ?? []) {
+        if (project.id) serverKnown.add(project.path);
+      }
+    }
     const byRoot = new Map<string, WorkspaceProject>();
     for (const runtime of runtimes) {
       const values = runtime.values as unknown as ProjectSnapshotValues;
@@ -83,6 +93,10 @@ export function buildWorkspaceProjectGroups(
       const catalog = values.projectFilesValue.worktrees;
       const root = catalog.project?.root ?? activePath;
       if (!root) continue;
+      // Skip retained runtimes the server no longer lists. Before any catalog
+      // arrives, keep the active root so a cold start never flashes an empty
+      // picker.
+      if (serverKnown.size > 0 && !serverKnown.has(root)) continue;
 
       const label = catalog.project?.label ?? active?.label ?? getProjectLabel(root);
       const project = byRoot.get(root) ?? {
@@ -114,7 +128,6 @@ export function buildWorkspaceProjectGroups(
       name: entry.name,
       enabled: entry.enabled,
       status: runtimes[0]?.values.connectionValue.connection.status ?? 'idle',
-      openedPaths: [],
       projects: [...byRoot.values()].sort((left, right) => compareLabels(left.label, right.label)),
     };
   }).filter((group) => group.enabled && group.status === 'connected');

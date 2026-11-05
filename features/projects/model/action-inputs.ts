@@ -8,7 +8,7 @@ import type { FileDiff, Session, SessionStatus, Todo } from '@/shared/protocol/o
 
 import type { SessionRefreshOptions } from '@/shared/protocol/opencode/event-dispatch';
 
-import type { DiffScope, ProjectPathsByConnection, TranscriptRefreshMode } from '@/shared/contracts/domain';
+import type { DiffScope, TranscriptRefreshMode } from '@/shared/contracts/domain';
 
 export type ProjectActionsInput = {
   fileClipboard?: import('@/features/projects/state/use-file-clipboard').FileClipboard;
@@ -23,8 +23,6 @@ export type ProjectActionsInput = {
   setActiveProjectPath: Dispatch<SetStateAction<string | undefined>>;
   activeProjectPathRef: { current: string | undefined };
   clearProjectState: () => void;
-  projectPathsByConnectionRef: { current: ProjectPathsByConnection };
-  setProjectPathsByConnection: Dispatch<SetStateAction<ProjectPathsByConnection>>;
   connectionScope: string;
   connectionScopeRef: { current: string };
   isHydrated: boolean;
@@ -59,8 +57,7 @@ export type ProjectActionsInput = {
 // aliases keep sub-hooks from silently depending on unrelated setters and refs.
 export type ProjectCatalogInput = Pick<ProjectActionsInput,
   'connected' | 'client' | 'catalogClient' | 'isCurrentClient' | 'isCurrentCatalogClient' | 'activeProjectPath' |
-  'setActiveProjectPath' | 'activeProjectPathRef' | 'clearProjectState' | 'projectPathsByConnectionRef' |
-  'setProjectPathsByConnection' |
+  'setActiveProjectPath' | 'activeProjectPathRef' | 'clearProjectState' |
   'connectionScope' | 'connectionScopeRef' | 'isHydrated' | 'setSessions' |
   'setSessionStatuses' | 'scopeGenerationRef' | 'serverContract' | 'settingsRef'>;
 

@@ -99,7 +99,8 @@ test('Chat and Project use the same project picker @smoke', async ({ page, reque
   await expect(page.getByTestId('project-refresh-button')).toBeVisible();
   await projectDropdown.click();
   await expect(page.getByTestId('project-picker')).toBeVisible();
-  // Server projects are listed before the user opens them on this connection.
+  // The server catalog is the list: unopened server projects are visible
+  // without typing their path.
   await expect(page.getByTestId('project-picker').getByRole('button', { name: 'Select secondary-project' })).toBeVisible();
   await page.getByTestId('project-add-button').click();
   await page.getByTestId('project-directory-manual').click();
@@ -225,7 +226,6 @@ test('OpenCode 2 adds a server project from the shared picker @smoke', async ({ 
       page.getByTestId('project-refresh-button').click(),
     ]);
     await expect(workspaceProjectButton(page)).toContainText('v2-new-project');
-    await expect.poll(() => page.evaluate(() => globalThis.localStorage.getItem('opencode-mobile.active-project'))).toBe('/workspace/v2-new-project');
     await goToTab(page, 'Chat');
     await openChatLibrary(page);
     await chatAction(page, 'Retained project chat', 'Favorite');
@@ -243,9 +243,14 @@ test('OpenCode 2 adds a server project from the shared picker @smoke', async ({ 
     await expectConnectedTo(page, String(port));
     await page.reload();
     await goToTab(page, 'Projects');
-    await expect(workspaceProjectButton(page)).toContainText('v2-new-project');
+    // Cold start derives the project from the server (default location
+    // first), not from local memory.
+    await expect(workspaceProjectButton(page)).toContainText('demo-project');
     await workspaceProjectButton(page).click();
     await expect(page.getByRole('button', { name: 'Select v2-new-project' })).toBeVisible();
+    await page.getByRole('button', { name: 'Select v2-new-project' }).click();
+    await expect(workspaceProjectButton(page)).toContainText('v2-new-project');
+    await workspaceProjectButton(page).click();
     await page.getByTestId('project-picker').getByRole('button', { name: 'Close', exact: true }).click();
     await goToTab(page, 'Chat');
     await openChatLibrary(page);
@@ -334,7 +339,8 @@ for (const contract of ['v1', 'v2']) {
       }
       await workspaceProjectButton(page).click();
       const picker = page.getByTestId('project-picker');
-      // Server projects are visible before they are opened on this connection.
+      // The server catalog is the list: unopened server projects are visible
+      // without typing their path.
       await expect(picker.getByRole('button', { name: 'Select secondary-project' })).toBeVisible();
       await picker.getByTestId('project-add-button').click();
       // The add form starts on the server folder browser.
@@ -382,8 +388,14 @@ for (const contract of ['v1', 'v2']) {
       await expect(page.getByTestId('terminal-output')).toBeVisible();
       await goToTab(page, 'Projects');
       await page.reload();
+      // Cold start derives the project from the server (default location
+      // first), not from local memory: demo-project is back.
+      await expect(workspaceProjectButton(page)).toContainText('demo-project');
+      await workspaceProjectButton(page).click();
+      await expect(picker.getByRole('button', { name: 'Select secondary-project' })).toBeVisible();
+      await picker.getByRole('button', { name: 'Select secondary-project' }).click();
       await expect(workspaceProjectButton(page)).toContainText('secondary-project');
-      await expect(workspaceWorktreeButton(page)).toContainText('scoped-task');
+      await expect(workspaceWorktreeButton(page)).toContainText('Local');
 
       // The active worktree is protected in management. Switch to Local first.
       await workspaceWorktreeButton(page).click();
@@ -398,9 +410,10 @@ for (const contract of ['v1', 'v2']) {
       await expect(page.getByTestId('worktree-picker')).not.toBeVisible();
       await expect(workspaceWorktreeButton(page)).toHaveCount(0);
 
-      // Closing the project removes its local row without touching the server.
+      // The picker renders the server catalog; there is no local close
+      // action because there is no local entry to remove.
       await workspaceProjectButton(page).click();
-      await picker.getByTestId('project-remove-/workspace/secondary-project').click();
+      await expect(picker.getByRole('button', { name: 'Select secondary-project' })).toBeVisible();
       await expect(picker.getByTestId('project-remove-/workspace/secondary-project')).toHaveCount(0);
 
       if (contract === 'v2') {
@@ -411,6 +424,7 @@ for (const contract of ['v1', 'v2']) {
         await expect(picker.getByTestId('project-restore-project-archived')).toBeVisible();
         await picker.getByTestId('project-restore-project-archived').click();
         await expect(picker.getByTestId('project-restore-project-archived')).toHaveCount(0);
+        // Restoring rejoins the flat server list directly.
         await expect(picker.getByRole('button', { name: 'Select archived-project' })).toBeVisible();
       }
     } finally { server.kill('SIGTERM'); }

@@ -8,52 +8,43 @@ import { getConnectionPassword, saveConnectionPassword, withoutConnectionSecrets
 import { getConnectionHeaders, saveConnectionHeaders } from '@/shared/storage/connection-headers';
 import type { ConnectionHeaders } from '@/shared/contracts/connection-headers';
 import { isValidServerUrl } from '@/shared/contracts/server-url';
-import { ACTIVE_PROJECT_STORAGE_KEY, CHAT_PREFERENCES_STORAGE_KEY, CONNECT_CONTROL_PLANE_STORAGE_KEY, FAVORITE_SESSIONS_STORAGE_KEY, LAST_SESSION_BY_PROJECT_STORAGE_KEY, ONBOARDING_VERSION_STORAGE_KEY, PROJECTS_STORAGE_KEY, SETTINGS_STORAGE_KEY } from '@/shared/storage/keys';
+import { CHAT_PREFERENCES_STORAGE_KEY, CONNECT_CONTROL_PLANE_STORAGE_KEY, FAVORITE_SESSIONS_STORAGE_KEY, LAST_SESSION_BY_PROJECT_STORAGE_KEY, ONBOARDING_VERSION_STORAGE_KEY, PROJECTS_STORAGE_KEY, SETTINGS_STORAGE_KEY } from '@/shared/storage/keys';
 import type { ChatPreferences } from '@/shared/preferences/opencode-preferences';
-import type { FavoriteSession, ProjectPathsByConnection } from '@/shared/contracts/domain';
-import { parseFavoriteSessions, serializeFavoriteSessions , parseLastSessionByConnection, serializeLastSessionByConnection } from '@/features/sessions/runtime';
-import { parseProjectPathsByConnection, serializeProjectPathsByConnection } from '@/features/projects/runtime';
+import type { FavoriteSession } from '@/shared/contracts/domain';
+import { parseFavoriteSessions, serializeFavoriteSessions } from '@/features/sessions/runtime';
 import { loadOnboardingStatus, serializeOnboardingVersion } from '@/features/onboarding/runtime';
-import type { LastSessionByConnection } from '@/features/sessions/index';
 import { parseChatPreferences, parseConnectionSettings } from '@/shared/storage/persisted-preferences';
 import { createPersistenceWriter, loadPersistedValue } from '@/shared/storage/persistence-hydration';
+
+// Project identity comes from the server catalogs; the app persists no opened
+// projects, active project, or last sessions. Stored values from older builds
+// are removed once on hydrate so a stale local list can never resurface.
+const REMOVED_PROJECT_KEYS = [PROJECTS_STORAGE_KEY, LAST_SESSION_BY_PROJECT_STORAGE_KEY];
 
 export function useOpencodePersistence({
   defaultChatPreferences,
   defaultSettings,
-  activeProjectPath,
   chatPreferences,
   controlPlaneUrl,
   favoriteSessions,
-  lastSessionByConnection,
   onboardingVersion,
-  projectPathsByConnection,
-  setActiveProjectPath,
   setChatPreferences,
   setControlPlaneUrl,
   setFavoriteSessions,
-  setLastSessionByConnection,
   setOnboardingVersion,
-  setProjectPathsByConnection,
   setSettings,
   settings,
 }: {
   defaultChatPreferences: ChatPreferences;
   defaultSettings: OpencodeConnectionSettings;
-  activeProjectPath?: string;
   chatPreferences: ChatPreferences;
   controlPlaneUrl: string;
   favoriteSessions: FavoriteSession[];
-  lastSessionByConnection: LastSessionByConnection;
   onboardingVersion: number;
-  projectPathsByConnection: ProjectPathsByConnection;
-  setActiveProjectPath: (value?: string) => void;
   setChatPreferences: Dispatch<SetStateAction<ChatPreferences>>;
   setControlPlaneUrl: Dispatch<SetStateAction<string>>;
   setFavoriteSessions: Dispatch<SetStateAction<FavoriteSession[]>>;
-  setLastSessionByConnection: Dispatch<SetStateAction<LastSessionByConnection>>;
   setOnboardingVersion: Dispatch<SetStateAction<number>>;
-  setProjectPathsByConnection: Dispatch<SetStateAction<ProjectPathsByConnection>>;
   setSettings: Dispatch<SetStateAction<OpencodeConnectionSettings>>;
   settings: OpencodeConnectionSettings;
 }) {
@@ -103,19 +94,13 @@ export function useOpencodePersistence({
           }));
         });
 
-        await load(ACTIVE_PROJECT_STORAGE_KEY, (raw) => raw, (path) => {
-          if (path) {
-            setActiveProjectPath(path);
-          }
-        });
-
-        await load(LAST_SESSION_BY_PROJECT_STORAGE_KEY, parseLastSessionByConnection, setLastSessionByConnection);
-
         await load(FAVORITE_SESSIONS_STORAGE_KEY, parseFavoriteSessions, setFavoriteSessions);
 
-        await load(PROJECTS_STORAGE_KEY, parseProjectPathsByConnection, setProjectPathsByConnection);
-
         await load(CONNECT_CONTROL_PLANE_STORAGE_KEY, normalizeTrustedControlPlaneUrl, setControlPlaneUrl);
+
+        for (const key of REMOVED_PROJECT_KEYS) {
+          await AsyncStorage.removeItem(key).catch((reason) => console.warn(`Could not clear ${key}.`, reason));
+        }
 
         // Resolve first-run completion last so `isHydrated` already implies the
         // onboarding decision is known. The marker, including the migration
@@ -128,7 +113,7 @@ export function useOpencodePersistence({
     }
 
     void hydrateState().catch((reason) => console.warn('Could not hydrate app settings.', reason));
-  }, [defaultChatPreferences, defaultSettings, setActiveProjectPath, setChatPreferences, setControlPlaneUrl, setFavoriteSessions, setLastSessionByConnection, setOnboardingVersion, setProjectPathsByConnection, setSettings, writeChanged]);
+  }, [defaultChatPreferences, defaultSettings, setChatPreferences, setControlPlaneUrl, setFavoriteSessions, setOnboardingVersion, setSettings, writeChanged]);
 
   useEffect(() => {
     if (isHydrated && controlPlaneUrl) void persist(CONNECT_CONTROL_PLANE_STORAGE_KEY, controlPlaneUrl).catch((reason) => console.warn('Could not save Connect settings.', reason));
@@ -162,37 +147,8 @@ export function useOpencodePersistence({
       return;
     }
 
-    if (activeProjectPath) {
-      void persist(ACTIVE_PROJECT_STORAGE_KEY, activeProjectPath).catch((reason) => console.warn('Could not save project.', reason));
-      return;
-    }
-
-    void persist(ACTIVE_PROJECT_STORAGE_KEY, null).catch((reason) => console.warn('Could not clear project.', reason));
-  }, [activeProjectPath, isHydrated, persist]);
-
-  useEffect(() => {
-    if (!isHydrated) {
-      return;
-    }
-
-    void persist(LAST_SESSION_BY_PROJECT_STORAGE_KEY, serializeLastSessionByConnection(lastSessionByConnection)).catch((reason) => console.warn('Could not save lastSessionByConnection.', reason));
-  }, [isHydrated, lastSessionByConnection, persist]);
-
-  useEffect(() => {
-    if (!isHydrated) {
-      return;
-    }
-
     void persist(FAVORITE_SESSIONS_STORAGE_KEY, serializeFavoriteSessions(favoriteSessions)).catch((reason) => console.warn('Could not save favoriteSessions.', reason));
   }, [favoriteSessions, isHydrated, persist]);
-
-  useEffect(() => {
-    if (!isHydrated) {
-      return;
-    }
-
-    void persist(PROJECTS_STORAGE_KEY, serializeProjectPathsByConnection(projectPathsByConnection)).catch((reason) => console.warn('Could not save opened projects.', reason));
-  }, [isHydrated, persist, projectPathsByConnection]);
 
   useEffect(() => {
     if (!isHydrated) {

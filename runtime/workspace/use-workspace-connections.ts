@@ -59,11 +59,6 @@ export function useWorkspaceConnections(shell: WorkspaceShellState, hydrated: bo
     if (persist) canPersist.current = true; selected.current = target; setFocus(target);
     if (Object.entries(live.current).some(([key, value]) => (JSON.parse(key) as string[])[0] === target.connectionId && ((JSON.parse(key) as string[])[1] === target.projectPath || value.values.projectsValue.activeProjectPath === target.projectPath))) setRetainedFocus(target);
   }, []);
-  const clearFocus = useCallback((persist = true) => {
-    if (persist) canPersist.current = true;
-    selected.current = undefined;
-    setFocus(undefined);
-  }, []);
   const publish = useCallback((key: string, snapshot: WorkspaceSnapshot) => {
     if (live.current[key] === snapshot) return;
     live.current = { ...live.current, [key]: snapshot }; setSnapshots(live.current);
@@ -114,6 +109,13 @@ export function useWorkspaceConnections(shell: WorkspaceShellState, hydrated: bo
       let stored;
       try { const raw = await AsyncStorage.getItem(WORKSPACES_STORAGE_KEY); stored = raw ? parseWorkspaces(raw) : undefined; }
       catch (error) { canPersist.current = false; console.warn('Could not read workspace registry.', error); }
+      if (stored) {
+        // Project lists are server-derived; never restore locally remembered
+        // projects. Every connection boots from the placeholder runtime and
+        // derives its project from the server catalog.
+        stored = { ...stored, connections: stored.connections.map((entry) => ({ ...entry, projects: [''] })),
+          focus: stored.focus ? { connectionId: stored.focus.connectionId, projectPath: '' } : undefined };
+      }
       const initial = shellRef.current;
       const profiles = await loadConnectionProfiles();
       const entries: ConnectionRecord[] = stored ? await Promise.all(stored.connections.map(async (entry) => {
@@ -131,7 +133,7 @@ export function useWorkspaceConnections(shell: WorkspaceShellState, hydrated: bo
         const profile = placeholder ? { name: getServerHostname(initial.settings.serverUrl), modelPreferences: undefined } : await saveProfile(initial.settings);
         entries.push({ id: getConnectionUiScope(initial.settings), name: profile.name, settings: initial.settings,
           enabled: initial.onboardingVersion > 0, preferences: { ...profile.modelPreferences, ...serverPreferences(initial.chatPreferences) },
-          projects: [initial.activeProjectPath ?? ''], events: createSharedEventStream() });
+          projects: [''], events: createSharedEventStream() });
       }
       if (cancelled) return;
       const target = stored?.focus ?? { connectionId: entries[0].id, projectPath: entries[0].projects[0] ?? '' };
@@ -143,21 +145,19 @@ export function useWorkspaceConnections(shell: WorkspaceShellState, hydrated: bo
       const initial = shellRef.current;
       const id = getConnectionUiScope(initial.settings);
       change(() => [{ id, name: getServerHostname(initial.settings.serverUrl), settings: initial.settings, enabled: initial.onboardingVersion > 0,
-        preferences: serverPreferences(initial.chatPreferences), projects: [initial.activeProjectPath ?? ''], events: createSharedEventStream() }]);
-      select({ connectionId: id, projectPath: initial.activeProjectPath ?? '' }, false); setReady(true);
+        preferences: serverPreferences(initial.chatPreferences), projects: [''], events: createSharedEventStream() }]);
+      select({ connectionId: id, projectPath: '' }, false); setReady(true);
     });
     return () => { cancelled = true; };
   }, [hydrated, change, select, saveProfile, write]);
 
   const persisted = useMemo(() => {
-    const entries = connections.map((entry) => ({ ...entry, projects: [...new Set(entry.projects.map((projectPath) =>
-      snapshots[workspaceKey({ connectionId: entry.id, projectPath })]?.values.projectsValue.activeProjectPath ?? projectPath))].filter((path) => shell.projectPathsByConnection[getConnectionScope(entry.settings)]?.includes(path) !== false) }));
-    for (const entry of entries) if (!entry.projects.length) entry.projects = [''];
-    const focused = focus ? Object.entries(snapshots).find(([key, snapshot]) => (JSON.parse(key) as string[])[0] === focus.connectionId &&
-      ((JSON.parse(key) as string[])[1] === focus.projectPath || snapshot.values.projectsValue.activeProjectPath === focus.projectPath))?.[1] : undefined;
-    const path = focus?.projectPath || focused?.values.projectsValue.activeProjectPath || '';
-    return serializeWorkspaces(entries, focus ? { ...focus, projectPath: entries.find((entry) => entry.id === focus.connectionId)?.projects.includes(path) ? path : entries.find((entry) => entry.id === focus.connectionId)?.projects[0] ?? '' } : undefined);
-  }, [connections, focus, snapshots, shell.projectPathsByConnection]);
+    // Only the connection list and the focused connection survive a restart.
+    // Project runtimes always boot from the placeholder and derive the project
+    // from the server catalog (most recently active first).
+    const entries = connections.map((entry) => ({ ...entry, projects: [''] as string[] }));
+    return serializeWorkspaces(entries, focus ? { connectionId: focus.connectionId, projectPath: '' } : undefined);
+  }, [connections, focus]);
   useEffect(() => {
     // Automatic capability refreshes must not overwrite an unread registry.
     if (ready && canPersist.current) void write(WORKSPACES_STORAGE_KEY, persisted, () => AsyncStorage.setItem(WORKSPACES_STORAGE_KEY, persisted))
@@ -213,11 +213,10 @@ export function useWorkspaceConnections(shell: WorkspaceShellState, hydrated: bo
     const entry = records.current.find((item) => item.id === id);
     if (!entry) throw new Error('Server not found.');
     for (const [key, runtime] of Object.entries(live.current)) if ((JSON.parse(key) as string[])[0] === id) runtime.suspend();
-    change((current) => current.map((item) => item.id === id ? { ...item, enabled: true, settings: { ...item.settings }, events: createSharedEventStream() } : item));
-    // entry.projects also contains retained runtimes whose projects the user
-    // closed. Reconnect must follow the opened-project list instead.
-    const projectPath = shellRef.current.projectPathsByConnection[getConnectionScope(entry.settings)]?.[0] ?? '';
-    const runtime = await ensure({ connectionId: id, projectPath });
+    change((current) => current.map((item) => item.id === id ? { ...entry, enabled: true, settings: { ...item.settings }, events: createSharedEventStream() } : item));
+    // Reconnect boots the placeholder runtime; its catalog read derives the
+    // project from the server (most recently active first).
+    const runtime = await ensure({ connectionId: id, projectPath: '' });
     return runtime.values.connectionValue.connect();
   }, [change, ensure]);
   const connectedWorkspace = useCallback(async (target: WorkspaceTarget, options?: { signal?: AbortSignal }) => {
@@ -257,14 +256,7 @@ export function useWorkspaceConnections(shell: WorkspaceShellState, hydrated: bo
   // Commits the workspace selection once the runtime is ready. App navigation
   // and external links share this step; it never reads the session list.
   const selectWorkspace = useCallback((target: WorkspaceTarget, next: WorkspaceSnapshot) => {
-    const projectPath = target.projectPath || next.values.projectsValue.activeProjectPath || '';
-    const scope = getConnectionScope(next.native.settings);
-    const paths = shellRef.current.projectPathsByConnectionRef.current[scope] ?? [];
-    if (projectPath && !paths.includes(projectPath)) {
-      const opened = { ...shellRef.current.projectPathsByConnectionRef.current, [scope]: [projectPath, ...paths] };
-      shellRef.current.projectPathsByConnectionRef.current = opened; shellRef.current.setProjectPathsByConnection(opened);
-    }
-    select({ connectionId: target.connectionId, projectPath });
+    select({ connectionId: target.connectionId, projectPath: target.projectPath || next.values.projectsValue.activeProjectPath || '' });
   }, [select]);
   // In-app navigation. The caller already knows the workspace and session from
   // rendered data, so this only prepares the runtime and selects the session
@@ -339,15 +331,14 @@ export function useWorkspaceConnections(shell: WorkspaceShellState, hydrated: bo
     const id = getConnectionUiScope(full);
     const found = records.current.find((entry) => entry.id === id);
     if (found) for (const [key, runtime] of Object.entries(live.current)) if ((JSON.parse(key) as string[])[0] === id) runtime.suspend();
-    // A retained runtime can outlive its opened project; reconnect to the
-    // opened list, never to the first stale entry.
-    const projectPath = shellRef.current.projectPathsByConnection[getConnectionScope(full)]?.[0] ?? '';
+    // Switching boots the placeholder runtime; its catalog read derives the
+    // project from the server (most recently active first).
     change((current) => found ? current.map((entry) => entry.id === id ? { ...entry, settings: full, enabled: true,
       // A retained workspace already holds the live server choices. A profile
       // write can lag behind it, so only fill fields the entry is missing.
       preferences: { ...serverPreferences(preferences ?? {}), ...entry.preferences }, events: createSharedEventStream() } : entry)
-      : [...current, { id, name: profile.name, settings: full, enabled: true, preferences: { autoApprove: false, ...serverPreferences(preferences ?? profile.modelPreferences ?? {}) }, projects: [projectPath], events: createSharedEventStream() }]);
-    const target = { connectionId: id, projectPath };
+      : [...current, { id, name: profile.name, settings: full, enabled: true, preferences: { autoApprove: false, ...serverPreferences(preferences ?? profile.modelPreferences ?? {}) }, projects: [''], events: createSharedEventStream() }]);
+    const target = { connectionId: id, projectPath: '' };
     const runtime = await ensure(target);
     if (selectWorkspace) {
       await pauseConversation(); select(target);
@@ -405,37 +396,10 @@ export function useWorkspaceConnections(shell: WorkspaceShellState, hydrated: bo
       if (profile) await save(profiles.map((item) => item.id === profile.id ? { ...item, modelPreferences: pickModelPreferences(value) } : item));
     }).catch((error) => console.warn('Could not save model preferences.', error));
   }, [change]);
-  const closeProjects = useCallback(async (targets: WorkspaceTarget[]) => {
-    const byConnection = new Map<string, Set<string>>();
-    for (const target of targets) {
-      const paths = byConnection.get(target.connectionId);
-      if (paths) paths.add(target.projectPath);
-      else byConnection.set(target.connectionId, new Set([target.projectPath]));
-    }
-    for (const [connectionId, paths] of byConnection) {
-      const entry = records.current.find((item) => item.id === connectionId);
-      if (!entry) continue;
-      const scope = getConnectionScope(entry.settings);
-      const remaining = (shellRef.current.projectPathsByConnectionRef.current[scope] ?? []).filter((path) => !paths.has(path));
-      const opened = { ...shellRef.current.projectPathsByConnectionRef.current, [scope]: remaining };
-      shellRef.current.projectPathsByConnectionRef.current = opened;
-      shellRef.current.setProjectPathsByConnection(opened);
-      if (selected.current?.connectionId === connectionId && paths.has(selected.current.projectPath)) {
-        if (remaining.length) await activate({ connectionId, projectPath: remaining[0] });
-        else {
-          await pauseConversation();
-          clearFocus();
-        }
-      }
-    }
-  }, [activate, clearFocus, pauseConversation]);
-  const closeProject = useCallback(async (target: WorkspaceTarget) => {
-    await closeProjects([target]);
-  }, [closeProjects]);
   const removeConnection = useCallback(async (id: string) => {
     await disconnect(id);
     change((current) => current.filter((entry) => entry.id !== id));
     for (const key of Object.keys(live.current)) if ((JSON.parse(key) as string[])[0] === id) forget(key);
   }, [change, disconnect, forget]);
-  return { isEnabled, closeProject, closeProjects, connectedWorkspace, removeConnection, connections, focus, retainedFocus, snapshots, ready, change, select, publish, forget, ensure, resolveKey, activate, navigate, openExternalSession, switchConnection, disconnect, retry, updateSettings, updatePreferences };
+  return { isEnabled, connectedWorkspace, removeConnection, connections, focus, retainedFocus, snapshots, ready, change, select, publish, forget, ensure, resolveKey, activate, navigate, openExternalSession, switchConnection, disconnect, retry, updateSettings, updatePreferences };
 }

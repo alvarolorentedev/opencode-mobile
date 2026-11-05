@@ -1,7 +1,6 @@
 import type { Session } from '@/shared/protocol/opencode/types';
 import { useUpdates } from '@/features/updates/context';
 import { OpencodeProviderTree } from '@/runtime/workspace/domain-provider-tree';
-import type { ProjectPathsByConnection } from '@/shared/contracts/domain';
 import type { useWorkspaceConnections } from '@/runtime/workspace/use-workspace-connections';
 import { workspaceKey, type NewWorktreeChatResult, type NewWorktreeChatTarget, type WorkspaceCatalog, type WorkspaceTarget } from '@/shared/contracts/workspace';
 import type { WorkspaceValues } from '@/runtime/workspace/workspace-types';
@@ -17,7 +16,6 @@ export type WorkspaceRegistry = ReturnType<typeof useWorkspaceConnections> & {
   inspect: (target: WorkspaceTarget) => Promise<void>;
   valuesFor: (target?: WorkspaceTarget) => WorkspaceValues | undefined;
   catalogs: Record<string, WorkspaceCatalog>;
-  projectPathsByConnection: ProjectPathsByConnection;
 };
 export type WorkspaceActions = {
   createChat: (target: WorkspaceTarget) => Promise<Session>;

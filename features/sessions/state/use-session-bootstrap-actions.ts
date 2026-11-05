@@ -5,7 +5,6 @@ import type { SessionBootstrapInput } from '@/features/sessions/model/action-inp
 export function useSessionBootstrapActions({
   activeProjectPath,
   connection,
-  connectionScope,
   client,
   createSession,
   currentSessionId,
@@ -13,7 +12,6 @@ export function useSessionBootstrapActions({
   explicitSessionSelectionRef,
   sessionsRef,
   messagesBySession,
-  lastSessionByConnection,
   pendingDeepLinkTargetRef,
   bootstrapPromiseRef,
   bootstrapTokenRef,
@@ -24,7 +22,6 @@ export function useSessionBootstrapActions({
   refreshSessionTodos,
   refreshPendingInteractions,
   setCurrentSessionId,
-  setLastSessionByConnection,
   setIsBootstrappingChat,
 }: SessionBootstrapInput) {
   const ensureActiveSession = useCallback(async () => {
@@ -66,14 +63,9 @@ export function useSessionBootstrapActions({
         if (bootstrapTokenRef.current !== bootstrapToken || pendingDeepLinkTargetRef.current !== pendingTarget) {
           return undefined;
         }
-        const rememberedSessionId = activeProjectPath
-          ? lastSessionByConnection[connectionScope]?.[activeProjectPath]
-          : undefined;
         const targetSession = pendingTarget
           ? nextSessions.find((session) => session.id === pendingTarget.sessionId)
-          : (rememberedSessionId ? nextSessions.find((session) => session.id === rememberedSessionId) : undefined) ??
-            nextSessions[0] ??
-            (await createSession());
+          : nextSessions[0] ?? (await createSession());
         if (!targetSession) {
           return undefined;
         }
@@ -84,15 +76,6 @@ export function useSessionBootstrapActions({
         // its header and a transcript skeleton while these reads settle.
         currentSessionIdRef.current = targetSession.id;
         setCurrentSessionId(targetSession.id);
-        if (activeProjectPath) {
-          setLastSessionByConnection((current) => ({
-            ...current,
-            [connectionScope]: {
-              ...current[connectionScope],
-              [activeProjectPath]: targetSession.id,
-            },
-          }));
-        }
         void Promise.all([
           refreshMessages(targetSession.id),
           refreshSessionDiff(targetSession.id, true),
@@ -116,14 +99,12 @@ export function useSessionBootstrapActions({
     bootstrapPromiseRef,
     bootstrapTokenRef,
     connection.status,
-    connectionScope,
     client,
     createSession,
     currentSessionId,
     currentSessionIdRef,
     explicitSessionSelectionRef,
     refreshSessions,
-    lastSessionByConnection,
     isCurrentClient,
     messagesBySession,
     pendingDeepLinkTargetRef,
@@ -133,7 +114,6 @@ export function useSessionBootstrapActions({
     refreshSessionTodos,
     sessionsRef,
     setCurrentSessionId,
-    setLastSessionByConnection,
     setIsBootstrappingChat,
   ]);
 
