@@ -14,7 +14,7 @@ export function ServerContextPicker({ server = true }: { server?: boolean }) {
   const target = registry.inspectionTarget ?? registry.focus;
   const selected = groups.find((entry) => entry.id === target?.connectionId);
   const showServer = server && multipleServers;
-  if (!showServer) return null;
+  if (!showServer && !multipleServers) return null;
   return <View className={cn("gap-2.5 py-3")}>
     {showServer ? <WorkspaceSelect title={t('common:servers.server')} value={selected?.id} testID="settings-server-picker"
       options={groups.map((entry) => ({ value: entry.id, label: entry.name, description: t(`common:servers.status.${entry.status}`) }))}

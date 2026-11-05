@@ -368,7 +368,7 @@ test('composer exposes agent selection without losing drafts', async ({ page, re
 });
 
 test('model selection is remembered for each agent', async ({ page, request }) => {
-  await resetScenario(request, 'happy-path');
+  await resetScenario(request, 'reasoning-variants');
   await openReadyChat(page);
   const model = page.getByTestId('chat-model-picker-trigger');
   const agent = page.getByTestId('chat-agent-button');
@@ -385,7 +385,7 @@ test('model selection is remembered for each agent', async ({ page, request }) =
   await expect(model).toHaveAccessibleName('GPT-4.1 mini · OpenAI');
 
   await model.click();
-  await picker.getByRole('button', { name: /GPT-4\.1 mini · OpenAI/ }).click();
+  await picker.getByRole('button', { name: /^GPT-4\.1 mini / }).last().click();
   await expect(model).toHaveAccessibleName('GPT-4.1 mini · OpenAI');
 
   await agent.click();
