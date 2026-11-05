@@ -99,6 +99,7 @@
       "ProjectOptions",
       "ProjectPicker",
       "ProjectPickerButton",
+      "ProjectContextPicker",
       "ProjectsContextValue",
       "ProjectsScreen",
       "useProjectCheckouts",

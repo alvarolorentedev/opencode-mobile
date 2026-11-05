@@ -3,6 +3,7 @@ import { View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { useExtensions, useMcp } from '@/features/extensions/context';
 import { useProjects } from '@/features/projects/context';
+import { ProjectContextPicker } from '@/features/projects/index';
 import { useConnection } from '@/features/connections/context';
 import { AgentEditor } from '@/features/extensions/ui/agent-editor';
 import { CommandEditor } from '@/features/extensions/ui/command-editor';
@@ -71,6 +72,7 @@ export function ExtensionsSection() {
       <ToggleGroupItem value="general" disabled={busy}><Text>{t('settings:extensions.scope.general')}</Text></ToggleGroupItem>
     </ToggleGroup>
     <Text variant="description" className="text-muted-foreground">{t(`settings:extensions.scopeDescription.${effectiveScope}`, { project: activeProjectPath || '' })}</Text>
+    {effectiveScope === 'project' ? <ProjectContextPicker /> : null}
     {extensions.error ? <FieldDescription invalid testID="extensions-error">{extensions.error}</FieldDescription> : null}
     {actionError ? <FieldDescription invalid testID="extensions-action-error">{actionError}</FieldDescription> : null}
     {!data ? extensions.isRefreshing ? <Spinner /> : <FieldDescription>{t('settings:extensions.unavailable')}</FieldDescription> : <>

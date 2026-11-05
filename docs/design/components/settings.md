@@ -297,6 +297,7 @@ Responsibility:
   storage/retention usage, remote master/crash/usage switches when a backend is
   configured, recent-event severity filter, metrics, recent failure, ZIP export
   and clear-history confirmation
+- report server, stream, network and app state only; there is no project context selector in this section
 - keep local history and remote consent independent; remote controls are hidden
   in FOSS and builds without an OTLP backend
 - refresh diagnostics when the section opens and on demand; chat bootstrap no longer pays for diagnostics reads
@@ -366,6 +367,7 @@ Main relevant props:
 #### Responsibility
 
 - render the V2-only Extensions surface with This project/All projects scope, MCP/plugin/agent/skill/command inventories, shared/read-only rows, and focused add/edit sheets
+- show the project context selector only inside This project, directly below the scope toggle; All projects hides it because those definitions are shared
 - hide system-managed shared rows (built-in plugins, embedded skills, built-in commands, built-in agents) from the plugin, agent, skill, and command tabs
 - keep read-only safety warnings visible; disclose the exact target config path, Markdown agent/command directories and last-backup recovery under Configuration details
 - show Markdown/JSONC origin badges, overridden JSONC rows, and the Markdown-default storage choice for new definitions

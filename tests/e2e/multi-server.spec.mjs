@@ -256,8 +256,15 @@ test('V2 single-server mode hides redundant context and restores it when a secon
   await expect(page.getByText('Selected server', { exact: true })).toBeVisible();
   await page.screenshot({ path: test.info().outputPath('single-server-settings.png') });
   await page.getByTestId('settings-category-advanced').click();
-  await expect(page.getByTestId('settings-project-picker')).toBeVisible();
+  await expect(page.getByTestId('settings-project-picker')).toHaveCount(0);
   await expect(page.getByTestId('settings-server-picker')).toHaveCount(0);
+  await page.getByTestId('settings-section-overlay').getByRole('button', { name: 'Close', exact: true }).click();
+  await page.getByTestId('settings-category-extensions').click();
+  const extensionsOverlay = page.getByTestId('settings-section-overlay');
+  await expect(extensionsOverlay.getByTestId('settings-project-picker')).toBeVisible();
+  await extensionsOverlay.getByRole('button', { name: 'All projects', exact: true }).click();
+  await expect(extensionsOverlay.getByTestId('settings-project-picker')).toHaveCount(0);
+  await extensionsOverlay.getByRole('button', { name: 'Close', exact: true }).click();
   await goToTab(page, 'Settings');
   const port = await getFreePort();
   const process = spawnV2Server(port);
@@ -269,7 +276,7 @@ test('V2 single-server mode hides redundant context and restores it when a secon
   await expect(page.getByTestId('settings-server-picker')).toBeVisible();
   await page.getByTestId('settings-category-advanced').click();
   const advancedOverlay = page.getByTestId('settings-section-overlay');
-  await expect(advancedOverlay.getByTestId('settings-project-picker')).toBeVisible();
+  await expect(advancedOverlay.getByTestId('settings-project-picker')).toHaveCount(0);
   await expect(advancedOverlay.getByTestId('settings-server-picker')).toHaveCount(0);
   await advancedOverlay.getByRole('button', { name: 'Close', exact: true }).click();
   await goToTab(page, 'Chat');

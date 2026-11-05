@@ -425,7 +425,9 @@ Server and project selectors list only connected servers; disconnected,
 connecting and unavailable profiles remain in Connection management so they can
 be reconnected.
 Server selection is made once on Settings home; server category sheets do not
-repeat the selector, and MCP/diagnostics keep their project context control.
+repeat the selector. Diagnostics has no project selector because it reports
+connection- and device-scoped state only. Extensions shows its project selector
+inside the This project scope and hides it for All projects.
 
 Local search matches localized labels, descriptions and curated category keywords.
 Results identify a setting and category; selecting one reveals its control,

@@ -10,7 +10,6 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Fonts } from '@/shared/ui/theme/theme';
 import { WorkspaceScope, useWorkspaces } from '@/runtime/workspace';
-import { ServerContextPicker } from '@/features/settings/ui/server-context-picker';
 import { getConnectionUiScope } from '@/shared/contracts/connection-scope';
 import { useNotificationSetup } from '@/features/notifications/index';
 import { useTtsSetup , useVoiceSetup , useSpeechVoices , WORKING_SOUND_OPTIONS } from '@/features/voice/index';
@@ -184,7 +183,6 @@ function SettingsContent() {
 
       <OverlaySheet visible={Boolean(activeSection)} fitContent scrollable={false} testID="settings-section-overlay" title={activeSection?.title ?? t('common:tabs.settings')} onClose={() => { setOpenSection(undefined); setSearchTarget(undefined); }}>
         <SettingsPanel target={searchTarget}>
-          {activeSection?.group === 'server' ? <ServerContextPicker server={false} project={activeSection.id === 'advanced' || activeSection.id === 'extensions'} /> : null}
           <View key={activeSection?.group === 'server' ? `${activeSection.id}:${getConnectionUiScope(settings)}:${activeProjectPath ?? ''}` : activeSection?.id}>{activeSection?.render?.() ?? null}</View>
         </SettingsPanel>
       </OverlaySheet>
