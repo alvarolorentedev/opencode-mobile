@@ -1,0 +1,5 @@
+- Attachments are restored when you revert a chat message.
+- Message metadata is aligned and reply reasoning is shown.
+- Chat rename actions stay below the title field.
+- The keyboard dismisses when terminal overlays open.
+- Voice input avoids redundant Android permission prompts.
