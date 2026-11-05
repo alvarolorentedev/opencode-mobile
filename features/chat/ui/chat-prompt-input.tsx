@@ -12,8 +12,10 @@ type MarkdownTextInputComponent = ForwardRefExoticComponent<
 
 // The package entry also exports its default ExpensiMark parser, which requires
 // expensify-common and a workletized html-entities. Only the input is needed.
+// Import the source entry: the compiled lib entry loses the native component
+// spec that Metro's codegen transform needs.
 // eslint-disable-next-line @typescript-eslint/no-require-imports
-const MarkdownTextInput = (Platform.OS === 'web' ? undefined : require('@expensify/react-native-live-markdown/lib/module/MarkdownTextInput').default) as MarkdownTextInputComponent | undefined;
+const MarkdownTextInput = (Platform.OS === 'web' ? undefined : require('@expensify/react-native-live-markdown/src/MarkdownTextInput').default) as MarkdownTextInputComponent | undefined;
 
 const INPUT_CLASS_NAME = 'w-auto self-stretch border-0 shadow-none bg-transparent dark:bg-transparent min-h-0 px-0 py-0';
 
