@@ -48,53 +48,12 @@ It is designed around the things that actually matter on mobile.
 
 ## What you can do
 
-- **Start and continue coding sessions**  
-  Pick a project, worktree, agent, and model, send instructions, and keep working with the same OpenCode sessions from your phone. Fork a reply or revert an earlier prompt to take another path.
-
-- **Watch progress as it happens**  
-  Follow reasoning, tool calls, shell output, patches, and todos in a live timeline. Choose how much detail you see, jump back to the latest message, and get notified when a task finishes or needs your input.
-
-- **Review and approve actions**  
-  Answer permission requests, questions, and server forms, or enable auto-approve when you trust the run.
-
-- **Review changes before you accept them**  
-  Inspect diffs for the current turn, uncommitted work, or the branch, with expandable file patches and line totals.
-
-- **Browse and edit project files**  
-  Search paths, preview text, images, audio, and video, download files, and rename, copy, cut, and paste from mobile.
-
-- **Use the terminal when needed**  
-  Open multiple terminal sessions with Esc, Tab, modifiers, arrows, and paste at hand, copy output, and reconnect when you return.
-
-- **Use voice and conversation mode**  
-  Dictate prompts, read replies aloud, or go hands-free with wake-word conversation mode and optional on-device speech models.
-
-- **Shape your OpenCode setup**  
-  Add AI providers with API keys or OAuth, enable models, and configure MCP servers, agents, skills, commands, and plugins.
-
-- **Use Comands, plugins with a mobile UI**  
-  Use OpenCode commands, Agents, MCP even Plugins including their visualizations (ex. [Flowgraph](https://github.com/alvarolorentedev/opencode-flowgraph)) from any chat.
-
-- **Let auto-routing pick the model**  
-  Classify each prompt as simple, standard, or complex and send it to the right enabled model, with the routed model shown on each reply.
-
-- **Manage projects, worktrees, and sessions**  
-  Switch between projects and worktrees, add projects from a server folder browser, archive projects on the device or view server-archived ones, and favorite, rename, or delete sessions.
-
-- **Share into the app**  
-  On Android, send text, links, images, or PDFs from another app into a reviewable chat draft.
-
-- **Stay connected to multiple servers**  
-  Save OpenCode connections with their own sessions and model selection, pair by QR code or Cloud Link, and connect through custom headers or trusted certificates.
-
-- **Keep up from the launcher**  
-  Get completion and needs-input notifications, Android home widgets, and quick actions for recent tasks without opening the app.
-
-- **Personalize the app**  
-  Choose themes, languages (including right-to-left), text size, transcript detail, speech settings, and update preferences.
-
-- **Understand model usage**  
-  Inspect context utilization, token activity, model usage, steps, and estimated cost.
+- **Run sessions from your phone** — pick a project, worktree, agent, and model, then send, fork, or revert prompts.
+- **Follow progress live** — reasoning, tool calls, shell output, patches, and todos, with notifications when you're needed.
+- **Approve, review, and edit** — answer permission requests, inspect diffs, browse files, and open terminals.
+- **Talk to it** — dictate prompts, read replies aloud, or use hands-free conversation mode.
+- **Shape your setup** — providers, models, MCP servers, agents, commands, plugins, and visualizations like [Flowgraph](https://github.com/alvarolorentedev/opencode-flowgraph).
+- **Manage and personalize** — multiple servers, projects, and sessions; themes, languages, text size, and widgets.
 
 ## How it works
 
