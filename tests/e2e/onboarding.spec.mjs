@@ -42,18 +42,25 @@ test('fresh install walks through onboarding into a working chat @smoke', async 
 
   await expect(page.getByTestId('onboarding-welcome')).toBeVisible({ timeout: 30_000 });
   await expect(page.getByText('Start a new task')).toHaveCount(0);
-  await expect(page.getByText('Step 1 of 6', { exact: true })).toBeVisible();
+  await expect(page.getByText('Step 1 of 7', { exact: true })).toBeVisible();
   await expect(page.getByTestId('onboarding-welcome').getByRole('button')).toHaveCount(1);
 
   await page.getByTestId('onboarding-welcome-start').click();
   await expect(page.getByTestId('onboarding-permissions')).toBeVisible();
-  await expect(page.getByText('Step 2 of 6', { exact: true })).toBeVisible();
+  await expect(page.getByText('Step 2 of 7', { exact: true })).toBeVisible();
   await page.getByTestId('onboarding-permissions-skip').click();
+  await expect(page.getByTestId('onboarding-privacy')).toBeVisible();
+  await expect(page.getByText('Step 3 of 7', { exact: true })).toBeVisible();
+  const localDiagnostics = page.getByTestId('onboarding-privacy').getByRole('switch', { name: 'Record diagnostics on this device', exact: true });
+  await expect(localDiagnostics).toBeChecked();
+  await localDiagnostics.click();
+  await expect(localDiagnostics).not.toBeChecked();
+  await page.getByTestId('onboarding-privacy-skip').click();
   await expect(page.getByTestId('onboarding-connect')).toBeVisible();
-  await expect(page.getByText('Step 3 of 6', { exact: true })).toBeVisible();
+  await expect(page.getByText('Step 4 of 7', { exact: true })).toBeVisible();
   await page.getByRole('button', { name: 'Back', exact: true }).click();
-  await expect(page.getByTestId('onboarding-permissions')).toBeVisible();
-  await page.getByTestId('onboarding-permissions-continue').click();
+  await expect(page.getByTestId('onboarding-privacy')).toBeVisible();
+  await page.getByTestId('onboarding-privacy-continue').click();
   await expect(page.getByTestId('onboarding-connect')).toBeVisible();
   await expect(page.getByTestId('onboarding-connect-test')).toHaveCount(0);
   await expect(page.getByTestId('connection-method-chooser')).toBeVisible();
@@ -67,16 +74,16 @@ test('fresh install walks through onboarding into a working chat @smoke', async 
   await expect(page.getByTestId('onboarding-ai')).toBeVisible({ timeout: 20_000 });
   await page.getByTestId('onboarding-ai-continue').click();
   await expect(page.getByTestId('onboarding-project')).toBeVisible();
-  await expect(page.getByText('Step 5 of 8', { exact: true })).toBeVisible();
+  await expect(page.getByText('Step 6 of 9', { exact: true })).toBeVisible();
   await page.getByRole('button', { name: /^Select / }).first().click();
 
   await expect(page.getByTestId('onboarding-general')).toBeVisible();
-  await expect(page.getByText('Step 6 of 8', { exact: true })).toBeVisible();
+  await expect(page.getByText('Step 7 of 9', { exact: true })).toBeVisible();
   await page.getByTestId('onboarding-general-continue').click();
   await expect(page.getByTestId('onboarding-voice')).toBeVisible();
   await page.getByTestId('onboarding-voice-continue').click();
   await expect(page.getByTestId('onboarding-ready')).toBeVisible();
-  await expect(page.getByText('Step 8 of 8', { exact: true })).toBeVisible();
+  await expect(page.getByText('Step 9 of 9', { exact: true })).toBeVisible();
   await page.getByRole('button', { name: 'Back', exact: true }).click();
   await expect(page.getByTestId('onboarding-voice')).toBeVisible();
   await page.getByRole('button', { name: 'Back', exact: true }).click();
@@ -91,6 +98,7 @@ test('fresh install walks through onboarding into a working chat @smoke', async 
   await page.getByTestId('onboarding-ready-start').click();
 
   await waitForChat(page);
+  await expect.poll(async () => JSON.parse(await page.evaluate(() => localStorage.getItem('opencode-mobile.chat-preferences'))).diagnosticsEnabled).toBe(false);
 
   // Relaunch must go straight to the app.
   await page.reload({ waitUntil: 'domcontentloaded' });
@@ -105,6 +113,7 @@ test('every onboarding step can be skipped', async ({ page }) => {
   await page.getByTestId('onboarding-welcome-start').click();
   await expect(page.getByTestId('onboarding-permissions')).toBeVisible();
   await page.getByTestId('onboarding-permissions-skip').click();
+  await page.getByTestId('onboarding-privacy-skip').click();
 
   // Skip the connection step without contacting a server.
   await expect(page.getByTestId('onboarding-connect')).toBeVisible();
@@ -112,7 +121,7 @@ test('every onboarding step can be skipped', async ({ page }) => {
 
   // Server-dependent steps and settings are absent, including on Back.
   await expect(page.getByTestId('onboarding-general')).toBeVisible();
-  await expect(page.getByText('Step 4 of 6', { exact: true })).toBeVisible();
+  await expect(page.getByText('Step 5 of 7', { exact: true })).toBeVisible();
   await expect(page.getByTestId('onboarding-default-model')).toHaveCount(0);
   await expect(page.getByTestId('settings-prompt-delivery')).toHaveCount(0);
   await page.getByRole('button', { name: 'Back', exact: true }).click();
@@ -123,7 +132,7 @@ test('every onboarding step can be skipped', async ({ page }) => {
   await page.getByTestId('onboarding-voice-skip').click();
 
   await expect(page.getByTestId('onboarding-ready')).toBeVisible();
-  await expect(page.getByText('Step 6 of 6', { exact: true })).toBeVisible();
+  await expect(page.getByText('Step 7 of 7', { exact: true })).toBeVisible();
   await expect(page.getByTestId('onboarding-summary-server')).toContainText('Not connected');
   await expect(page.getByTestId('onboarding-summary-language')).toBeVisible();
   await expect(page.getByTestId('onboarding-summary-default-model')).toHaveCount(0);
@@ -143,6 +152,7 @@ test('a failed connection keeps entered values and allows retry', async ({ page 
   await page.getByTestId('onboarding-welcome-start').click();
   await expect(page.getByTestId('onboarding-permissions')).toBeVisible();
   await page.getByTestId('onboarding-permissions-skip').click();
+  await page.getByTestId('onboarding-privacy-skip').click();
 
   await openManual(page);
   const url = page.getByTestId('connection-profile-url-input');
@@ -206,12 +216,15 @@ test('settings categories separate everyday preferences and review setup without
   await sheet.getByRole('button', { name: 'Review setup', exact: true }).click();
 
   await expect(page.getByTestId('onboarding-welcome')).toBeVisible({ timeout: 15_000 });
-  await expect(page.getByText('Review setup · Step 1 of 8')).toBeVisible();
+  await expect(page.getByText('Review setup · Step 1 of 9')).toBeVisible();
   await page.getByTestId('onboarding-welcome-start').click();
   await expect(page.getByTestId('onboarding-permissions')).toBeVisible();
   await page.getByTestId('onboarding-permissions-continue').click();
+  await expect(page.getByTestId('onboarding-privacy')).toBeVisible();
+  await expect(page.getByText('Review setup · Step 3 of 9')).toBeVisible();
+  await page.getByTestId('onboarding-privacy-continue').click();
   await expect(page.getByTestId('onboarding-connect')).toBeVisible();
-  await expect(page.getByText('Review setup · Step 3 of 8')).toBeVisible();
+  await expect(page.getByText('Review setup · Step 4 of 9')).toBeVisible();
   await openManual(page);
   await expect(page.getByTestId('connection-profile-url-input')).toHaveValue(FAKE_SERVER_URL);
   await page.getByTestId('connection-profile-continue').click();
@@ -237,6 +250,7 @@ test('connection prevents duplicate submissions and disables Skip while validati
   await page.getByTestId('onboarding-welcome-start').click();
   await expect(page.getByTestId('onboarding-permissions')).toBeVisible();
   await page.getByTestId('onboarding-permissions-skip').click();
+  await page.getByTestId('onboarding-privacy-skip').click();
   await openManual(page);
   await page.getByTestId('connection-profile-url-input').fill(FAKE_SERVER_URL);
   let probes = 0;
@@ -263,12 +277,13 @@ async function enterAiStep(page, serverUrl = FAKE_SERVER_URL) {
   await page.goto('/', { waitUntil: 'domcontentloaded' });
   await page.getByTestId('onboarding-welcome-start').click();
   await page.getByTestId('onboarding-permissions-skip').click();
+  await page.getByTestId('onboarding-privacy-skip').click();
   await openManual(page);
   await page.getByTestId('connection-profile-url-input').fill(serverUrl);
   await page.getByTestId('connection-profile-continue').click();
   await page.getByTestId('connection-profile-save-confirm').click();
   await expect(page.getByTestId('onboarding-ai')).toBeVisible({ timeout: 20_000 });
-  await expect(page.getByText('Step 4 of 8', { exact: true })).toBeVisible();
+  await expect(page.getByText('Step 5 of 9', { exact: true })).toBeVisible();
 }
 
 async function enterGeneralStep(page) {
@@ -294,15 +309,11 @@ async function addOpenRouter(page) {
   await page.getByText('Auto', { exact: true }).click();
 }
 
-test('onboarding embeds provider setup and persists the reviewed preferences and remembered model', async ({ page }) => {
+test('onboarding embeds provider setup and persists the reviewed preferences', async ({ page }) => {
   await enterAiStep(page);
   await addOpenRouter(page);
   await enterGeneralStep(page);
   await selectPreference(page, 'settings-language', 'English');
-  await page.getByTestId('onboarding-default-model').click();
-  await page.getByPlaceholder('Default model').fill('openrouter');
-  await expect(page.getByRole('button', { name: 'GPT-4.1 mini · OpenAI', exact: true })).toHaveCount(0);
-  await page.getByRole('radio', { name: 'Auto · OpenRouter', exact: true }).click();
   await selectPreference(page, 'settings-prompt-delivery', 'Append');
   await page.getByTestId('onboarding-general-continue').click();
   await expect(page.getByTestId('onboarding-voice')).toBeVisible();
@@ -310,7 +321,7 @@ test('onboarding embeds provider setup and persists the reviewed preferences and
   await expect(page.getByTestId('onboarding-summary-providers')).toContainText('OpenRouter');
   await expect(page.getByTestId('onboarding-summary-models')).toContainText('Auto · OpenRouter');
   await expect(page.getByTestId('onboarding-summary-language')).toContainText('English');
-  await expect(page.getByTestId('onboarding-summary-default-model')).toContainText('Auto · OpenRouter');
+  await expect(page.getByTestId('onboarding-summary-default-model')).toHaveCount(0);
   await expect(page.getByTestId('onboarding-summary-delivery')).toContainText('Append');
   await page.getByRole('button', { name: 'Back', exact: true }).click();
   await expect(page.getByTestId('onboarding-voice')).toBeVisible();
@@ -319,21 +330,17 @@ test('onboarding embeds provider setup and persists the reviewed preferences and
   await expect(page.getByTestId('onboarding-voice')).toBeVisible();
   await page.getByTestId('onboarding-voice-skip').click();
   await page.getByTestId('onboarding-ready-start').click();
-  await expect(page.getByTestId('chat-model-picker-trigger')).toContainText('Auto');
-  await page.reload({ waitUntil: 'domcontentloaded' });
-  await expect(page.getByTestId('chat-model-picker-trigger')).toContainText('Auto');
+  await expect(page.getByTestId('chat-model-picker-trigger')).toBeVisible();
   await expect.poll(async () => JSON.parse(await page.evaluate(() => localStorage.getItem('opencode-mobile.chat-preferences')))).toMatchObject({
-    language: 'en', promptDelivery: 'queue', modelId: 'openrouter/openrouter/auto', providerId: 'openrouter',
+    language: 'en', promptDelivery: 'queue',
   });
-  await page.getByTestId('chat-model-picker-trigger').click();
-  await page.getByTestId('chat-model-picker').getByRole('button', { name: /^GPT-4\.1 mini / }).click();
-  await expect.poll(async () => JSON.parse(await page.evaluate(() => localStorage.getItem('opencode-mobile.chat-preferences'))).modelId).toBe('openai/openai/gpt-4.1-mini');
 });
 
 test('offline language choice applies immediately and survives interrupted onboarding', async ({ page }) => {
   await page.goto('/', { waitUntil: 'domcontentloaded' });
   await page.getByTestId('onboarding-welcome-start').click();
   await page.getByTestId('onboarding-permissions-skip').click();
+  await page.getByTestId('onboarding-privacy-skip').click();
   await page.getByTestId('onboarding-connect-skip').click();
   await selectPreference(page, 'settings-language', 'Español');
   await expect(page.getByText('Ajustes generales', { exact: true })).toBeVisible();
@@ -347,16 +354,16 @@ test('offline language choice applies immediately and survives interrupted onboa
   await expect(page.getByTestId('onboarding-summary-delivery')).toHaveCount(0);
 });
 
-test('v1 compatibility onboarding hides message delivery and retains the default model picker', async ({ page }) => {
+test('v1 compatibility onboarding hides message delivery and model selection', async ({ page }) => {
   await enterAiStep(page, fakeV1Origin());
   await page.getByTestId('onboarding-ai-skip').click();
   await page.getByTestId('onboarding-project-skip').click();
-  await expect(page.getByTestId('onboarding-default-model')).toBeEnabled();
+  await expect(page.getByTestId('onboarding-default-model')).toHaveCount(0);
   await expect(page.getByTestId('settings-prompt-delivery')).toHaveCount(0);
   await page.getByTestId('onboarding-general-continue').click();
   await expect(page.getByTestId('onboarding-voice')).toBeVisible();
   await page.getByTestId('onboarding-voice-continue').click();
-  await expect(page.getByTestId('onboarding-summary-default-model')).toBeVisible();
+  await expect(page.getByTestId('onboarding-summary-default-model')).toHaveCount(0);
   await expect(page.getByTestId('onboarding-summary-delivery')).toHaveCount(0);
 });
 
@@ -369,8 +376,7 @@ test('onboarding can continue when a connected server has no models', async ({ p
   await enterAiStep(page);
   await expect(page.getByTestId('onboarding-ai').getByText('No models found for your configured providers.')).toBeVisible();
   await enterGeneralStep(page);
-  await expect(page.getByTestId('onboarding-default-model')).toBeDisabled();
-  await expect(page.getByTestId('onboarding-general').getByText('No models found for your configured providers.')).toBeVisible();
+  await expect(page.getByTestId('onboarding-default-model')).toHaveCount(0);
   await page.getByTestId('onboarding-general-continue').click();
   await expect(page.getByTestId('onboarding-voice')).toBeVisible();
   await page.getByTestId('onboarding-voice-continue').click();
@@ -379,7 +385,7 @@ test('onboarding can continue when a connected server has no models', async ({ p
   await expect(page.getByRole('tab', { name: 'Chat' })).toBeVisible();
 });
 
-test('provider removal reconciles the remembered model before review', async ({ page }) => {
+test('provider removal clears onboarding provider selections before review', async ({ page }) => {
   let removed = false;
   // The fake retains environment-backed models after credential deletion;
   // model a credential-only provider disappearing from the server catalog.
@@ -396,21 +402,16 @@ test('provider removal reconciles the remembered model before review', async ({ 
   });
   await enterAiStep(page);
   await addOpenRouter(page);
-  await enterGeneralStep(page);
-  await selectPreference(page, 'onboarding-default-model', 'Auto · OpenRouter');
-  await page.getByRole('button', { name: 'Back', exact: true }).click();
-  await page.getByRole('button', { name: 'Back', exact: true }).click();
   await page.getByRole('button', { name: 'Remove OpenRouter credentials', exact: true }).click();
   await respondToConfirmation(page, true);
   await expect(page.getByRole('button', { name: 'Remove OpenRouter credentials', exact: true })).toHaveCount(0);
-  await enterGeneralStep(page);
-  await expect(page.getByTestId('onboarding-default-model')).not.toContainText('Auto');
-  await selectPreference(page, 'onboarding-default-model', 'GPT-4.1 mini · OpenAI');
+  await page.getByTestId('onboarding-ai-continue').click();
+  await page.getByTestId('onboarding-project-skip').click();
   await page.getByTestId('onboarding-general-continue').click();
   await expect(page.getByTestId('onboarding-voice')).toBeVisible();
   await page.getByTestId('onboarding-voice-continue').click();
   await expect(page.getByTestId('onboarding-summary-providers')).not.toContainText('OpenRouter');
-  await expect(page.getByTestId('onboarding-summary-default-model')).toContainText('GPT-4.1 mini · OpenAI');
+  await expect(page.getByTestId('onboarding-summary-default-model')).toHaveCount(0);
 });
 
 for (const appearance of [
@@ -429,14 +430,13 @@ for (const appearance of [
       expect(bounds.y).toBeGreaterThanOrEqual(0);
       expect(bounds.y + bounds.height).toBeLessThanOrEqual(appearance.viewport.height);
       await page.screenshot({ path: info.outputPath('general.png') });
-      await selectPreference(page, 'onboarding-default-model', 'GPT-4.1 mini · OpenAI');
       await footer.click();
       await expect(page.getByTestId('onboarding-voice')).toBeVisible();
       await expect(page.getByTestId('onboarding-voice-continue')).toBeInViewport();
       expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
       await page.screenshot({ path: info.outputPath('voice.png') });
       await page.getByTestId('onboarding-voice-continue').click();
-      await expect(page.getByTestId('onboarding-summary-default-model')).toContainText('GPT-4.1 mini · OpenAI');
+      await expect(page.getByTestId('onboarding-summary-default-model')).toHaveCount(0);
       await expect(page.getByTestId('onboarding-ready-start')).toBeInViewport();
       expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
       await page.screenshot({ path: info.outputPath('review.png') });
@@ -449,11 +449,12 @@ test('offline voice and response choices persist through Back, Skip, and reload'
   await page.goto('/', { waitUntil: 'domcontentloaded' });
   await page.getByTestId('onboarding-welcome-start').click();
   await page.getByTestId('onboarding-permissions-skip').click();
+  await page.getByTestId('onboarding-privacy-skip').click();
   await page.getByTestId('onboarding-connect-skip').click();
   await page.getByTestId('onboarding-general-continue').click();
   const voice = page.getByTestId('onboarding-voice');
   await expect(voice).toBeVisible();
-  await expect(page.getByText('Step 5 of 6', { exact: true })).toBeVisible();
+  await expect(page.getByText('Step 6 of 7', { exact: true })).toBeVisible();
   await voice.getByRole('switch', { name: 'Read replies aloud', exact: true }).click();
   await voice.getByRole('button', { name: 'Response scope. Brief', exact: true }).click();
   await page.getByRole('option', { name: 'Detailed', exact: true }).click();

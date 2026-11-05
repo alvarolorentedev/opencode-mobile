@@ -72,12 +72,7 @@
   "stepIndicator": "Étape {{step}} sur {{totalSteps}}",
   "general": {
     "title": "Paramètres généraux",
-    "subtitle": "Adaptez OpenCode Mobile à vos préférences.",
-    "defaultModel": "Modèle par défaut",
-    "remoteTelemetry": {
-      "title": "Partager la télémétrie anonyme",
-      "description": "Envoyez des données anonymisées de plantage et de performance pour améliorer l’application. Les prompts, le code, la sortie du terminal et les identifiants ne sont jamais envoyés. Modifiable plus tard dans les Réglages."
-    }
+    "subtitle": "Adaptez OpenCode Mobile à vos préférences."
   },
   "voice": {
     "title": "Voix et réponses",
@@ -88,5 +83,9 @@
     "autoPlay": "Lire les réponses à voix haute",
     "confirm": "Confirmer les commandes",
     "wakeRequired": "Phrase d’activation"
+  },
+  "privacy": {
+    "title": "Confidentialité",
+    "subtitle": "Choisissez ce qui reste sur cet appareil et ce qui peut être partagé."
   }
 }

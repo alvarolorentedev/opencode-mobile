@@ -72,12 +72,7 @@
   "stepIndicator": "ステップ {{step}} / {{totalSteps}}",
   "general": {
     "title": "一般設定",
-    "subtitle": "OpenCode Mobileを使いやすく設定しましょう。",
-    "defaultModel": "デフォルトモデル",
-    "remoteTelemetry": {
-      "title": "匿名テレメトリーを共有",
-      "description": "アプリ改善のため、匿名化したクラッシュとパフォーマンスのデータを送信します。プロンプト、コード、ターミナル出力、認証情報は送信しません。後で設定から変更できます。"
-    }
+    "subtitle": "OpenCode Mobileを使いやすく設定しましょう。"
   },
   "voice": {
     "title": "音声と応答",
@@ -88,5 +83,9 @@
     "autoPlay": "応答を自動で読み上げる",
     "confirm": "コマンドを確認",
     "wakeRequired": "ウェイクフレーズ"
+  },
+  "privacy": {
+    "title": "プライバシー",
+    "subtitle": "このデバイスに残す情報と共有される可能性がある情報を選択します。"
   }
 }

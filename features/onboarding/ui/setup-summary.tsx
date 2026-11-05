@@ -30,7 +30,6 @@ export function SetupSummary() {
     : `${t('settings:voice.mode.system')} · ${voiceLabel}`;
   const connected = connection.status === 'connected';
   const models = getVisibleModels(availableModels, configuredProviders, chatPreferences.enabledModelIds);
-  const selected = models.find((model) => model.id === chatPreferences.modelId);
   const language = LANGUAGE_OPTIONS.find((option) => option.value === chatPreferences.language)?.label ?? t('common:labels.systemDefault');
   const none = t('common:labels.none');
   const rows = [
@@ -41,9 +40,6 @@ export function SetupSummary() {
       { id: 'models', label: t('onboarding:ready.enabledModels'), value: models.map((model) => `${model.label} · ${model.providerLabel}`).join('\n') || none },
     ] : []),
     { id: 'language', label: t('settings:language.title'), value: language },
-    ...(connected ? [
-      { id: 'default-model', label: t('onboarding:general.defaultModel'), value: selected ? `${selected.label} · ${selected.providerLabel}` : t('common:labels.systemDefault') },
-    ] : []),
     ...(connected && serverCapabilities.promptDeliveryAvailable ? [
       { id: 'delivery', label: t('settings:providers.promptDelivery.label'), value: t(`settings:providers.promptDelivery.${chatPreferences.promptDelivery || 'steer'}.label`) },
     ] : []),
