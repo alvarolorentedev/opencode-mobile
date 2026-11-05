@@ -1,0 +1,4 @@
+- Mentions and slash commands are highlighted while you type in chat.
+- Projects can be archived on this device without touching your server.
+- The conversation-end button no longer sits under the system bars.
+- Fixed worktree rows on native where the remove button could be pushed off-screen.
