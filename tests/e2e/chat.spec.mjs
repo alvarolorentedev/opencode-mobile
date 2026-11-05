@@ -322,7 +322,7 @@ test('modal bottom sheets dismiss on a downward header swipe', async ({ page, re
 
 test('composer exposes agent selection without losing drafts', async ({ page, request }) => {
   await page.setViewportSize({ width: 393, height: 852 });
-  await resetScenario(request, 'happy-path');
+  await resetScenario(request, 'reasoning-variants');
   await openReadyChat(page);
   const prompt = page.getByTestId('chat-prompt-input');
   const agent = page.getByTestId('chat-agent-button');
@@ -345,6 +345,10 @@ test('composer exposes agent selection without losing drafts', async ({ page, re
   await expect(picker).toHaveCount(0);
   await expect(model).toHaveAccessibleName('GPT-4.1 mini · OpenAI');
   await expect(prompt).toHaveValue('Keep this draft');
+  await model.click();
+  await picker.getByTestId('chat-model-picker-search').fill('deepseek');
+  await picker.getByRole('button', { name: /DeepSeek V4\.1 Flash Free/ }).click();
+  await expect(model).toHaveAccessibleName(/DeepSeek V4\.1 Flash Free/);
   await agent.click();
   const agentPicker = page.getByTestId('chat-agent-picker');
   await expect(agentPicker).toBeVisible();
@@ -353,6 +357,22 @@ test('composer exposes agent selection without losing drafts', async ({ page, re
   await expect(agentPicker.getByText('Choose agent', { exact: true })).toBeVisible();
   await agentPicker.getByRole('radio', { name: 'Plan', exact: true }).click();
   await expect(agentPicker).toHaveCount(0);
+  await expect(agent).toHaveAccessibleName('Agent: Plan');
+  await expect(model).toHaveAccessibleName('GPT-4.1 mini · OpenAI');
+  await expect(prompt).toHaveValue('Keep this draft');
+  await model.click();
+  await picker.getByRole('button', { name: /^GPT-4\.1 mini / }).last().click();
+  await expect(model).toHaveAccessibleName('GPT-4.1 mini · OpenAI');
+  await agent.click();
+  await agentPicker.getByRole('radio', { name: 'Build', exact: true }).click();
+  await expect(agent).toHaveAccessibleName('Agent: Build');
+  await expect(model).toHaveAccessibleName(/DeepSeek V4\.1 Flash Free/);
+  await expect.poll(() => page.evaluate(() => JSON.parse(localStorage.getItem('opencode-mobile.chat-preferences')).agentModelSelections)).toMatchObject({
+    build: 'opencode/deepseek-v4.1-flash-free',
+    plan: 'openai/openai/gpt-4.1-mini',
+  });
+  await agent.click();
+  await agentPicker.getByRole('radio', { name: 'Plan', exact: true }).click();
   await expect(agent).toHaveAccessibleName('Agent: Plan');
   await expect(prompt).toHaveValue('Keep this draft');
   await expect(prompt).toHaveValue('Keep this draft');
@@ -365,37 +385,6 @@ test('composer exposes agent selection without losing drafts', async ({ page, re
   await goToTab(page, 'Projects');
   await goToTab(page, 'Chat');
   await expect(page.getByTestId('chat-model-picker')).toHaveCount(0);
-});
-
-test('model selection is remembered for each agent', async ({ page, request }) => {
-  await resetScenario(request, 'reasoning-variants');
-  await openReadyChat(page);
-  const model = page.getByTestId('chat-model-picker-trigger');
-  const agent = page.getByTestId('chat-agent-button');
-  const picker = page.getByTestId('chat-model-picker');
-
-  await model.click();
-  await picker.getByTestId('chat-model-picker-search').fill('deepseek');
-  await picker.getByRole('button', { name: /DeepSeek V4\.1 Flash Free/ }).click();
-  await expect(model).toHaveAccessibleName(/DeepSeek V4\.1 Flash Free/);
-
-  await agent.click();
-  await page.getByTestId('chat-agent-picker').getByRole('radio', { name: 'Plan', exact: true }).click();
-  await expect(agent).toHaveAccessibleName('Agent: Plan');
-  await expect(model).toHaveAccessibleName('GPT-4.1 mini · OpenAI');
-
-  await model.click();
-  await picker.getByRole('button', { name: /^GPT-4\.1 mini / }).last().click();
-  await expect(model).toHaveAccessibleName('GPT-4.1 mini · OpenAI');
-
-  await agent.click();
-  await page.getByTestId('chat-agent-picker').getByRole('radio', { name: 'Build', exact: true }).click();
-  await expect(agent).toHaveAccessibleName('Agent: Build');
-  await expect(model).toHaveAccessibleName(/DeepSeek V4\.1 Flash Free/);
-  await expect.poll(() => page.evaluate(() => JSON.parse(localStorage.getItem('opencode-mobile.chat-preferences')).agentModelSelections)).toMatchObject({
-    build: 'opencode/deepseek-v4.1-flash-free',
-    plan: 'openai/openai/gpt-4.1-mini',
-  });
 });
 
 test('model variants follow the server catalog, reach sessions, and persist per model', async ({ page, request }) => {
