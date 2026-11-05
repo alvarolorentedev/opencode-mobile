@@ -8,9 +8,10 @@ import { useTerminal } from '@/features/terminal/context';
 import TerminalDOM, { type TerminalDOMRef } from '@/features/terminal/ui/terminal-dom';
 import { pasteNeedsConfirmation } from '@/features/terminal/ui/terminal-keys';
 
-export function TerminalView({ visible, slim, palette, onCopied, onError }: {
+export function TerminalView({ visible, slim, palette, dismissKeyboard = false, onCopied, onError }: {
   visible: boolean; slim: boolean;
   palette: Palette;
+  dismissKeyboard?: boolean;
   onCopied?: () => void;
   onError: (message: string) => void;
 }) {
@@ -23,6 +24,8 @@ export function TerminalView({ visible, slim, palette, onCopied, onError }: {
   const sequence = useRef(0);
   const pending = useRef(new Map<number, { id: string; resolve: () => void; reject: (error: Error) => void; timer: ReturnType<typeof setTimeout> }>());
   useEffect(() => { runtime.current = terminalRuntime; }, [terminalRuntime]);
+  // The shared overlay hook only dismisses RN inputs; this DOM field owns its own webview keyboard.
+  useEffect(() => { if (dismissKeyboard) bridge.current?.blur(); }, [dismissKeyboard]);
 
   const cancelWrites = useCallback((id?: string) => {
     for (const [key, write] of pending.current) if (!id || write.id === id) {
@@ -62,6 +65,7 @@ export function TerminalView({ visible, slim, palette, onCopied, onError }: {
       if (!text) return;
       const paste = () => { if (runtime.current.instances.some((entry) => entry.id === id && entry.status === 'connected')) bridge.current?.paste(id, text); };
       if (!pasteNeedsConfirmation(text)) { paste(); return; }
+      bridge.current?.blur();
       confirmAction(t('terminal:console.pasteTitle'), t('terminal:console.pasteMessage'), t('terminal:accessory.paste'), t('common:actions.cancel'), paste);
     } catch (error) { onError(String(error)); }
   }, [confirmAction, onError, t]);

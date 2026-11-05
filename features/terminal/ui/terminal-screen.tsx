@@ -122,7 +122,7 @@ function TerminalContent() {
           </View></ScreenHeader>
 
         <View className={cn(stylesClasses.output)}>
-          <RetainedTerminals visible={visible} slim={slim} palette={palette} onCopied={() => setCopied(true)} onError={setError} />
+          <RetainedTerminals visible={visible} slim={slim} palette={palette} dismissKeyboard={terminalPickerVisible || creating} onCopied={() => setCopied(true)} onError={setError} />
         {connection.status !== 'connected' || !activeProject ? (
           <View className={cn(stylesClasses.emptyScreen)}>
             <View className={cn(stylesClasses.emptyPanel, "bg-surface")}><Text  variant="display">{connection.status !== 'connected' ? t('terminal:screen.connectTitle') : t('terminal:screen.chooseProject')}</Text><Text>{connection.status !== 'connected' ? connection.message : t('terminal:screen.selectProject')}</Text><Button onPress={() => {

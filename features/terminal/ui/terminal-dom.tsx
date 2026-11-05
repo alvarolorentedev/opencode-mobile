@@ -18,6 +18,7 @@ type JSONValue = Parameters<DOMImperativeFactory[string]>[number];
 export type TerminalDOMRef = {
   write: (id: JSONValue, text: JSONValue, acknowledgement: JSONValue) => void;
   paste: (id: JSONValue, text: JSONValue) => void;
+  blur: () => void;
 };
 type Props = {
   ref?: Ref<TerminalDOMRef>; dom?: DOMProps;
@@ -62,6 +63,10 @@ export default function TerminalDOM({ ref, instances, activeId, visible, slim, t
       const display = displays.current.get(id);
       if (!display || display.terminal.options.disableStdin) return;
       display.paste(text); display.terminal.focus();
+    },
+    blur() {
+      const display = active.current ? displays.current.get(active.current) : undefined;
+      display?.terminal.blur();
     },
   }), []);
 
