@@ -244,7 +244,7 @@ The completion version, preference schema and first-run migration are unchanged.
   Send-time classifier selection and tier resolution. Requires a real
   on-device or OpenCode classifier; it never falls back to heuristics.
 - `features/ai/services/model-routing-service.ts`
-  V2 OpenCode classifier probe/call (`POST /api/experimental/generate`) and
+  V2 OpenCode classifier probe/call (`POST /api/experimental/generate/text`) and
   result parsing.
 - `features/ai/model/auto-model/`
   Pinned GGUF catalog, verified download/install state, llama.rn runtime, and

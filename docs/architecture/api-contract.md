@@ -121,7 +121,7 @@ and its limits.
 Auto model routing can use the V2 experimental classifier endpoint:
 
 ```text
-POST /api/experimental/generate
+POST /api/experimental/generate/text
 { prompt, model: { id, providerID, variant? } }
 → { data: { text } }
 ```

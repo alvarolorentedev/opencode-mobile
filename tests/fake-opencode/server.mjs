@@ -530,7 +530,7 @@ const server = http.createServer(async (req, res) => {
       return;
     }
 
-    if (req.method === 'POST' && pathname === '/api/experimental/generate') {
+    if (req.method === 'POST' && pathname === '/api/experimental/generate/text') {
       const body = await readJson(req);
       const message = body?.prompt?.match(/"""\n([\s\S]*?)\n"""/)?.[1] || body?.prompt || '';
       const text = /refactor|architecture|migrate|complex/i.test(message)

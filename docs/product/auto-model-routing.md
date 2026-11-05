@@ -23,7 +23,7 @@ Two classifiers are supported. Neither one guesses a tier.
 
 ### OpenCode
 
-- Request: `POST /api/experimental/generate` with the classifier prompt and a
+- Request: `POST /api/experimental/generate/text` with the classifier prompt and a
   visible classifier model.
 - V2 only. The endpoint is experimental, so it is probed before the option is
   enabled.

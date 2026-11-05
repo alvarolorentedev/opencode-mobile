@@ -334,6 +334,11 @@ try {
 
   const v2Info = await v2request('/api/info');
   assert(v2Info.version === '2.0.0-fake', 'V2 server info missing');
+  const classified = await v2request('/api/experimental/generate/text', json('POST', {
+    prompt: 'What is 2 + 2?',
+    model: { id: 'openai/gpt-4.1-nano', providerID: 'openai' },
+  }));
+  assert(classified.data.text === 'simple', 'Classifier text endpoint must return a tier');
   const code = await v2request('/__control/pairing', json('POST', { password: 'local-password' }));
   assert((await fetch(`${v2Origin}/api/info`)).status === 401, 'Protected V2 info must require credentials');
   const token = await v2request(`/auth/connect/${code.code}`, { headers: { Accept: 'application/json' } });
