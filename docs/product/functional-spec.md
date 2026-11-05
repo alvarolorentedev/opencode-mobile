@@ -236,6 +236,7 @@ The Projects tab provides source inspection and text editing:
 
 - Files stays the only Projects surface; project and worktree selection use the Projects header, while Chat shows the same workspace as non-interactive context
 - search file paths by query
+- Android back (button and predictive-back gesture) walks up the current folder tree first; at the project root it performs normal navigation. Active search is dismissed before folder navigation
 - open returned files in a focused full-screen viewer/editor
 - preview raster images, audio, and video from OpenCode 2 file bytes; show a download card for PDFs, archives, installers, and other binaries
 - download any readable project file from its preview; web uses a browser download, native uses the OS save/share sheet

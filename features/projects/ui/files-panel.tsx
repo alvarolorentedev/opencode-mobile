@@ -36,6 +36,7 @@ export function FilesPanel({ statuses, browser, projectLabel, onOpen, header, co
   const palette = usePalette();
   const [query, setQuery] = useState(browser.query || '');
   const { initialized, openDirectory, actions } = browser;
+  useEffect(() => { if (!browser.query) setQuery(''); }, [browser.query]); // eslint-disable-line react-hooks/set-state-in-effect -- clear the local input when back dismisses project search.
   const [selection, setSelection] = useState<{ entry: ProjectFileEntry; mode: 'actions' | 'rename' }>();
   const probe = actions?.probe;
   useEffect(() => { if (probe) void probe(); }, [probe]);

@@ -137,7 +137,8 @@ screen-reader mode is enabled. Native screen-reader/input validation remains req
 - `features/projects/ui/files-panel.tsx` renders sorted folders/files, breadcrumbs,
   explicit project-wide search scope, changed files, loading/empty/error states,
   and retry actions. Only the unsubmitted search input is local; listing/search
-  state and actions come from the provider's `browser` member.
+  state and actions come from the provider's `browser` member. Android back walks
+  up the folder tree before leaving the tab.
 - `features/projects/ui/file-preview.tsx` renders the full-screen text preview,
   local edit draft, save feedback and discard confirmation. It calls the existing
   provider save action; unsupported editing is capability-gated.

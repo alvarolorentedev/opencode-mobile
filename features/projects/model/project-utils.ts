@@ -14,6 +14,13 @@ export function getProjectLabel(path: string) {
   return segments.at(-1) || normalized || 'Project';
 }
 
+// Browser paths are relative to the project root; an empty result means root.
+export function projectParentPath(path: string) {
+  const normalized = path.replace(/\\/g, '/').replace(/^\/+|\/+$/g, '');
+  const index = normalized.lastIndexOf('/');
+  return index < 0 ? '' : normalized.slice(0, index);
+}
+
 // The picker renders the server catalog only. Labels come from the server.
 export function buildOpencodeProjects(serverProjects: Project[]): OpencodeProject[] {
   const projects: OpencodeProject[] = [];

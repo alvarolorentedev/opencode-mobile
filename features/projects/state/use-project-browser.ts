@@ -2,6 +2,7 @@ import type { ScopedOpencodeClient } from '@/shared/protocol/opencode/client';
 import { projectPath, type ProjectFileEntry } from '@/shared/protocol/opencode/project';
 import { useQueryActivity, useQueryIdentity } from '@/shared/server-data/client';
 import { directoryOptions, searchOptions } from '@/features/projects/services/queries/files';
+import { projectParentPath } from '@/features/projects/model/project-utils';
 import { useQueries, useQueryClient } from '@tanstack/react-query';
 import { useCallback, useMemo, useState } from 'react';
 
@@ -38,8 +39,17 @@ export function useProjectBrowser({ client, isCurrentClient }: { client: ScopedO
     if (query) await cache.fetchQuery(searchOptions(identity, client, query));
     else await cache.fetchQuery(directoryOptions(identity, client, path));
   }, [active, cache, client, current, identity, isCurrentClient, path, query]);
+  // Android back walks the folder tree before leaving the tab. Search is a
+  // project-wide view rather than a folder, so dismiss it first.
+  const goBack = useCallback(() => {
+    if (!current || !active || !isCurrentClient(client)) return false;
+    if (query) { void search(''); return true; }
+    if (!path) return false;
+    void openDirectory(projectParentPath(path));
+    return true;
+  }, [active, client, current, isCurrentClient, openDirectory, path, query, search]);
   return useMemo(() => ({ path, query, initialized: Boolean(current), entries: directory?.data ?? EMPTY, results: searchResult?.data ?? EMPTY,
     loading: !query && Boolean(directory?.isFetching), searching: Boolean(query && searchResult?.isFetching),
-    error: (query ? searchResult?.error : directory?.error)?.message, openDirectory, search, refresh,
-  }), [path, query, current, directory?.data, directory?.isFetching, directory?.error, searchResult?.data, searchResult?.isFetching, searchResult?.error, openDirectory, search, refresh]);
+    error: (query ? searchResult?.error : directory?.error)?.message, openDirectory, search, refresh, goBack,
+  }), [path, query, current, directory?.data, directory?.isFetching, directory?.error, searchResult?.data, searchResult?.isFetching, searchResult?.error, openDirectory, search, refresh, goBack]);
 }

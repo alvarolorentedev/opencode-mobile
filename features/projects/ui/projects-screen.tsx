@@ -5,14 +5,14 @@ import { ScreenHeader } from '@/shared/ui/screen-header';
 import { Text } from '@/shared/ui/text';
 import { Spinner } from '@/shared/ui/spinner';
 import { Feedback } from '@/shared/ui/feedback';
-import { useState } from 'react';
+import { useCallback, useState } from 'react';
+import { useFocusEffect } from 'expo-router';
 import { useTranslation } from 'react-i18next';
-import { ScrollView, StyleSheet, View } from 'react-native';
+import { BackHandler, Platform, ScrollView, StyleSheet, View } from 'react-native';
 
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { WorkspaceBreadcrumb } from '@/features/projects/ui/workspace-breadcrumb';
-import { FilesPanel } from '@/features/projects/ui/files-panel';
+import { WorkspaceBreadcrumb } from '@/features/projects/ui/workspace-breadcrumb';import { FilesPanel } from '@/features/projects/ui/files-panel';
 import { FilePreview } from '@/features/projects/ui/file-preview';
 import { usePalette } from '@/shared/ui/theme/use-palette';
 import { useRetainedState } from '@/runtime/workspace';
@@ -36,6 +36,12 @@ export default function ProjectsScreen() {
   const scope = JSON.stringify([getConnectionUiScope(settings), activeProject?.path]);
   const [fileVisible, setFileVisible] = useRetainedState(`file-visible:${scope}`, false);
   const ready = connection.status === 'connected' && Boolean(activeProject);
+  const goBack = browser.goBack;
+  useFocusEffect(useCallback(() => {
+    if (Platform.OS !== 'android' || fileVisible) return undefined;
+    const subscription = BackHandler.addEventListener('hardwareBackPress', goBack);
+    return () => subscription.remove();
+  }, [fileVisible, goBack]));
   async function refresh() {
     if (refreshing) return;
     setRefreshing(true);
