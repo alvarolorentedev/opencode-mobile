@@ -28,8 +28,7 @@ async function capabilitiesHarness() {
   return { runtime, write, get preferences() { return preferences; }, set preferences(value) { preferences = value; }, client };
 }
 
-describe('agent preference reconciliation', () => {
-  it('waits for hydration, repairs an invalid selection and preserves valid user choices without loops', async () => {
+describe('agent preference reconciliation', () => {  it('waits for hydration, repairs an invalid selection and preserves valid user choices without loops', async () => {
     const h = await capabilitiesHarness();
     expect(h.write).not.toHaveBeenCalled();
     h.runtime.update({ isHydrated: true });
@@ -66,6 +65,43 @@ describe('agent preference reconciliation', () => {
       capabilities: { agents: [plan], models: [], providers: [], connected: [] } });
     expect(h.preferences.mode).toBe('plan');
     h.runtime.unmount();
+  });
+
+  it('remembers the latest model separately for each agent', async () => {
+    const runtime = hookRuntime();
+    const { useCapabilitiesActions } = await loadTs('features/ai/state/use-capabilities-actions.ts', {
+      react: runtime.react,
+      '@/features/ai/services/capabilities-service': {},
+      '@/features/ai/model/auto-model/models': { getLocalAutoModelStatus: () => 'unavailable' },
+      '@/features/ai/model/opencode-auto-model': { getClassifierModelId: () => undefined },
+      '@/features/ai/services/model-routing-service': {},
+    });
+    const provider = { id: 'openai', label: 'OpenAI', configured: true };
+    const modelA = { id: 'openai/a', providerID: 'openai', modelID: 'a', label: 'A', providerLabel: 'OpenAI', variants: [], supportsReasoning: false, supportsAttachments: true, inputModalities: ['text'], supportsToolCalls: true };
+    const modelB = { ...modelA, id: 'openai/b', modelID: 'b', label: 'B' };
+    let preferences: any = { mode: 'build', enabledModelIds: [], providerModelSelections: {}, agentModelSelections: {}, modelVariantSelections: {}, recentModelIds: [], autoModel: { enabled: false } };
+    const write = vi.fn((update: (value: any) => any) => { preferences = update(preferences); });
+    const client = { __opencode: { contract: 'v2' } };
+    runtime.mount(useCapabilitiesActions, {
+      client, isCurrentClient: (candidate: unknown) => candidate === client, isHydrated: true,
+      activeProjectPath: '/a', availableProviders: [provider], availableModels: [modelA, modelB], chatPreferences: preferences,
+      capabilities: { agents: [build, plan], models: [modelA, modelB], providers: [provider], connected: ['openai'], config: { default_agent: 'build' } },
+      setChatPreferences: write,
+    });
+
+    runtime.value.updateChatPreferences({ providerId: 'openai', modelId: modelA.id });
+    expect(preferences.modelId).toBe(modelA.id);
+    expect(preferences.agentModelSelections).toEqual({ build: modelA.id });
+
+    runtime.value.updateChatPreferences({ mode: 'plan' });
+    expect(preferences.modelId).toBeUndefined();
+
+    runtime.value.updateChatPreferences({ providerId: 'openai', modelId: modelB.id });
+    expect(preferences.agentModelSelections).toEqual({ build: modelA.id, plan: modelB.id });
+
+    runtime.value.updateChatPreferences({ mode: 'build' });
+    expect(preferences.modelId).toBe(modelA.id);
+    runtime.unmount();
   });
 });
 

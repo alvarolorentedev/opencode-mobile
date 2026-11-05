@@ -23,7 +23,7 @@ import type { WorkspaceSnapshot } from '@/runtime/workspace/workspace-types';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 
-export const SERVER_PREFERENCE_KEYS = ['providerId', 'modelId', 'enabledModelIds', 'providerModelSelections', 'modelVariantSelections', 'recentModelIds', 'mode', 'autoApprove', 'autoModel'] as const;
+export const SERVER_PREFERENCE_KEYS = ['providerId', 'modelId', 'enabledModelIds', 'providerModelSelections', 'agentModelSelections', 'modelVariantSelections', 'recentModelIds', 'mode', 'autoApprove', 'autoModel'] as const;
 export function serverPreferences(value: Partial<ChatPreferences>) {
   return Object.fromEntries(SERVER_PREFERENCE_KEYS.filter((key) => key in value).map((key) => [key, value[key]])) as Partial<ChatPreferences>;
 }

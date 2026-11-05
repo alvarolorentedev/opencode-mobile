@@ -54,6 +54,9 @@ export type ChatPreferences = {
   modelId?: string;
   enabledModelIds: string[];
   providerModelSelections: Record<string, string>;
+  // Latest model chosen for each agent. Switching agents restores this entry;
+  // an agent without one lets the server/agent default apply.
+  agentModelSelections: Record<string, string>;
   modelVariantSelections: Record<string, string | null>;
   recentModelIds: string[];
   // Per-connection model routing preferences. Model IDs are validated against
@@ -111,6 +114,7 @@ export const defaultChatPreferences: ChatPreferences = {
   slimInterface: false,
   enabledModelIds: [],
   providerModelSelections: {},
+  agentModelSelections: {},
   modelVariantSelections: {},
   recentModelIds: [],
   autoModel: defaultAutoModelPreferences,

@@ -15,7 +15,7 @@ import { stripServerUrlCredentials } from '@/shared/contracts/server-url';
 // are stored per profile in SecureStore and are never part of this model.
 type ProfileModelPreferences = Pick<
   ChatPreferences,
-  'providerId' | 'modelId' | 'enabledModelIds' | 'providerModelSelections' | 'modelVariantSelections'
+  'providerId' | 'modelId' | 'enabledModelIds' | 'providerModelSelections' | 'agentModelSelections' | 'modelVariantSelections'
   | 'recentModelIds' | 'mode' | 'autoApprove' | 'autoModel'
 >;
 
@@ -39,6 +39,7 @@ export function pickModelPreferences(preferences: ChatPreferences): ProfileModel
     modelId: preferences.modelId,
     enabledModelIds: [...preferences.enabledModelIds],
     providerModelSelections: { ...preferences.providerModelSelections },
+    agentModelSelections: { ...preferences.agentModelSelections },
     modelVariantSelections: { ...preferences.modelVariantSelections },
     recentModelIds: [...preferences.recentModelIds],
     mode: preferences.mode,
@@ -55,6 +56,7 @@ const ProfileModelPreferencesSchema = z.object({
   modelId: z.string().optional(),
   enabledModelIds: z.array(z.string()).nullish().transform((value) => value ?? undefined),
   providerModelSelections: z.record(z.string(), z.string()).nullish().transform((value) => value ?? undefined),
+  agentModelSelections: z.record(z.string(), z.string()).nullish().transform((value) => value ?? undefined),
   modelVariantSelections: z.record(z.string(), z.union([z.string(), z.null()])).nullish().transform((value) => value ?? undefined),
   recentModelIds: z.array(z.string()).nullish().transform((value) => value ?? undefined),
   mode: z.string().optional(),

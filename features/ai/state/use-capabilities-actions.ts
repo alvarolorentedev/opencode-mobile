@@ -140,21 +140,31 @@ export function useCapabilitiesActions({
       const configuredModels = result.models.filter((model) => configuredProviderIds.has(model.providerID));
       const enabledModelIds = getEnabledModelIds(configuredModels, current.enabledModelIds);
       const enabledModels = configuredModels.filter((model) => enabledModelIds.includes(model.id));
-      const nextProviderId = getInitialProviderId(configuredModels, result.config, current.providerId, current.modelId);
+      const mode = getInitialMode(result.agents, result.config, current.mode) ?? current.mode;
+      // Existing installs stored one global model. Seed it to the current agent
+      // once so the upgrade keeps the same selection.
+      const storedAgentSelections = current.agentModelSelections ?? {};
+      const agentModelSelections = Object.keys(storedAgentSelections).length === 0 && current.modelId && mode
+        ? { [mode]: current.modelId }
+        : storedAgentSelections;
+      const preferredModelId = agentModelSelections[mode];
+      const preferredProviderId = preferredModelId?.split('/')[0];
+      const nextProviderId = getInitialProviderId(configuredModels, result.config, preferredProviderId, preferredModelId);
       const safeProviderId = nextProviderId && enabledModels.some((model) => model.providerID === nextProviderId)
         ? nextProviderId
-        : getInitialProviderId(enabledModels, result.config, current.providerId, current.modelId);
+        : getInitialProviderId(enabledModels, result.config, preferredProviderId, preferredModelId);
 
       return {
         ...current,
-        mode: getInitialMode(result.agents, result.config, current.mode) ?? current.mode,
+        mode,
         providerId: safeProviderId,
         modelId: getModelIdForProvider(
           enabledModels,
           safeProviderId,
-          getInitialModelId(enabledModels, result.config, current.modelId),
+          getInitialModelId(enabledModels, result.config, preferredModelId),
           safeProviderId ? current.providerModelSelections[safeProviderId] : undefined,
         ),
+        agentModelSelections,
         enabledModelIds,
         autoApprove: client.__opencode.contract === 'v2' ? current.autoApprove : false,
       };
@@ -264,11 +274,15 @@ export function useCapabilitiesActions({
       const configuredModels = availableModels.filter((model) => configuredProviderIds.has(model.providerID));
       const enabledModelIds = getEnabledModelIds(configuredModels, patch.enabledModelIds ?? current.enabledModelIds);
       const enabledModels = configuredModels.filter((model) => enabledModelIds.includes(model.id));
-      const nextProviderId = patch.providerId ?? current.providerId;
-      const safeProviderId = nextProviderId && enabledModels.some((model) => model.providerID === nextProviderId)
-        ? nextProviderId
-        : getInitialProviderId(enabledModels, undefined, current.providerId, patch.modelId ?? current.modelId);
-      const requestedModelId = patch.modelId ?? current.modelId;
+      const nextMode = patch.mode ?? current.mode;
+      const switchingMode = patch.mode !== undefined && patch.mode !== current.mode;
+      const agentModelSelections = current.agentModelSelections ?? {};
+      const selectedForAgent = agentModelSelections[nextMode];
+      const requestedModelId = patch.modelId ?? (switchingMode ? selectedForAgent : current.modelId);
+      const requestedProviderId = patch.providerId ?? (switchingMode ? selectedForAgent?.split('/')[0] : current.providerId);
+      const safeProviderId = requestedProviderId && enabledModels.some((model) => model.providerID === requestedProviderId)
+        ? requestedProviderId
+        : getInitialProviderId(enabledModels, undefined, requestedProviderId, requestedModelId);
       const nextProviderModelSelections = patch.modelId
         ? {
             ...current.providerModelSelections,
@@ -281,6 +295,9 @@ export function useCapabilitiesActions({
         requestedModelId,
         safeProviderId ? nextProviderModelSelections[safeProviderId] : undefined,
       );
+      const nextAgentModelSelections = patch.modelId && nextMode
+        ? { ...agentModelSelections, [nextMode]: patch.modelId }
+        : agentModelSelections;
 
       return {
         ...current,
@@ -291,6 +308,7 @@ export function useCapabilitiesActions({
           : current.modelVariantSelections,
         providerId: safeProviderId,
         modelId: nextModelId,
+        agentModelSelections: nextAgentModelSelections,
         enabledModelIds,
         recentModelIds: recordRecentModelId(current.recentModelIds, patch.modelId),
         providerModelSelections:

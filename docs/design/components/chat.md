@@ -131,6 +131,7 @@ declared once, at the leaves.
   built-in fallbacks. Loading/empty catalogs show feedback without a checked row;
   draft, keyboard, and Back behavior stay local to the composer
 - open the model picker from the selected model/reasoning summary, with a reasoning slider above model search
+- remember the latest explicit model per agent; switching agents restores that agent's model, and an unconfigured agent sends no model override so the server/agent default applies
 - when a classifier is available, the picker exposes the Auto-routing switch;
   the trigger reads `Auto-routing` while it is enabled, and explicit model
   selection turns it off

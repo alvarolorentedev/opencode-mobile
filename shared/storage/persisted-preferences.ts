@@ -71,6 +71,7 @@ const ChatPreferencesSchema = z.object({
   enabledModelIds: z.array(z.string()).optional().catch(undefined),
   recentModelIds: z.array(z.string()).optional().catch(undefined),
   providerModelSelections: z.record(z.string(), z.string()).optional().catch(undefined),
+  agentModelSelections: z.record(z.string(), z.string()).optional().catch(undefined),
   modelVariantSelections: z.record(z.string(), z.union([z.string(), z.null()])).optional().catch(undefined),
   autoModel: z.unknown().transform((value) => (
     value === undefined ? undefined : normalizeAutoModelPreferences(value)

@@ -221,10 +221,11 @@ Current fields:
 - `modelId`
 - `enabledModelIds`
 - `providerModelSelections`
+- `agentModelSelections` (latest explicit model per agent; switching agents restores it)
 - `modelVariantSelections` (server variant ID per model; `null` means the synthetic Default choice)
 - `recentModelIds`
 - `autoModel` (enabled, classifier mode, classifier model, per-tier `auto` or
-  model ID, and long-chat cache protection)
+  model ID, optional per-tier thinking level, and long-chat cache protection)
 - `reasoning`
 - `autoApprove`
 - `autoPlayAssistantReplies`
@@ -254,11 +255,13 @@ Current fields:
 
 The TTS engine, pack, and speaker are device-local and also excluded from `serverPreferences`. Downloaded voice models live under `opencode-tts/<packId>/` in the document directory and are not represented in preferences; Settings derives their status from the filesystem. Removing a pack deletes that directory, releases the native TTS model, and switches to the system engine when it was active. Temporary synthesis WAVs live in the cache directory and are deleted after playback, on cancel, and on the next Settings visit.
 
-These values combine application behavior settings and output-style preferences that are sent to the model as prompt instructions. `modelVariantSelections` is separate: it selects a server-supported variant for the matching model, is checked against the current model catalog, and falls back to Default when unavailable. If there is no saved entry, a valid variant already set on the active session is retained when it uses the selected model.
+These values combine application behavior settings and output-style preferences that are sent to the model as prompt instructions. `modelVariantSelections` is separate: it selects a server-supported variant for the matching model, is checked against the current model catalog, and falls back to Default when unavailable. If there is no saved entry, a valid variant already set on the active session is retained when it uses the selected model. `agentModelSelections` stores each agent's latest explicit model; a missing entry sends no model override so the server/agent default applies. See [ADR 0037](../adr/0037-per-agent-model-memory.md).
 
 `autoModel` is server-scoped with the rest of the model selections. Its tier
-values are `auto` or a model ID; unavailable IDs are retained and treated as
-unavailable at send time rather than erased during a slow capability refresh.
+values are `auto` or a model ID; `tierVariants` adds an optional thinking level
+per tier, and an unsupported value falls back without blocking routing.
+Unavailable IDs are retained and treated as unavailable at send time rather than
+erased during a slow capability refresh.
 On-device routing requires the pinned GGUF pack; OpenCode routing requires a
 successful `generate.text` probe. Neither mode falls back to a heuristic
 classifier. Availability is derived at send time: an empty or slow catalog, an

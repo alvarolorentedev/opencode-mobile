@@ -88,6 +88,7 @@ coverage, and documentation links.
 | [0034](0034-device-local-project-archive.md) | Device-local project archive marker | Accepted |
 | [0035](0035-live-token-highlighting-in-the-composer.md) | Live token highlighting in the composer | Accepted |
 | [0036](0036-flexible-first-with-play-urgency.md) | Flexible-first store updates with a Play urgency override | Accepted |
+| [0037](0037-per-agent-model-memory.md) | Per-agent model memory and explicit auto-model thinking levels | Accepted |
 
 ## Template
 

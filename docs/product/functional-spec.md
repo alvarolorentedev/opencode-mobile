@@ -407,6 +407,15 @@ Behavior:
 - variant choices persist per model, stale variants fall back to `Default`, and a matching active session's valid server variant is used when that model has no saved choice
 - on OpenCode 1, the existing Low/Default/High reasoning control continues to affect the generated system prompt; OpenCode 2 reasoning selection is a server model variant, not a prompt hint
 
+## Model Memory
+
+The composer remembers the latest model per agent. Switching Build, Plan or a
+custom agent restores that agent's last explicit model; an agent without one
+sends no model override, so the server/agent default applies. Onboarding no
+longer asks for a global default model. Existing single-model preferences are
+migrated to the agent active at upgrade time. See
+[ADR 0037](../adr/0037-per-agent-model-memory.md).
+
 ## Session Title Summarization
 
 If a session has no title after a prompt is sent, the app asks the server to summarize the session title using the selected model.
