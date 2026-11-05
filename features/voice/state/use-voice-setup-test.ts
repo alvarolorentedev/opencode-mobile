@@ -1,6 +1,7 @@
 import { createContext, useContext, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { AppState } from 'react-native';
 
+import { isVoicePermissionPromptActive } from '@/shared/platform/voice/permissions';
 import { useLocalWakeWord } from '@/shared/platform/voice/use-local-wake-word';
 import type { ChatPreferences } from '@/shared/preferences/opencode-preferences';
 
@@ -93,7 +94,7 @@ export function useVoiceSetupTest(preferences: ChatPreferences, conversationActi
   }, [conversationActive, stop]);
   useEffect(() => {
     const subscription = AppState.addEventListener('change', (state) => {
-      if (state !== 'active') void stop();
+      if (state !== 'active' && !isVoicePermissionPromptActive()) void stop();
     });
     return () => { subscription.remove(); active.current = false; generation.current += 1; if (owned.current) { owned.current = false; stopping.current = stopRef.current(); } };
   }, [stop]);

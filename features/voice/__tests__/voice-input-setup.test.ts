@@ -26,6 +26,7 @@ async function setup({ ready = false, profile = false, initialStep = 1 } = {}) {
     ...Object.fromEntries(['intro', 'download', 'profile', 'test'].map((name) => [`@/assets/images/voice-input-${name}.png`, name])),
     "@/shared/platform/voice/local-wake-word/model-constants": { LOCAL_COMMAND_MODELS: models, LOCAL_VOICE_BASE_DOWNLOAD_BYTES: 45_000_000 },
     "@/shared/platform/voice/local-wake-word/types": { LOCAL_WAKE_PHRASES: { 'hey-code': { id: 'hey-code', label: 'Hey code' } } },
+    "@/shared/platform/voice/permissions": { isVoicePermissionPromptActive: () => false },
     "@/shared/ui/settings/settings-panel": { SettingsDisclosure: 'Disclosure', SettingTarget: 'Target' },
     "./sections/setting-rows": { Button: 'Button' },
     "@/shared/ui/settings/setting-rows": { SettingSelectField: 'Select', SettingSwitchRow: 'Switch' },

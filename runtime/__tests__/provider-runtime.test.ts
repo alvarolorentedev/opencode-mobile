@@ -438,6 +438,7 @@ const conversationImports = {
     'react-i18next': { useTranslation: () => ({ t: (key: string) => key }) },
     'react-native': { AppState: { addEventListener: (_event: any, callback: any) => { onConversationAppStateChange = callback; return { remove() {} }; } } },
     '@/shared/platform/voice/speech-config': speechConfig,
+    '@/shared/platform/voice/permissions': { isVoicePermissionPromptActive: () => false },
     '@/shared/platform/voice/confirmation': await loadTs('shared/platform/voice/confirmation.ts', {}, voiceRuntime.globals),
     '@/shared/platform/voice/local-wake-word/types': await loadTs('shared/platform/voice/local-wake-word/types.ts', {}, voiceRuntime.globals),
     '@/shared/platform/voice/wake-phrase': await loadTs('shared/platform/voice/wake-phrase.ts', {}, voiceRuntime.globals),

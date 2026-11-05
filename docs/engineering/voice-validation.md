@@ -18,8 +18,9 @@ The tag release runs the full browser suite and native release verification.
 Relevant Vitest suites:
 
 - `confirmation.test.ts`: localized strict grammar, ambiguity, readback policy.
+- `permissions.test.ts`: read-before-request, blocked-permission handling, and the Android permission-prompt window.
 - `speech-input.test.ts`: start watchdog, early empty end, missing teardown callback, Android compatibility and
-  Google-recognizer recovery, and the retryable total-failure path.
+  Google-recognizer recovery, the retryable total-failure path, and permission-prompt background tolerance.
 - `voice-enrollment.test.ts`: first PCM frame, startup rejection, missing PCM, and cancellation.
 - `recognition-service.test.ts`: recognizer package availability and recovery order.
 - `conversation-confirmation.test.ts`: TTS/echo guard, confirm/retry/edit/cancel,
@@ -99,6 +100,14 @@ Bluetooth and speakerphone routes.
 - [ ] On the Samsung S21 Ultra and Asus Zenfone 10 (Android 15), try dictation,
       System conversation with on-device preference on and off, and voice
       enrollment. Repeat on Pixel 9a as a control.
+- [ ] With RECORD_AUDIO already granted, starting dictation, conversation,
+      enrollment or the voice check must not open Android's permission
+      controller. Logcat must show no `REQUEST_PERMISSIONS`
+      (`GrantPermissionsActivity`) from the app, and the recognizer start must
+      appear.
+- [ ] A first-time permission grant returns to the app before capture starts;
+      the prompt-induced background state must not cancel the overlay,
+      enrollment or voice check.
 - [ ] An Android recognizer that ends unexpectedly within one second of readiness
       before speech or a nonempty result gets the bounded compatibility retries.
       Normal silence and deliberate stops still end normally.

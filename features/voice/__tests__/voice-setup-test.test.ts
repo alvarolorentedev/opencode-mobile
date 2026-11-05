@@ -10,6 +10,7 @@ async function setup(active = false, started = Promise.resolve(true), stopped = 
   const { useVoiceSetupTest } = await loadTs('features/voice/state/use-voice-setup-test.ts', {
     react: { ...runtime.react, createContext: () => ({}), useContext: vi.fn() },
     'react-native': { AppState: { currentState: 'active', addEventListener: (_event: string, fn: typeof background) => { background = fn; return { remove: vi.fn() }; } } },
+    "@/shared/platform/voice/permissions": { isVoicePermissionPromptActive: () => false },
     "@/shared/platform/voice/use-local-wake-word": { useLocalWakeWord: (options: any) => { callbacks = options; return { start, stop }; } }
   }, runtime.globals);
   runtime.mount(({ busy }: { busy: boolean }) => useVoiceSetupTest({}, busy), { busy: active });

@@ -21,7 +21,9 @@ async function captureHarness() {
         onBuffer = options.onBuffer;
         return { stream, isStreaming: true };
       },
-      requestRecordingPermissionsAsync: async () => ({ granted: true }),
+    },
+    '@/shared/platform/voice/permissions': {
+      ensureLocalVoicePermissionAsync: async () => ({ granted: true }),
     },
     '@/shared/platform/voice/local-wake-word/pcm': pcm,
     '@/shared/platform/voice/local-wake-word/similarity': similarity,

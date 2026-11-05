@@ -12,7 +12,8 @@ async function enrollment(permission = Promise.resolve({ granted: true }), embed
   const { useLocalVoiceEnrollment } = await loadTs('shared/platform/voice/use-local-voice-enrollment.ts', {
     react: runtime.react,
     'react-native': { Platform: { OS: 'android' }, AppState: { currentState: 'active' } },
-    'expo-audio': { useAudioStream: (options: any) => { onBuffer = options.onBuffer; return { stream }; }, requestRecordingPermissionsAsync: () => permission },
+    'expo-audio': { useAudioStream: (options: any) => { onBuffer = options.onBuffer; return { stream }; } },
+    '@/shared/platform/voice/permissions': { ensureLocalVoicePermissionAsync: () => permission },
     "@/shared/i18n/index": { i18n: { t: (key: string) => key } },
     "@/shared/observability/client": { telemetry: { captureError, info } },
     "@/shared/platform/voice/local-wake-word/audio-session": { activateLocalWakeRecordingAsync: async () => undefined, deactivateLocalWakeRecordingAsync: deactivate },

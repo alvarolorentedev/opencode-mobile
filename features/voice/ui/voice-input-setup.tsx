@@ -9,6 +9,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { AppState, Image, View } from 'react-native';
 
+import { isVoicePermissionPromptActive } from '@/shared/platform/voice/permissions';
 import type { VoiceCancellation } from '@/shared/platform/voice/voice-diagnostics';
 import { LOCAL_COMMAND_MODELS, LOCAL_VOICE_BASE_DOWNLOAD_BYTES } from '@/shared/platform/voice/local-wake-word/model-constants';
 import { LOCAL_WAKE_PHRASES } from '@/shared/platform/voice/local-wake-word/types';
@@ -44,7 +45,7 @@ export function VoiceInputSetup({ chatPreferences: prefs, initialStep = 1, local
   }, [cancelEnrollment, stopTest]);
   useEffect(() => {
     const subscription = AppState.addEventListener('change', (state) => {
-      if (state === 'background') void cleanup('background');
+      if (state === 'background' && !isVoicePermissionPromptActive()) void cleanup('background');
       else if (state === 'active') { refresh(); void refreshMicrophone(); }
     });
     return () => { subscription.remove(); void cleanup('screen-exit'); };

@@ -17,6 +17,10 @@ it('isolates recognition owners through competing starts, cancellation and netwo
   let stops = 0, aborts = 0, identity = 0, speechStarts = 0;
   const transcripts = [createTranscriptAccumulator(), createTranscriptAccumulator()];
   const results: string[][] = [[], []];
+  const permissions = {
+    ensure: async () => ({ granted: true }),
+    promptActive: false,
+  };
   const native = {
     addListener: (event: string, listener: Listener) => {
       if (!listeners.has(event)) listeners.set(event, new Set());
@@ -46,6 +50,10 @@ it('isolates recognition owners through competing starts, cancellation and netwo
         listeners.get(event)!.add(listener);
         return () => listeners.get(event)!.delete(listener);
       }, [event, listener]),
+    },
+    '@/shared/platform/voice/permissions': {
+      ensureVoiceInputPermissionAsync: () => permissions.ensure(),
+      isVoicePermissionPromptActive: () => permissions.promptActive,
     },
     '@/shared/platform/voice/speech-errors': await loadTs('shared/platform/voice/speech-errors.ts')
   }, runtime.globals);
@@ -113,26 +121,26 @@ it('isolates recognition owners through competing starts, cancellation and netwo
   runtime.value[0].abort(); emit('end'); await runtime.settle();
   let grantPermission!: (value: { granted: boolean }) => void;
   const permission = new Promise<{ granted: boolean }>((resolve) => { grantPermission = resolve; });
-  native.requestPermissionsAsync = () => permission;
+  permissions.ensure = () => permission;
   const canceledStart = runtime.value[0].start();
   runtime.value[0].abort();
   grantPermission({ granted: true });
   assert.equal(await canceledStart, false, 'cancellation while permission is pending cannot restart recognition');
   assert.equal(starts.length, 4);
-  native.requestPermissionsAsync = async () => ({ granted: true });
+  permissions.ensure = async () => ({ granted: true });
   await runtime.value[1].start(); await runtime.settle();
   emit('error', { error: 'service-not-allowed' });
   emit('end'); await runtime.settle();
   let grantRetry!: (value: { granted: boolean }) => void;
   const retryPermission = new Promise<{ granted: boolean }>((resolve) => { grantRetry = resolve; });
-  native.requestPermissionsAsync = () => retryPermission;
+  permissions.ensure = () => retryPermission;
   runtime.fire(250); await runtime.settle();
   runtime.value[1].stop();
   grantRetry({ granted: true }); await runtime.settle();
   assert.equal(runtime.value[1].isStarting, false);
   assert.equal(runtime.value[1].isListening, false);
   assert.equal(starts.length, 5, 'stopped retry permissions cannot start native recognition');
-  native.requestPermissionsAsync = async () => ({ granted: true });
+  permissions.ensure = async () => ({ granted: true });
   assert.equal(await runtime.value[0].start(), true, 'stopping permission-only retry releases ownership without another end');
   await runtime.settle();
   appState.currentState = 'background';
@@ -174,10 +182,13 @@ it('allows an iOS permission alert to become inactive and still start after perm
       useSpeechRecognitionEvent: () => {},
       ExpoSpeechRecognitionModule: {
         supportsOnDeviceRecognition: () => true, isRecognitionAvailable: () => true,
-        requestPermissionsAsync: () => permission,
         addListener: (_event: string, callback: () => void) => { onEnd = callback; return { remove() {} }; },
         start: () => { starts++; }, abort: () => {},
       },
+    },
+    '@/shared/platform/voice/permissions': {
+      ensureVoiceInputPermissionAsync: () => permission,
+      isVoicePermissionPromptActive: () => true,
     },
     '@/shared/platform/voice/speech-errors': await loadTs('shared/platform/voice/speech-errors.ts')
   }, runtime.globals);
@@ -188,6 +199,43 @@ it('allows an iOS permission alert to become inactive and still start after perm
   assert.equal(await pendingStart, true);
   assert.equal(starts, 1);
   runtime.unmount(); onEnd();
+});
+
+it('keeps an Android start alive while the permission activity backgrounds the app', async () => {
+  const runtime = hookRuntime();
+  let grant!: (value: { granted: boolean }) => void;
+  const permission = new Promise<{ granted: boolean }>((resolve) => { grant = resolve; });
+  let onAppState!: (state: string) => void, starts = 0, aborts = 0;
+  const appState = {
+    currentState: 'active',
+    addEventListener: (_event: string, callback: (state: string) => void) => { onAppState = callback; return { remove() {} }; },
+  };
+  const speech = await loadTs('shared/platform/voice/use-speech-input.ts', {
+    react: { ...runtime.react, useId: () => 'permission-background-owner' },
+    'react-native': { Platform: { OS: 'android', Version: 36 }, AppState: appState },
+    'expo-speech-recognition': {
+      useSpeechRecognitionEvent: () => {},
+      ExpoSpeechRecognitionModule: {
+        supportsOnDeviceRecognition: () => true, isRecognitionAvailable: () => true,
+        addListener: () => ({ remove() {} }),
+        start: () => { starts++; }, abort: () => { aborts++; },
+      },
+    },
+    '@/shared/platform/voice/permissions': {
+      ensureVoiceInputPermissionAsync: () => permission,
+      isVoicePermissionPromptActive: () => true,
+    },
+    '@/shared/platform/voice/speech-errors': await loadTs('shared/platform/voice/speech-errors.ts'),
+  }, runtime.globals);
+  runtime.mount(speech.useSpeechInput, { preferOnDevice: true, onResult: () => {} });
+  const pendingStart = runtime.value.start();
+  appState.currentState = 'background'; onAppState('background');
+  grant({ granted: true });
+  appState.currentState = 'active'; onAppState('active');
+  assert.equal(await pendingStart, true);
+  assert.equal(starts, 1);
+  assert.equal(aborts, 0);
+  runtime.unmount();
 });
 
 async function loadAndroidWatchdogHarness({
@@ -247,6 +295,10 @@ async function loadAndroidWatchdogHarness({
         listeners.get(event)!.add(listener);
         return () => listeners.get(event)!.delete(listener);
       }, [event, listener]),
+    },
+    '@/shared/platform/voice/permissions': {
+      ensureVoiceInputPermissionAsync: async () => ({ granted: true }),
+      isVoicePermissionPromptActive: () => false,
     },
     '@/shared/platform/voice/speech-errors': await loadTs('shared/platform/voice/speech-errors.ts'),
     '@/shared/observability/client': {
@@ -414,6 +466,10 @@ it('recovers when the recognizer ends before emitting start', async () => {
         listeners.get(event)!.add(listener);
         return () => listeners.get(event)!.delete(listener);
       }, [event, listener]),
+    },
+    '@/shared/platform/voice/permissions': {
+      ensureVoiceInputPermissionAsync: async () => ({ granted: true }),
+      isVoicePermissionPromptActive: () => false,
     },
     '@/shared/platform/voice/speech-errors': await loadTs('shared/platform/voice/speech-errors.ts'),
   }, runtime.globals);

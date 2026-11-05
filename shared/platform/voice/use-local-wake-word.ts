@@ -1,4 +1,4 @@
-import { requestRecordingPermissionsAsync, useAudioStream, type AudioStreamBuffer } from 'expo-audio';
+import { useAudioStream, type AudioStreamBuffer } from 'expo-audio';
 import { useCallback, useEffect, useRef } from 'react';
 import { Platform } from 'react-native';
 
@@ -8,6 +8,7 @@ import { createAudioRingBuffer, createResampler, int16ToFloat32, selectSpeechSeg
 import { acceptWakeWordSamples, computeLocalSpeakerEmbedding, ensureLocalCommandRuntime, ensureLocalVoiceRuntime, resetWakeWordStream } from '@/shared/platform/voice/local-wake-word/runtime';
 import { cosineSimilarity } from '@/shared/platform/voice/local-wake-word/similarity';
 import { loadLocalSpeakerProfile } from '@/shared/platform/voice/local-wake-word/speaker-profile';
+import { ensureLocalVoicePermissionAsync } from '@/shared/platform/voice/permissions';
 import type { LocalCommandModelId, LocalWakePhraseId } from '@/shared/platform/voice/local-wake-word/types';
 
 const SAMPLE_RATE = 16000;
@@ -362,7 +363,7 @@ export function useLocalWakeWord({
         if (startGeneration !== generationRef.current) {
           return false;
         }
-        const permission = await requestRecordingPermissionsAsync();
+        const permission = await ensureLocalVoicePermissionAsync();
         if (!permission.granted) {
           onErrorRef.current('Microphone permission is required for the on-device wake word.');
           return false;

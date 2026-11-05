@@ -33,7 +33,9 @@ async function wakeWordHarness({
         onBuffer = options.onBuffer;
         return { stream };
       },
-      requestRecordingPermissionsAsync: async () => ({ granted: true }),
+    },
+    '@/shared/platform/voice/permissions': {
+      ensureLocalVoicePermissionAsync: async () => ({ granted: true }),
     },
     '@/shared/platform/voice/local-wake-word/pcm': pcm,
     '@/shared/platform/voice/local-wake-word/similarity': similarity,

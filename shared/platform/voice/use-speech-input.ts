@@ -2,6 +2,7 @@ import { useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef, useSta
 import { AppState, Platform } from 'react-native';
 import { ExpoSpeechRecognitionModule, useSpeechRecognitionEvent, type ExpoSpeechRecognitionErrorEvent, type SetCategoryOptions } from 'expo-speech-recognition';
 
+import { ensureVoiceInputPermissionAsync, isVoicePermissionPromptActive } from '@/shared/platform/voice/permissions';
 import { canFallbackToNetwork, describeVoiceInputError, type VoiceRecoveryAction } from '@/shared/platform/voice/speech-errors';
 import { nextStartAttempt, readRecognitionServices, type StartAttempt } from '@/shared/platform/voice/recognition-service';
 import { drainRecognition } from '@/shared/platform/voice/recognition-teardown';
@@ -174,11 +175,12 @@ export function useSpeechInput({
       let waitingForNativeStart = false;
 
       try {
-        if (isAppBackgrounded()) return false;
+        if (isAppBackgrounded()) { recordVoiceDiagnostic('cancelled', { source, phase: 'preflight', reason: 'background' }); return false; }
         if (nativeSession?.stopping) {
           const sameOwner = nativeSession.owner === ownerId;
           const drained = await drainRecognition(nativeSession, sameOwner);
-          if (request !== startRequestRef.current || isAppBackgrounded()) return false;
+          if (isAppBackgrounded()) { recordVoiceDiagnostic('cancelled', { source, phase: 'preflight', reason: 'background' }); return false; }
+          if (request !== startRequestRef.current) return false;
           if (!drained && sameOwner) {
             recordVoiceDiagnostic('failed', { source, phase: 'teardown', reason: 'teardown-timeout' });
             setError(START_FAILED_MESSAGE);
@@ -204,12 +206,10 @@ export function useSpeechInput({
           return false;
         }
 
-        const permissions = await ExpoSpeechRecognitionModule.requestPermissionsAsync();
-        if (request !== startRequestRef.current || isAppBackgrounded()) return false;
-        if (recognitionReserved && activeOwner !== ownerId) {
-          setError('Stop the current voice input before starting another recording.');
-          return false;
-        }
+        const permissions = await ensureVoiceInputPermissionAsync();
+        if (isAppBackgrounded()) { recordVoiceDiagnostic('cancelled', { source, phase: 'preflight', reason: 'background' }); return false; }
+        if (request !== startRequestRef.current) return false;
+        if (recognitionReserved && activeOwner !== ownerId) { recordVoiceDiagnostic('blocked', { source, phase: 'preflight', reason: 'recognition-busy' }); setError('Stop the current voice input before starting another recording.'); return false; }
         const nextRestricted = Boolean(permissions.restricted);
         const nextCanAskAgain = Boolean(permissions.canAskAgain);
         restrictedRef.current = nextRestricted;
@@ -479,7 +479,7 @@ export function useSpeechInput({
   useEffect(() => {
     mountedRef.current = true;
     const subscription = AppState.addEventListener('change', (state) => {
-      if (state === 'background') abort('background');
+      if (state === 'background' && !isVoicePermissionPromptActive()) abort('background');
     });
     return () => {
       subscription.remove();

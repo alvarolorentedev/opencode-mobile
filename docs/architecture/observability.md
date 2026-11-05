@@ -134,7 +134,9 @@ details. Voice records use the operations `voice.recognition` and
 enrollment), capture phase, reason, and outcome. When available, they also carry
 the attempt number, recognizer mode, a numeric recognizer status or known
 recorder error code, and elapsed
-milliseconds. Retry, cancellation, and expected input errors stay local.
+milliseconds. Background cancellations and recognition ownership conflicts are
+recorded so a silent start failure is visible. Retry, cancellation, and expected
+input errors stay local.
 Unexpected terminal failures appear in `errors.jsonl` as local-only records;
 they are never uploaded. Voice diagnostics contain no audio, recognized text,
 embeddings, device identifiers, or native exception messages.

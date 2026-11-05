@@ -2,6 +2,7 @@ import { useEffect, type Dispatch, type SetStateAction } from 'react';
 import { useTranslation } from 'react-i18next';
 import { AppState } from 'react-native';
 
+import { isVoicePermissionPromptActive } from '@/shared/platform/voice/permissions';
 import type { VoiceRecoveryAction } from '@/shared/platform/voice/speech-errors';
 import { CONVERSATION_LISTENING_RESTART_MS, type ConversationInputPhase, type ConversationReadbackPhase } from '@/features/voice/model/types';
 import { applyConversationFeedback } from '@/features/voice/state/conversation/feedback';
@@ -50,7 +51,7 @@ export function useConversationListeningEffects({
   const { t } = useTranslation();
   useEffect(() => {
     const subscription = AppState.addEventListener('change', (state) => {
-      if (state === 'background') {
+      if (state === 'background' && !isVoicePermissionPromptActive()) {
         if (conversationPhaseRef.current === 'off') abortSpeechInput();
         else void stopConversationMode();
       }

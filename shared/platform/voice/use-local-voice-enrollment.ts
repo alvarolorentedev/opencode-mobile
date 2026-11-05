@@ -1,7 +1,8 @@
-import { requestRecordingPermissionsAsync, useAudioStream, type AudioStreamBuffer } from 'expo-audio';
+import { useAudioStream, type AudioStreamBuffer } from 'expo-audio';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { AppState, Platform } from 'react-native';
 
+import { ensureLocalVoicePermissionAsync } from '@/shared/platform/voice/permissions';
 import { audioCaptureErrorCode, recordVoiceDiagnostic, type VoiceCancellation, type VoiceDiagnosticPhase } from '@/shared/platform/voice/voice-diagnostics';
 import { i18n } from '@/shared/i18n/index';
 import { activateLocalWakeRecordingAsync, deactivateLocalWakeRecordingAsync } from '@/shared/platform/voice/local-wake-word/audio-session';
@@ -217,7 +218,7 @@ export function useLocalVoiceEnrollment() {
       await ensureLocalSpeakerRuntime();
       if (!mountedRef.current || generation !== generationRef.current) return;
       phaseRef.current = 'permission';
-      const permission = await requestRecordingPermissionsAsync();
+      const permission = await ensureLocalVoicePermissionAsync();
       if (!mountedRef.current || generation !== generationRef.current) return;
       if (!permission.granted) {
         recordVoiceDiagnostic('blocked', { source: 'enrollment', phase: 'permission', reason: 'permission-denied' });
