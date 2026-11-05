@@ -104,9 +104,10 @@ the server is not reachable yet.
 - A stored classifier that is temporarily unavailable stays selected and reports
   its status. Routing is skipped for that send instead of silently switching to
   the other classifier.
-- Replies: each assistant bubble shows the model recorded on that message, so
-  the routed model remains visible after the session switches for a later turn.
-  The label uses the catalog model name and falls back to the raw model ID.
+- Replies: each assistant bubble shows the model recorded on that message and the
+  reasoning variant used for that reply, when reported, so the routed choice
+  remains visible after the session switches for a later turn. The label uses the
+  catalog model name and falls back to the raw model ID.
 - Settings → AI & providers: classifier mode, on-device pack status/download/
   remove, OpenCode classifier model and probe, per-tier model mapping with an
   optional per-tier thinking level, and the long-chat cache guard.

@@ -16,6 +16,11 @@ describe('transcript model labels', () => {
     expect(getEntryModelLabel({ role: 'assistant', model: { providerID: 'retired', modelID: 'old-model' } }, undefined)).toBe('old-model');
   });
 
+  it('appends the reasoning variant used for the reply', () => {
+    expect(getEntryModelLabel({ role: 'assistant', model: { providerID: 'openai', modelID: 'gpt-4.1-mini', variant: 'max' } }, labels, 'Max')).toBe('GPT-4.1 mini · Max');
+    expect(getEntryModelLabel({ role: 'assistant', model: { providerID: 'openai', modelID: 'gpt-4.1-mini' } }, labels, 'Max')).toBe('GPT-4.1 mini · Max');
+  });
+
   it('returns nothing without an assistant model', () => {
     expect(getEntryModelLabel({ role: 'assistant' }, labels)).toBeUndefined();
     expect(getEntryModelLabel({ role: 'user', model: { providerID: 'openai', modelID: 'gpt-4.1-mini' } }, labels)).toBeUndefined();

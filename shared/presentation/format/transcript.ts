@@ -113,7 +113,7 @@ export function toTranscriptEntry(record: SessionMessageRecord): TranscriptEntry
   });
 
   const model = record.info.role === 'assistant' && record.info.providerID && record.info.modelID
-    ? { providerID: record.info.providerID, modelID: record.info.modelID }
+    ? { providerID: record.info.providerID, modelID: record.info.modelID, ...(record.info.variant ? { variant: record.info.variant } : {}) }
     : undefined;
   const entry: TranscriptEntry = {
     id: record.info.id,

@@ -423,6 +423,8 @@ test('model variants follow the server catalog, reach sessions, and persist per 
   const stateResponse = await request.get(`${backendOrigin()}/__control/state`);
   expect(stateResponse.ok()).toBeTruthy();
   expect((await stateResponse.json()).sessions[0].model).toEqual({ id: 'deepseek-v4.1-flash-free', providerID: 'opencode', variant: 'max' });
+  const maxReply = page.locator('[data-testid^="transcript-message-"]').filter({ hasText: 'Finished: Use the maximum reasoning variant.' });
+  await expect(maxReply.getByText('DeepSeek V4.1 Flash Free · Max', { exact: true })).toBeVisible();
 
   await page.reload();
   await expect(page.getByTestId('chat-prompt-input')).toBeVisible();

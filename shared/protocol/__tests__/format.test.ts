@@ -1,6 +1,6 @@
 import { describe, it, expect, vi } from 'vitest';
 
-import { formatDuration, getMessagePreview, toTranscriptEntry, deriveTodosFromMessages } from '@/shared/presentation/format';
+import { formatDuration, formatMessageTime, getMessagePreview, toTranscriptEntry, deriveTodosFromMessages } from '@/shared/presentation/format';
 
 vi.mock('@/shared/i18n/index', () => ({ getFormatLocale: () => 'en' }));
 
@@ -24,6 +24,14 @@ describe('format', () => {
       parts: [{ id: 'tool-1', type: 'tool', tool: 'build', state: { status: 'error', error: 'Build failed' } }],
     } as never);
     expect(failedTool.details[0].body).toBe('Build failed');
+  });
+
+  it('keeps only the time for messages from today', () => {
+    const now = new Date(2026, 10, 5, 19, 30).getTime();
+    const today = new Date(2026, 10, 5, 7, 26).getTime();
+    const older = new Date(2026, 10, 4, 7, 26).getTime();
+    expect(formatMessageTime(today, now)).toBe(new Intl.DateTimeFormat('en', { timeStyle: 'short' }).format(today));
+    expect(formatMessageTime(older, now)).toBe(new Intl.DateTimeFormat('en', { dateStyle: 'medium', timeStyle: 'short' }).format(older));
   });
 
   it('maps reasoning timestamps to a compact duration', () => {
@@ -123,12 +131,12 @@ describe('format', () => {
     expect(entry.details).toEqual([]);
   });
 
-  it('keeps the model recorded on assistant messages', () => {
+  it('keeps the model and reasoning variant recorded on assistant messages', () => {
     const entry = toTranscriptEntry({
-      info: { ...info, providerID: 'openai', modelID: 'gpt-4.1-mini' },
+      info: { ...info, providerID: 'openai', modelID: 'gpt-4.1-mini', variant: 'high' },
       parts: [{ id: 'text-1', type: 'text', text: 'hello' }],
     } as never);
-    expect(entry.model).toEqual({ providerID: 'openai', modelID: 'gpt-4.1-mini' });
+    expect(entry.model).toEqual({ providerID: 'openai', modelID: 'gpt-4.1-mini', variant: 'high' });
   });
 
   it('does not attach a model to user messages or empty model fields', () => {

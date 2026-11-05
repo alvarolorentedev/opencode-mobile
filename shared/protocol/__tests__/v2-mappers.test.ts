@@ -55,6 +55,20 @@ describe('v2 response mappers', () => {
     });
   });
 
+  it('keeps the reasoning variant recorded on an assistant reply', () => {
+    const mapped = toMessageRecord({
+      id: 'msg_variant',
+      type: 'assistant',
+      sessionID: 'ses_1',
+      time: { created: 1 },
+      model: { providerID: 'opencode', id: 'deepseek-v4.1-flash-free', variant: 'max' },
+      content: [{ type: 'text', text: 'done' }],
+    } as never, 'ses_1');
+
+    expect(mapped?.info).toMatchObject({ providerID: 'opencode', modelID: 'deepseek-v4.1-flash-free', variant: 'max' });
+    expect(toTranscriptEntry(mapped!).model).toEqual({ providerID: 'opencode', modelID: 'deepseek-v4.1-flash-free', variant: 'max' });
+  });
+
   it('maps a synthetic server notice as displayable text without model output', () => {
     const mapped = toMessageRecord({
       id: 'msg_synthetic',

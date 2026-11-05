@@ -12,6 +12,7 @@ import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } fr
 import { useTranslation } from 'react-i18next';
 import { AppState, View, type NativeScrollEvent, type NativeSyntheticEvent } from 'react-native';
 
+import { getModelVariantLabel } from '@/features/ai/index';
 import { TranscriptMessage } from '@/features/chat/ui/chat-cards';
 import { ActivityGroupRow } from '@/features/chat/ui/cards/activity-group';
 import { styles, slimStyles, stylesClasses } from '@/features/chat/ui/chat-view-styles';
@@ -378,7 +379,11 @@ export function TranscriptList({
               entry={entry}
               flat={flatTranscript}
               fontSize={transcriptFontSize}
-              modelLabel={getEntryModelLabel(entry, modelLabels)}
+              modelLabel={getEntryModelLabel(
+                entry,
+                modelLabels,
+                entry.model?.variant ? getModelVariantLabel(entry.model.variant, t) : undefined,
+              )}
               slim={slim}
               onCopy={onCopyMessage}
               onFork={entry.role === 'user' ? onForkMessage : undefined}

@@ -137,6 +137,7 @@ export function toMessageRecord(message: V2Message, sessionID: string): SessionM
     const snapshot = (message as Record<string, unknown>).snapshot as { files?: string[] } | undefined;
     if (snapshot?.files?.length) parts.push({ id: `${message.id}-patch`, sessionID, messageID: message.id, type: 'patch', files: snapshot.files });
     const model = (message as Record<string, unknown>).model as Record<string, unknown> | undefined;
+    const modelVariant = stringField(model?.variant);
     const tokens = (message as Record<string, unknown>).tokens as Record<string, unknown> | undefined;
     const cost = numberField((message as Record<string, unknown>).cost);
     const finish = stringField((message as Record<string, unknown>).finish, 'stop');
@@ -183,6 +184,7 @@ export function toMessageRecord(message: V2Message, sessionID: string): SessionM
         role: 'assistant',
         providerID: stringField(model?.providerID),
         modelID: stringField(model?.id),
+        ...(modelVariant ? { variant: modelVariant } : {}),
         error: error ? { name: stringField(error.name, 'SessionError'), data: { message: extractErrorMessage(error) } } : undefined,
       },
       parts,

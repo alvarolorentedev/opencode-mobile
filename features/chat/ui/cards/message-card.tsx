@@ -14,7 +14,7 @@ import { MarkdownText } from '@/features/chat/ui/chat-markdown';
 import { getColors } from '@/shared/ui/theme/theme';
 import { usePalette } from '@/shared/ui/theme/use-palette';
 import { useAppearance } from '@/shared/ui/theme/appearance-context';
-import { formatTimestamp, type TranscriptEntry } from '@/shared/presentation/format';
+import { formatMessageTime, type TranscriptEntry } from '@/shared/presentation/format';
 import { summarizeTranscriptDetails } from '@/shared/presentation/transcript';
 
 type TranscriptMessageProps = {
@@ -76,10 +76,7 @@ function TranscriptMessageImpl({
                   backgroundColor: isUser ? palette.bubbleUser : palette.bubbleAssistant,
                   borderColor: copied ? palette.tint : isUser ? palette.bubbleUser : palette.border,
                 }, slimSpacing, copied && !flat ? styles.messageBubbleCopied : null]}><View className={cn(stylesClasses.messageMeta, slim && "gap-2")}>
-            <View className={cn(stylesClasses.messageMetaAuthor)}>
-              <Text style={{ color: metaColor }} variant="label">{isUser ? t('chat:cards.you') : t('chat:cards.opencode')}</Text>
-              {!isUser && modelLabel ? <Text numberOfLines={1} style={{ color: metaColor, opacity: 0.8 }} variant="label">{modelLabel}</Text> : null}
-            </View>
+            <Text className={cn(stylesClasses.messageMetaAuthor)} style={{ color: metaColor }} variant="description">{isUser ? t('chat:cards.you') : t('chat:cards.opencode')}</Text>
             <View className={cn(stylesClasses.messageMetaRight)}>
               <Button accessibilityLabel={t('common:actions.copy')} onPress={() => onCopy(entry)} variant="ghost" size="icon" className={cn(stylesClasses.messageActionButton)} ><Icon name={"content-copy"} size={slim ? 14 : 16} color={palette.muted} /></Button>
               {copied ? (
@@ -93,7 +90,7 @@ function TranscriptMessageImpl({
               ) : null}
               {onFork ? <Button accessibilityLabel={t('chat:cards.fork')} onPress={() => onFork(entry)} variant="ghost" size="icon" className={cn(stylesClasses.messageActionButton)} ><Icon name={"source-fork"} size={slim ? 14 : 16} color={palette.muted} /></Button> : null}
               {onRevert ? <Button accessibilityLabel={t('chat:cards.revert')} onPress={() => onRevert(entry)} variant="ghost" size="icon" className={cn(stylesClasses.messageActionButton)} ><Icon name={"undo-variant"} size={slim ? 14 : 16} color={palette.muted} /></Button> : null}
-              <Text style={{ color: metaColor, opacity: isUser && !flat ? 0.82 : 1 }} variant="label">{formatTimestamp(entry.createdAt)}</Text>
+              <Text style={{ color: metaColor, opacity: isUser && !flat ? 0.82 : 1 }} variant="label">{formatMessageTime(entry.createdAt)}</Text>
             </View>
           </View>{attachments.length > 0 ? <AttachmentStrip attachments={attachments} /> : null}{entry.text ? (
             <MarkdownText
@@ -110,7 +107,7 @@ function TranscriptMessageImpl({
                 <Badge key={item} accessibilityLabel={item} className={cn(stylesClasses.summaryChip, "bg-background")} variant="secondary"><Text>{item}</Text></Badge>
               ))}
             </View>
-          ) : null}</View>
+          ) : null}{!isUser && modelLabel ? <Text style={{ color: metaColor, opacity: 0.8 }} variant="description">{modelLabel}</Text> : null}</View>
       </View>
     </View>
   );
@@ -158,10 +155,10 @@ const stylesClasses = {
   "messageRowFlat": "items-stretch",
   "messageRowUser": "items-end",
   "messageTouchable": "self-stretch rounded-[24px]",
-  "messageBubble": "rounded-[24px] border px-4 py-3.5 gap-2.5 self-stretch min-w-0 overflow-hidden",
-  "messageMeta": "flex-row justify-between items-start gap-3",
-  "messageMetaAuthor": "shrink min-w-0 gap-0.5",
-  "messageMetaRight": "flex-row items-center shrink-0 gap-1.5",
+  "messageBubble": "rounded-[24px] border px-4 py-3.5 gap-1.5 self-stretch min-w-0 overflow-hidden",
+  "messageMeta": "flex-row justify-between items-center gap-3",
+  "messageMetaAuthor": "shrink min-w-0",
+  "messageMetaRight": "flex-row flex-wrap justify-end items-center shrink min-w-0 gap-0.5",
   "messageActionButton": "m-0",
   "copiedPill": "flex-row items-center gap-1 rounded-full px-2 py-1",
   "summaryRow": "flex-row flex-wrap gap-2",

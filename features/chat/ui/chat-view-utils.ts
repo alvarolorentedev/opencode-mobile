@@ -18,10 +18,12 @@ export function getAutoApproveIcon(autoApprove: boolean) {
 export function getEntryModelLabel(
   entry: Pick<TranscriptEntry, 'role' | 'model'>,
   modelLabels: ReadonlyMap<string, string> | undefined,
+  variantLabel?: string,
 ) {
   if (entry.role !== 'assistant' || !entry.model?.modelID) return undefined;
   const { providerID, modelID } = entry.model;
-  return modelLabels?.get(`${providerID}/${modelID}`) ?? modelID;
+  const label = modelLabels?.get(`${providerID}/${modelID}`) ?? modelID;
+  return variantLabel ? `${label} · ${variantLabel}` : label;
 }
 
 // The live activity row has to describe work that is not represented by a

@@ -44,7 +44,7 @@ async function mountTranscriptList(overrides: Overrides = {}) {
     '@shopify/flash-list': { FlashList: 'FlashList' },
     '@expo/vector-icons': { MaterialCommunityIcons: 'Icon' },
     'expo-router': { useIsFocused: () => true },
-    'react-i18next': { useTranslation: () => ({ t: (key: string) => key }) },
+    'react-i18next': { useTranslation: () => ({ t: (key: string) => key === 'chat:reasoning.high' ? 'High' : key }) },
     'react-native': { AppState: { addEventListener: () => ({ remove: () => undefined }) }, View: 'View' },
     "@/features/chat/ui/cards/message-card": { TranscriptMessage: 'TranscriptMessage' },
     "@/features/chat/ui/cards/activity-group": { ActivityGroupRow: 'ActivityGroupRow' },
@@ -204,5 +204,25 @@ describe('transcript empty state', () => {
       modelLabels: new Map([['openai/gpt-4.1-mini', 'GPT-4.1 mini']]),
     });
     expect(JSON.stringify(list.props.renderItem({ item: row }))).toContain('"modelLabel":"GPT-4.1 mini"');
+  });
+
+  it('includes the reasoning variant in the assistant model label', async () => {
+    const row = {
+      key: 'message:m1',
+      type: 'message' as const,
+      entry: {
+        id: 'm1',
+        role: 'assistant' as const,
+        createdAt: 0,
+        text: 'done',
+        details: [],
+        model: { providerID: 'openai', modelID: 'gpt-4.1-mini', variant: 'high' },
+      },
+    };
+    const { list } = await mountTranscriptList({
+      transcriptRows: [row],
+      modelLabels: new Map([['openai/gpt-4.1-mini', 'GPT-4.1 mini']]),
+    });
+    expect(JSON.stringify(list.props.renderItem({ item: row }))).toContain('"modelLabel":"GPT-4.1 mini · High"');
   });
 });

@@ -15,6 +15,28 @@ export function formatTimestamp(value: number, locale = getFormatLocale()) {
   return new Date(value).toLocaleString();
 }
 
+// Message headers keep only the time for today so the author label and actions
+// keep their space on narrow screens; older messages keep the date.
+export function formatMessageTime(value: number, now = Date.now(), locale = getFormatLocale()) {
+  const date = new Date(value);
+  const today = new Date(now);
+  const sameDay = date.getFullYear() === today.getFullYear()
+    && date.getMonth() === today.getMonth()
+    && date.getDate() === today.getDate();
+  const options: Intl.DateTimeFormatOptions = sameDay
+    ? { timeStyle: 'short' }
+    : { dateStyle: 'medium', timeStyle: 'short' };
+  try {
+    if (typeof Intl !== 'undefined' && typeof Intl.DateTimeFormat === 'function') {
+      return new Intl.DateTimeFormat(locale, options).format(value);
+    }
+  } catch {
+    // Fall back below.
+  }
+
+  return sameDay ? date.toLocaleTimeString() : date.toLocaleString();
+}
+
 // Compact duration for timeline rows. Whole seconds only; minute+ durations
 // keep the same `1m 05s` shape so the row width stays predictable.
 export function formatDuration(durationMs: number) {

@@ -34,6 +34,8 @@ export type Message = (MessageBase & {
     parentID?: string;
     providerID: string;
     modelID: string;
+    // Reasoning-effort preset the server used for this reply, when recorded.
+    variant?: string;
     // Server notices (for example a plugin command reply) are stored as
     // synthetic input. They render as text but are not model output.
     synthetic?: boolean;
