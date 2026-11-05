@@ -45,6 +45,7 @@
     "gen:ui-tokens": "node ./scripts/gen-ui-tokens.mjs"
   },
   "dependencies": {
+    "@expensify/react-native-live-markdown": "0.1.371",
     "@expo/vector-icons": "^15.0.3",
     "@hookform/resolvers": "5.2.2",
     "@opencode-ai/sdk": "^1.18.3",

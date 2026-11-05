@@ -4,6 +4,7 @@ import { EnrichedMarkdownText, type MarkdownStyle } from 'react-native-enriched-
 
 import type { CodePalette } from '@/shared/ui/theme/theme';
 import { copyHaptic } from '@/shared/platform/haptics';
+import { accentTranscriptMarkdown } from '@/features/chat/model/composer-accent';
 
 const allowedLinkProtocols = new Set(['http:', 'https:', 'mailto:', 'tel:']);
 
@@ -25,10 +26,12 @@ type MarkdownTextProps = {
   fontSize: number;
   mutedColor: string;
   text: string;
+  tokenColor: string;
 };
 
-function MarkdownTextImpl({ text, color, fontSize, mutedColor, codePalette }: MarkdownTextProps) {
+function MarkdownTextImpl({ text, color, fontSize, mutedColor, codePalette, tokenColor }: MarkdownTextProps) {
   const scale = fontSize / 16;
+  const markdown = useMemo(() => accentTranscriptMarkdown(text), [text]);
   const handleCopyPress = useCallback(() => {
     copyHaptic();
   }, []);
@@ -42,6 +45,10 @@ function MarkdownTextImpl({ text, color, fontSize, mutedColor, codePalette }: Ma
     h6: { fontSize: 13 * scale, fontWeight: '700', color },
     list: { fontSize, color, lineHeight: 26 * scale, bulletColor: color, markerColor: color, gapWidth: 10 },
     link: { color, underline: true },
+    linkVariants: {
+      '^mention:': { color: tokenColor, underline: false, fontWeight: 'bold' },
+      '^command:': { color: tokenColor, underline: false, fontWeight: 'bold' },
+    },
     code: { fontSize: 15 * scale, color, backgroundColor: 'rgba(0,0,0,0.08)' },
     codeBlock: {
       fontSize: 15 * scale,
@@ -70,11 +77,11 @@ function MarkdownTextImpl({ text, color, fontSize, mutedColor, codePalette }: Ma
       cellPaddingVertical: 6,
     },
     thematicBreak: { color: mutedColor },
-  }), [codePalette, color, fontSize, mutedColor, scale]);
+  }), [codePalette, color, fontSize, mutedColor, scale, tokenColor]);
 
   return (
     <EnrichedMarkdownText
-      markdown={text}
+      markdown={markdown}
       flavor="github"
       selectable
       containerStyle={{ alignSelf: 'stretch', minWidth: 0 }}

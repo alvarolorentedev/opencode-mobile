@@ -30,6 +30,13 @@ and it defines the extraction candidates that could become standalone packages.
   dependency and makes byte handling explicit.
 - **File API**: `shared/protocol/opencode/attachment.ts` now uses the Expo SDK 58 `File`
   API instead of the `expo-file-system/legacy` module.
+- **Composer highlighting**: the native prompt input uses
+  `@expensify/react-native-live-markdown` 0.1.371 with the worklet parser in
+  `features/chat/model/composer-accent.ts`. The import targets the built
+  `MarkdownTextInput` module because the package entry also exports its default
+  ExpensiMark parser, which needs `expensify-common` and a workletized
+  `html-entities`. Web keeps the shared `Input`. See
+  [ADR 0035](../adr/0035-live-token-highlighting-in-the-composer.md).
 
 Two persistence boundaries remain intentionally manual:
 

@@ -53,8 +53,11 @@ function TranscriptMessageImpl({
   // Non-flat user bubbles stay dark in both themes, so their code surface must
   // use the selected theme's dark palette. Flat messages follow the active
   // theme's text color.
-  const darkCodePalette = useMemo(() => getColors('dark', accent).code, [accent]);
-  const codePalette = !flat && isUser ? darkCodePalette : palette.code;
+  const darkPalette = useMemo(() => getColors('dark', accent), [accent]);
+  const codePalette = !flat && isUser ? darkPalette.code : palette.code;
+  // User bubbles stay dark in both themes, so their token accent uses the dark
+  // palette; flat and assistant bubbles follow the active theme.
+  const tokenColor = flat ? palette.tint : isUser ? darkPalette.tint : palette.tint;
   const attachments = entry.details.filter((detail) => detail.kind === 'file').map((detail) => ({ uri: detail.uri || '', mime: detail.mime, filename: detail.filename || detail.label }));
   // Patches render as activity rows; the bubble keeps only file and retry chips.
   const summaryDetails = entry.details.filter((detail) => detail.kind === 'file' || detail.kind === 'retry');
@@ -99,6 +102,7 @@ function TranscriptMessageImpl({
               color={textColor}
               fontSize={fontSize}
               mutedColor={flat ? palette.muted : isUser ? palette.onBubbleUser : palette.muted}
+              tokenColor={tokenColor}
             />
           ) : null}{entry.error ? <Text className={cn("text-destructive")} variant="description">{entry.error}</Text> : null}{!isUser && detailSummary.length > 0 ? (
             <View className={cn(stylesClasses.summaryRow)}>

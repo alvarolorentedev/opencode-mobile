@@ -3,10 +3,9 @@ import { Text } from '@/shared/ui/text';
 import { Badge } from '@/shared/ui/badge';
 import { Icon } from '@/shared/ui/icon';
 import { Button } from '@/shared/ui/button';
-import { Input } from '@/shared/ui/input';
 import { Spinner } from '@/shared/ui/spinner';
 import { withAlpha } from '@/shared/ui/theme/color';
-import { useEffect, useRef, useState, type ComponentRef } from 'react';
+import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Keyboard, Platform, useWindowDimensions, View } from 'react-native';
 
@@ -14,6 +13,7 @@ import { Colors } from '@/shared/ui/theme/theme';
 
 import { AttachmentStrip } from '@/features/sharing/index';
 import { AgentPicker } from '@/features/chat/ui/agent-picker';
+import { ChatPromptInput } from '@/features/chat/ui/chat-prompt-input';
 import { ComposerSuggestions } from '@/features/chat/ui/composer-suggestions';
 import type { ComposerSuggestion, ComposerSuggestionGroup } from '@/features/chat/ui/composer-suggestion-types';
 import { ModelPicker , getModelVariantLabel } from '@/features/ai/index';
@@ -118,10 +118,6 @@ export function ChatComposer({
 }: ChatComposerProps) {
   const { t } = useTranslation();
   const { fontScale } = useWindowDimensions();
-  const inputRef = useRef<ComponentRef<typeof Input>>(null);
-  useEffect(() => {
-    if (focusRequest > 0) inputRef.current?.focus();
-  }, [focusRequest]);
   // Keep the established composer floor while iOS sizes the multiline input.
   const minInputHeight = slim ? 40 : 44;
   const maxInputHeight = slim ? 90 : 110;
@@ -215,13 +211,25 @@ export function ChatComposer({
           <Badge className={cn(stylesClasses.voiceStatusChip)} style={[{ backgroundColor: withAlpha(palette.tint, 0x14 / 255) }]} variant="secondary"><Icon name={"microphone"} size={18} /><Text>{conversation.active ? t('chat:composer.conversationActive') : t('chat:composer.listening')}</Text></Badge>
         </View>
       ) : null}<View testID="chat-composer-card" className={cn(stylesClasses.composerCard, slim && "rounded-[22px]", "bg-surface-alt")}>
-        <Input ref={inputRef} testID="chat-prompt-input" value={draft} onChangeText={onDraftChange} onSelectionChange={({ nativeEvent }) => onSelectionChange(nativeEvent.selection)} onContentSizeChange={Platform.OS === 'ios' ? undefined : ({ nativeEvent }) => updateInputHeight(nativeEvent.contentSize.height)} editable={!isSpeechInputListening} multiline scrollEnabled={Platform.OS === 'ios' ? true : displayedInputHeight >= maxInputHeight} placeholder={t('chat:composer.placeholder')} placeholderTextColor={palette.muted} textAlignVertical="top" style={[[
+        <ChatPromptInput
+          editable={!isSpeechInputListening}
+          focusRequest={focusRequest}
+          onChangeText={onDraftChange}
+          onContentSizeChange={Platform.OS === 'ios' ? undefined : updateInputHeight}
+          onSelectionChange={onSelectionChange}
+          placeholder={t('chat:composer.placeholder')}
+          placeholderTextColor={palette.muted}
+          scrollEnabled={Platform.OS === 'ios' ? true : displayedInputHeight >= maxInputHeight}
+          style={[[
             inputTextStyle,
             Platform.OS === 'ios'
               // Let the platform size the multiline input and scroll at the cap.
               ? { minHeight: minInputHeight, maxHeight: maxInputHeight, color: palette.text }
               : { height: displayedInputHeight, color: palette.text },
-          ], Platform.OS === 'ios' ? [styles.inputContentCompact, { minHeight: minInputHeight, maxHeight: maxInputHeight }] : styles.inputContentCompact]} className="w-auto self-stretch border-0 shadow-none bg-transparent dark:bg-transparent min-h-0 px-0 py-0"></Input>
+          ], Platform.OS === 'ios' ? [styles.inputContentCompact, { minHeight: minInputHeight, maxHeight: maxInputHeight }] : styles.inputContentCompact]}
+          tint={palette.tint}
+          value={draft}
+        />
         {fontScale > 1.3 ? <View>{modelPicker}</View> : null}
         <View className={cn(stylesClasses.composerToolbar)}>
           <Button testID="chat-attach-button" accessibilityLabel={t('chat:composer.attachFiles')} onPress={onAttach} variant="ghost" size="icon" className={cn(stylesClasses.composerActionButton, "bg-transparent")} ><Icon name={"plus"} size={24} color={palette.text} /></Button>

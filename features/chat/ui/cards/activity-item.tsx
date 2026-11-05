@@ -170,6 +170,7 @@ export function ActivityItemRow({ fontSize, item, palette }: { fontSize: number;
               fontSize={Math.max(12, fontSize - 1)}
               mutedColor={palette.muted}
               text={body || label}
+              tokenColor={palette.tint}
             />
           </View>
         )

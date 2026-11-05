@@ -86,6 +86,7 @@ coverage, and documentation links.
 | [0032](0032-web-parity-project-picker.md) | Project picker matches web Used/Other semantics | Superseded by ADR 0033 |
 | [0033](0033-server-driven-projects-and-sessions.md) | Server-driven projects and sessions without local registries | Accepted |
 | [0034](0034-device-local-project-archive.md) | Device-local project archive marker | Accepted |
+| [0035](0035-live-token-highlighting-in-the-composer.md) | Live token highlighting in the composer | Accepted |
 
 ## Template
 

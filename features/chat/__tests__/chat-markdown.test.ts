@@ -5,6 +5,7 @@ import { hookRuntime, loadTs } from '../../../tests/helpers/runtime.mjs';
 type MarkdownElement = {
   type: unknown;
   props: {
+    markdown?: string;
     markdownStyle?: {
       blockquote?: { backgroundColor?: string };
       codeBlock?: {
@@ -12,6 +13,7 @@ type MarkdownElement = {
         color?: string;
         syntaxColors?: { keyword?: string };
       };
+      linkVariants?: Record<string, { color?: string; fontWeight?: string; underline?: boolean }>;
     };
     onCopyPress?: (event: { code: string; language: string }) => void;
   };
@@ -34,7 +36,7 @@ const codePalette = {
   },
 };
 
-async function mountMarkdown() {
+async function mountMarkdown(text = '```bash\necho hi\n```') {
   const runtime = hookRuntime();
   const haptic = vi.fn();
   const element = (type: unknown, props: unknown) => ({ type, props });
@@ -47,10 +49,11 @@ async function mountMarkdown() {
   }, runtime.globals);
   const value = runtime.mount(MarkdownText, {
     codePalette,
-    text: '```bash\necho hi\n```',
+    text,
     color: '#182320',
     fontSize: 16,
     mutedColor: '#667874',
+    tokenColor: '#007A5C',
   }) as MarkdownElement;
   return { haptic, value };
 }
@@ -74,5 +77,20 @@ describe('chat markdown code blocks', () => {
     });
     expect(value.props.markdownStyle?.codeBlock?.backgroundColor).not.toMatch(/^rgba?\(/);
     expect(value.props.markdownStyle?.blockquote?.backgroundColor).toBe('transparent');
+  });
+
+  it('styles transcript tokens as bold accent links', async () => {
+    const { value } = await mountMarkdown();
+
+    expect(value.props.markdownStyle?.linkVariants).toMatchObject({
+      '^mention:': { color: '#007A5C', fontWeight: 'bold', underline: false },
+      '^command:': { color: '#007A5C', fontWeight: 'bold', underline: false },
+    });
+  });
+
+  it('wraps transcript tokens before rendering', async () => {
+    const { value } = await mountMarkdown('Use @general');
+
+    expect(value.props.markdown).toBe('Use [@general](mention://x)');
   });
 });

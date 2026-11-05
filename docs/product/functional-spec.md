@@ -297,6 +297,8 @@ Overlay sheets also dismiss on a downward drag of their header (the grabber/titl
 - automatic scroll-to-end happens for new content unless the view is currently paginating older items
 - when the user is away from the tail, a floating `Jump to latest` control appears and changes to `New messages` when rows arrive; tapping it restores tail-follow mode
 - long-pressing a message copies its text/error content
+- `@` references and line-start `/` commands render bold in the accent color;
+  code spans, fenced blocks, and existing links are left unchanged
 - image attachments open a full-screen viewer with pinch zoom, panning, double-tap
   zoom toggle, and a save/share action; other attachments keep the inline preview sheet
 - assistant messages can be played with TTS if they contain readable text
@@ -315,7 +317,8 @@ The composer includes:
 - server-backed suggestions when the draft starts with `/` (commands) or contains an `@` context token
 - shell mode when the draft starts with `!`
 - attachment chips
-- text input
+- text input; on iOS and Android, `@` mentions and leading `/` commands are bold
+  in the accent color while typing. Web keeps the plain input.
 
 Agent, model, reasoning, and auto-approve use the original four visible controls. The outer composer button adds an attachment when the draft is empty, sends when it has content, and stops a running session.
 - primary and secondary action buttons

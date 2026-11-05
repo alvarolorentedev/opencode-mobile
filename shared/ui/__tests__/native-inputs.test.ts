@@ -29,6 +29,17 @@ function find(root: Element, testID: string): Element | undefined {
   }
 }
 
+function findByType(root: Element, type: unknown): Element | undefined {
+  if (root?.type === type) return root;
+  const children = [root?.props?.children].flat(Infinity);
+  for (const child of children) {
+    if (child && typeof child === 'object') {
+      const match = findByType(child, type);
+      if (match) return match;
+    }
+  }
+}
+
 const viewStyles = await loadTs('features/chat/ui/chat-view-styles.ts', {
     ...uiImports,
     'react-native': native,
@@ -148,6 +159,7 @@ describe('native input regressions', () => {
     'react/jsx-runtime': jsx,
     'react-native': native,
     '@/features/chat/ui/chat-view-styles': viewStyles,
+    "@/features/chat/ui/chat-prompt-input": { ChatPromptInput: 'ChatPromptInput' },
     "@/shared/ui/input": { Input },
     "@/shared/ui/catalog-select": { CatalogSelect: 'CatalogSelect' },
     "@/features/chat/ui/agent-picker": { AgentPicker: 'AgentPicker' },
@@ -161,7 +173,7 @@ describe('native input regressions', () => {
       draft: 'hello', attachments: [], availableAgents: [], visibleModels: [], commands: [],
       chatPreferences: {}, conversation: {}, palette: {}, showSendAction: true,
     });
-    input = () => find(runtime.value, 'chat-prompt-input')!;
+    input = () => findByType(runtime.value, 'ChatPromptInput')!;
   });
 
   it.each([[false, 44, 110], [true, 40, 90]])('lets iOS grow the native input between its caps (slim=%s)', (slim, min, max) => {
@@ -179,19 +191,17 @@ describe('native input regressions', () => {
     platform.OS = os;
     runtime.flush();
     expect(flatten(input().props.style).minHeight).toBeUndefined();
-    input().props.onContentSizeChange({ nativeEvent: { contentSize: { height: 80 } } });
+    input().props.onContentSizeChange(80);
     runtime.flush();
     expect(flatten(input().props.style).height).toBe(80);
-    input().props.onContentSizeChange({ nativeEvent: { contentSize: { height: 200 } } });
+    input().props.onContentSizeChange(200);
     runtime.flush();
     expect(flatten(input().props.style).height).toBe(110);
     expect(input().props.scrollEnabled).toBe(true);
   });
 
   it('lets the composer keep both horizontal margins', () => {
-    const className = input().props.className;
-    expect(className).toContain('w-auto');
-    expect(className).not.toContain('w-full');
+    expect(flatten(input().props.style).marginHorizontal).toBe(8);
   });
 
   it('preserves credential bytes and explicit single-line alignment', () => {

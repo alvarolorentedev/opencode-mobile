@@ -138,6 +138,9 @@ declared once, at the leaves.
 - render optional conversation banner
 - render the V2 suggestion panel for commands and context tokens, plus the shell-mode banner
 - render attachments, voice status, prompt input, and action buttons
+- render the prompt through `chat-prompt-input.tsx`: native uses the live
+  markdown input so `@` mentions and leading `/` commands are bold in the accent
+  color; web keeps the plain input
 - On iOS the native multiline input grows itself between 44 and 110 px (40 to
   90 px in slim mode) and scrolls at the cap, so height never lags a layout pass
   behind the text. The native slim input retains its 40-point minimum.
@@ -191,6 +194,16 @@ type ChatComposerProps = {
 - there is no dedicated composer palette button; the text triggers are the only entry point
 - model selection uses a searchable sheet grouped by provider; its reasoning slider shows server variants for the selected OpenCode 2 model, including a synthetic Default, and stays hidden when that model has none
 - the composer trigger includes the selected variant in its accessible name when the model provides variants
+
+### `features/chat/ui/chat-prompt-input.tsx`
+
+- native renders `MarkdownTextInput` from `@expensify/react-native-live-markdown`
+  with the worklet parser in `features/chat/model/composer-accent.ts`; overlapping
+  bold and mention ranges keep tokens bold in the theme tint
+- web keeps the shared `Input`; the live highlight is native-only
+- preserves the existing focus request, selection, placeholder, dictation lock,
+  height behavior, and `chat-prompt-input` test identifier
+- see [ADR 0035](../../adr/0035-live-token-highlighting-in-the-composer.md)
 
 ### `features/chat/ui/agent-picker.tsx`
 
@@ -359,6 +372,7 @@ Responsibility:
 - render assistant/user messages with `react-native-enriched-markdown` in GitHub flavor
 - code-block copy uses the same success haptic as the message bubble copy; it does not reuse the message bubble's copied pill or border, and it does not show a snackbar
 - Code blocks use an opaque theme-aware background and syntax palette; user bubbles use the dark code palette because they stay dark in both themes. Blockquotes are transparent so the renderer's light blockquote default cannot bleed through in dark mode.
+- Transcript `@` mentions and line-start `/` commands are wrapped as `mention:`/`command:` links and styled bold in the theme tint through `linkVariants`. Code spans, fenced blocks, and existing links are left untouched. User bubbles use the dark palette tint because they stay dark in both themes; flat and assistant bubbles use the active tint.
 - Message bubbles stretch within their side margins; the renderer stretches within the bubble padding and keeps its measured content height. Avoid percentage widths inside content-sized bubbles, which can mismeasure native wrapping and height.
 
 #### Supported formatting
