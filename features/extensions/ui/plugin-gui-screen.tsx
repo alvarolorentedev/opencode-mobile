@@ -22,7 +22,7 @@ export function PluginGuiScreen() {
   const insets = useSafeAreaInsets();
   const { extensions } = useExtensions();
   const { currentSessionId, activeSession } = useCurrentSession();
-  const { sessions } = useSessionLibrary();
+  const { sessions, openSessionInProject } = useSessionLibrary();
   const sessionId = requestedSession ?? currentSessionId;
   const session = sessions.find((entry) => entry.id === sessionId) ?? (activeSession?.id === sessionId ? activeSession : undefined) ?? sessions[0];
   const plugin = extensions.pluginGui.plugins.find((entry) => entry.id === pluginId);
@@ -54,7 +54,12 @@ export function PluginGuiScreen() {
           pluginId={pluginId}
           session={session}
           onClose={close}
-          onOpenSession={(sessionID) => router.push(`/session/${sessionID}` as never)}
+          onOpenSession={async (sessionID) => {
+            // Same in-app navigation as the overlay: keep the project
+            // context instead of falling back to the external deep link.
+            await openSessionInProject(session.directory ?? '', sessionID);
+            router.replace('/(tabs)' as never);
+          }}
         />
       )}
     </View>

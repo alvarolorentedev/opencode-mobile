@@ -1,8 +1,8 @@
 import { View, useWindowDimensions } from 'react-native';
-import { useRouter } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { useConnection } from '@/features/connections/context';
 import { useExtensions } from '@/features/extensions/context';
+import { useSessionLibrary } from '@/features/sessions/context';
 import { OverlaySheet } from '@/shared/ui/overlay-sheet';
 import { PluginGuiView } from '@/features/extensions/ui/plugin-gui-view';
 
@@ -15,10 +15,10 @@ type Props = {
 
 export function PluginGuiOverlay({ visible, pluginId, session, onClose }: Props) {
   const { t } = useTranslation();
-  const router = useRouter();
   const { height } = useWindowDimensions();
   const { extensions } = useExtensions();
   const { settings } = useConnection();
+  const { openSessionInProject } = useSessionLibrary();
   const plugin = extensions.pluginGui.plugins.find((entry) => entry.id === pluginId);
   // No selected session (brand-new chat): fall back to the connection
   // directory so globally installed plugins still render and can offer
@@ -39,9 +39,12 @@ export function PluginGuiOverlay({ visible, pluginId, session, onClose }: Props)
             pluginId={pluginId}
             session={effectiveSession}
             onClose={onClose}
-            onOpenSession={(sessionID) => {
+            onOpenSession={async (sessionID) => {
+              // In-app navigation from rendered plugin data: resolve the
+              // workspace locally instead of going through the external
+              // session deep link, which would lose the project context.
+              await openSessionInProject(effectiveSession.directory ?? settings.directory ?? '', sessionID);
               onClose();
-              router.push(`/session/${sessionID}` as never);
             }}
           />
         </View>

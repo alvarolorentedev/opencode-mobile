@@ -25,7 +25,7 @@ type Props = {
   pluginId: string;
   session: SessionView;
   onClose: () => void;
-  onOpenSession: (sessionID: string) => void;
+  onOpenSession: (sessionID: string) => Promise<void>;
 };
 
 function normalize(value: string) {
@@ -167,7 +167,13 @@ export function PluginGuiView({ pluginId, session, onClose, onOpenSession }: Pro
         onError={async (message) => setError(message)}
         onEmpty={async () => setError(t('settings:extensions.gui.noPanel'))}
         onClose={async () => onClose()}
-        onOpenSession={async (sessionID) => onOpenSession(sessionID)}
+        onOpenSession={async (sessionID) => {
+          try {
+            await onOpenSession(sessionID);
+          } catch (cause) {
+            setError(getErrorMessage(cause));
+          }
+        }}
         onOpenExternal={async (url) => openExternal(url)}
         onRpc={rpc}
         onSessionGet={sessionGet}

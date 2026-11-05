@@ -87,6 +87,10 @@ Known limits of this first profile:
 - Settings → Extensions still owns plugin installation and removal. GUI launch
   is intentionally in the chat header, not Settings. The standalone
   `/plugin?id=<id>&session=<id>` route remains a deep-link fallback.
+- `ctx.tabs.open` and the panel session button use in-app workspace navigation
+  (`openSessionInProject`) with the current session directory, not the external
+  `/session/<id>` deep link, so the project context is preserved. Failures stay
+  in the panel error state.
 - With no session selected the overlay falls back to the connection directory,
   so globally installed plugins still render and can offer their own
   run/session picker.
