@@ -61,8 +61,10 @@ modals and hardware keyboards; SDK compatibility alone is not a reason to migrat
 
 ### App updates (implemented)
 
-SDK 58 enables `expo-in-app-updates` 0.13.0. Android explicitly requests immediate
-updates, retaining safety blockers, cancellation cooldown and interrupted recovery.
+SDK 58 enables `expo-in-app-updates` 0.13.0. Android requests flexible updates
+first, keeps immediate for Play priorities 4-5 and for a refused flexible
+request, and retains safety blockers, cancellation cooldown, explicit install
+behind the Restart banner and interrupted recovery.
 Its native error fallback can open Play Store; the attempted candidate is suppressed
 before handoff. iOS keeps its existing listing validation and intentional external
 navigation, using Expo Application's verified production-environment API. The custom

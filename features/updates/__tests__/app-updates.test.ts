@@ -212,7 +212,7 @@ describe('store boundary', () => {
 });
 
 describe('flexible Android adapter with explicit install', () => {
-  async function adapter(info = { updateAvailable: true, immediateAllowed: true, flexibleAllowed: true, updateInProgress: false, downloaded: false, storeVersion: '60' }) {
+  async function adapter(info = { updateAvailable: true, immediateAllowed: true, flexibleAllowed: true, updateInProgress: false, downloaded: false, serverPriority: 0, storeVersion: '60' }) {
     const startUpdate = vi.fn(async (_immediate: boolean) => true);
     const referrer = vi.fn(async () => '');
     const remove = vi.fn();
@@ -222,26 +222,40 @@ describe('flexible Android adapter with explicit install', () => {
     });
     return { api: createAndroidAppUpdates() as AppUpdateApi, startUpdate, referrer, remove };
   }
-  it('prefers immediate but falls back to flexible when that is all Play permits', async () => {
-    const view = await adapter({ updateAvailable: true, immediateAllowed: false, flexibleAllowed: true, updateInProgress: false, downloaded: false, storeVersion: '60' });
+  it('prefers flexible and keeps immediate only for Play priorities 4-5', async () => {
+    const view = await adapter();
     expect(await view.api.check()).toEqual({ phase: 'available', version: '60' });
-    view.startUpdate.mockResolvedValueOnce(false);
     await view.api.start(() => true);
-    expect(view.startUpdate).toHaveBeenNthCalledWith(1, true);
-    expect(view.startUpdate).toHaveBeenNthCalledWith(2, false);
-    const ready = await adapter();
-    expect(await ready.api.check()).toEqual({ phase: 'available', version: '60' });
-    await ready.api.start(() => true);
-    expect(ready.startUpdate).toHaveBeenCalledTimes(1);
-    expect(ready.startUpdate).toHaveBeenCalledWith(true);
+    expect(view.startUpdate).toHaveBeenCalledTimes(1);
+    expect(view.startUpdate).toHaveBeenCalledWith(false);
+    for (const serverPriority of [4, 5]) {
+      const forced = await adapter({ updateAvailable: true, immediateAllowed: true, flexibleAllowed: true, updateInProgress: false, downloaded: false, serverPriority, storeVersion: '60' });
+      await forced.api.check();
+      await forced.api.start(() => true);
+      expect(forced.startUpdate).toHaveBeenCalledTimes(1);
+      expect(forced.startUpdate).toHaveBeenCalledWith(true);
+    }
+  });
+  it('falls back to immediate when Play refuses flexible and resumes an interrupted immediate flow', async () => {
+    const view = await adapter();
+    view.startUpdate.mockResolvedValueOnce(false);
+    await view.api.check();
+    await view.api.start(() => true);
+    expect(view.startUpdate).toHaveBeenNthCalledWith(1, false);
+    expect(view.startUpdate).toHaveBeenNthCalledWith(2, true);
+    const interrupted = await adapter({ updateAvailable: true, immediateAllowed: true, flexibleAllowed: false, updateInProgress: true, downloaded: false, serverPriority: 0, storeVersion: '60' });
+    expect(await interrupted.api.check()).toEqual({ phase: 'inProgress', version: '60' });
+    await interrupted.api.start(() => true);
+    expect(interrupted.startUpdate).toHaveBeenCalledWith(true);
   });
   it('surfaces a finished download for an explicit install and completes it on request', async () => {
-    const view = await adapter({ updateAvailable: true, immediateAllowed: false, flexibleAllowed: true, updateInProgress: false, downloaded: true, storeVersion: '60' });
+    const view = await adapter({ updateAvailable: true, immediateAllowed: false, flexibleAllowed: true, updateInProgress: false, downloaded: true, serverPriority: 0, storeVersion: '60' });
     expect(await view.api.check()).toEqual({ phase: 'downloaded', version: '60' });
     await view.api.start(() => true);
-    expect(view.startUpdate).toHaveBeenCalledWith(true);
+    // The native DOWNLOADED branch completes the install regardless of the requested type.
+    expect(view.startUpdate).toHaveBeenCalledWith(false);
   });
-  it('rechecks safety before the flexible fallback and removes native listeners', async () => {
+  it('rechecks safety before the flexible download and removes native listeners', async () => {
     const view = await adapter();
     const unsubscribe = view.api.subscribe(() => {});
     await view.api.check();

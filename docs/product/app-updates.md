@@ -14,13 +14,14 @@ eligibility, the handoff gate and failure snackbar.
 
 `shared/platform/android-app-updates.ts` wraps `expo-in-app-updates` 0.13.0 with
 one pinned patch (`patches/expo-in-app-updates+0.13.0.patch`; see
-[ADR 0031](../adr/0031-flexible-updates-with-explicit-install.md)).
+[ADR 0031](../adr/0031-flexible-updates-with-explicit-install.md) and
+[ADR 0036](../adr/0036-flexible-first-with-play-urgency.md)).
 Production builds require Expo Application's Play install-referrer service to be
 available; Play Core enforces account ownership, matching signing and a higher
 version code. Signed Play-installed acceptance remains required.
-The adapter prefers immediate mode and falls back to flexible when Play only
-permits that type; it never uses the helper that picks from server priority.
-Immediate updates keep Play-owned blocking consent, download and installation.
+The adapter requests flexible mode first and falls back to immediate only when
+Play refuses flexible; Play update priority 4-5 marks an urgent release and keeps
+the immediate flow. It never uses the helper that picks from server priority.
 Flexible updates download in the background while the app stays usable; the
 patch stops the library's automatic install on download completion, so the
 install waits for an explicit Restart tap behind the app-side safety gates.
@@ -29,9 +30,9 @@ otherwise retain upstream behavior. App-side gates protect both download start
 and install; JS never auto-installs a finished download. Cold recovery of a
 finished download is a required signed store/device check.
 
-An available update starts its download at the first safe moment: immediate
-consent opens Play, while a flexible download proceeds in the background
-without a themed offer. A finished download surfaces a Restart & install
+An available update starts its download at the first safe moment: a flexible
+download proceeds in the background without a themed offer, while an urgent or
+flexible-refused candidate opens Play consent. A finished download surfaces a Restart & install
 banner; the install restarts the app only after an explicit tap re-verifies
 safety. Existing unsaved-work, route, foreground and operation blockers
 suppress both download start and install. An accessible gate protects the
@@ -108,8 +109,9 @@ and install, process death/resume in both modes, busy-at-completion,
 offline/error/store fallback and cooldowns.
 Verify no native handoff or install occurs while composing, editing a file, opening a modal,
 running a task, using voice or purchasing Cloud Link. Preserve those contents when
-the offer is suppressed. Verify immediate is preferred and flexible is used only
-where Play disallows immediate, and that returning from Play's error fallback never loops.
+the offer is suppressed. Verify flexible is requested first, immediate is used
+only when Play refuses it or marks priority 4-5, and that returning from Play's
+error fallback never loops.
 
 The content-capture ANR mitigation remains directly after the generated
 MainActivity superclass call. Inspect the minified release and exercise large

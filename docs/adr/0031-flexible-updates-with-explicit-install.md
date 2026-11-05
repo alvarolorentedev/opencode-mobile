@@ -1,6 +1,6 @@
 # ADR 0031: Flexible store updates with explicit install
 
-- Status: Accepted
+- Status: Superseded by ADR 0036
 - Date: 2026-11-05
 - Deciders: maintainers
 - Supersedes: [ADR 0017](0017-native-defaults-and-prebuilt-engines.md)

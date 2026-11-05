@@ -107,7 +107,7 @@ missing capability. Native SDK calls stay out of generic UI. See the
 | Area | Decision | Ownership and reason |
 | --- | --- | --- |
 | Expo / RN and SDK-managed packages | Update together to SDK 58's supported mapping | `package.json` / lockfile; unrelated OpenCode SDKs, tests and app libraries retain their locked versions |
-| Local store-update module | Replace / remove | `shared/platform/android-app-updates.ts` / `shared/platform/app-updates.ts`; maintained Play bridge with immediate-preferred, flexible fallback and a deferred-install patch; official Expo Application replaces custom iOS eligibility code |
+| Local store-update module | Replace / remove | `shared/platform/android-app-updates.ts` / `shared/platform/app-updates.ts`; maintained Play bridge with flexible-first, urgent-immediate override, and a deferred-install patch; official Expo Application replaces custom iOS eligibility code |
 | Update completion UI | Remove | `features/updates/`; Play owns immediate consent and background flexible download; the app owns only the explicit Restart & install banner; iOS retains intentional external listing navigation |
 | Foreground activity service | Keep | `modules/opencode-activity/`; ongoing notification and Headless JS cannot be replaced by opportunistic Expo background tasks |
 | Per-connection custom CA | Add | `modules/opencode-tls/` + `shared/platform/tls-trust.ts`; Android host-aware OkHttp trust and iOS `NSURLProtocol`/`SRSecurityPolicy`; OpenCode 1 and Cloud Link keep system trust ([ADR 0021](../adr/0021-per-connection-custom-ca.md)) |

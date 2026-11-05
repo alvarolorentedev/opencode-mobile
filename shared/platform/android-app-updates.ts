@@ -9,12 +9,14 @@ type NativeUpdateInfo = {
   storeVersion?: string | null;
   immediateAllowed?: boolean;
   flexibleAllowed?: boolean;
+  serverPriority?: number | null;
 };
 
 export function createAndroidAppUpdates(): AppUpdateApi {
   let listener: ((event: UpdateEvent) => void) | undefined;
   let subscriptions: (() => void)[] = [];
   let native: typeof import('expo-in-app-updates') | undefined;
+  let urgent = false;
 
   async function load() {
     // Only the Play-installed production boundary can reach this adapter.
@@ -37,6 +39,8 @@ export function createAndroidAppUpdates(): AppUpdateApi {
       const module = await load();
       if (!module) return { phase: 'none' };
       const info = (await module.checkForUpdate()) as NativeUpdateInfo;
+      // Play priorities 4-5 mark a release as urgent; those keep the blocking flow.
+      urgent = Boolean(info.updateInProgress) || (info.serverPriority ?? 0) >= 4;
       if (info.updateInProgress) return { phase: 'inProgress', version: info.storeVersion ?? 'immediate' };
       // A flexible download that finished (possibly before a process death) waits for an explicit install.
       if (info.updateAvailable && info.downloaded) return { phase: 'downloaded', version: info.storeVersion ?? undefined };
@@ -46,11 +50,12 @@ export function createAndroidAppUpdates(): AppUpdateApi {
     start: async (isSafe) => {
       const module = await load();
       if (!module || !isSafe()) return false;
-      // Prefer immediate; fall back to flexible when Play only permits that type.
+      // Urgent releases stay immediate; everything else downloads in the background and installs on demand.
       // A finished download completes, and an interrupted immediate flow resumes, on either call.
       // Native failures may open Play Store; the domain suppresses this attempt before handoff.
-      if (await module.startUpdate(true)) return true;
-      return isSafe() ? module.startUpdate(false) : false;
+      if (urgent) return module.startUpdate(true);
+      if (await module.startUpdate(false)) return true;
+      return isSafe() ? module.startUpdate(true) : false;
     },
     subscribe: (callback) => {
       listener = callback;
