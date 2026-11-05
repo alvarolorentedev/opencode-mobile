@@ -71,7 +71,8 @@ async function assertNoStoredSecrets(page) {
   expect(page.url()).not.toContain('temporary-test-pairing');
 }
 async function mockControlPlane(page, options = {}) {
-  const paidThrough = Date.now() + (options.ttl ?? 3600000);
+  const ttl = options.ttl ?? 3600000;
+  const paidThrough = Date.now() + ttl;
   const machine = { id: 'machine-1', name: 'Test Mac', hostname: 'connect-machine.test', public_url: options.serverUrl ?? CONNECT_SERVER, created_at: new Date().toISOString(), access_enabled: true };
   const state = { paidThrough, subscriptionClaims: 0, pairClaims: 0, accesses: 0, deleted: [], machines: options.owned ? [machine] : [], requests: [] };
   await page.route(`${CONNECT_SERVER}/**`, async (route) => {
@@ -105,6 +106,9 @@ async function mockControlPlane(page, options = {}) {
       await page.evaluate(() => globalThis.__connectStoreTest.events.push('claim'));
       if (options.testPurchase) { await send({ error: 'Google test purchases are disabled in this environment' }, 403); return; }
       if (options.subscriptionStatus && state.subscriptionClaims === 1) { await send({ error: 'store unavailable' }, options.subscriptionStatus); return; }
+      // Start the paid window at the first claim; browser boot before the click must not consume it.
+      // Later claims keep the same window so recovery cannot renew an expired test subscription.
+      if (state.subscriptionClaims === 1) state.paidThrough = Date.now() + ttl;
       await send({ user_id: 'store-owner', user_token: 'test-user-token', session_expires_at: new Date(Date.now() + 86400000).toISOString(), subscription_expires_at: new Date(state.paidThrough).toISOString(), entitlements: ['cloudlink'] }); return;
     }
     expect(request.headers().authorization).toBe('Bearer test-user-token');
@@ -533,7 +537,7 @@ test('expiry stops data-plane traffic while preserving owned machine and profile
   await storeFixture(page); const state = await mockControlPlane(page, { ttl: 8000 });
   await openPair(page); await page.getByTestId('connect-purchase').click();
   await expect(page).toHaveURL(/\/projects$/, { timeout: 30_000 });
-  await page.waitForTimeout(8500);
+  await page.waitForTimeout(Math.max(0, state.paidThrough - Date.now()) + 5000);
   const requests = [];
   page.on('request', (request) => { if (request.url().startsWith(CONNECT_SERVER)) requests.push(request.url()); });
   await page.waitForTimeout(2000);
