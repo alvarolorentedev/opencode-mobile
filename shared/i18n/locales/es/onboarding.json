@@ -28,7 +28,8 @@
     "continue": "Continuar",
     "skip": "Omitir",
     "empty": "Este servidor no informó de ningún proyecto. Añade un directorio en el servidor para empezar.",
-    "loading": "Cargando proyectos…"
+    "loading": "Cargando proyectos…",
+    "noMatches": "Ningún proyecto coincide con «{{query}}»."
   },
   "permissions": {
     "title": "Permisos",

@@ -28,7 +28,8 @@
     "continue": "Continue",
     "skip": "Skip",
     "empty": "This server did not report any projects. Add a directory on the server to get started.",
-    "loading": "Loading projects…"
+    "loading": "Loading projects…",
+    "noMatches": "No projects match “{{query}}”."
   },
   "permissions": {
     "title": "Permissions",

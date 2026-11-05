@@ -28,7 +28,8 @@
     "continue": "继续",
     "skip": "跳过",
     "empty": "此服务器未报告任何项目。请在服务器上添加目录以开始。",
-    "loading": "正在加载项目…"
+    "loading": "正在加载项目…",
+    "noMatches": "没有与“{{query}}”匹配的项目。"
   },
   "permissions": {
     "title": "权限",

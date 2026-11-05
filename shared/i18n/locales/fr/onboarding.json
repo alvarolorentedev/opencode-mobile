@@ -28,7 +28,8 @@
     "continue": "Continuer",
     "skip": "Passer",
     "empty": "Ce serveur n’a signalé aucun projet. Ajoutez un dossier sur le serveur pour commencer.",
-    "loading": "Chargement des projets…"
+    "loading": "Chargement des projets…",
+    "noMatches": "Aucun projet ne correspond à « {{query}} »."
   },
   "permissions": {
     "title": "Autorisations",

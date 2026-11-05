@@ -28,7 +28,8 @@
     "continue": "Weiter",
     "skip": "Überspringen",
     "empty": "Dieser Server hat keine Projekte gemeldet. Füge auf dem Server ein Verzeichnis hinzu, um zu beginnen.",
-    "loading": "Projekte werden geladen…"
+    "loading": "Projekte werden geladen…",
+    "noMatches": "Keine Projekte passen zu „{{query}}“."
   },
   "permissions": {
     "title": "Berechtigungen",

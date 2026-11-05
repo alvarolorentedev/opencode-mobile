@@ -4,7 +4,7 @@ import { Text } from '@/shared/ui/text';
 import { Button } from '@/shared/ui/button';
 import { TextField } from '@/shared/ui/text-field';
 import { Icon } from '@/shared/ui/icon';
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { View } from 'react-native';
 
@@ -36,10 +36,17 @@ export default function OnboardingProjectScreen() {
   const [adding, setAdding] = useState(false);
   const [browsing, setBrowsing] = useState(false);
   const [directory, setDirectory] = useState('');
+  const [query, setQuery] = useState('');
   const [addError, setAddError] = useState<string>();
   const [isAdding, setIsAdding] = useState(false);
 
   const activeProject = projects.find((project) => project.path === activeProjectPath);
+  const visibleProjects = useMemo(() => {
+    const term = query.trim().toLocaleLowerCase();
+    return term
+      ? projects.filter((project) => `${project.label} ${project.path}`.toLocaleLowerCase().includes(term))
+      : projects;
+  }, [projects, query]);
 
   function choose(path: string) {
     // Persists through the existing active-project mechanism.
@@ -92,7 +99,9 @@ export default function OnboardingProjectScreen() {
         </>
       ) : null}
 
-      <ProjectOptions activePath={activeProjectPath} onSelect={choose} projects={projects} />
+      <TextField testID="onboarding-project-search" accessibilityLabel={t('common:servers.searchProjects')} placeholder={t('common:servers.searchProjects')} value={query} onChangeText={setQuery} autoCapitalize="none" autoCorrect={false}></TextField>
+      <ProjectOptions activePath={activeProjectPath} onSelect={choose} projects={visibleProjects} />
+      {query.trim() && visibleProjects.length === 0 ? <Text className={cn("text-muted-foreground")}>{t('onboarding:project.noMatches', { query: query.trim() })}</Text> : null}
 
       {adding ? (
         <View className={cn(stylesClasses.addForm, "border-border")}>
