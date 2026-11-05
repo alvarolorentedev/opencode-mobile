@@ -11,13 +11,17 @@ const prompt = {
   state: 'waiting' as const,
 };
 
+const attachment = { uri: 'data:text/plain;base64,aGVsbG8=', mime: 'text/plain', filename: 'notes.txt' };
+const attachmentDetail = { id: 'm1-1', kind: 'file' as const, label: 'notes.txt', body: 'text/plain', ...attachment };
+
 async function mount(overrides: Record<string, unknown> = {}) {
   const runtime = hookRuntime();
   const { useChatComposerNotices } = await loadTs('features/chat/ui/use-chat-composer-notices.ts', {
     react: runtime.react,
   }, runtime.globals);
-  const inputRef = { current: { draft: 'previous draft' } };
+  const inputRef = { current: { draft: 'previous draft', attachments: [] as { uri: string; mime?: string; filename?: string }[] } };
   const setDraft = vi.fn((value: string) => { inputRef.current.draft = value; });
+  const setAttachments = vi.fn((value: { uri: string; mime?: string; filename?: string }[]) => { inputRef.current.attachments = value; });
   const revertSession = vi.fn(async () => undefined);
   const unrevertSession = vi.fn(async () => undefined);
   const cancelPrompt = vi.fn(async () => undefined);
@@ -26,26 +30,40 @@ async function mount(overrides: Record<string, unknown> = {}) {
     currentSessionId: 's',
     inputRef,
     revertSession,
+    setAttachments,
     setDraft,
-    transcript: [{ id: 'm1', role: 'user', text: 'original prompt', createdAt: 1, details: [] }],
+    transcript: [{ id: 'm1', role: 'user', text: 'original prompt', createdAt: 1, details: [attachmentDetail] }],
     unrevertSession,
     ...overrides,
   });
-  return { runtime, inputRef, setDraft, revertSession, unrevertSession, cancelPrompt };
+  return { runtime, inputRef, setDraft, setAttachments, revertSession, unrevertSession, cancelPrompt };
 }
 
 describe('composer notices', () => {
-  it('prefills the reverted message text', async () => {
-    const { runtime, inputRef, setDraft, revertSession } = await mount();
+  it('prefills the reverted message text and attachments', async () => {
+    const { runtime, inputRef, setAttachments, setDraft, revertSession } = await mount();
     await runtime.value.handleRevertMessage('s', 'm1');
     await runtime.settle();
     expect(revertSession).toHaveBeenCalledWith('s', 'm1');
     expect(setDraft).toHaveBeenCalledWith('original prompt');
     expect(inputRef.current.draft).toBe('original prompt');
+    expect(setAttachments).toHaveBeenCalledWith([attachment]);
+    expect(inputRef.current.attachments).toEqual([attachment]);
   });
 
-  it('clears an unchanged reverted draft when the revert is canceled', async () => {
-    const { runtime, inputRef, setDraft, unrevertSession } = await mount();
+  it('prefills an attachment-only reverted message', async () => {
+    const { runtime, inputRef, setAttachments, setDraft } = await mount({
+      transcript: [{ id: 'm1', role: 'user', text: '', createdAt: 1, details: [attachmentDetail] }],
+    });
+    await runtime.value.handleRevertMessage('s', 'm1');
+    await runtime.settle();
+    expect(setDraft).toHaveBeenCalledWith('');
+    expect(setAttachments).toHaveBeenCalledWith([attachment]);
+    expect(inputRef.current.attachments).toEqual([attachment]);
+  });
+
+  it('clears an unchanged reverted draft and attachments when the revert is canceled', async () => {
+    const { runtime, inputRef, setAttachments, setDraft, unrevertSession } = await mount();
     await runtime.value.handleRevertMessage('s', 'm1');
     await runtime.settle();
     inputRef.current.draft = 'original prompt';
@@ -53,6 +71,7 @@ describe('composer notices', () => {
     await runtime.settle();
     expect(unrevertSession).toHaveBeenCalledWith('s');
     expect(setDraft).toHaveBeenLastCalledWith('');
+    expect(setAttachments).toHaveBeenLastCalledWith([]);
   });
 
   it('keeps an edited reverted draft when the revert is canceled', async () => {
@@ -64,6 +83,17 @@ describe('composer notices', () => {
     await runtime.value.handleCancelRevert('s');
     await runtime.settle();
     expect(setDraft).not.toHaveBeenCalledWith('');
+  });
+
+  it('keeps an attachment added after the revert when it is canceled', async () => {
+    const { runtime, inputRef, setAttachments } = await mount();
+    await runtime.value.handleRevertMessage('s', 'm1');
+    await runtime.settle();
+    inputRef.current.attachments = [...inputRef.current.attachments, { uri: 'data:text/plain;base64,YQ==' }];
+    setAttachments.mockClear();
+    await runtime.value.handleCancelRevert('s');
+    await runtime.settle();
+    expect(setAttachments).not.toHaveBeenCalledWith([]);
   });
 
   it('moves a canceled pending prompt into an empty draft', async () => {

@@ -1,19 +1,22 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 
 import type { TranscriptEntry } from '@/shared/presentation/format';
-import type { PendingPrompt } from '@/shared/protocol/opencode/prompt-inbox';
+import type { PendingPrompt, PromptAttachment } from '@/shared/protocol/opencode/prompt-inbox';
+
+type RevertPrefill = { sessionId: string; text: string; attachments: PromptAttachment[] };
 
 type ComposerNoticesInput = {
   cancelPrompt: (sessionId: string, promptId: string) => Promise<void>;
   currentSessionId?: string;
-  inputRef: { current: { draft: string } };
+  inputRef: { current: { draft: string; attachments: PromptAttachment[] } };
   revertSession: (sessionId: string, messageId: string) => Promise<void>;
+  setAttachments: (value: PromptAttachment[]) => void;
   setDraft: (value: string) => void;
   transcript: TranscriptEntry[];
   unrevertSession: (sessionId: string) => Promise<void>;
 };
 
-// Revert and pending-prompt close actions share the composer draft. Keeping the
+// Revert and pending-prompt close actions share the composer input. Keeping the
 // ownership guards here prevents a slow cancel from leaking text into another
 // session.
 export function useChatComposerNotices({
@@ -21,6 +24,7 @@ export function useChatComposerNotices({
   currentSessionId,
   inputRef,
   revertSession,
+  setAttachments,
   setDraft,
   transcript,
   unrevertSession,
@@ -28,7 +32,7 @@ export function useChatComposerNotices({
   const [cancelingPromptId, setCancelingPromptId] = useState<string | undefined>();
   const [isCancelingRevert, setIsCancelingRevert] = useState(false);
   const currentSessionIdRef = useRef(currentSessionId);
-  const revertPrefillRef = useRef<{ sessionId: string; text: string } | undefined>(undefined);
+  const revertPrefillRef = useRef<RevertPrefill | undefined>(undefined);
 
   useEffect(() => {
     currentSessionIdRef.current = currentSessionId;
@@ -43,9 +47,13 @@ export function useChatComposerNotices({
     if (currentSessionIdRef.current !== sessionId) {
       return;
     }
-    revertPrefillRef.current = { sessionId, text: entry.text };
+    const attachments = entry.details.flatMap((detail) => detail.kind === 'file' && detail.uri
+      ? [{ uri: detail.uri, mime: detail.mime, filename: detail.filename }]
+      : []);
+    revertPrefillRef.current = { sessionId, text: entry.text, attachments };
     setDraft(entry.text);
-  }, [revertSession, setDraft, transcript]);
+    setAttachments(attachments);
+  }, [revertSession, setAttachments, setDraft, transcript]);
 
   const handleCancelRevert = useCallback(async (sessionId: string) => {
     if (isCancelingRevert) {
@@ -56,15 +64,18 @@ export function useChatComposerNotices({
       const pending = revertPrefillRef.current;
       await unrevertSession(sessionId);
       if (pending?.sessionId === sessionId && revertPrefillRef.current === pending) {
-        if (currentSessionIdRef.current === sessionId && inputRef.current.draft === pending.text) {
+        if (currentSessionIdRef.current === sessionId
+          && inputRef.current.draft === pending.text
+          && inputRef.current.attachments === pending.attachments) {
           setDraft('');
+          setAttachments([]);
         }
         revertPrefillRef.current = undefined;
       }
     } finally {
       setIsCancelingRevert(false);
     }
-  }, [inputRef, isCancelingRevert, setDraft, unrevertSession]);
+  }, [inputRef, isCancelingRevert, setAttachments, setDraft, unrevertSession]);
 
   const handleCancelPendingPrompt = useCallback(async (prompt: PendingPrompt) => {
     if (cancelingPromptId) {

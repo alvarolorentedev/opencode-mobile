@@ -69,6 +69,10 @@ test('reverting a running reply stops it before staging the rewind', async ({ pa
   await resetScenario(request, 'inbox');
   await page.setViewportSize({ width: 390, height: 844 });
   await openReadyChat(page);
+  // The attachment strip sits above the composer card inside the shared composer container.
+  const composer = page.getByTestId('chat-composer-card').locator('xpath=..');
+  await attachFile(page, 'revert-notes.txt', 'text/plain', Buffer.from('Keep this attachment'));
+  await expect(composer.getByTestId('attachment-tile')).toHaveCount(1);
   await sendPrompt(page, 'Keep working on the revert');
   await expect(page.getByTestId('transcript-activity-session-status')).toContainText('OpenCode is working…');
   await expect(page.getByText('Working on: Keep working on the revert', { exact: true }).first()).toBeVisible();
@@ -79,6 +83,9 @@ test('reverting a running reply stops it before staging the rewind', async ({ pa
   await expect(page.getByTestId('chat-revert-notice')).toBeVisible();
   await expect(page.getByText('Action failed', { exact: true })).toHaveCount(0);
   await expect(page.getByPlaceholder('Ask anything...')).toHaveValue('Keep working on the revert');
+  await expect(composer.getByTestId('attachment-tile')).toHaveCount(1);
+  await composer.getByTestId('attachment-tile').click();
+  await expect(page.getByTestId('attachment-text-preview')).toHaveText('Keep this attachment');
 });
 
 test('OpenCode 2 keeps steer and append prompts pinned until delivery and recovers them after reload', async ({ page, request }) => {

@@ -65,6 +65,7 @@ export function useChatViewController() {
     currentSessionId,
     inputRef,
     revertSession,
+    setAttachments,
     setDraft,
     transcript: currentTranscript,
     unrevertSession,

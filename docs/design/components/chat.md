@@ -36,8 +36,8 @@ composer. Sending entries keep the action disabled until admission completes.
 while a revert is staged. Selecting a message's revert action stops any
 in-flight reply, settles it, then stages the revert immediately without a
 confirmation dialog. Its close action cancels the revert.
-The reverted prompt text is edited in the composer, so the notice only carries
-status and the cancel affordance.
+The reverted prompt text and attachments are restored to the composer for
+editing, so the notice only carries status and the cancel affordance.
 
 Steer/Append selection lives at the top of
 Chat & responses, alongside timeline detail, chat text size, and flat
