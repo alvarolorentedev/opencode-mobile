@@ -85,6 +85,7 @@ coverage, and documentation links.
 | [0031](0031-flexible-updates-with-explicit-install.md) | Flexible store updates with explicit install | Accepted |
 | [0032](0032-web-parity-project-picker.md) | Project picker matches web Used/Other semantics | Superseded by ADR 0033 |
 | [0033](0033-server-driven-projects-and-sessions.md) | Server-driven projects and sessions without local registries | Accepted |
+| [0034](0034-device-local-project-archive.md) | Device-local project archive marker | Accepted |
 
 ## Template
 

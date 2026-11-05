@@ -301,8 +301,8 @@ the provider then creates and opens the session in that workspace.
 ### `features/projects/ui/project-picker.tsx`
 
 - shared Chat project button and project picker overlay also used by Project's existing dropdown
-- renders the server catalog in server order; selecting switches the active project, and adding lets the user enter a directory on the OpenCode server that the provider resolves and selects. There is no close action and nothing is recorded locally
-- owns no domain state or persistence
+- renders the server catalog in server order; selecting switches the active project, and adding lets the user enter a directory on the OpenCode server that the provider resolves and selects. A row's device-local archive action hides only that server project under a collapsed "Archived on this device (N)" section with Restore; a stale marker renders nothing. This is separate from the server-archived "Archived on OpenCode" section, and nothing about project selection is recorded locally
+- owns no domain state or persistence; hidden markers and actions come from the workspace registry
 
 ### `features/chat/ui/chat-cards.tsx`
 

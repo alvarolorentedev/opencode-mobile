@@ -110,7 +110,11 @@
     "up": "Nach oben",
     "selectFolder": "Diesen Ordner wählen",
     "enterPathManually": "Pfad manuell eingeben",
-    "browseEmpty": "Keine Ordner hier."
+    "browseEmpty": "Keine Ordner hier.",
+    "archiveLabel": "{{name}} auf diesem Gerät archivieren",
+    "hiddenTitle": "Auf diesem Gerät archiviert ({{count}})",
+    "hiddenHint": "Nur auf diesem Gerät ausgeblendet. Das Projekt bleibt auf dem Server.",
+    "hiddenToggle": "Auf diesem Gerät archivierte Projekte ein- oder ausblenden"
   },
   "errors": {
     "refreshProject": "Der Projekt konnte nicht aktualisiert werden.",

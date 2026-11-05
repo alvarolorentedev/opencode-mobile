@@ -110,7 +110,11 @@
     "up": "Subir",
     "selectFolder": "Seleccionar esta carpeta",
     "enterPathManually": "Introducir ruta manualmente",
-    "browseEmpty": "No hay carpetas aquí."
+    "browseEmpty": "No hay carpetas aquí.",
+    "archiveLabel": "Archivar {{name}} en este dispositivo",
+    "hiddenTitle": "Archivado en este dispositivo ({{count}})",
+    "hiddenHint": "Oculto solo en este dispositivo. El proyecto permanece en el servidor.",
+    "hiddenToggle": "Mostrar u ocultar los proyectos archivados en este dispositivo"
   },
   "errors": {
     "refreshProject": "No se pudo actualizar el proyecto.",

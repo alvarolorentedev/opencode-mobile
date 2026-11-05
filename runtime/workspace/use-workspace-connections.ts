@@ -6,6 +6,7 @@ import type { ConnectionHeaders } from '@/shared/contracts/connection-headers';
 import { createProfileId, deleteProfilePassword, getProfilePassword, loadConnectionProfiles, mutateConnectionProfiles, saveProfilePassword } from '@/shared/storage/connection-profiles';
 import { findMatchingProfile, pickModelPreferences } from '@/shared/contracts/connection-profiles';
 import { getConnectionScope, getConnectionUiScope } from '@/shared/contracts/connection-scope';
+import { HIDDEN_PROJECTS_MAX } from '@/shared/contracts/domain';
 import { defaultConnectionSettings, type OpencodeConnectionSettings } from '@/shared/protocol/opencode/client/types';
 import { getServerHostname } from '@/shared/contracts/server-url';
 import { clearCapabilitiesSnapshots } from '@/features/ai/runtime';
@@ -396,10 +397,33 @@ export function useWorkspaceConnections(shell: WorkspaceShellState, hydrated: bo
       if (profile) await save(profiles.map((item) => item.id === profile.id ? { ...item, modelPreferences: pickModelPreferences(value) } : item));
     }).catch((error) => console.warn('Could not save model preferences.', error));
   }, [change]);
+  const hiddenScope = useCallback((connectionId: string) => {
+    const entry = records.current.find((item) => item.id === connectionId);
+    return entry ? getConnectionScope(entry.settings) : undefined;
+  }, []);
+  const hideProject = useCallback((target: WorkspaceTarget) => {
+    const scope = hiddenScope(target.connectionId);
+    if (!scope) return;
+    shellRef.current.setHiddenProjects((current) => ({
+      ...current,
+      [scope]: [target.projectPath, ...(current[scope] ?? []).filter((path) => path !== target.projectPath)].slice(0, HIDDEN_PROJECTS_MAX),
+    }));
+  }, [hiddenScope]);
+  const restoreProject = useCallback((target: WorkspaceTarget) => {
+    const scope = hiddenScope(target.connectionId);
+    if (!scope) return;
+    shellRef.current.setHiddenProjects((current) => {
+      const remaining = (current[scope] ?? []).filter((path) => path !== target.projectPath);
+      const next = { ...current };
+      if (remaining.length) next[scope] = remaining;
+      else delete next[scope];
+      return next;
+    });
+  }, [hiddenScope]);
   const removeConnection = useCallback(async (id: string) => {
     await disconnect(id);
     change((current) => current.filter((entry) => entry.id !== id));
     for (const key of Object.keys(live.current)) if ((JSON.parse(key) as string[])[0] === id) forget(key);
   }, [change, disconnect, forget]);
-  return { isEnabled, connectedWorkspace, removeConnection, connections, focus, retainedFocus, snapshots, ready, change, select, publish, forget, ensure, resolveKey, activate, navigate, openExternalSession, switchConnection, disconnect, retry, updateSettings, updatePreferences };
+  return { isEnabled, hideProject, restoreProject, hiddenProjects: shell.hiddenProjects, connectedWorkspace, removeConnection, connections, focus, retainedFocus, snapshots, ready, change, select, publish, forget, ensure, resolveKey, activate, navigate, openExternalSession, switchConnection, disconnect, retry, updateSettings, updatePreferences };
 }

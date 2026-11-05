@@ -4,6 +4,7 @@ import { getProfileHeaders } from '@/shared/storage/connection-headers';
 import { findProfileByConnectionScope, type ConnectionProfile } from '@/shared/contracts/connection-profiles';
 import { getProfilePassword, loadConnectionProfiles } from '@/shared/storage/connection-profiles';
 import { getConnectionScope, getConnectionUiScope } from '@/shared/contracts/connection-scope';
+import { HIDDEN_PROJECTS_MAX } from '@/shared/contracts/domain';
 import { defaultConnectionSettings } from '@/shared/protocol/opencode/client';
 import { ConnectionRuntime } from '@/runtime/connections/connection-runtime';
 import { CURRENT_ONBOARDING_VERSION, isOnboardingComplete } from '@/features/onboarding/runtime';
@@ -55,7 +56,7 @@ export function WorkspaceProvider({ children }: PropsWithChildren) {
   const manager = useWorkspaceConnections(shell, isHydrated);
   useWorkspaceAutoApprove(manager);
   const { updateSettings: updateWorkspaceSettings, retry, change, removeConnection: removeWorkspaceConnection, connectedWorkspace, isEnabled } = manager;
-  const { setFavoriteSessions, setSettings, setChatPreferences } = shell;
+  const { setFavoriteSessions, setSettings, setChatPreferences, setHiddenProjects } = shell;
   const { connections, focus, retainedFocus, snapshots, ensure, resolveKey, switchConnection, activate, navigate, openExternalSession, disconnect } = manager;
   const fileClipboard = useFileClipboard(connections);
   const selectedRuntime = focus ? snapshots[resolveKey(focus)] : undefined;
@@ -71,7 +72,15 @@ export function WorkspaceProvider({ children }: PropsWithChildren) {
   const profileRefreshed = useCallback((previous: ConnectionProfile, next: ConnectionProfile) => {
     const oldScope = getConnectionScope(previous), newScope = getConnectionScope(next);
     setFavoriteSessions((items) => items.map((entry) => entry.connectionScope === oldScope ? { ...entry, connectionScope: newScope } : entry));
-  }, [setFavoriteSessions]);
+    if (oldScope === newScope) return;
+    setHiddenProjects((items) => {
+      if (!(oldScope in items)) return items;
+      const nextItems = { ...items,
+        [newScope]: [...new Set([...(items[newScope] ?? []), ...items[oldScope]])].slice(0, HIDDEN_PROJECTS_MAX) };
+      delete nextItems[oldScope];
+      return nextItems;
+    });
+  }, [setFavoriteSessions, setHiddenProjects]);
   const beforeProfileRefresh = useCallback(async () => {}, []);
   const connectSetup = useConnectState({ controlPlaneUrl: shell.controlPlaneUrl, setControlPlaneUrl: shell.setControlPlaneUrl,
     switchConnection, disconnect: disconnectProfile, isHydrated, activeMachineId: settings.connect?.machineId,
@@ -178,8 +187,10 @@ export function WorkspaceProvider({ children }: PropsWithChildren) {
     onboardingVersion: shell.onboardingVersion, setOnboardingVersion: shell.setOnboardingVersion,
     onboardingActive: shell.onboardingActive, setOnboardingActive: shell.setOnboardingActive,
     favoriteSessions: shell.favoriteSessions, setFavoriteSessions: shell.setFavoriteSessions,
+    hiddenProjects: shell.hiddenProjects, setHiddenProjects: shell.setHiddenProjects,
   }), [fileClipboard, shell.controlPlaneUrl, shell.setControlPlaneUrl, shell.onboardingVersion, shell.setOnboardingVersion,
-    shell.onboardingActive, shell.setOnboardingActive, shell.favoriteSessions, shell.setFavoriteSessions]);
+    shell.onboardingActive, shell.setOnboardingActive, shell.favoriteSessions, shell.setFavoriteSessions,
+    shell.hiddenProjects, shell.setHiddenProjects]);
   const voiceSetupTest = useVoiceSetupTest(shell.chatPreferences, Object.values(snapshots).some((snapshot) => snapshot.values.conversationValue.conversation.phase !== 'off'));
   const workspaceOverrides = useMemo<WorkspaceValueOverrides>(() => ({
     voiceSetupTest,

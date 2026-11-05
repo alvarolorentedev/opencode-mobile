@@ -173,8 +173,10 @@ describe('persistence hydration and write-back', () => {
     let credentialReads = 0;
     let headerReads = 0;
     const keys = await loadTs('shared/storage/keys.ts');
+    const hiddenStorage = await loadTs('features/projects/services/hidden-projects-storage.ts', { zod: { z } });
     const stored = new Map([[keys.SETTINGS_STORAGE_KEY, '{"serverUrl":"stored-server"}'],
       [keys.CHAT_PREFERENCES_STORAGE_KEY, '{"language":"es"}'],
+      [keys.HIDDEN_PROJECTS_STORAGE_KEY, '{"scope":["/repo","/repo","/other"]}'],
       [keys.PROJECTS_STORAGE_KEY, '{"scope":["/repo","/other"]}'],
       [keys.LAST_SESSION_BY_PROJECT_STORAGE_KEY, '{"scope":{"/repo":"ses_1"}}']]);
     const hook = await loadTs('runtime/persistence/use-opencode-persistence.ts', {
@@ -191,6 +193,7 @@ describe('persistence hydration and write-back', () => {
     "@/shared/storage/persisted-preferences": { parseConnectionSettings, parseChatPreferences },
     "@/shared/storage/persistence-hydration": { loadPersistedValue, createPersistenceWriter },
     "@/features/sessions/services/favorites-storage": { parseFavoriteSessions: JSON.parse, serializeFavoriteSessions: JSON.stringify },
+    "@/features/projects/runtime": hiddenStorage,
     "@/features/onboarding/model/onboarding-state": { loadOnboardingStatus: async () => ({ version: 1 }), serializeOnboardingVersion: String }
   }, { console: { warn() {} } });
     const defaultSettings = { serverUrl: 'default-server', username: '', password: '' };
@@ -199,15 +202,18 @@ describe('persistence hydration and write-back', () => {
       const [chatPreferences, setChatPreferences] = hydrationRuntime.react.useState(preferences.defaultChatPreferences);
       const [controlPlaneUrl, setControlPlaneUrl] = hydrationRuntime.react.useState('control');
       const [favoriteSessions, setFavoriteSessions] = hydrationRuntime.react.useState([]);
+      const [hiddenProjects, setHiddenProjects] = hydrationRuntime.react.useState({});
       const [onboardingVersion, setOnboardingVersion] = hydrationRuntime.react.useState(0);
       return { ...hook.useOpencodePersistence({ defaultSettings, defaultChatPreferences: preferences.defaultChatPreferences,
         settings, setSettings, chatPreferences, setChatPreferences,
         controlPlaneUrl, setControlPlaneUrl, favoriteSessions, setFavoriteSessions,
-        onboardingVersion, setOnboardingVersion }), chatPreferences, settings };
+        hiddenProjects, setHiddenProjects,
+        onboardingVersion, setOnboardingVersion }), chatPreferences, hiddenProjects, settings };
     }, {});
     await hydrationRuntime.settle();
     assert.equal(hydrationRuntime.value.isHydrated, true);
     assert.equal(hydrationRuntime.value.chatPreferences.language, 'es');
+    assert.deepEqual(JSON.parse(JSON.stringify(hydrationRuntime.value.hiddenProjects)), { scope: ['/repo', '/other'] });
     assert.equal(stored.has(keys.PROJECTS_STORAGE_KEY), false, 'legacy opened-project lists are removed on hydrate');
     assert.equal(stored.has(keys.LAST_SESSION_BY_PROJECT_STORAGE_KEY), false, 'legacy last-session maps are removed on hydrate');
     assert.equal(credentialReads, 0, 'Unread server metadata must not lend a stored credential to the default server.');

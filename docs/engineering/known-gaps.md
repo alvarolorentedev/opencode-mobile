@@ -368,8 +368,9 @@ hour, and resolving the directory again unarchives it. The V2 protocol exposes
 no request that archives or deletes a project on demand: `project.update`
 accepts canonical, name, icon, and commands only. The picker therefore treats
 archived projects as a read-only server state behind a toggle and offers
-restore, not archive. The device-local close action remains a separate concept
-and never changes the server catalog.
+restore, not archive. A separate device-local "Archived on this device" marker
+can hide a server project from this picker and restore it, but it never changes
+the server catalog and is not a server archive.
 
 Exit plan:
 

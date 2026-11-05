@@ -110,7 +110,11 @@
     "up": "上一级",
     "selectFolder": "选择此文件夹",
     "enterPathManually": "手动输入路径",
-    "browseEmpty": "此处没有文件夹。"
+    "browseEmpty": "此处没有文件夹。",
+    "archiveLabel": "在此设备上归档 {{name}}",
+    "hiddenTitle": "已在此设备上归档 ({{count}})",
+    "hiddenHint": "仅在此设备上隐藏。项目仍保留在服务器上。",
+    "hiddenToggle": "显示或隐藏在此设备上归档的项目"
   },
   "errors": {
     "refreshProject": "无法刷新项目。",

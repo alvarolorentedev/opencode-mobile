@@ -475,6 +475,7 @@ Persisted values:
 - `opencode-mobile.transcript.<connectionScope>.<projectPath>.<sessionId>` (bounded newest transcript tail: 24 records, 200k-character cap, 7-day TTL)
 - `opencode-mobile.capabilities.<connectionScope>.<projectPath>` (last-known config/runtime/models/agents/auth methods, 300k-character cap, 7-day TTL)
 - `opencode-mobile.favorite-sessions` (cross-project favorites, each carrying its connection scope)
+- `opencode-mobile.hidden-projects` (device-local archived project paths per connection scope; only hides matching server catalog rows and never archives on the server)
 
 ### Session cache DTO
 
@@ -516,6 +517,7 @@ Hydration rules:
 - persisted chat preferences validate individual strings, booleans, arrays, maps, and enum values; numeric controls are clamped to their supported ranges before merging over defaults and current provider state
 - saved connection profiles are hydrated on demand and fully validated, including `modelPreferences`; entries with any malformed field are dropped and unknown fields are ignored
 - the active project is never persisted: on connect the retained placeholder runtime derives it from the server catalog (server default location first, then the most recently active project). The retained legacy opened-project and last-session keys are removed once on hydrate
+- hidden-project markers are not project identity: each connection-scoped path list is trimmed, deduped, and capped at 50. A path only hides a matching server catalog row, and a stale path renders nothing rather than hiding a different project or creating a local row
 - last-session maps are not restored; opening a project without an explicit selection picks the newest session in the server list
 - each persisted key hydrates independently; a storage or credential read failure preserves the unread key and suppresses unchanged default write-back until the user changes that value or relaunches. Malformed or invalid JSON is removed without blocking other keys
 - write-back is ordered per key and skips identical successful writes. Errors are reported and failed writes remain retryable. Secure credential writes finish before active connection metadata is written
@@ -611,8 +613,16 @@ Several important UI-facing values are derived instead of stored directly.
 Derived from the server's `project.list()` catalog, enriched with server labels
 and IDs and rendered in server order (most recently active first). Nothing
 about project selection is persisted: the app keeps no opened-project list, no
-active-project pointer, and no close action, so the picker can never show a
+active-project pointer, and no last-session map, so the picker can never show a
 project the server does not report.
+
+The picker also applies the device-local hidden-project map as a filter. Only
+server catalog paths in the connection-scoped marker set are hidden; a stale
+path renders nothing, and no hidden path becomes a project row. The marker is a
+preference, not a server archive, and hiding the active project activates the
+first remaining visible server project on that connection. If none remains, the
+current selection stays until the next picker open derives the server default.
+See [ADR 0034](../adr/0034-device-local-project-archive.md).
 
 On connect the retained placeholder runtime derives the active project from the
 server catalog: the server default location first, then the most recently
@@ -624,9 +634,11 @@ arrives, active roots are kept so a cold start never flashes empty).
 
 Server-archived projects are a separate on-demand read in the picker:
 `project.list({ archived: true })` filtered to `time.archived`. They are not
-added to the derived project list and are never persisted. Restoring resolves
-the archived directory with `location.get`, then invalidates the shared
-`projects` query resource so both the normal and archived lists reconcile.
+added to the derived project list and are never persisted. They render under
+"Archived on OpenCode", distinct from the device-local "Archived on this
+device" section. Restoring resolves the archived directory with `location.get`,
+then invalidates the shared `projects` query resource so both the normal and
+archived lists reconcile.
 
 Workspace runtimes mount on demand for the focused project (plus the retained
 placeholder that boots the connection). Switching projects keeps the previous

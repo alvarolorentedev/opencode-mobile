@@ -12,6 +12,9 @@ export const ACTIVE_PROJECT_STORAGE_KEY = 'opencode-mobile.active-project';
 export const ONBOARDING_VERSION_STORAGE_KEY = 'opencode-mobile.onboarding-version';
 export const PENDING_NOTIFICATION_SESSIONS_STORAGE_KEY = 'opencode-mobile.pending-notification-sessions';
 export const FAVORITE_SESSIONS_STORAGE_KEY = 'opencode-mobile.favorite-sessions';
+// Device-local project archive markers, keyed by connection scope. An entry
+// only hides a matching server catalog path; it never creates a project row.
+export const HIDDEN_PROJECTS_STORAGE_KEY = 'opencode-mobile.hidden-projects';
 // Retired keys. Older builds persisted the device-local opened-project list
 // and last session per project here; the server catalogs are the source of
 // truth now. New writes never happen; hydrate removes any stored values once.

@@ -8,10 +8,11 @@ import { getConnectionPassword, saveConnectionPassword, withoutConnectionSecrets
 import { getConnectionHeaders, saveConnectionHeaders } from '@/shared/storage/connection-headers';
 import type { ConnectionHeaders } from '@/shared/contracts/connection-headers';
 import { isValidServerUrl } from '@/shared/contracts/server-url';
-import { CHAT_PREFERENCES_STORAGE_KEY, CONNECT_CONTROL_PLANE_STORAGE_KEY, FAVORITE_SESSIONS_STORAGE_KEY, LAST_SESSION_BY_PROJECT_STORAGE_KEY, ONBOARDING_VERSION_STORAGE_KEY, PROJECTS_STORAGE_KEY, SETTINGS_STORAGE_KEY } from '@/shared/storage/keys';
+import { CHAT_PREFERENCES_STORAGE_KEY, CONNECT_CONTROL_PLANE_STORAGE_KEY, FAVORITE_SESSIONS_STORAGE_KEY, HIDDEN_PROJECTS_STORAGE_KEY, LAST_SESSION_BY_PROJECT_STORAGE_KEY, ONBOARDING_VERSION_STORAGE_KEY, PROJECTS_STORAGE_KEY, SETTINGS_STORAGE_KEY } from '@/shared/storage/keys';
 import type { ChatPreferences } from '@/shared/preferences/opencode-preferences';
-import type { FavoriteSession } from '@/shared/contracts/domain';
+import type { FavoriteSession, HiddenProjectsByConnection } from '@/shared/contracts/domain';
 import { parseFavoriteSessions, serializeFavoriteSessions } from '@/features/sessions/runtime';
+import { parseHiddenProjects, serializeHiddenProjects } from '@/features/projects/runtime';
 import { loadOnboardingStatus, serializeOnboardingVersion } from '@/features/onboarding/runtime';
 import { parseChatPreferences, parseConnectionSettings } from '@/shared/storage/persisted-preferences';
 import { createPersistenceWriter, loadPersistedValue } from '@/shared/storage/persistence-hydration';
@@ -27,10 +28,12 @@ export function useOpencodePersistence({
   chatPreferences,
   controlPlaneUrl,
   favoriteSessions,
+  hiddenProjects,
   onboardingVersion,
   setChatPreferences,
   setControlPlaneUrl,
   setFavoriteSessions,
+  setHiddenProjects,
   setOnboardingVersion,
   setSettings,
   settings,
@@ -40,10 +43,12 @@ export function useOpencodePersistence({
   chatPreferences: ChatPreferences;
   controlPlaneUrl: string;
   favoriteSessions: FavoriteSession[];
+  hiddenProjects: HiddenProjectsByConnection;
   onboardingVersion: number;
   setChatPreferences: Dispatch<SetStateAction<ChatPreferences>>;
   setControlPlaneUrl: Dispatch<SetStateAction<string>>;
   setFavoriteSessions: Dispatch<SetStateAction<FavoriteSession[]>>;
+  setHiddenProjects: Dispatch<SetStateAction<HiddenProjectsByConnection>>;
   setOnboardingVersion: Dispatch<SetStateAction<number>>;
   setSettings: Dispatch<SetStateAction<OpencodeConnectionSettings>>;
   settings: OpencodeConnectionSettings;
@@ -96,6 +101,8 @@ export function useOpencodePersistence({
 
         await load(FAVORITE_SESSIONS_STORAGE_KEY, parseFavoriteSessions, setFavoriteSessions);
 
+        await load(HIDDEN_PROJECTS_STORAGE_KEY, parseHiddenProjects, setHiddenProjects);
+
         await load(CONNECT_CONTROL_PLANE_STORAGE_KEY, normalizeTrustedControlPlaneUrl, setControlPlaneUrl);
 
         for (const key of REMOVED_PROJECT_KEYS) {
@@ -113,7 +120,7 @@ export function useOpencodePersistence({
     }
 
     void hydrateState().catch((reason) => console.warn('Could not hydrate app settings.', reason));
-  }, [defaultChatPreferences, defaultSettings, setChatPreferences, setControlPlaneUrl, setFavoriteSessions, setOnboardingVersion, setSettings, writeChanged]);
+  }, [defaultChatPreferences, defaultSettings, setChatPreferences, setControlPlaneUrl, setFavoriteSessions, setHiddenProjects, setOnboardingVersion, setSettings, writeChanged]);
 
   useEffect(() => {
     if (isHydrated && controlPlaneUrl) void persist(CONNECT_CONTROL_PLANE_STORAGE_KEY, controlPlaneUrl).catch((reason) => console.warn('Could not save Connect settings.', reason));
@@ -149,6 +156,14 @@ export function useOpencodePersistence({
 
     void persist(FAVORITE_SESSIONS_STORAGE_KEY, serializeFavoriteSessions(favoriteSessions)).catch((reason) => console.warn('Could not save favoriteSessions.', reason));
   }, [favoriteSessions, isHydrated, persist]);
+
+  useEffect(() => {
+    if (!isHydrated) {
+      return;
+    }
+
+    void persist(HIDDEN_PROJECTS_STORAGE_KEY, serializeHiddenProjects(hiddenProjects)).catch((reason) => console.warn('Could not save hiddenProjects.', reason));
+  }, [hiddenProjects, isHydrated, persist]);
 
   useEffect(() => {
     if (!isHydrated) {

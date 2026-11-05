@@ -427,6 +427,22 @@ for (const contract of ['v1', 'v2']) {
         // Restoring rejoins the flat server list directly.
         await expect(picker.getByRole('button', { name: 'Select archived-project' })).toBeVisible();
       }
+
+      // Device-local archive markers hide and restore a server project without
+      // changing the server catalog.
+      await expect(picker.getByTestId('project-toggle-hidden')).toHaveCount(0);
+      await picker.getByTestId('project-archive-/workspace/demo-project').click();
+      await expect(picker.getByRole('button', { name: 'Select demo-project' })).toHaveCount(0);
+      await expect(picker.getByTestId('project-toggle-hidden')).toContainText('Archived on this device (1)');
+      await expect(picker.getByTestId('project-restore-hidden-/workspace/demo-project')).toHaveCount(0);
+      await picker.getByTestId('project-search').fill('demo');
+      await expect(picker.getByTestId('project-restore-hidden-/workspace/demo-project')).toBeVisible();
+      await picker.getByTestId('project-search').fill('');
+      await expect(picker.getByTestId('project-restore-hidden-/workspace/demo-project')).toHaveCount(0);
+      await picker.getByTestId('project-toggle-hidden').click();
+      await picker.getByTestId('project-restore-hidden-/workspace/demo-project').click();
+      await expect(picker.getByRole('button', { name: 'Select demo-project' })).toBeVisible();
+      await expect(picker.getByTestId('project-toggle-hidden')).toHaveCount(0);
     } finally { server.kill('SIGTERM'); }
   });
 }

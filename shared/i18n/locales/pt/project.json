@@ -110,7 +110,11 @@
     "up": "Acima",
     "selectFolder": "Selecionar esta pasta",
     "enterPathManually": "Inserir caminho manualmente",
-    "browseEmpty": "Nenhuma pasta aqui."
+    "browseEmpty": "Nenhuma pasta aqui.",
+    "archiveLabel": "Arquivar {{name}} neste dispositivo",
+    "hiddenTitle": "Arquivado neste dispositivo ({{count}})",
+    "hiddenHint": "Oculto apenas neste dispositivo. O projeto permanece no servidor.",
+    "hiddenToggle": "Mostrar ou ocultar projetos arquivados neste dispositivo"
   },
   "errors": {
     "refreshProject": "Não foi possível atualizar o projeto.",

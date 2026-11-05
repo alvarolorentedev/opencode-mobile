@@ -110,7 +110,11 @@
     "up": "Up",
     "selectFolder": "Select this folder",
     "enterPathManually": "Enter path manually",
-    "browseEmpty": "No folders here."
+    "browseEmpty": "No folders here.",
+    "archiveLabel": "Archive {{name}} on this device",
+    "hiddenTitle": "Archived on this device ({{count}})",
+    "hiddenHint": "Hidden only on this device. The project stays on the server.",
+    "hiddenToggle": "Show or hide projects archived on this device"
   },
   "errors": {
     "refreshProject": "Could not refresh the project.",

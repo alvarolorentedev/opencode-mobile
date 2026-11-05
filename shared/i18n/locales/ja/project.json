@@ -110,7 +110,11 @@
     "up": "上へ",
     "selectFolder": "このフォルダーを選択",
     "enterPathManually": "パスを手動で入力",
-    "browseEmpty": "ここにフォルダーはありません。"
+    "browseEmpty": "ここにフォルダーはありません。",
+    "archiveLabel": "{{name}} をこのデバイスでアーカイブ",
+    "hiddenTitle": "このデバイスでアーカイブ済み ({{count}})",
+    "hiddenHint": "このデバイスでのみ非表示です。プロジェクトはサーバーに残ります。",
+    "hiddenToggle": "このデバイスでアーカイブしたプロジェクトを表示または非表示"
   },
   "errors": {
     "refreshProject": "プロジェクトを更新できませんでした。",

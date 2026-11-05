@@ -110,7 +110,11 @@
     "up": "למעלה",
     "selectFolder": "בחר תיקייה זו",
     "enterPathManually": "הזן נתיב ידנית",
-    "browseEmpty": "אין תיקיות כאן."
+    "browseEmpty": "אין תיקיות כאן.",
+    "archiveLabel": "העברת {{name}} לארכיון במכשיר זה",
+    "hiddenTitle": "בארכיון במכשיר הזה ({{count}})",
+    "hiddenHint": "מוסתר רק במכשיר הזה. הפרויקט נשאר בשרת.",
+    "hiddenToggle": "הצגה או הסתרה של פרויקטים בארכיון במכשיר הזה"
   },
   "errors": {
     "refreshProject": "לא ניתן היה לרענן את הפרויקט.",

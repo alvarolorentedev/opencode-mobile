@@ -39,6 +39,13 @@ export type FavoriteSession = {
 
 export const FAVORITE_SESSIONS_MAX = 50;
 
+// Device-local project archive markers per connection scope. They are a
+// preference like favorites, not a catalog: a path only hides a matching
+// server project, and a stale path never creates a row.
+export type HiddenProjectsByConnection = Record<string, string[]>;
+
+export const HIDDEN_PROJECTS_MAX = 50;
+
 // A session outside the active project, surfaced in the Chat Library "Active"
 // group. `projectPath` is the server directory used to switch projects; the
 // status drives the running indicator and ordering.

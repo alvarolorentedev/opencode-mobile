@@ -110,7 +110,11 @@
     "up": "Remonter",
     "selectFolder": "Choisir ce dossier",
     "enterPathManually": "Saisir le chemin manuellement",
-    "browseEmpty": "Aucun dossier ici."
+    "browseEmpty": "Aucun dossier ici.",
+    "archiveLabel": "Archiver {{name}} sur cet appareil",
+    "hiddenTitle": "Archivé sur cet appareil ({{count}})",
+    "hiddenHint": "Masqué uniquement sur cet appareil. Le projet reste sur le serveur.",
+    "hiddenToggle": "Afficher ou masquer les projets archivés sur cet appareil"
   },
   "errors": {
     "refreshProject": "Impossible d'actualiser le projet.",
