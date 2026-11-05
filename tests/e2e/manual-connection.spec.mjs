@@ -10,7 +10,6 @@ async function openManual(page, url) {
   await page.goto('/', { waitUntil: 'domcontentloaded' });
   await page.getByTestId('onboarding-welcome-start').click();
   await page.getByTestId('onboarding-permissions-skip').click();
-  await page.getByTestId('onboarding-privacy-skip').click();
   await page.getByTestId('connection-method-manual').click();
   await page.getByTestId('connection-profile-url-input').fill(url);
   await page.getByTestId('connection-profile-continue').click();

@@ -11,20 +11,21 @@ const models = [
 ] as unknown as ModelOption[];
 
 describe('onboarding navigation and model choices', () => {
-  it('inserts privacy after permissions, AI after connection and Voice after General', () => {
-    expect(getOnboardingSteps(true)).toEqual(['index', 'permissions', 'privacy', 'connect', 'ai', 'project', 'general', 'voice', 'ready']);
+  it('inserts privacy before review, AI after connection and Voice after General', () => {
+    expect(getOnboardingSteps(true)).toEqual(['index', 'permissions', 'connect', 'ai', 'project', 'general', 'voice', 'privacy', 'ready']);
     expect(getOnboardingSteps(true).map(onboardingRoute)).toEqual([
-      '/onboarding', '/onboarding/permissions', '/onboarding/privacy', '/onboarding/connect', '/onboarding/ai',
-      '/onboarding/project', '/onboarding/general', '/onboarding/voice', '/onboarding/ready',
+      '/onboarding', '/onboarding/permissions', '/onboarding/connect', '/onboarding/ai',
+      '/onboarding/project', '/onboarding/general', '/onboarding/voice', '/onboarding/privacy', '/onboarding/ready',
     ]);
   });
 
   it('skips server-dependent steps in both directions without a connection', () => {
     const steps = getOnboardingSteps(false);
-    expect(steps).toEqual(['index', 'permissions', 'privacy', 'connect', 'general', 'voice', 'ready']);
+    expect(steps).toEqual(['index', 'permissions', 'connect', 'general', 'voice', 'privacy', 'ready']);
     expect(steps[steps.indexOf('general') - 1]).toBe('connect');
     expect(steps[steps.indexOf('voice') - 1]).toBe('general');
-    expect(steps[steps.indexOf('voice') + 1]).toBe('ready');
+    expect(steps[steps.indexOf('privacy') - 1]).toBe('voice');
+    expect(steps[steps.indexOf('ready') - 1]).toBe('privacy');
   });
 
   it('uses the same configured, enabled models in Chat and Review', () => {

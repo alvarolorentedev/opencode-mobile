@@ -8,9 +8,9 @@ Onboarding steps, shared settings, and provider setup presentation. Back to the 
 
 Responsibility:
 
-- nine connected steps: app presentation, permissions, privacy, add connection, AI & Providers, project, General Settings, Voice & Responses, ready; disconnected navigation skips AI and project
+- nine connected steps: app presentation, permissions, add connection, AI & Providers, project, General Settings, Voice & Responses, privacy, ready; disconnected navigation skips AI and project
 - presentation only describes the app, with Continue navigation; AI and General are optional and reuse Settings controls
-- permissions, privacy, connect, AI, project, General and Voice & Responses are skippable; Skip advances without additional writes or undoing earlier choices
+- permissions, connect, AI, project, General, Voice & Responses and privacy are skippable; Skip advances without additional writes or undoing earlier choices
 - privacy owns local diagnostics recording and the master remote-telemetry switch when an OTLP backend is configured; remote sharing is off when unavailable, and turning it off clears crash/performance consent
 - General edits language and Steer/Append delivery (connected V2 only); it no longer selects a global default model
 - ready summarizes connection/project plus the applicable providers, enabled models and preferences, then completes first-run setup or closes review mode
