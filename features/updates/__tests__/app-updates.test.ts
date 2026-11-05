@@ -222,12 +222,14 @@ describe('flexible Android adapter with explicit install', () => {
     });
     return { api: createAndroidAppUpdates() as AppUpdateApi, startUpdate, referrer, remove };
   }
-  it('prefers flexible and keeps immediate only for Play priorities 4-5', async () => {
-    const view = await adapter();
-    expect(await view.api.check()).toEqual({ phase: 'available', version: '60' });
-    await view.api.start(() => true);
-    expect(view.startUpdate).toHaveBeenCalledTimes(1);
-    expect(view.startUpdate).toHaveBeenCalledWith(false);
+  it('uses flexible at priorities 0-3 and immediate at 4-5', async () => {
+    for (const serverPriority of [0, 3]) {
+      const view = await adapter({ updateAvailable: true, immediateAllowed: true, flexibleAllowed: true, updateInProgress: false, downloaded: false, serverPriority, storeVersion: '60' });
+      expect(await view.api.check()).toEqual({ phase: 'available', version: '60' });
+      await view.api.start(() => true);
+      expect(view.startUpdate).toHaveBeenCalledTimes(1);
+      expect(view.startUpdate).toHaveBeenCalledWith(false);
+    }
     for (const serverPriority of [4, 5]) {
       const forced = await adapter({ updateAvailable: true, immediateAllowed: true, flexibleAllowed: true, updateInProgress: false, downloaded: false, serverPriority, storeVersion: '60' });
       await forced.api.check();
@@ -235,6 +237,22 @@ describe('flexible Android adapter with explicit install', () => {
       expect(forced.startUpdate).toHaveBeenCalledTimes(1);
       expect(forced.startUpdate).toHaveBeenCalledWith(true);
     }
+  });
+  it('only requests update types Play reports as allowed', async () => {
+    const immediateOnly = await adapter({ updateAvailable: true, immediateAllowed: true, flexibleAllowed: false, updateInProgress: false, downloaded: false, serverPriority: 0, storeVersion: '60' });
+    await immediateOnly.api.check();
+    await immediateOnly.api.start(() => true);
+    expect(immediateOnly.startUpdate).toHaveBeenCalledTimes(1);
+    expect(immediateOnly.startUpdate).toHaveBeenCalledWith(true);
+    const flexibleOnly = await adapter({ updateAvailable: true, immediateAllowed: false, flexibleAllowed: true, updateInProgress: false, downloaded: false, serverPriority: 5, storeVersion: '60' });
+    await flexibleOnly.api.check();
+    await flexibleOnly.api.start(() => true);
+    expect(flexibleOnly.startUpdate).toHaveBeenCalledTimes(1);
+    expect(flexibleOnly.startUpdate).toHaveBeenCalledWith(false);
+    const unavailable = await adapter({ updateAvailable: true, immediateAllowed: false, flexibleAllowed: false, updateInProgress: false, downloaded: false, serverPriority: 0, storeVersion: '60' });
+    expect(await unavailable.api.check()).toEqual({ phase: 'none' });
+    await unavailable.api.start(() => true);
+    expect(unavailable.startUpdate).not.toHaveBeenCalled();
   });
   it('falls back to immediate when Play refuses flexible and resumes an interrupted immediate flow', async () => {
     const view = await adapter();

@@ -19,9 +19,12 @@ one pinned patch (`patches/expo-in-app-updates+0.13.0.patch`; see
 Production builds require Expo Application's Play install-referrer service to be
 available; Play Core enforces account ownership, matching signing and a higher
 version code. Signed Play-installed acceptance remains required.
-The adapter requests flexible mode first and falls back to immediate only when
-Play refuses flexible; Play update priority 4-5 marks an urgent release and keeps
-the immediate flow. It never uses the helper that picks from server priority.
+The adapter reads Play's `serverPriority`: priorities 0-3 request flexible mode,
+4-5 request immediate mode, and a refused type falls back to the other type only
+when Play reports it as allowed. It never uses the helper that picks from server
+priority. Release publication sets that value through `inAppUpdatePriority`
+(`update_priority` workflow input, default `0`); see
+[release priority](../engineering/development.md#in-app-update-priority).
 Flexible updates download in the background while the app stays usable; the
 patch stops the library's automatic install on download completion, so the
 install waits for an explicit Restart tap behind the app-side safety gates.

@@ -116,8 +116,23 @@ trusted environment, and sandbox configuration. See
 - Validated Android builds upload to Google Play **internal testing**; the signed IPA uploads to **TestFlight** when App Store Connect API credentials are configured
 - The GitHub Release is created as a draft only after validation, builds and store uploads succeed, then published with the APKs, IPA, AAB, mapping and SHA256SUMS.txt
 - Nothing is automatically promoted to a production store track. `workflow_dispatch` is recovery-only and requires an existing tag
+- Google Play in-app update priority is set from the optional `update_priority` input (0–5, default `0`) and sent as `inAppUpdatePriority` with the existing internal-track upload. Automatic tag releases use `0`, which keeps updates flexible. Manual dispatches may pass `4` or `5` for an emergency release that uses Play's immediate flow. The value is validated before upload and recorded in the job summary
 - Static release verification covers signing, package identity, version, ABI, native libraries, R8/ProGuard safety, the WorkManager constructor, FOSS exclusions and 16 KB page-size alignment. It cannot guarantee successful device startup; Google Play internal testing and TestFlight are the real-device validation environments
 - See [Android Build / Release Notes](./integrations-and-operations.md#release-abi-and-16-kb-page-size)
+
+### In-app update priority
+
+Normal release (flexible, the default):
+
+1. Bump `version`, `android.versionCode` and `ios.buildNumber`, update the Play changelog, commit and push to `main`.
+2. Push the `v<version>` tag. `release.yml` publishes with priority `0`: the app downloads in the background and shows its own Restart & install banner.
+
+Emergency release (immediate):
+
+1. Complete the normal release steps, then push the tag and cancel the automatic run before its `distribute-play` job if you need to publish with priority instead.
+2. Run the `Release` workflow manually for that tag with `update_priority` `4` or `5`. Play then requires its full-screen update flow for users below that version.
+
+Priority is per release, not per app: Google Play cannot change it after the release is rolled out, and a device may observe the highest priority across skipped versions and other tracks. A priority of `4`–`5` therefore affects devices that jump from any older version, even if an intermediate release was normal. Do not use `4`–`5` for routine releases. This is Google Play's in-app update priority, unrelated to notification priority or the version number.
 
 ### iOS Builds
 

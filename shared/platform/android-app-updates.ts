@@ -16,7 +16,8 @@ export function createAndroidAppUpdates(): AppUpdateApi {
   let listener: ((event: UpdateEvent) => void) | undefined;
   let subscriptions: (() => void)[] = [];
   let native: typeof import('expo-in-app-updates') | undefined;
-  let urgent = false;
+  // Chosen from the last check: Play reports the highest priority across skipped versions and tracks.
+  let eligible = { immediate: false, flexible: false, downloaded: false, urgent: false };
 
   async function load() {
     // Only the Play-installed production boundary can reach this adapter.
@@ -39,23 +40,33 @@ export function createAndroidAppUpdates(): AppUpdateApi {
       const module = await load();
       if (!module) return { phase: 'none' };
       const info = (await module.checkForUpdate()) as NativeUpdateInfo;
-      // Play priorities 4-5 mark a release as urgent; those keep the blocking flow.
-      urgent = Boolean(info.updateInProgress) || (info.serverPriority ?? 0) >= 4;
-      if (info.updateInProgress) return { phase: 'inProgress', version: info.storeVersion ?? 'immediate' };
+      const recovering = Boolean(info.updateInProgress);
+      eligible = {
+        immediate: Boolean(info.immediateAllowed) || recovering,
+        flexible: Boolean(info.flexibleAllowed) && !recovering,
+        downloaded: Boolean(info.downloaded),
+        // Play priorities 4-5 mark a release as urgent; those keep the blocking flow.
+        urgent: recovering || (info.serverPriority ?? 0) >= 4,
+      };
+      if (recovering) return { phase: 'inProgress', version: info.storeVersion ?? 'immediate' };
       // A flexible download that finished (possibly before a process death) waits for an explicit install.
       if (info.updateAvailable && info.downloaded) return { phase: 'downloaded', version: info.storeVersion ?? undefined };
-      return info.updateAvailable && (info.immediateAllowed || info.flexibleAllowed)
+      return info.updateAvailable && (eligible.immediate || eligible.flexible)
         ? { phase: 'available', version: info.storeVersion ?? undefined } : { phase: 'none' };
     },
     start: async (isSafe) => {
       const module = await load();
       if (!module || !isSafe()) return false;
-      // Urgent releases stay immediate; everything else downloads in the background and installs on demand.
-      // A finished download completes, and an interrupted immediate flow resumes, on either call.
-      // Native failures may open Play Store; the domain suppresses this attempt before handoff.
-      if (urgent) return module.startUpdate(true);
-      if (await module.startUpdate(false)) return true;
-      return isSafe() ? module.startUpdate(true) : false;
+      // Native completion of a finished download and resume of an interrupted immediate flow ignore the requested type.
+      if (eligible.downloaded) return module.startUpdate(false);
+      const order = eligible.urgent ? [true, false] : [false, true];
+      for (const immediate of order) {
+        if (immediate ? !eligible.immediate : !eligible.flexible) continue;
+        if (await module.startUpdate(immediate)) return true;
+        // Native failures may open Play Store; the domain suppresses this attempt before handoff.
+        if (!isSafe()) return false;
+      }
+      return false;
     },
     subscribe: (callback) => {
       listener = callback;

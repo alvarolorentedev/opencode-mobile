@@ -12,6 +12,11 @@ on:
         description: 'Existing v* tag to rebuild (recovery only)'
         required: true
         type: string
+      update_priority:
+        description: 'In-app update priority 0-5 for this upload (4-5 = emergency immediate flow). Leave 0 for a normal release.'
+        required: false
+        default: '0'
+        type: string
 
 concurrency:
   group: release
@@ -576,6 +581,26 @@ jobs:
           cp "fastlane/metadata/android/en-US/changelogs/${{ needs.verify.outputs.version_code }}.txt" \
             "$RUNNER_TEMP/whatsnew/whatsnew-en-US"
 
+      - name: Resolve in-app update priority
+        id: priority
+        env:
+          INPUT_PRIORITY: ${{ inputs.update_priority }}
+        run: |
+          set -euo pipefail
+          PRIORITY="${INPUT_PRIORITY:-0}"
+          if ! printf '%s' "$PRIORITY" | grep -Eq '^[0-5]$'; then
+            echo "::error::update_priority must be an integer from 0 to 5; got '$PRIORITY'."
+            exit 1
+          fi
+          if [ "$PRIORITY" -ge 4 ]; then
+            MODE="immediate (emergency)"
+          else
+            MODE="flexible"
+          fi
+          echo "value=$PRIORITY" >> "$GITHUB_OUTPUT"
+          echo "Google Play in-app update priority: $PRIORITY -> $MODE flow." >> "$GITHUB_STEP_SUMMARY"
+          echo "Selected Google Play in-app update priority $PRIORITY ($MODE)."
+
       - name: Upload AAB to Play internal testing
         uses: r0adkll/upload-google-play@v1
         with:
@@ -587,6 +612,8 @@ jobs:
           tracks: internal
           status: completed
           releaseName: ${{ needs.verify.outputs.tag }}
+          # 0-3 download in the background; 4-5 make Play require the immediate flow.
+          inAppUpdatePriority: ${{ steps.priority.outputs.value }}
 
       - name: Record Play distribution
         run: |
