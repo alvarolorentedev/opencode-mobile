@@ -28,7 +28,7 @@ const UpdatePreferencesSchema = z.object({
   lastCheckAt: z.number().finite().nonnegative(),
   enabled: z.boolean().default(true),
   checkPeriod: z.enum(UPDATE_CHECK_PERIODS).default(DEFAULT_UPDATE_CHECK_PERIOD),
-  dismissal: UpdateDismissalSchema.nullish().transform((value) => value ? { ...value, phase: 'available' as const } : undefined),
+  dismissal: UpdateDismissalSchema.nullish().transform((value) => value ?? undefined),
 });
 
 export function parseUpdatePreferences(raw: string): UpdatePreferences {
@@ -40,9 +40,16 @@ export function updateCheckDue(lastCheckAt: number, now: number, interval: numbe
 }
 
 export function updateNotice(snapshot: UpdateSnapshot, preferences: UpdatePreferences, now: number) {
-  if (snapshot.phase !== 'available' && snapshot.phase !== 'inProgress') return undefined;
+  if (snapshot.phase !== 'available' && snapshot.phase !== 'inProgress' && snapshot.phase !== 'downloaded') return undefined;
   const dismissal = preferences.dismissal;
   const recovering = snapshot.phase === 'inProgress';
+  if (snapshot.phase === 'downloaded') {
+    // An offer-stage deferral never blocks a finished download: that choice governed starting the download, not installing it.
+    // An attempted install handoff keeps recovering after process death; only an explicit Later suppresses the install.
+    if (dismissal && dismissal.phase === 'downloaded' && !dismissal.attempted && now < dismissal.until &&
+      dismissal.version === (snapshot.version ?? 'immediate')) return undefined;
+    return snapshot;
+  }
   if (dismissal && !(recovering && dismissal.attempted) && dismissal.phase === 'available' && now < dismissal.until &&
     (dismissal.version === (snapshot.version ?? 'immediate') || (recovering && (!snapshot.version || snapshot.version === 'immediate')))) return undefined;
   return snapshot;

@@ -1,0 +1,36 @@
+diff --git a/node_modules/expo-in-app-updates/android/src/main/java/expo/modules/inappupdates/ExpoInAppUpdatesModule.kt b/node_modules/expo-in-app-updates/android/src/main/java/expo/modules/inappupdates/ExpoInAppUpdatesModule.kt
+--- a/node_modules/expo-in-app-updates/android/src/main/java/expo/modules/inappupdates/ExpoInAppUpdatesModule.kt
++++ b/node_modules/expo-in-app-updates/android/src/main/java/expo/modules/inappupdates/ExpoInAppUpdatesModule.kt
+@@ -44,8 +44,8 @@ class ExpoInAppUpdatesModule : Module() {
+   private val installStateListener = InstallStateUpdatedListener { state ->
+     when (state.installStatus()) {
+       InstallStatus.DOWNLOADED -> {
++        // JS owns the install moment behind its safety gates; auto-complete would restart during unsafe work. See ADR 0031.
+         sendEvent(EVENT_UPDATE_DOWNLOADED, mapOf("readyToInstall" to true))
+-        appUpdateManager.completeUpdate()
+       }
+       InstallStatus.INSTALLED -> sendEvent(EVENT_UPDATE_COMPLETED, mapOf<String, Any>())
+       InstallStatus.FAILED -> redirectToStore()
+@@ -74,9 +75,10 @@ class ExpoInAppUpdatesModule : Module() {
+         UpdateAvailability.UPDATE_AVAILABLE -> {
+           val priority = info.updatePriority()
+           mapOf(
+             "updateAvailable" to true,
++            "downloaded" to (info.installStatus() == InstallStatus.DOWNLOADED),
+             "immediateAllowed" to info.isUpdateTypeAllowed(AppUpdateType.IMMEDIATE),
+             "flexibleAllowed" to info.isUpdateTypeAllowed(AppUpdateType.FLEXIBLE),
+             "daysSinceRelease" to info.clientVersionStalenessDays(),
+             "storeVersion" to info.availableVersionCode().toString(),
+             "serverPriority" to priority,
+@@ -83,8 +84,10 @@ class ExpoInAppUpdatesModule : Module() {
+             "serverUpdateType" to if (priority >= PRIORITY_THRESHOLD_IMMEDIATE) "IMMEDIATE" else "FLEXIBLE"
+           )
+         }
+         UpdateAvailability.DEVELOPER_TRIGGERED_UPDATE_IN_PROGRESS ->
+-          mapOf("updateAvailable" to true, "updateInProgress" to true)
++          mapOf("updateAvailable" to true, "updateInProgress" to true,
++            // Present so recovery keeps the offered version; null when Play withholds it.
++            "storeVersion" to runCatching { info.availableVersionCode().toString() }.getOrNull())
+         else -> mapOf("updateAvailable" to false)
+       }
+     }

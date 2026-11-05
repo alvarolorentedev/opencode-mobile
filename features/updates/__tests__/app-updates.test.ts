@@ -39,13 +39,26 @@ describe('update policy', () => {
     expect(parseUpdatePreferences('{"lastCheckAt":0}')).toEqual({ lastCheckAt: 0, enabled: true, checkPeriod: 'available' });
     const preferences = { lastCheckAt: 0, enabled: true, checkPeriod: 'available' as const, dismissal: { version: '59', phase: 'available' as const, until: 100 } };
     expect(updateNotice(available, preferences, 50)).toBeUndefined();
-    expect(parseUpdatePreferences(JSON.stringify({ ...preferences, dismissal: { version: '59', phase: 'downloaded', until: 100 } }))).toEqual(preferences);
+    expect(parseUpdatePreferences(JSON.stringify({ ...preferences, dismissal: { version: '59', phase: 'downloaded', until: 100 } })).dismissal).toEqual({ version: '59', phase: 'downloaded', until: 100 });
+    expect(updateNotice({ phase: 'downloaded', version: '60' }, preferences, 50)).toBeDefined();
     expect(updateNotice({ ...available, version: '60' }, preferences, 50)).toBeDefined();
     expect(updateNotice(available, preferences, 100)).toBeDefined();
     expect(updateCheckDue(100, 99, UPDATE_CHECK_INTERVALS.daily)).toBe(true);
     expect(updateCheckDue(100, 100 + UPDATE_CHECK_INTERVALS.daily - 1, UPDATE_CHECK_INTERVALS.daily)).toBe(false);
     expect(updateCheckDue(100, 100 + UPDATE_CHECK_INTERVALS.daily, UPDATE_CHECK_INTERVALS.daily)).toBe(true);
     expect(updateCheckDue(100, 100, UPDATE_CHECK_INTERVALS.available)).toBe(true);
+  });
+  it('holds a finished download for an explicit install behind its own cooldown', () => {
+    const downloaded: UpdateSnapshot = { phase: 'downloaded', version: '60' };
+    const deferred = { lastCheckAt: 0, enabled: true, checkPeriod: 'available' as const, dismissal: { version: '60', phase: 'available' as const, until: 100 } };
+    // Deferring the offer never blocks the finished download; only Later on the install does.
+    expect(updateNotice(downloaded, deferred, 50)).toBeDefined();
+    const installLater = { ...deferred, dismissal: { ...deferred.dismissal, phase: 'downloaded' as const } };
+    expect(updateNotice(downloaded, installLater, 50)).toBeUndefined();
+    expect(updateNotice({ phase: 'downloaded', version: '61' }, installLater, 50)).toBeDefined();
+    expect(updateNotice(downloaded, installLater, 100)).toBeDefined();
+    // An attempted install handoff keeps recovering after process death.
+    expect(updateNotice(downloaded, { ...installLater, dismissal: { ...installLater.dismissal, attempted: true } }, 50)).toBeDefined();
   });
 });
 
@@ -102,6 +115,21 @@ describe('provider update safety', () => {
     const cancelled = JSON.stringify({ lastCheckAt: Date.now(), dismissal: { version: '59', phase: 'available', until: Date.now() + UPDATE_DISMISS_INTERVAL } });
     const view = await provider({ nativeConsent: true, stored: cancelled, snapshot: { phase: 'inProgress', version: 'immediate' } });
     expect(view.api.start).not.toHaveBeenCalled();
+  });
+  it('holds a finished download for an explicit install instead of auto-handing off', async () => {
+    const downloaded: UpdateSnapshot = { phase: 'downloaded', version: '60' };
+    const view = await provider({ nativeConsent: true, snapshot: downloaded, check: vi.fn(async () => downloaded) });
+    expect(view.api.start).not.toHaveBeenCalled();
+    expect(view.runtime.value.notice).toEqual(downloaded);
+    await view.runtime.value.update(); await view.runtime.settle();
+    expect(view.api.start).toHaveBeenCalledOnce();
+  });
+  it('suppresses a deferred install for seven days without blocking a new version', async () => {
+    const downloaded: UpdateSnapshot = { phase: 'downloaded', version: '60' };
+    const view = await provider({ nativeConsent: true, snapshot: downloaded, check: vi.fn(async () => downloaded) });
+    view.runtime.value.later(); await view.runtime.settle();
+    expect(view.runtime.value.notice).toBeUndefined();
+    expect(JSON.parse(view.storage.setItem.mock.calls.at(-1)![1]).dismissal).toMatchObject({ version: '60', phase: 'downloaded' });
   });
   it('defaults to surfacing an available update discovered inside the discovery interval', async () => {
     const view = await provider({ stored: JSON.stringify({ lastCheckAt: Date.now() }), snapshot: available });
@@ -183,8 +211,8 @@ describe('store boundary', () => {
   });
 });
 
-describe('immediate-only Android adapter', () => {
-  async function adapter(info = { updateAvailable: true, immediateAllowed: true, updateInProgress: false, storeVersion: '60' }) {
+describe('flexible Android adapter with explicit install', () => {
+  async function adapter(info = { updateAvailable: true, immediateAllowed: true, flexibleAllowed: true, updateInProgress: false, downloaded: false, storeVersion: '60' }) {
     const startUpdate = vi.fn(async (_immediate: boolean) => true);
     const referrer = vi.fn(async () => '');
     const remove = vi.fn();
@@ -194,22 +222,32 @@ describe('immediate-only Android adapter', () => {
     });
     return { api: createAndroidAppUpdates() as AppUpdateApi, startUpdate, referrer, remove };
   }
-  it('never falls back to flexible even if the store only permits flexible updates', async () => {
-    const view = await adapter({ updateAvailable: true, immediateAllowed: false, updateInProgress: false, storeVersion: '60' });
-    expect(await view.api.check()).toEqual({ phase: 'none' });
-    expect(view.startUpdate).not.toHaveBeenCalled();
+  it('prefers immediate but falls back to flexible when that is all Play permits', async () => {
+    const view = await adapter({ updateAvailable: true, immediateAllowed: false, flexibleAllowed: true, updateInProgress: false, downloaded: false, storeVersion: '60' });
+    expect(await view.api.check()).toEqual({ phase: 'available', version: '60' });
+    view.startUpdate.mockResolvedValueOnce(false);
+    await view.api.start(() => true);
+    expect(view.startUpdate).toHaveBeenNthCalledWith(1, true);
+    expect(view.startUpdate).toHaveBeenNthCalledWith(2, false);
     const ready = await adapter();
     expect(await ready.api.check()).toEqual({ phase: 'available', version: '60' });
     await ready.api.start(() => true);
+    expect(ready.startUpdate).toHaveBeenCalledTimes(1);
     expect(ready.startUpdate).toHaveBeenCalledWith(true);
   });
-  it('rechecks safety after asynchronous eligibility and removes native listeners', async () => {
+  it('surfaces a finished download for an explicit install and completes it on request', async () => {
+    const view = await adapter({ updateAvailable: true, immediateAllowed: false, flexibleAllowed: true, updateInProgress: false, downloaded: true, storeVersion: '60' });
+    expect(await view.api.check()).toEqual({ phase: 'downloaded', version: '60' });
+    await view.api.start(() => true);
+    expect(view.startUpdate).toHaveBeenCalledWith(true);
+  });
+  it('rechecks safety before the flexible fallback and removes native listeners', async () => {
     const view = await adapter();
     const unsubscribe = view.api.subscribe(() => {});
     await view.api.check();
     await view.api.start(() => false);
     expect(view.startUpdate).not.toHaveBeenCalled();
-    unsubscribe(); expect(view.remove).toHaveBeenCalledTimes(2);
+    unsubscribe(); expect(view.remove).toHaveBeenCalledTimes(3);
     view.referrer.mockRejectedValue(new Error('Not Play installed'));
     expect(await view.api.check()).toEqual({ phase: 'none' });
   });

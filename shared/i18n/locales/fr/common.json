@@ -47,7 +47,10 @@
     "failed": "Impossible de mettre à jour. Réessayez plus tard.",
     "opening": "Ouverture de la mise à jour…",
     "availableDescription": "Installez la dernière version depuis l’App Store.",
-    "openStore": "Ouvrir l’App Store"
+    "downloaded": "Mise à jour téléchargée",
+    "downloadedDescription": "Redémarrez pour installer la mise à jour.",
+    "openStore": "Ouvrir l’App Store",
+    "restart": "Redémarrer"
   },
   "servers": {
     "allServers": "Tous les serveurs",

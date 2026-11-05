@@ -67,7 +67,7 @@ coverage, and documentation links.
 | [0015](0015-feature-oriented-implementation.md) | Feature ownership with shared runtime composition | Accepted |
 
 | [0016](0016-supported-expo-native-integrations.md) | Supported Expo native integrations and agent tooling | Superseded by ADR 0017 |
-| [0017](0017-native-defaults-and-prebuilt-engines.md) | Upstream update defaults and pinned prebuilt engines | Accepted |
+| [0017](0017-native-defaults-and-prebuilt-engines.md) | Upstream update defaults and pinned prebuilt engines | Superseded by ADR 0031 |
 | [0018](0018-tag-driven-release-pipeline.md) | Tag-driven release pipeline with static artifact verification | Accepted |
 | [0019](0019-arm64-only-android-releases.md) | ARM64-only Android release artifacts | Accepted |
 | [0020](0020-local-first-observability-and-otlp.md) | Local-first observability with opt-in OTLP export | Accepted |
@@ -82,6 +82,7 @@ coverage, and documentation links.
 | [0028](0028-runtime-rtl-from-interface-language.md) | Runtime RTL direction follows the interface language | Accepted |
 | [0029](0029-minimal-remote-telemetry.md) | Minimal remote telemetry budget | Accepted |
 | [0030](0030-server-archived-projects.md) | Server-archived project visibility without a client archive write | Accepted |
+| [0031](0031-flexible-updates-with-explicit-install.md) | Flexible store updates with explicit install | Accepted |
 
 ## Template
 

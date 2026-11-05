@@ -47,7 +47,10 @@
     "failed": "Aktualisierung fehlgeschlagen. Versuche es später erneut.",
     "opening": "Update wird geöffnet…",
     "availableDescription": "Installiere die neueste Version über den App Store.",
-    "openStore": "App Store öffnen"
+    "downloaded": "Update heruntergeladen",
+    "downloadedDescription": "Starte neu, um das Update zu installieren.",
+    "openStore": "App Store öffnen",
+    "restart": "Neustart"
   },
   "servers": {
     "allServers": "Alle Server",

@@ -47,7 +47,10 @@
     "failed": "अपडेट नहीं हो सका। कृपया बाद में फिर से कोशिश करें।",
     "opening": "अपडेट खुल रहा है…",
     "availableDescription": "App Store से नया संस्करण इंस्टॉल करें।",
-    "openStore": "App Store खोलें"
+    "downloaded": "अपडेट डाउनलोड हो गया है",
+    "downloadedDescription": "अपडेट इंस्टॉल करने के लिए पुनः प्रारंभ करें।",
+    "openStore": "App Store खोलें",
+    "restart": "पुनः प्रारंभ करें"
   },
   "servers": {
     "allServers": "सभी सर्वर",

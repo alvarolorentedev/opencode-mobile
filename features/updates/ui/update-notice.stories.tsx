@@ -23,3 +23,7 @@ export default meta;
 type Story = StoryObj<typeof meta>;
 
 export const Available: Story = {};
+
+export const Downloaded: Story = {
+  args: { notice: { phase: 'downloaded', version: '1.0.106' } },
+};

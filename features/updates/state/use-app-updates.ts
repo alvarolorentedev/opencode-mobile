@@ -52,8 +52,8 @@ export function useAppUpdates({ initialized, blocked }: { initialized: boolean; 
   }, []);
 
   const dismiss = useCallback((value: UpdateSnapshot, attempted = false) => {
-    if (value.phase !== 'available' && value.phase !== 'inProgress') return;
-    const dismissal = { version: value.version ?? 'immediate', phase: 'available' as const, until: Date.now() + UPDATE_DISMISS_INTERVAL, ...(attempted ? { attempted: true } : {}) };
+    if (value.phase !== 'available' && value.phase !== 'inProgress' && value.phase !== 'downloaded') return;
+    const dismissal: NonNullable<UpdatePreferences['dismissal']> = { version: value.version ?? 'immediate', phase: value.phase === 'downloaded' ? 'downloaded' : 'available', until: Date.now() + UPDATE_DISMISS_INTERVAL, ...(attempted ? { attempted: true } : {}) };
     const next = { ...latest.current.preferences, dismissal };
     latest.current.preferences = next;
     setPreferences(next);
@@ -94,7 +94,7 @@ export function useAppUpdates({ initialized, blocked }: { initialized: boolean; 
       setNow(Date.now());
       eventRevision.current++;
       if (event.phase === 'cancelled' || event.phase === 'failed') {
-        dismiss({ ...latest.current.snapshot, phase: 'available' });
+        dismiss(latest.current.snapshot);
         setError(event.phase === 'failed');
         const next: UpdateSnapshot = { ...latest.current.snapshot, phase: 'none' };
         latest.current.snapshot = next;
@@ -156,7 +156,7 @@ export function useAppUpdates({ initialized, blocked }: { initialized: boolean; 
       const fresh = { ...result, version: result.version ?? offered.version };
       if (!mounted.current || !safe()) return;
       attempted = fresh;
-      if (fresh.phase === 'available' || fresh.phase === 'inProgress') {
+      if (fresh.phase === 'available' || fresh.phase === 'inProgress' || fresh.phase === 'downloaded') {
         latest.current.snapshot = fresh;
         setSnapshot(fresh);
         if (adapter.nativeConsent && fresh.phase === 'inProgress' && startedNativeUpdate) return;
@@ -189,9 +189,10 @@ export function useAppUpdates({ initialized, blocked }: { initialized: boolean; 
     !busy && !suppressed && preferences.enabled && !(nativeConsent && snapshot.phase === 'inProgress' && startedNativeUpdate)
     ? updateNotice(snapshot, preferences, now) : undefined;
   useEffect(() => {
-    if (candidate && nativeConsent) void update();
+    // A finished download never auto-installs: the Restart banner owns the install behind the safety gates.
+    if (candidate && nativeConsent && candidate.phase !== 'downloaded') void update();
   }, [candidate, nativeConsent, update]);
-  const notice = nativeConsent ? undefined : candidate;
+  const notice = nativeConsent && candidate?.phase !== 'downloaded' ? undefined : candidate;
   const later = useCallback(() => dismiss(latest.current.snapshot), [dismiss]);
   const clearError = useCallback(() => setError(false), []);
   return useMemo(() => ({ notice, busy, error: error && foreground && surfaceActive && !blocked && !blockerCount,

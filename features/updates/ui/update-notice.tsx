@@ -15,15 +15,16 @@ export function UpdateBanner({ notice, onUpdate, onLater }: {
   const { t } = useTranslation();
   const colors = usePalette();
   if (!notice) return null;
+  const downloaded = notice.phase === 'downloaded';
   return <View style={[styles.container, { backgroundColor: colors.background }]}>
     <View testID="app-update-notice" style={[styles.banner, { backgroundColor: colors.surface, borderColor: colors.border }]}>
       <View style={styles.copy} accessibilityLiveRegion="polite">
-        <Text  variant="description">{t('common:updates.available')}</Text>
-        <Text style={{ color: colors.muted }} variant="description">{t('common:updates.availableDescription')}</Text>
+        <Text  variant="description">{t(downloaded ? 'common:updates.downloaded' : 'common:updates.available')}</Text>
+        <Text style={{ color: colors.muted }} variant="description">{t(downloaded ? 'common:updates.downloadedDescription' : 'common:updates.availableDescription')}</Text>
       </View>
       <View style={styles.actions}>
         <Button onPress={onLater} variant="ghost" style={[undefined, styles.action, undefined]}><Text>{t('common:updates.later')}</Text></Button>
-        <Button onPress={onUpdate} variant="default" style={[undefined, styles.action, undefined]}><Text>{t('common:updates.openStore')}</Text></Button>
+        <Button onPress={onUpdate} variant="default" style={[undefined, styles.action, undefined]}><Text>{t(downloaded ? 'common:updates.restart' : 'common:updates.openStore')}</Text></Button>
       </View>
     </View>
   </View>;

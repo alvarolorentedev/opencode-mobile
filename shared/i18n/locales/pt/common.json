@@ -47,7 +47,10 @@
     "failed": "Não foi possível atualizar. Tente novamente mais tarde.",
     "opening": "Abrindo a atualização…",
     "availableDescription": "Instale a versão mais recente pela App Store.",
-    "openStore": "Abrir App Store"
+    "downloaded": "Atualização baixada",
+    "downloadedDescription": "Reinicie para instalar a atualização.",
+    "openStore": "Abrir App Store",
+    "restart": "Reiniciar"
   },
   "servers": {
     "allServers": "Todos os servidores",

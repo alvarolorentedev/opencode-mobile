@@ -47,7 +47,10 @@
     "failed": "无法更新。请稍后重试。",
     "opening": "正在打开更新…",
     "availableDescription": "通过 App Store 安装最新版本。",
-    "openStore": "打开 App Store"
+    "downloaded": "更新已下载",
+    "downloadedDescription": "重启以安装更新。",
+    "openStore": "打开 App Store",
+    "restart": "重启"
   },
   "servers": {
     "allServers": "所有服务器",

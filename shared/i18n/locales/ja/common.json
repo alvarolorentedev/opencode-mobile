@@ -47,7 +47,10 @@
     "failed": "更新できませんでした。後でもう一度お試しください。",
     "opening": "アップデートを開いています…",
     "availableDescription": "App Storeから最新バージョンをインストールしてください。",
-    "openStore": "App Storeを開く"
+    "downloaded": "アップデートをダウンロードしました",
+    "downloadedDescription": "再起動してアップデートをインストールしてください。",
+    "openStore": "App Storeを開く",
+    "restart": "再起動"
   },
   "servers": {
     "allServers": "すべてのサーバー",

@@ -47,7 +47,10 @@
     "failed": "לא ניתן היה לעדכן. אנא נסה שוב מאוחר יותר.",
     "opening": "פותח את העדכון...",
     "availableDescription": "התקן את הגרסה העדכנית ביותר דרך ה-App Store.",
-    "openStore": "פתח את App Store"
+    "downloaded": "העדכון הורד",
+    "downloadedDescription": "הפעל מחדש כדי להתקין את העדכון.",
+    "openStore": "פתח את App Store",
+    "restart": "הפעל מחדש"
   },
   "servers": {
     "allServers": "כל השרתים",

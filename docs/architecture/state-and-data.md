@@ -1104,8 +1104,9 @@ check period) and interaction gates in the provider. Only discovery time, the
 update-check preference and the version/stage dismissal are persisted under
 `opencode-mobile.app-updates`. Drafts and form contents remain local; blocker
 tokens report presence only. Safe available candidates and interrupted immediate
-updates on Play open native consent directly, subject to cancellation cooldowns.
-There is no flexible download/install stage. iOS candidates retain an explicit
+updates on Play start the download directly, subject to cancellation cooldowns.
+A finished flexible download waits for an explicit Restart tap behind the same
+gates; it never auto-installs. iOS candidates retain an explicit
 App Store action. See [app updates](../product/app-updates.md).
 
 ## Inbound share and widget state

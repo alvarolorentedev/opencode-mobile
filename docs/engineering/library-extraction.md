@@ -198,8 +198,8 @@ client test harness.
   plugin or an Expo feature request.
 - Personal Team push-entitlement removal in `config/plugins/ios.cjs` → an
   `expo-notifications` or `expo-build-properties` option.
-- App updates now use the maintained immediate flow; do not restore flexible-download
-  glue or the removed custom module.
+- App updates use the maintained bridge with one patch: flexible download with a
+  deferred explicit install; do not restore the removed custom module.
 - Fake server → the OpenCode repository if it wants a supported test harness.
 
 ## Keep In-App

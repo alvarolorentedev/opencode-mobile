@@ -12,30 +12,39 @@ eligibility, the handoff gate and failure snackbar.
 
 ## Android
 
-`shared/platform/android-app-updates.ts` wraps `expo-in-app-updates` 0.13.0.
+`shared/platform/android-app-updates.ts` wraps `expo-in-app-updates` 0.13.0 with
+one pinned patch (`patches/expo-in-app-updates+0.13.0.patch`; see
+[ADR 0031](../adr/0031-flexible-updates-with-explicit-install.md)).
 Production builds require Expo Application's Play install-referrer service to be
 available; Play Core enforces account ownership, matching signing and a higher
 version code. Signed Play-installed acceptance remains required.
-The adapter calls `startUpdate(true)` explicitly. It never uses the helper that
-can fall back to flexible mode, and suppresses candidates where immediate updates
-are not allowed. Play owns blocking consent, download and installation; there is
-no background-download or Restart & install banner. The library is unpatched:
-its native lifecycle, download-completion listener and Play Store error fallback
-retain upstream behavior. App-side gates protect launch, while Play and the native
-library own the active flow. JS does not intercept native completion; upgrade from
-the previous flexible implementation is a required signed store/device check.
+The adapter prefers immediate mode and falls back to flexible when Play only
+permits that type; it never uses the helper that picks from server priority.
+Immediate updates keep Play-owned blocking consent, download and installation.
+Flexible updates download in the background while the app stays usable; the
+patch stops the library's automatic install on download completion, so the
+install waits for an explicit Restart tap behind the app-side safety gates.
+The native lifecycle, Play Store error fallback and completion listener
+otherwise retain upstream behavior. App-side gates protect both download start
+and install; JS never auto-installs a finished download. Cold recovery of a
+finished download is a required signed store/device check.
 
-An available update opens Play consent at the first safe moment, without a themed
-offer. Existing unsaved-work, route, foreground and operation blockers remain.
-An accessible gate protects the asynchronous handoff; Play's native activity then
-owns interaction blocking. Safety is rechecked after asynchronous reads and before
-launch. Cancellation dismisses the attempted version for seven days. The native
+An available update starts its download at the first safe moment: immediate
+consent opens Play, while a flexible download proceeds in the background
+without a themed offer. A finished download surfaces a Restart & install
+banner; the install restarts the app only after an explicit tap re-verifies
+safety. Existing unsaved-work, route, foreground and operation blockers
+suppress both download start and install. An accessible gate protects the
+asynchronous handoff; Play's native activity then owns interaction blocking
+for immediate consent. Safety is rechecked after asynchronous reads and before
+launch and install. Cancellation dismisses the attempted version for seven days. The native
 package may open Play Store on native errors, so dismissal is recorded before
 handoff; returning never repeatedly launches the same candidate. Attempted handoffs
 are distinguished from confirmed cancellations: cold recovery can resume again
 after another process death, while cancellation retains its cooldown even when
 Play omits the in-progress version. A running provider hands off an in-progress
-flow at most once. JS failures show
+flow at most once; a finished download never auto-installs in one process, but
+an attempted install resumes after process death. JS failures show
 the existing short feedback. Listeners are removed on teardown.
 
 The provider checks after hydration and onboarding, and on foreground entry.
@@ -44,11 +53,13 @@ period of When available (default), Daily, or Weekly. These preferences control
 app checks and reminders, not the store's automatic-update setting. "When available" checks on
 every foreground entry so a new version surfaces immediately; Daily and Weekly
 throttle discovery to that interval, including failed attempts. Android queries
-interrupted immediate-update state on foreground entry even inside a throttled interval
-so the native immediate flow can resume after process death; that recovery query does not
-rediscover an available update inside the interval. Cancellation/Later suppresses a version for seven days; a new version resets it. Preferences use
+interrupted immediate-update state and finished flexible downloads on foreground entry even inside a throttled interval
+so the native immediate flow can resume, and a finished download can resurface, after process death; that recovery query does not
+rediscover an available update inside the interval. Cancellation/Later suppresses a version for seven days; a new version resets it. Dismissal records its stage: Later on the offer suppresses that version's offer, Later on the install banner suppresses that version's install. Preferences use
 `opencode-mobile.app-updates`. Unreadable storage suppresses offers for that run;
-malformed persisted values are cleared through the existing helper. Legacy downloaded-stage dismissals keep their version and cooldown, mapped to the remaining available stage.
+malformed persisted values are cleared through the existing helper. Persisted
+downloaded-stage dismissals keep their version, stage and cooldown under the
+downloaded stage.
 
 Update actions recheck foreground, route and safety after the async native read.
 Active/sending/queued tasks, conversation mode, pending permissions/questions,
@@ -91,12 +102,14 @@ Store variants autolink the maintained updater; FOSS excludes it and its Play Co
 dependencies. The former custom update module is removed on both platforms.
 
 On two signed Play internal-track releases, with the older app installed through
-Play and the account owning it, check immediate consent/cancel, blocking download
-and install, process death/resume, offline/error/store fallback and cooldowns.
-Verify no native handoff occurs while composing, editing a file, opening a modal,
+Play and the account owning it, check immediate consent/cancel, flexible
+background download with explicit install, blocking download
+and install, process death/resume in both modes, busy-at-completion,
+offline/error/store fallback and cooldowns.
+Verify no native handoff or install occurs while composing, editing a file, opening a modal,
 running a task, using voice or purchasing Cloud Link. Preserve those contents when
-the offer is suppressed. Verify only immediate requests are made, including low
-Play priority, and that returning from Play's error fallback never loops.
+the offer is suppressed. Verify immediate is preferred and flexible is used only
+where Play disallows immediate, and that returning from Play's error fallback never loops.
 
 The content-capture ANR mitigation remains directly after the generated
 MainActivity superclass call. Inspect the minified release and exercise large

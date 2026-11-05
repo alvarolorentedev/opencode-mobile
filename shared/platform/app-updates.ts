@@ -3,7 +3,7 @@ import { createAndroidAppUpdates } from '@/shared/platform/android-app-updates';
 import Constants from 'expo-constants';
 import { Linking, Platform } from 'react-native';
 
-export type UpdatePhase = 'none' | 'available' | 'inProgress';
+export type UpdatePhase = 'none' | 'available' | 'inProgress' | 'downloaded';
 export type UpdateSnapshot = { phase: UpdatePhase; version?: string };
 export type UpdateEvent = { phase: UpdatePhase | 'cancelled' | 'failed'; version?: string };
 export type AppUpdateApi = {
