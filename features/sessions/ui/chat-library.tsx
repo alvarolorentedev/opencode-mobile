@@ -132,7 +132,7 @@ export function ChatLibrary({ visible, onClose, onNewChat }: { visible: boolean;
           void run(sessionKey(renaming), () => library.manage(renaming, 'rename', title.trim()), () => { setRenaming(undefined); setTitle(''); });
         };
         return <View className={cn(stylesClasses.renameForm, "border-border bg-background")}>
-          <TextField testID="chat-library-title-input" autoFocus label={t('chat:library.rename')} returnKeyType="done" value={title} onChangeText={setTitle} onSubmitEditing={save} className={cn("flex-1")} ></TextField>
+          <TextField testID="chat-library-title-input" autoFocus label={t('chat:library.rename')} returnKeyType="done" value={title} onChangeText={setTitle} onSubmitEditing={save}></TextField>
           <View className={cn(stylesClasses.renameActions)}>
             <Button disabled={renameBusy} onPress={cancel} variant="ghost"><Text>{t('common:actions.cancel')}</Text></Button>
             <Button disabled={!canSave} onPress={save} variant="default">{renameBusy ? <Spinner size="small" /> : null}<Text>{t('common:actions.save')}</Text></Button>
