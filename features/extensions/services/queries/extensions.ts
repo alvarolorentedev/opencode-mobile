@@ -5,7 +5,10 @@ import { queryOptions } from '@tanstack/react-query';
 import { configurationOptions } from '@/shared/server-data/catalogs';
 import { projectQueryKey, type QueryIdentity } from '@/shared/server-data/keys';
 export function pluginsOptions(identity: QueryIdentity, client: ScopedOpencodeClient) {
-  return queryOptions({ queryKey: projectQueryKey(identity, client, 'plugins'),
+  // The plugin list decides whether the chat header offers plugin GUIs. A list
+  // read that lands while the server is still booting the location is empty, so
+  // never let that result look fresh.
+  return queryOptions({ queryKey: projectQueryKey(identity, client, 'plugins'), staleTime: 0,
     queryFn: ({ signal }) => createServerAdapter(withReadSignal(client, signal)).extensions.plugins() });
 }
 export function extensionInspectionOptions(identity: QueryIdentity, client: ScopedOpencodeClient) {

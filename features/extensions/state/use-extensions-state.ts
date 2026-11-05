@@ -32,7 +32,12 @@ export function useExtensionsState({
   const subscribed = active && requested;
   const [configuration] = useQueries({ queries: [configurationOptions(identity, client)].filter(() => subscribed) });
   const [skills] = useQueries({ queries: [skillsOptions(identity, client)].filter(() => subscribed) });
-  const [plugins] = useQueries({ queries: [pluginsOptions(identity, client)].filter(() => subscribed) });
+  // Keep the GUI plugin list observed while the workspace is active. It decides
+  // whether the chat header shows the plugin button; a one-shot fetch that lands
+  // before the server finishes booting a location would otherwise stay cached and
+  // hide the button until the app restarts. Being observed also lets the existing
+  // plugin/config/command event invalidations refresh it.
+  const [plugins] = useQueries({ queries: [{ ...pluginsOptions(identity, client), enabled: active }] });
   const [mcp] = useQueries({ queries: [mcpOptions(identity, client)].filter(() => subscribed) });
   const [inspection] = useQueries({ queries: [extensionInspectionOptions(identity, client)].filter(() => subscribed) });
   const inspectionData = inspection?.data;
