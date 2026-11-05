@@ -1,0 +1,3 @@
+- The project picker always matches your server: projects and recent sessions come straight from it, in the same order.
+- In-app updates download in the background and wait for an explicit Restart tap instead of restarting the app on their own.
+- Opening a session from an extension panel now stays inside the app instead of dropping you to the shell.
