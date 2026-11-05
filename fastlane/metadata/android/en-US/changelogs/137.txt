@@ -1,0 +1,5 @@
+- Onboarding now explains privacy options and lets you filter project folders while searching.
+- Chats remember the latest model per agent, including the thinking level for automatic tiers.
+- Project and settings pickers stay scoped to their owners, with clearer server labels.
+- Pressing Back while browsing folders on Android now walks up one folder at a time.
+- Store updates follow Play release priority and request flexible updates first.
