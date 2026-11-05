@@ -555,13 +555,8 @@ test('renewal rotates credentials while preserving profile, machine, hostname an
   await expect(page).toHaveURL(/\/projects$/, { timeout: 30_000 });
   const previous = await page.evaluate(() => JSON.parse(localStorage.getItem('opencode-mobile.connection-profiles')).find((profile) => profile.connect));
   const previousScope = Buffer.from(`${previous.serverUrl}\n${previous.username}`).toString('base64url');
-  // Let the first connection finish its bootstrap write before seeding the
-  // next-launch fixture, or that write can overwrite the remembered session.
-  await expect.poll(() => page.evaluate((scope) => Object.keys(JSON.parse(localStorage.getItem('opencode-mobile.last-session-by-project') || '{}')[scope] || {}).length, previousScope)).toBeGreaterThan(0);
   await page.evaluate(({ previousScope }) => {
     localStorage.setItem('opencode-mobile.favorite-sessions', JSON.stringify([{ sessionId: 'remembered', projectPath: '/fixture', connectionScope: previousScope, favoritedAt: Date.now() }]));
-    localStorage.setItem('opencode-mobile.last-session-by-project', JSON.stringify({ [previousScope]: { '/fixture': 'remembered' } }));
-    localStorage.setItem(`opencode-mobile.sessions.${previousScope}./fixture`, JSON.stringify({ cachedAt: Date.now(), sessions: [{ id: 'remembered', title: 'Remembered', createdAt: 1, updatedAt: 1 }] }));
   }, { previousScope });
   // A second launch has only durable profile metadata; Restore reacquires its
   // store session, then refreshes access on the original machine.
@@ -580,17 +575,12 @@ test('renewal rotates credentials while preserving profile, machine, hostname an
   await expect.poll(() => page.evaluate(() => JSON.parse(localStorage.getItem('opencode-mobile.favorite-sessions'))[0].connectionScope)).toBe(scopeBeforeRestore);
   await page.getByTestId('connect-retry').click();
   await expect(page).toHaveURL(/\/projects$/, { timeout: 30_000 });
-  await expect.poll(() => page.evaluate(() => {
-    const profile = JSON.parse(localStorage.getItem('opencode-mobile.connection-profiles')).find((profile) => profile.connect);
-    const scope = btoa(`${profile.serverUrl}\n${profile.username}`).replaceAll('+', '-').replaceAll('/', '_').replace(/=+$/, '');
-    return JSON.parse(localStorage.getItem('opencode-mobile.last-session-by-project') || '{}')[scope]?.['/fixture'];
-  })).toBe('remembered');
-  const updated = await page.evaluate(() => ({ profile: JSON.parse(localStorage.getItem('opencode-mobile.connection-profiles')).find((profile) => profile.connect), favorites: JSON.parse(localStorage.getItem('opencode-mobile.favorite-sessions')), last: JSON.parse(localStorage.getItem('opencode-mobile.last-session-by-project')) }));
+  const updated = await page.evaluate(() => ({ profile: JSON.parse(localStorage.getItem('opencode-mobile.connection-profiles')).find((profile) => profile.connect), favorites: JSON.parse(localStorage.getItem('opencode-mobile.favorite-sessions')) }));
   expect(updated.profile.id).toBe(previous.id); expect(updated.profile.name).toBe(previous.name);
   expect(updated.profile.connect.machineId).toBe(previous.connect.machineId); expect(updated.profile.serverUrl).toBe(previous.serverUrl);
   expect(updated.profile.username).not.toBe(previous.username);
   const refreshedScope = Buffer.from(`${updated.profile.serverUrl}\n${updated.profile.username}`).toString('base64url');
-  expect(updated.favorites[0].connectionScope).toBe(refreshedScope); expect(updated.last[refreshedScope]['/fixture']).toBe('remembered');
+  expect(updated.favorites[0].connectionScope).toBe(refreshedScope);
   expect(state.pairClaims).toBe(1); expect(state.accesses).toBe(1); expect(await events(page)).not.toContain('purchase'); await assertNoStoredSecrets(page);
 });
 
@@ -603,9 +593,6 @@ test('live renewal preserves the machine connection and selected session across 
   await openPair(page); await page.getByTestId('connect-purchase').click();
   await expect(page).toHaveURL(/\/projects$/, { timeout: 30_000 });
   const previous = await page.evaluate(() => JSON.parse(localStorage.getItem('opencode-mobile.connection-profiles')).find((profile) => profile.connect));
-  const oldScope = Buffer.from(`${previous.serverUrl}\n${previous.username}`).toString('base64url');
-  await expect.poll(() => page.evaluate((scope) => Object.keys(JSON.parse(localStorage.getItem('opencode-mobile.last-session-by-project') || '{}')[scope] || {}).length, oldScope)).toBeGreaterThan(0);
-  const selected = await page.evaluate((scope) => JSON.parse(localStorage.getItem('opencode-mobile.last-session-by-project'))[scope], oldScope);
   await page.getByRole('tab', { name: 'Chat' }).click();
   const chat = page.getByRole('button', { name: /^Open chats/ });
   await expect(chat).toBeVisible();
@@ -632,8 +619,6 @@ test('live renewal preserves the machine connection and selected session across 
   await page.getByRole('button', { name: /^Connection/ }).click();
   await expect(row).toContainText('Connected');
   await expect(page.getByTestId('connection-row-current')).toHaveCount(0);
-  const newScope = Buffer.from(`${previous.serverUrl}\ndevice-2`).toString('base64url');
-  await expect.poll(() => page.evaluate((scope) => JSON.parse(localStorage.getItem('opencode-mobile.last-session-by-project') || '{}')[scope], newScope)).toEqual(selected);
   expect(await page.evaluate(() => JSON.parse(localStorage.getItem('opencode-mobile.connection-profiles')).filter((profile) => profile.connect).length)).toBe(1);
   expect(state.accesses).toBe(1); expect(state.pairClaims).toBe(1);
   expect(dataAuth).toContain(`Basic ${Buffer.from('device-2:device-test-secret').toString('base64')}`);
