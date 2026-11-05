@@ -1,6 +1,7 @@
-import * as Clipboard from 'expo-clipboard';
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { setStringAsync } from '@/shared/platform/clipboard';
+import { copyHaptic, selectionAsync } from '@/shared/platform/haptics';
 import type { ScopedOpencodeClient } from '@/shared/protocol/opencode/client';
 import { projectPath, type ProjectFileEntry } from '@/shared/protocol/opencode/project';
 import { EntryOperationError, type EntryOperation } from '@/shared/protocol/opencode/project-entry-operations';
@@ -89,11 +90,15 @@ export function useProjectEntryActions({ client, isCurrentClient, connectionId, 
     clearFeedback: () => setFeedback({ client }),
     clear: () => clipboard?.select(connectionId),
     select: (file: ProjectFileEntry, mode: 'copy' | 'cut') => {
-      if (available && !clipboard?.busy[connectionId]) clipboard?.select(connectionId, { root, path: projectPath(file.path, root), type: file.type, mode });
+      if (available && !clipboard?.busy[connectionId]) {
+        clipboard?.select(connectionId, { root, path: projectPath(file.path, root), type: file.type, mode });
+        void selectionAsync().catch(() => undefined);
+      }
     },
     copyPath: async (file: ProjectFileEntry) => {
       try {
-        await Clipboard.setStringAsync(`${root.replace(/\/$/, '')}/${projectPath(file.path, root)}`);
+        await setStringAsync(`${root.replace(/\/$/, '')}/${projectPath(file.path, root)}`);
+        copyHaptic();
         if (isCurrentClient(client)) setFeedback({ client, notice: t('project:files.actions.pathCopied') });
       } catch { if (isCurrentClient(client)) setFeedback({ client, error: t('project:files.actions.failed') }); }
     },

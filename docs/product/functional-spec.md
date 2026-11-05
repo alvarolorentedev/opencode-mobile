@@ -253,14 +253,16 @@ folder when the connection has a clipboard entry. Tap still opens the entry.
 Rename uses a focused Save/Cancel sheet, validates a single non-empty basename,
 and never overwrites. The Changed files section keeps its existing behavior.
 
-Copy path writes the absolute server path to the device clipboard. Copy/Cut
-stage one internal entry per connection; the strip below breadcrumbs shows its
-source with Paste and Clear. Paste targets the browsed directory or selected
-folder. It can cross projects/worktrees on the same connection. File replacement
-requires confirmation; folder collisions and type mismatches are rejected.
-Cut removes the source only after a verified paste; Copy remains reusable.
-Mutations require V2 and supported server shell utilities. Errors preserve input
-and clipboard state; uncertain results instruct the user to inspect both paths.
+Copy path writes the absolute server path to the device clipboard and confirms
+with a success haptic. Copy/Cut staging also acknowledges with a selection
+haptic. Copy/Cut stage one internal entry per connection; the strip below
+breadcrumbs shows its source with Paste and Clear. Paste targets the browsed
+directory or selected folder. It can cross projects/worktrees on the same
+connection. File replacement requires confirmation; folder collisions and type
+mismatches are rejected. Cut removes the source only after a verified paste;
+Copy remains reusable. Mutations require V2 and supported server shell
+utilities. Errors preserve input and clipboard state; uncertain results instruct
+the user to inspect both paths.
 
 ### 10. Manage Worktrees
 

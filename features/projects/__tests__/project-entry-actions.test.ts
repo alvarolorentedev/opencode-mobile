@@ -9,11 +9,12 @@ const connection = (id = 'server', enabled = true, password = '') => ({ id, enab
 
 async function mount() {
   const runtime = hookRuntime(), inspect = vi.fn(async () => 'missing'), mutate = vi.fn(async () => {});
-  const copy = vi.fn(async () => {}), refreshA = vi.fn(async () => {}), refreshB = vi.fn(async () => {});
+  const copy = vi.fn(async () => {}), copyHaptic = vi.fn(), selectionAsync = vi.fn(async () => {}), refreshA = vi.fn(async () => {}), refreshB = vi.fn(async () => {});
   const { useFileClipboard } = await loadTs('features/projects/state/use-file-clipboard.ts', { react: runtime.react });
   const { useProjectEntryActions } = await loadTs('features/projects/state/use-project-entry-actions.ts', {
     react: runtime.react,
-    'expo-clipboard': { setStringAsync: copy },
+    '@/shared/platform/clipboard': { setStringAsync: copy },
+    '@/shared/platform/haptics': { copyHaptic, selectionAsync },
     'react-i18next': { useTranslation: () => ({ t }) },
     "@/shared/protocol/opencode/project": { projectPath },
     "@/shared/protocol/opencode/project-entry-operations": { EntryOperationError },
@@ -28,7 +29,7 @@ async function mount() {
     return { clipboard, a: useActions(clientA, refreshA), b: useActions(clientB, refreshB) };
   }, { connections: [connection()] });
   await runtime.value.a.probe(); await runtime.value.b.probe(); runtime.flush();
-  return { runtime, inspect, mutate, copy, refreshA, refreshB, stale: () => { current = false; } };
+  return { runtime, inspect, mutate, copy, copyHaptic, selectionAsync, refreshA, refreshB, stale: () => { current = false; } };
 }
 
 describe('connection file clipboard and actions', () => {
@@ -91,11 +92,19 @@ describe('connection file clipboard and actions', () => {
     expect(await result).toBe(false); expect(mutate).not.toHaveBeenCalled(); runtime.unmount();
   });
   it('reports refresh failure as a completed mutation and copies absolute paths to the device', async () => {
-    const { runtime, refreshA, copy } = await mount();
+    const { runtime, refreshA, copy, copyHaptic } = await mount();
     refreshA.mockRejectedValue(new Error('offline'));
     expect(await runtime.value.a.rename(file, 'renamed.ts')).toBe(true); runtime.flush();
     expect(runtime.value.a.error).toContain('refreshFailed');
     await runtime.value.a.copyPath(file);
-    expect(copy).toHaveBeenCalledWith('/repo/src/demo.ts'); runtime.unmount();
+    expect(copy).toHaveBeenCalledWith('/repo/src/demo.ts');
+    expect(copyHaptic).toHaveBeenCalledOnce();
+    runtime.unmount();
+  });
+  it('acknowledges staged Copy and Cut with haptics', async () => {
+    const { runtime, selectionAsync } = await mount();
+    runtime.value.a.select(file, 'copy'); runtime.flush();
+    expect(selectionAsync).toHaveBeenCalledOnce();
+    runtime.unmount();
   });
 });
