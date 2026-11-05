@@ -180,6 +180,13 @@ describe('conversation overlay', () => {
     expect(nodes.some((node) => node.props.children === 'Please reconnect')).toBe(true);
   });
 
+  it('keeps the end action clear of the bottom safe area when the keyboard is closed', async () => {
+    const { root, nodes } = await renderOverlay();
+    // KeyboardAvoidingView owns paddingBottom and resets it to 0 when closed.
+    expect(root.props.style[1].paddingBottom).toBeUndefined();
+    expect(nodes.find((node) => node.props.testID === 'conversation-footer')?.props.style).toEqual({ paddingBottom: 34 });
+  });
+
   it('shrinks the wave on small screens with large text, keeps the footer outside scrolling and allows the command to wrap', async () => {
     const normal = await renderOverlay();
     const small = await renderOverlay({}, { height: 568, fontScale: 2 });

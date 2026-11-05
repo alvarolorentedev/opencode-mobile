@@ -64,7 +64,7 @@ export function ConversationOverlay({
   const waveHeight = Math.min(170, Math.max(56, (height - insetsTop - insets.bottom) / (fontScale > 1.3 ? 8 : 5)));
 
   return (
-    <KeyboardAvoidingView accessibilityViewIsModal behavior="padding" testID="conversation-overlay" style={[styles.overlay, { backgroundColor: palette.background, paddingTop: insetsTop + 22, paddingBottom: Math.max(insets.bottom, 20), paddingLeft: Math.max(insets.left, 22), paddingRight: Math.max(insets.right, 22) }]}>
+    <KeyboardAvoidingView accessibilityViewIsModal behavior="padding" testID="conversation-overlay" style={[styles.overlay, { backgroundColor: palette.background, paddingTop: insetsTop + 22, paddingLeft: Math.max(insets.left, 22), paddingRight: Math.max(insets.right, 22) }]}>
       <ScrollView className={cn(stylesClasses.scroll)} contentContainerStyle={styles.content}>
         <View className={cn(stylesClasses.header)}>
           <Text className={cn("text-muted-foreground")} style={[styles.eyebrow]} variant="description">{t('chat:overlay.conversationMode')}</Text>
@@ -92,7 +92,7 @@ export function ConversationOverlay({
         )}
       </ScrollView>
 
-      <View className={cn(stylesClasses.footer)}>
+      <View testID="conversation-footer" className={cn(stylesClasses.footer)} style={{ paddingBottom: Math.max(insets.bottom, 20) }}>
         {steerHint ? <Text className={cn(stylesClasses.hint, "text-muted-foreground")} variant="description">{t('chat:overlay.steerHint', { phrase: wakePhrase })}</Text> : null}
         <Button testID="conversation-end" onPress={onStop} variant="default" className={cn(stylesClasses.endContent, "bg-primary")} ><Icon name={"phone-hangup"} size={20} color={palette.background} /><Text className={cn(stylesClasses.endLabel, "text-background")}>{t('chat:overlay.endConversation')}</Text></Button>
       </View>
