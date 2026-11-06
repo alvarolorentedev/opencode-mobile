@@ -1,0 +1,5 @@
+- Projects can be added and edited from a pinned folder picker.
+- Re-added archived projects are restored instead of staying hidden.
+- Chats show session compaction progress and token usage.
+- The iOS composer height resets when the draft is empty.
+- New terminals open below the picker list.
