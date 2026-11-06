@@ -133,7 +133,7 @@ Validation completed for this migration:
 
 - CI static gate: lint, application/test TypeScript, all Vitest suites, documentation,
   protocol/size/context ratchets and module/feature dependency checks.
-- All 174 browser flows, unchanged 19-spec budget, fake-server self-tests and Storybook build.
+- All 177 browser flows, unchanged 19-spec budget, fake-server self-tests and Storybook build.
 - Android development compilation and APK assembly; packaging passed on a cached retry.
 - iOS prebuild and bundle export; FOSS Android bundle export and preparation self-test.
 - i18n registry and UI-token generator check modes.

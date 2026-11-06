@@ -125,7 +125,7 @@ trusted environment, and sandbox configuration. See
 Normal release (flexible, the default):
 
 1. Bump `version`, `android.versionCode` and `ios.buildNumber`, update the Play changelog, commit and push to `main`.
-2. Push the `v<version>` tag. `release.yml` publishes with priority `0`: the app downloads in the background and shows its own Restart & install banner.
+2. Push the `v<version>` tag. `release.yml` publishes with priority `0`: the app downloads in the background and shows its own restart toast.
 
 Emergency release (immediate):
 
@@ -183,7 +183,7 @@ Local configuration files (`.env`, `config.json`) are gitignored for security.
 
 ### Store update configuration
 
-Android Play updates use immediate-only `expo-in-app-updates` and require a signed Play-installed
+Android Play updates use flexible-first `expo-in-app-updates` and require a signed Play-installed
 production app for runtime validation. FOSS excludes the package. iOS is disabled
 until the verified public listing ID is supplied as `EXPO_IOS_APP_STORE_ID`;
 `EXPO_IOS_APP_STORE_COUNTRY` is optional. See [app updates](../product/app-updates.md).

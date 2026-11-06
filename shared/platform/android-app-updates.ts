@@ -20,9 +20,13 @@ export function createAndroidAppUpdates(): AppUpdateApi {
   let eligible = { immediate: false, flexible: false, downloaded: false, urgent: false };
 
   async function load() {
-    // Only the Play-installed production boundary can reach this adapter.
-    try { await Application.getInstallReferrerAsync(); } catch { return undefined; }
-    native ??= await import('expo-in-app-updates');
+    // Only the Play-installed production boundary can reach this adapter. The
+    // verification runs once per session: a transient Play referrer failure must
+    // not silently abort an install that is already safe to hand off.
+    if (!native) {
+      try { await Application.getInstallReferrerAsync(); } catch { return undefined; }
+      native = await import('expo-in-app-updates');
+    }
     if (listener && !subscriptions.length) {
       subscriptions = [
         native.addUpdateListener('updateCancelled', () => listener?.({ phase: 'cancelled' })),

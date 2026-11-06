@@ -4,11 +4,13 @@
 store actions and blocker registration. `shared/platform/app-updates.ts` is the platform
 boundary. The tab shell renders a compact nonmodal banner above the tabs
 on Chat, Project, Settings and Terminal; onboarding, pairing and session routes do
-not offer updates. The banner uses source-owned controls, the light/dark theme, including
+not offer updates. The banner carries the available-update offer; a finished download instead
+surfaces a restart toast above the tab bar, so the install prompt never takes
+layout space. The banner uses source-owned controls, the light/dark theme, including
 its fixed accent, and all supported locales. It wraps its actions on narrow screens
 and retains access to the tabs. It occupies layout space above the default tab
 bar, keeping both the composer and navigation visible. The root shell owns route
-eligibility, the handoff gate and failure snackbar.
+eligibility, the restart toast, the handoff gate and failure snackbar.
 
 ## Android
 
@@ -35,12 +37,12 @@ finished download is a required signed store/device check.
 
 An available update starts its download at the first safe moment: a flexible
 download proceeds in the background without a themed offer, while an urgent or
-flexible-refused candidate opens Play consent. A finished download surfaces a Restart & install
-banner; the install restarts the app only after an explicit tap re-verifies
-safety. Existing unsaved-work, route, foreground and operation blockers
+flexible-refused candidate opens Play consent. A finished download surfaces a restart
+toast; the install runs from the downloaded snapshot and restarts the app only after
+an explicit tap re-verifies safety. Existing unsaved-work, route, foreground and operation blockers
 suppress both download start and install. An accessible gate protects the
 asynchronous handoff; Play's native activity then owns interaction blocking
-for immediate consent. Safety is rechecked after asynchronous reads and before
+for immediate consent. Safety is rechecked after the asynchronous native read and before
 launch and install. Cancellation dismisses the attempted version for seven days. The native
 package may open Play Store on native errors, so dismissal is recorded before
 handoff; returning never repeatedly launches the same candidate. Attempted handoffs
@@ -59,7 +61,7 @@ every foreground entry so a new version surfaces immediately; Daily and Weekly
 throttle discovery to that interval, including failed attempts. Android queries
 interrupted immediate-update state and finished flexible downloads on foreground entry even inside a throttled interval
 so the native immediate flow can resume, and a finished download can resurface, after process death; that recovery query does not
-rediscover an available update inside the interval. Cancellation/Later suppresses a version for seven days; a new version resets it. Dismissal records its stage: Later on the offer suppresses that version's offer, Later on the install banner suppresses that version's install. Preferences use
+rediscover an available update inside the interval. Cancellation/Later suppresses a version for seven days; a new version resets it. Dismissal records its stage: Later on the offer suppresses that version's offer, Later on the restart toast suppresses that version's install; a handoff that never starts keeps the toast offered instead of recording that cooldown. Preferences use
 `opencode-mobile.app-updates`. Unreadable storage suppresses offers for that run;
 malformed persisted values are cleared through the existing helper. Persisted
 downloaded-stage dismissals keep their version, stage and cooldown under the

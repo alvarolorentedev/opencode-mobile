@@ -124,6 +124,22 @@ describe('provider update safety', () => {
     await view.runtime.value.update(); await view.runtime.settle();
     expect(view.api.start).toHaveBeenCalledOnce();
   });
+  it('installs a finished download without a fresh store read that can drop it', async () => {
+    const downloaded: UpdateSnapshot = { phase: 'downloaded', version: '60' };
+    const check = vi.fn(async () => downloaded);
+    const view = await provider({ nativeConsent: true, snapshot: downloaded, check });
+    check.mockRejectedValueOnce(new Error('Play unavailable'));
+    await view.runtime.value.update(); await view.runtime.settle();
+    expect(view.api.start).toHaveBeenCalledOnce();
+  });
+  it('keeps a finished download offered when the install handoff fails', async () => {
+    const downloaded: UpdateSnapshot = { phase: 'downloaded', version: '60' };
+    const view = await provider({ nativeConsent: true, snapshot: downloaded, check: vi.fn(async () => downloaded) });
+    vi.mocked(view.api.start).mockResolvedValue(false);
+    await view.runtime.value.update(); await view.runtime.settle();
+    expect(view.runtime.value.notice).toEqual(downloaded);
+    expect(JSON.parse(view.storage.setItem.mock.calls.at(-1)![1]).dismissal).toMatchObject({ version: '60', phase: 'downloaded', attempted: true });
+  });
   it('suppresses a deferred install for seven days without blocking a new version', async () => {
     const downloaded: UpdateSnapshot = { phase: 'downloaded', version: '60' };
     const view = await provider({ nativeConsent: true, snapshot: downloaded, check: vi.fn(async () => downloaded) });
@@ -216,11 +232,14 @@ describe('flexible Android adapter with explicit install', () => {
     const startUpdate = vi.fn(async (_immediate: boolean) => true);
     const referrer = vi.fn(async () => '');
     const remove = vi.fn();
-    const { createAndroidAppUpdates } = await loadTs('shared/platform/android-app-updates.ts', {
-      'expo-application': { getInstallReferrerAsync: referrer },
-      'expo-in-app-updates': { checkForUpdate: vi.fn(async () => info), startUpdate, addUpdateListener: vi.fn(() => remove) },
-    });
-    return { api: createAndroidAppUpdates() as AppUpdateApi, startUpdate, referrer, remove };
+    const create = async () => {
+      const { createAndroidAppUpdates } = await loadTs('shared/platform/android-app-updates.ts', {
+        'expo-application': { getInstallReferrerAsync: referrer },
+        'expo-in-app-updates': { checkForUpdate: vi.fn(async () => info), startUpdate, addUpdateListener: vi.fn(() => remove) },
+      });
+      return createAndroidAppUpdates() as AppUpdateApi;
+    };
+    return { api: await create(), create, startUpdate, referrer, remove };
   }
   it('uses flexible at priorities 0-3 and immediate at 4-5', async () => {
     for (const serverPriority of [0, 3]) {
@@ -280,7 +299,17 @@ describe('flexible Android adapter with explicit install', () => {
     await view.api.start(() => false);
     expect(view.startUpdate).not.toHaveBeenCalled();
     unsubscribe(); expect(view.remove).toHaveBeenCalledTimes(3);
+    // The Play install was verified once; a later referrer failure must not abort the handoff.
+    view.referrer.mockRejectedValue(new Error('Install referrer unavailable'));
+    await view.api.check();
+    await view.api.start(() => true);
+    expect(view.startUpdate).toHaveBeenCalledWith(false);
+  });
+  it('never reaches the native module without a Play install verification', async () => {
+    const view = await adapter();
     view.referrer.mockRejectedValue(new Error('Not Play installed'));
     expect(await view.api.check()).toEqual({ phase: 'none' });
+    await view.api.start(() => true);
+    expect(view.startUpdate).not.toHaveBeenCalled();
   });
 });

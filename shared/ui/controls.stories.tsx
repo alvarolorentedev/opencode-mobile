@@ -35,13 +35,16 @@ function Controls() {
 function Overlays() {
   const [open, setOpen] = useState(false);
   const [feedback, setFeedback] = useState(false);
+  const [pair, setPair] = useState(false);
   const { confirmAction, confirmation } = useConfirmation();
   return <View className="flex-1 gap-3 p-4 min-h-96">
     <Button onPress={() => setOpen(true)}><Text>Open sheet</Text></Button>
-    <Button onPress={() => confirmAction('Remove connection?', 'Saved credentials will be removed.', 'Remove', 'Cancel', () => setFeedback(true))}><Text>Confirm removal</Text></Button>
+    <Button onPress={() => { setPair(false); confirmAction('Remove connection?', 'Saved credentials will be removed.', 'Remove', 'Cancel', () => setFeedback(true)); }}><Text>Confirm removal</Text></Button>
+    <Button onPress={() => { setFeedback(false); setPair(true); }}><Text>Restart available</Text></Button>
     <OverlaySheet visible={open} title="Connection settings" onClose={() => setOpen(false)}><Text>Sheet content uses the production portal and keyboard handling.</Text><Controls /></OverlaySheet>
     {confirmation}
     <Feedback open={feedback} onOpenChange={setFeedback}>Connection removed</Feedback>
+    <Feedback open={pair} onOpenChange={setPair} secondaryAction={{ label: 'Later', onPress: () => undefined }} action={{ label: 'Restart', onPress: () => undefined }}>Update downloaded</Feedback>
   </View>;
 }
 const meta = { title: 'Controls/Shared primitives', component: Controls, parameters: { layout: 'fullscreen' } } satisfies Meta<typeof Controls>;

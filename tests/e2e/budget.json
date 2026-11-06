@@ -1,5 +1,5 @@
 {
-  "tests": 176,
+  "tests": 177,
   "specs": 19,
-  "justification": "Added one chat scenario covering the V2 /compact and /btw built-ins."
+  "justification": "Added one app-updates scenario covering the downloaded restart toast handoff."
 }

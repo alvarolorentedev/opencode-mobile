@@ -147,12 +147,15 @@ export function useAppUpdates({ initialized, blocked }: { initialized: boolean; 
     const adapter = api.current;
     const offered = latest.current.snapshot;
     if (!updateNotice(offered, latest.current.preferences, Date.now())) return;
+    // A finished download installs from the snapshot: a fresh store read can report
+    // it as gone, and the native bridge re-reads the install status itself.
+    const downloaded = offered.phase === 'downloaded';
     let attempted = offered;
     actionLock.current = true;
     setBusy(true); setError(false);
     try {
       // Lock the underlying UI before refreshing the native state and handing off to the store.
-      const result = await readUpdate(adapter);
+      const result = downloaded ? offered : await readUpdate(adapter);
       const fresh = { ...result, version: result.version ?? offered.version };
       if (!mounted.current || !safe()) return;
       attempted = fresh;
@@ -161,12 +164,13 @@ export function useAppUpdates({ initialized, blocked }: { initialized: boolean; 
         setSnapshot(fresh);
         if (adapter.nativeConsent && fresh.phase === 'inProgress' && startedNativeUpdate) return;
         // Native error fallback has no event; suppress repeat handoffs, but permit cold recovery.
-        dismiss(fresh, adapter.nativeConsent === true);
+        // A failed install keeps the offer visible instead of recording the Later cooldown.
+        dismiss(fresh, adapter.nativeConsent === true || fresh.phase === 'downloaded');
         if (adapter.nativeConsent) setStartedNativeUpdate(true);
-        if (!await adapter.start(() => mounted.current && safe())) dismiss(fresh);
+        if (!await adapter.start(() => mounted.current && safe())) dismiss(fresh, fresh.phase === 'downloaded');
       } else { latest.current.snapshot = fresh; setSnapshot(fresh); }
     } catch {
-      if (mounted.current) { setError(true); dismiss(attempted); }
+      if (mounted.current) { setError(true); dismiss(attempted, downloaded); }
     } finally {
       actionLock.current = false;
       if (mounted.current) { setBusy(false); void check(); }

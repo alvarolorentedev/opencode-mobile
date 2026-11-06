@@ -95,3 +95,18 @@ test('the nonmodal banner fits a small screen and keeps navigation usable', asyn
   await expect(notice(page)).toBeVisible();
   expect(await page.evaluate(() => globalThis.__appUpdateTest.events)).toEqual([]);
 });
+
+test('a finished download offers a restart toast that hands off on tap', async ({ page, request }) => {
+  await resetScenario(request, 'happy-path');
+  await page.addInitScript(() => {
+    localStorage.setItem('opencode-mobile.onboarding-version', JSON.stringify({ version: 1 }));
+    globalThis.__appUpdateTest = { snapshot: { phase: 'downloaded', version: '60' }, startResult: true, nativeConsent: true, checks: 0, events: [] };
+  });
+  await page.goto('/');
+  await expect(page.getByPlaceholder('Ask anything...')).toBeVisible({ timeout: 30000 });
+  await expect(page.getByText('Restart to install the update.', { exact: true })).toBeVisible();
+  await expect(notice(page)).toHaveCount(0);
+  expect(await page.evaluate(() => globalThis.__appUpdateTest.events)).toEqual([]);
+  await page.getByRole('button', { name: 'Restart', exact: true }).click();
+  await expect.poll(() => page.evaluate(() => globalThis.__appUpdateTest.events)).toEqual(['start']);
+});

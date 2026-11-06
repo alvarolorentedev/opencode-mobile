@@ -1125,7 +1125,8 @@ update-check preference and the version/stage dismissal are persisted under
 tokens report presence only. Safe available candidates and interrupted immediate
 updates on Play start the download directly, subject to cancellation cooldowns.
 A finished flexible download waits for an explicit Restart tap behind the same
-gates; it never auto-installs. iOS candidates retain an explicit
+gates, installs from that snapshot instead of a fresh store read, and never
+auto-installs. iOS candidates retain an explicit
 App Store action. See [app updates](../product/app-updates.md).
 
 ## Inbound share and widget state

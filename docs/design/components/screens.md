@@ -156,8 +156,9 @@ selection action. Terminal follows that directory.
 
 ## App update notice
 
-- `features/updates/ui/update-notice.tsx`: compact, translated nonmodal ready/App Store
-  banner above the tabs, transparent handoff interaction gate and failure snackbar;
+- `features/updates/ui/update-notice.tsx`: compact, translated nonmodal App Store
+  banner above the tabs, a restart toast above the tab bar for a finished download,
+  transparent handoff interaction gate and failure snackbar;
   Android's available prompt and visible installation UI are owned by Google Play.
   All actions come from the provider.
 - `features/connections/ui/connection-status-banner.tsx`: compact translated transport
@@ -166,7 +167,7 @@ selection action. Terminal follows that directory.
   provider-owned connection/diagnostics state.
 - `runtime/presentation/use-update-blocker.ts`: registers open/busy local surfaces with the
   existing provider without sharing their content.
-- `shared/platform/app-updates.ts`: maintained immediate-only Android updates and
+- `shared/platform/app-updates.ts`: maintained flexible-first Android updates and
   Expo-verified iOS eligibility with explicit App Store navigation. See [app updates](../../product/app-updates.md).
 
 ## Multi-server V2 surfaces
