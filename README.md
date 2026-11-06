@@ -192,7 +192,9 @@ You can help by:
 - submitting pull requests
 - helping reproduce compatibility issues with new OpenCode releases
 
-Browse the [issue tracker](https://github.com/alvarolorentedev/opencode-mobile/issues) or open a PR.
+Read the [contributing guide](CONTRIBUTING.md), [Code of Conduct](CODE_OF_CONDUCT.md),
+[security policy](SECURITY.md), and [support guide](SUPPORT.md). Browse the
+[issue tracker](https://github.com/alvarolorentedev/opencode-mobile/issues) or open a PR.
 
 ## ⭐ Star History
 

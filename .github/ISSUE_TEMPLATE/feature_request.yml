@@ -1,0 +1,46 @@
+name: Feature request
+description: Suggest an improvement to OpenCode Mobile.
+title: "[Feature]: "
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Search existing issues before submitting. Do not include passwords, access tokens, private server URLs, or personal information.
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem or use case
+      description: What are you trying to do, and what is difficult or missing today?
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposed-solution
+    attributes:
+      label: Desired outcome
+      description: Describe what you would like OpenCode Mobile to do.
+    validations:
+      required: true
+
+  - type: dropdown
+    id: platform
+    attributes:
+      label: Relevant platform
+      description: Choose the platform where this would be useful.
+      multiple: true
+      options:
+        - Android
+        - iOS
+        - Web
+        - All platforms
+    validations:
+      required: false
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives or additional context
+      description: Optional. Mention any alternatives you have considered.
+    validations:
+      required: false

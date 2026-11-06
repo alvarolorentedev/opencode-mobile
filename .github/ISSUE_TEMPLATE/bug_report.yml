@@ -1,0 +1,83 @@
+name: Bug report
+description: Report a problem with OpenCode Mobile.
+title: "[Bug]: "
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Search existing issues before submitting. For security vulnerabilities, use the private reporting link in [SECURITY.md](https://github.com/alvarolorentedev/opencode-mobile/blob/main/SECURITY.md).
+
+        Do not include passwords, access tokens, private server URLs, personal information, or unredacted logs or screenshots.
+
+  - type: input
+    id: app-version
+    attributes:
+      label: OpenCode Mobile version
+      description: Find the version in Settings under About & support. Enter Unknown if you cannot find it.
+      placeholder: 1.0.0
+    validations:
+      required: true
+
+  - type: dropdown
+    id: platform
+    attributes:
+      label: Platform
+      options:
+        - Android
+        - iOS
+        - Web
+    validations:
+      required: true
+
+  - type: input
+    id: device-os
+    attributes:
+      label: Device and OS version
+      description: For example, Pixel 9 with Android 16. Leave blank if not applicable.
+      placeholder: Device model and OS version
+    validations:
+      required: false
+
+  - type: input
+    id: server-version
+    attributes:
+      label: OpenCode server version
+      description: Enter Unknown if the issue does not involve a server or you cannot find its version.
+      placeholder: 1.x or 2.x server version
+    validations:
+      required: false
+
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: Steps to reproduce
+      description: List the steps that cause the problem.
+      placeholder: |
+        1. ...
+        2. ...
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+      placeholder: What did you expect to happen?
+    validations:
+      required: true
+
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behavior
+      placeholder: What happened instead?
+    validations:
+      required: true
+
+  - type: textarea
+    id: additional-context
+    attributes:
+      label: Additional context
+      description: Optional. Redact sensitive information from any diagnostics, logs, or screenshots.
+    validations:
+      required: false

@@ -1,0 +1,8 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Support and project guidance
+    url: https://github.com/alvarolorentedev/opencode-mobile/blob/main/SUPPORT.md
+    about: Find help, project documentation, and the right place to ask.
+  - name: Report a security vulnerability
+    url: https://github.com/alvarolorentedev/opencode-mobile/security/advisories/new
+    about: Report vulnerabilities privately; do not use a public issue.
