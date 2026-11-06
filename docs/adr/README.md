@@ -74,6 +74,9 @@ coverage, and documentation links.
 | [0021](0021-per-connection-custom-ca.md) | Per-connection custom CA trust | Accepted |
 | [0022](0022-markdown-first-extension-definitions.md) | Markdown-first agent and command definitions with JSONC compatibility | Accepted |
 | [0023](0023-focused-extension-editors.md) | Focused extension editors with structured authoring | Accepted |
+| [0024](0024-opt-in-local-ios-live-activities.md) | Opt-in private local iOS Live Activities and unsigned CI test artifacts | Accepted |
+| [0025](0025-truthful-live-activity-progress-and-freshness.md) | Truthful native Live Activity progress, freshness, and test boundaries | Proposed |
+| [0026](0026-managed-live-activity-relay.md) | Opt-in managed Live Activity relay | Proposed |
 
 | [0024](0024-oidc-pkce-connection-authorization.md) | Secure OpenID Connect authorization for connections | Accepted |
 | [0025](0025-server-exposed-plugin-commands.md) | Server-exposed plugin commands and authoritative execution | Accepted |

@@ -1,6 +1,7 @@
 import type { SessionMessageRecord } from '@/shared/presentation/format';
 import { getToolTitle } from '@/shared/presentation/format/tool';
 import type { Session, SessionStatus } from '@/shared/protocol/opencode/types';
+import { currentTurn, toolWorkPhase, turnProgress, turnTools, type ActivityProgress, type WorkPhase } from './activity-insights';
 
 export type ActivitySnapshot = {
   sessions: Session[];
@@ -15,6 +16,11 @@ export type SessionActivity = {
   active: boolean;
   state: 'thinking' | 'needsInput' | 'retrying' | 'queued' | 'finished' | 'failed' | 'stopped';
   tool?: string;
+  runId?: string;
+  workPhase?: WorkPhase;
+  progress?: ActivityProgress;
+  agentCount?: number;
+  toolCount?: number;
 };
 
 export function getSessionActivities(snapshot: ActivitySnapshot): SessionActivity[] {
@@ -41,8 +47,33 @@ export function getSessionActivities(snapshot: ActivitySnapshot): SessionActivit
     const latest = records.filter((record) => record.info.role === 'assistant').at(-1);
     const runningTool = records.flatMap((record) => record.parts).findLast((part) => part.type === 'tool' && part.state.status === 'running');
     const error = latest?.info.role === 'assistant' ? latest.info.error : undefined;
+    // Only the root's prompt identifies the run. Child messages and successive
+    // assistant steps must not turn ordinary progress into a new activity cycle.
+    const rootTurn = currentTurn(snapshot.messages[id] ?? []);
+    const { runId } = rootTurn;
+    const activeMembers = family.filter((child) => snapshot.blocked.has(child.id) || snapshot.queued.has(child.id)
+      || ['busy', 'retry'].includes(snapshot.statuses[child.id]?.type ?? ''));
+    const active = blocked || retrying || busy || queued;
+    const turns = family.map((child) => ({ child, turn: child.id === id ? rootTurn : currentTurn(snapshot.messages[child.id] ?? []) }));
+    // Observed root tools can establish a phase through an assistant parent ID.
+    // Child tools additionally need prompt alignment with the root turn.
+    const relevant = turns.filter(({ child }) => child.id === id || activeMembers.includes(child));
+    const aligned = relevant.filter(({ child, turn }) => Boolean(turn.runId)
+      && (child.id === id || (rootTurn.startedAt !== undefined && turn.startedAt !== undefined && turn.startedAt >= rootTurn.startedAt)));
+    // Without every prompt, earlier running tools could be outside the bounded
+    // window. Missing history must not become an exact count (including zero).
+    const toolsKnown = aligned.length === relevant.length && relevant.every(({ turn }) => turn.startedAt !== undefined);
+    const tools = aligned.flatMap(({ turn }) => turnTools(turn.records)
+      .filter((part) => part.state.status === 'pending' || part.state.status === 'running'));
+    const progress = turnProgress(rootTurn.records);
+    const workPhase = busy && !blocked && !retrying ? toolWorkPhase(tools.at(-1)?.tool ?? '') : undefined;
     return {
-      session, active: blocked || retrying || busy || queued,
+      session, active,
+      ...(runId ? { runId } : {}),
+      ...(workPhase ? { workPhase } : {}),
+      ...(progress ? { progress } : {}),
+      ...(active ? { agentCount: Math.max(1, activeMembers.length) } : {}),
+      ...(toolsKnown ? { toolCount: active ? tools.length : 0 } : {}),
       state: blocked ? 'needsInput' : retrying ? 'retrying' : busy ? 'thinking' : queued ? 'queued'
         : error?.name === 'MessageAbortedError' ? 'stopped' : error ? 'failed' : 'finished',
       tool: busy && runningTool?.type === 'tool' ? getToolTitle(runningTool).replace(/\s+/g, ' ').slice(0, 100) : undefined,

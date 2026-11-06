@@ -6,6 +6,18 @@
     "failedBodyFallback": "La tâche s’est terminée par une erreur"
   },
   "activity": {
+    "reading": "Lecture des fichiers",
+    "editing": "Modification des fichiers",
+    "searching": "Recherche",
+    "executing": "Exécution de commandes",
+    "delegating": "Délégation du travail",
+    "progressLabel": "Tâches : {{completed}} sur {{total}}",
+    "agentsLabel": "Agents actifs : {{count}}",
+    "toolsLabel": "Outils en cours : {{count}}",
+    "filesLabel": "Fichiers modifiés : {{count}}",
+    "updatedLabel": "Dernière mise à jour",
+    "elapsedLabel": "Temps écoulé",
+    "updatesPaused": "Mises à jour en pause",
     "working": "En cours",
     "thinking": "Réflexion",
     "needsInput": "Votre réponse est requise",

@@ -1,9 +1,10 @@
-# iOS quick actions and widget parity (deferred)
+# iOS quick actions, Live Activities, and widget parity
 
 Central place for the **iOS home widget / Lock Screen gap** and everything
-needed to close it later. iOS quick actions are implemented (dynamic items only);
-the iOS **widget extension** is deliberately deferred because it needs an Apple
-Developer App Group, a second provisioning profile, and real-device validation.
+needed to close it later. iOS quick actions are implemented (dynamic items only).
+Home/Lock Screen widgets remain deferred. This fork adds an opt-in local-only
+Live Activity without an App Group; native/device acceptance is still required.
+See [ADR 0024](../../adr/0024-opt-in-local-ios-live-activities.md).
 
 Do not duplicate this list elsewhere. When iOS widgets land, update this file and
 the docs it references.
@@ -27,8 +28,8 @@ the docs it references.
 - Android now has Latest replies, Awaiting actions and current-chat Plan progress.
   Future iOS home widgets should consume the same bounded, redacted sections.
   Lock Screen widgets must omit reply/request/step text and titles.
-- iOS Lock Screen and home screen widgets: **missing**. iOS Live Activities are
-  also missing (and deferred; see below).
+- iOS Lock Screen and home screen widgets: **missing**. Local-only Live Activities
+  are experimental and opt-in; continuous remote updates remain deferred.
 
 ## Missing for iOS widgets
 
@@ -81,14 +82,52 @@ the docs it references.
 - Widget taps only route; all mutations stay in the app. No credentials or
   server URLs are ever passed to the extension.
 
-## Live Activities (also deferred)
+## Live Activities (experimental local-only opt-in)
 
-`expo-widgets` can start Live Activities, but without APNs push-to-start/update
-infrastructure an activity goes stale as soon as the app is suspended: the
-system throttles local updates and the app only gets opportunistic background
-time. Android's promoted ongoing notification (`modules/opencode-activity`)
-already covers the equivalent surface. Revisit only if a push channel is
-explicitly funded and approved.
+Build with `EXPO_IOS_LIVE_ACTIVITIES=1` to include the iOS implementation of
+`modules/opencode-activity` and its CNG-generated WidgetKit extension. Default
+store builds leave this flag unset. The notifications feature reuses its existing
+observations and scope aggregation; iOS is V2-only. Android behavior is unchanged.
+
+The Lock Screen and Dynamic Island show generic translated work phases, task
+counts, elapsed time, and optional verified progress. A current task list can
+provide completed/total progress; unknown progress never becomes an invented
+percentage. Bounded current-run observations can also provide active-agent and
+running-tool counters. Missing or incomplete observations are not treated as
+zero, and unknown plans are not summed into a misleading aggregate percentage.
+Height-aware layouts drop secondary details before phase and freshness. At
+extreme text sizes or with long copy, the final fallback may visually truncate
+the phase or paused label; VoiceOver retains their complete localized labels
+and the observation time. Fonts remain scalable rather than shrinking to fit.
+Session titles, tool/request/reply text, credentials, and server
+URLs are not sent to the extension. Taps use the existing scoped session link;
+permissions, questions, and all mutations stay inside the app. Notification-alert
+permission is separate from the system Live Activities setting.
+
+The route's connection identity is a one-way reference, not the reversible
+canonical scope; it resolves only against saved/current app-owned connections.
+The opt-in build's `opencodemobile-activities` scheme keeps activity taps distinct
+from a separately installed upstream app. Legacy links retain their normal route.
+
+Starting requires the foreground. Observation freshness is separate from agent
+state: paused/stale content retains its last-known phase and counts with a
+secondary notice and observation time, rather than implying that the server task
+itself paused. Elapsed progress is frozen when stale. Foreground reconciliation
+resumes verified updates;
+scope cleanup, terminal state, disabled authorization, and dismissal are handled
+by the existing coordinator plus native lifecycle. Ordinary completion alerts
+remain enabled independently. No background mode or keepalive service is added.
+
+This implementation deliberately avoids the App Group required by Expo Widgets'
+shared JavaScript runtime; see [ADR 0024](../../adr/0024-opt-in-local-ios-live-activities.md).
+The richer presentation/freshness policy is proposed in
+[ADR 0025](../../adr/0025-truthful-live-activity-progress-and-freshness.md).
+An additional [experimental managed relay](../../engineering/ios-live-activity-remote-delivery.md)
+implements opt-in APNs delivery for operator-allowlisted V2 sessions. It requires
+a configured/deployed sender, paid push provisioning, and per-installation managed
+enrollment. It is not enabled in ordinary/local builds and has not been verified
+on a provisioned device. Remote mode has exclusive relay ownership and root taps;
+the local freshness and scoped-navigation behavior above remains the default.
 
 ## Acceptance tests (device, iOS 17+)
 
@@ -103,6 +142,17 @@ explicitly funded and approved.
   trapped.
 - Battery: no unexpected widget timeline reloads while the app is backgrounded
   (system budget); no new background modes.
+- Experimental Live Activity: foreground work appears; paused state is honest
+  after backgrounding and does not hide the last observed work state; foreground
+  restores fresh observations; completion freezes elapsed time;
+  dismissal does not restart the same cycle; multiple connections preserve the
+  remaining work when one disconnects; taps select the correct connection/project.
+- Inspect every activity presentation before unlock: no private titles, request
+  details, or commands, and no mutation buttons. Check light/dark, text scaling,
+  VoiceOver, declined notification permission, and disabled system Live Activities.
+- Verify known-plan, unknown-plan, needs-input, reconnecting, stale, and terminal
+  presentations. A plan progress bar must use real current-run tasks; missing
+  history and mixed known/unknown plans must not produce fake percentages.
 
 ## Rollback
 

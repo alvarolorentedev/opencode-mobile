@@ -37,5 +37,16 @@ describe('iOS Personal Team config', () => {
     });
     assert.deepEqual({ ...result.modResults }, { 'com.apple.security.application-groups': ['group.example'] });
     assert.deepEqual({ ...result.ios.entitlements }, { 'com.apple.security.application-groups': ['group.example'] });
+    const remote = { EXPO_IOS_LIVE_ACTIVITIES: '1', EXPO_IOS_ACTIVITY_RELAY_URL: 'https://relay.example/v1/activity' };
+    assert.equal(loadConfig(remote).ios.infoPlist.OpencodeActivityRelayURL, remote.EXPO_IOS_ACTIVITY_RELAY_URL);
+    assert.equal(production.ios.infoPlist.OpencodeActivityRelayURL, undefined);
+    assert.equal(personalTeam.ios.infoPlist.OpencodeActivityRelayURL, undefined);
+    const invalidEnvironments: Record<string, string>[] = [
+      { EXPO_IOS_DISABLE_PUSH_ENTITLEMENT: '1' }, { EXPO_PUBLIC_E2E_MODE: '1' },
+      { EXPO_PUBLIC_FOSS: '1' }, { EXPO_IOS_LIVE_ACTIVITIES: '0' },
+      { EXPO_IOS_ACTIVITY_RELAY_URL: 'http://relay.example/v1/activity' },
+      { EXPO_IOS_ACTIVITY_RELAY_URL: 'https://secret@relay.example/v1/activity' },
+    ];
+    for (const extra of invalidEnvironments) assert.throws(() => loadConfig({ ...remote, ...extra }), /Activity relay requires/);
   });
 });
