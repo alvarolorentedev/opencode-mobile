@@ -49,6 +49,8 @@ export type SessionAdapter = {
   commands: () => Promise<Command[]>;
   executeCommand: (sessionId: string, command: string, args: string, options?: CommandOptions) => Promise<unknown>;
   executeShell: (sessionId: string, command: string) => Promise<unknown>;
+  compact: (sessionId: string) => Promise<unknown>;
+  generate: (sessionId: string, prompt: string) => Promise<string>;
 };
 
 const MAX_SESSION_PAGES = 10;
@@ -236,6 +238,15 @@ export function createSessionAdapter(client: ScopedOpencodeClient): SessionAdapt
       // Shell execution is a V2-only composer surface; the UI never exposes it
       // on compatibility clients.
       await client.api!.session.shell({ sessionID: sessionId, command });
+    },
+    compact: async (sessionId) => {
+      if (compatibility) throw new Error('Session compaction is unavailable on OpenCode v1.');
+      await client.api!.session.compact({ sessionID: sessionId });
+    },
+    generate: async (sessionId, prompt) => {
+      if (compatibility) throw new Error('Session side questions are unavailable on OpenCode v1.');
+      const result = await client.api!.session.generate({ sessionID: sessionId, prompt });
+      return result.text;
     },
   };
 }

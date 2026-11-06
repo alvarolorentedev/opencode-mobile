@@ -38,3 +38,6 @@ coverage complements deterministic UI and lifecycle tests.
 
 - [x] Document the compatibility boundary and real-server validation.
 - [x] Cover command routing, lifecycle refresh and a real V2 plugin.
+- [x] Expose V2 `session.compact` and `session.generate` as the `/compact` and
+  `/btw` built-ins. This is not general TUI parity: other TUI commands still
+  need a server API before they can be listed or executed.

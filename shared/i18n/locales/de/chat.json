@@ -124,6 +124,12 @@
     "chooseAgent": "Agent auswählen",
     "loadingAgents": "Agenten werden geladen…",
     "noEligibleAgent": "Keine auswählbaren Agenten verfügbar. Prüfe die Agentenkonfiguration des Servers.",
+    "builtinCommands": {
+      "compact": "Diese Unterhaltung komprimieren, um Kontext freizugeben",
+      "btw": "Eine Nebenfrage stellen, ohne sie zur Unterhaltung hinzuzufügen"
+    },
+    "sideQuestionEmpty": "Füge nach /btw eine Frage hinzu.",
+    "builtinAttachmentsUnsupported": "Dieser Befehl akzeptiert keine Anhänge.",
     "agentDescriptions": {
       "build": "Standard-Agent, der Dateien bearbeitet und Tools ausführt.",
       "plan": "Nur-Lese-Agent zum Erkunden und Planen.",

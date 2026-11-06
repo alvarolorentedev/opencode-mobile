@@ -902,7 +902,8 @@ Responsibilities:
 - render pending permission and question interactions inline
 - render the changes overlay with turn/uncommitted/branch scopes and a turn picker
 - send prompts and attachments
-- suggest and execute server-provided slash commands
+- suggest and execute server-provided slash commands plus the V2 `/compact` and `/btw` built-ins
+- show `/btw` answers in a transient sheet without adding them to the transcript
 - fork from or revert to a user message; a staged revert pre-fills the composer, and its notice can cancel the revert
 - discard waiting steer/queue prompts, restoring their text when the composer is empty
 - toggle auto-approve

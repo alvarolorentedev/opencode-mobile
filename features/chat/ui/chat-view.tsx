@@ -19,6 +19,7 @@ import { ChatHeader } from '@/features/chat/ui/chat-header';
 import { ChatLibrary , NewChatSheet } from '@/features/sessions/index';
 import { styles, stylesClasses } from '@/features/chat/ui/chat-view-styles';
 import { ChangesOverlay } from '@/features/chat/ui/content/changes-overlay';
+import { SideQuestionOverlay } from '@/features/chat/ui/side-question-overlay';
 import { PendingInteractions } from '@/features/chat/ui/content/pending-interactions';
 import { TranscriptList } from '@/features/chat/ui/content/transcript-list';
 import { useChatViewController } from '@/features/chat/ui/use-chat-view-controller';
@@ -143,6 +144,11 @@ export function ChatView() {
             onSelectDiffScope={actions.setDiffScope}
             palette={palette}
             selectedDiffMessageId={content.selectedDiffMessageId}
+          />
+          <SideQuestionOverlay
+            sideQuestion={overlay.sideQuestion}
+            onClose={actions.closeSideQuestion}
+            fontSize={normalizeTranscriptFontSize(composer.chatPreferences.transcriptFontSize)}
           />
           <PendingInteractions
             changesVisible={content.changesVisible && !content.awaitingUserInput}

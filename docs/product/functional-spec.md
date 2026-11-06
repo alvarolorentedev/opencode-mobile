@@ -339,9 +339,13 @@ Secondary action rules:
 Slash command behavior:
 
 - commands are loaded from the server for the active project
-- the suggestion panel shows up to eight matching commands with their server descriptions
+- on V2 the suggestion panel also lists the client built-ins `/compact` and `/btw` ahead of server commands; a same-named server command wins
+- the suggestion panel shows up to eight matching commands with their descriptions
 - selecting a command inserts its name and closes the suggestion
 - on OpenCode 2 every named `/command` submission uses the session command API, including commands not yet in the cached catalog; the server matches the exact name and unknown/failed commands never become ordinary prompts
+- `/compact` requests `session.compact`; compaction events rebuild the transcript window
+- `/btw <question>` requests a transient answer from the session's context and shows it in a local sheet; it never adds to the conversation, does not run tools, and is discarded when the sheet closes
+- `/btw` requires an inline question, and both built-ins reject attachments and restore the draft on failure
 - argument quotes, newlines and whitespace after the first separator are preserved; files and selected mentions accompany V2 commands, and failures restore the draft
 - command replies returned as synthetic server notices render as text notices, not user messages or model replies, and are never read aloud as an assistant answer; internal prompt context such as instruction loads and mode reminders stays out of the transcript
 - V1 preserves known-command execution and its existing attachment prompt flow

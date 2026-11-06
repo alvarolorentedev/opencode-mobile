@@ -82,7 +82,7 @@ onboarding, which reopens the existing setup review without clearing settings.
 - route prompt send / abort actions
 - provide the complete filtered transcript to the virtualized chat list
 - open/create sessions and toggle conversation mode
-- execute exact server-provided slash commands
+- execute exact server-provided slash commands and the V2 `/compact` and `/btw` built-ins
 - route fork, revert, and revert-cancel actions
 - place a reverted user prompt in the composer for editing; sending commits the staged revert
 - discard a waiting steer/queue prompt and move its text into an empty composer
@@ -102,6 +102,7 @@ onboarding, which reopens the existing setup review without clearing settings.
 
 - `transcript-list.tsx`: render the transcript area, empty states, connection issues, and load older history on scroll-up; running progress lives on the newest activity header (including after its tools complete) and the active child row instead of a separate footer. When no activity row exists yet, it appends one transient non-interactive activity row in the same position; this is also the only activity visible at `Messages only` while a turn is working. Revert status and cancellation live in the composer notice
 - `changes-overlay.tsx`: render the Files changed overlay with refresh, scope selection, and diff accordions
+- `side-question-overlay.tsx`: render a transient `/btw` answer without adding it to the transcript
 - `pending-interactions.tsx`: render server-owned tasks, permissions, and questions, including the compact progress view
 
 `ChatView` renders these leaves directly and passes the values assembled by

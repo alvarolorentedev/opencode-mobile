@@ -124,6 +124,12 @@
     "chooseAgent": "エージェントを選択",
     "loadingAgents": "エージェントを読み込み中…",
     "noEligibleAgent": "選択できるエージェントがありません。サーバーのエージェント設定を確認してください。",
+    "builtinCommands": {
+      "compact": "コンテキストを解放するため、この会話を圧縮します",
+      "btw": "会話に追加せずに補足の質問をします"
+    },
+    "sideQuestionEmpty": "/btw の後に質問を入力してください。",
+    "builtinAttachmentsUnsupported": "このコマンドは添付ファイルを受け付けません。",
     "agentDescriptions": {
       "build": "ファイルを編集してツールを実行する既定のエージェント。",
       "plan": "調査と計画のための読み取り専用エージェント。",

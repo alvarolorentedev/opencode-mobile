@@ -1,5 +1,5 @@
 {
-  "tests": 175,
+  "tests": 176,
   "specs": 19,
-  "justification": "Added one existing-settings-spec scenario for the new app diagnostics controls and accessibility states."
+  "justification": "Added one chat scenario covering the V2 /compact and /btw built-ins."
 }

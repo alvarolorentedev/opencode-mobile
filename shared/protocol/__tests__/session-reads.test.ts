@@ -8,6 +8,8 @@ import {
   getSessionDiff,
   listSessions,
   executeCommand,
+  compactSession,
+  generateSessionText,
 } from '@/shared/protocol/services/session-service';
 
 // The SDK entrypoint and the app's client helper are replaced with the test's
@@ -89,6 +91,21 @@ describe('session reads', () => {
       [{ sessionID: 's', model: { providerID: 'opencode', id: 'deepseek', variant: 'max' } }],
       [{ sessionID: 's', model: { providerID: 'opencode', id: 'deepseek' } }],
     ]);
+  });
+
+  it('compacts and generates transient text through the V2 session endpoints', async () => {
+    const compact = vi.fn(async () => ({ id: 'compaction' }));
+    const generate = vi.fn(async () => ({ text: 'answer' }));
+    const client = {
+      api: { session: { compact, generate } },
+      __opencode: { contract: 'v2' },
+    } as never;
+
+    await compactSession(client, 's');
+    await expect(generateSessionText(client, 's', 'why?')).resolves.toBe('answer');
+
+    expect(compact).toHaveBeenCalledWith({ sessionID: 's' });
+    expect(generate).toHaveBeenCalledWith({ sessionID: 's', prompt: 'why?' });
   });
 
   it('shares one outstanding newest-page read and pages with the cursor', async () => {

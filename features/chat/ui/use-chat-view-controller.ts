@@ -12,6 +12,8 @@ import { getConnectionScope, getConnectionUiScope } from '@/shared/contracts/con
 import { copyHaptic } from '@/shared/platform/haptics';
 import { parseShellCommand, parseSlashCommand, replaceComposerTrigger } from '@/features/chat/model/composer';
 import type { TranscriptEntry } from '@/shared/presentation/format';
+import type { SideQuestionAnswer } from '@/shared/contracts/session-commands';
+import type { Command } from '@/shared/protocol/opencode/types';
 import type { PromptContextItem } from '@/shared/protocol/opencode/prompt-inbox';
 import { buildTranscriptRows, getTurnPatchDetails } from '@/shared/presentation/transcript';
 import { getLatestContextTokens } from '@/shared/presentation/usage';
@@ -80,16 +82,27 @@ export function useChatViewController() {
   const [expandedDiffId, setExpandedDiffId] = useState<string | undefined>();
   const [copiedMessageId, setCopiedMessageId] = useState<string | undefined>();
   const [sendFeedback, setSendFeedback] = useState<string | undefined>(undefined);
+  const [sideQuestion, setSideQuestion] = useState<SideQuestionAnswer | undefined>(undefined);
   const [selection, setSelection] = useState({ start: 0, end: 0 });
   const [focusRequest, setFocusRequest] = useState(0);
   const lastSentAttachmentsRef = useRef<{ uri: string; mime?: string; filename?: string }[]>([]);
   const isV2 = serverCapabilities.contract === 'v2';
   const shellMode = isV2 && serverCapabilities.shellCommand && draft.startsWith('!');
+  const builtinCommands = useMemo<Command[]>(
+    () => isV2
+      ? [
+          { name: 'compact', description: t('chat:composer.builtinCommands.compact') },
+          { name: 'btw', description: t('chat:composer.builtinCommands.btw') },
+        ]
+      : [],
+    [isV2, t],
+  );
   const { trigger, groups: suggestions, searching: suggestionsSearching, error: suggestionsError } = useComposerSuggestions({
     draft,
     selection,
     enabled: isV2 && serverCapabilities.contextMentions,
     commands,
+    builtinCommands,
     agents: availableAgents,
     skills: availableSkills,
     references: availableReferences,
@@ -291,7 +304,8 @@ export function useChatViewController() {
 
       const command = parseSlashCommand(isV2 ? nextDraft : prompt);
       if (command && (isV2 || (nextAttachments.length === 0 && commands.some((item) => item.name === command.name)))) {
-        await executeCommand(sessionId, command.name, isV2 ? command.args : command.args.trimStart(), { attachments: nextAttachments, context: snapshot.context });
+        const result = await executeCommand(sessionId, command.name, isV2 ? command.args : command.args.trimStart(), { attachments: nextAttachments, context: snapshot.context });
+        if (result && snapshot.belongsHere(sessionId)) setSideQuestion(result);
         return;
       }
 
@@ -345,6 +359,7 @@ export function useChatViewController() {
     Keyboard.dismiss();
     // eslint-disable-next-line react-hooks/set-state-in-effect -- session changes dismiss local review UI.
     setChangesVisible(false);
+    setSideQuestion(undefined);
   }, [currentSessionId]);
 
   useEffect(() => {
@@ -405,10 +420,11 @@ export function useChatViewController() {
     },
     overlay: {
       approvals, hasFailedInput, sendErrorMessage,
-      sessionMenuVisible, voiceFeedback, voiceRecoveryAction,
+      sessionMenuVisible, sideQuestion, voiceFeedback, voiceRecoveryAction,
     },
     actions: {
       buildSendErrorDetails, clearConversationFeedback, clearPromptError, dismissFailedInput,
+      closeSideQuestion: () => setSideQuestion(undefined),
       forkSession, handleAbort, handleAttach, handleCancelPendingPrompt, handleCancelRevert,
       confirmation, handleConfirmStopConversation, handleCopyMessage,
       handleDraftChange, handleRevertMessage, handleSelectionChange: setSelection, handleSendPrompt,

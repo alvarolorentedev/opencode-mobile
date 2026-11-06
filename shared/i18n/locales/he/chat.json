@@ -128,6 +128,12 @@
     "chooseAgent": "בחר סוכן",
     "loadingAgents": "טוען סוכני...",
     "noEligibleAgent": "אין סוכנים לבחירה זמינים. בדוק את תצורת סוכן השרת.",
+    "builtinCommands": {
+      "compact": "כווץ את השיחה הזו כדי לפנות הקשר",
+      "btw": "שאל שאלת צד בלי להוסיף אותה לשיחה"
+    },
+    "sideQuestionEmpty": "הוסף שאלה אחרי /btw.",
+    "builtinAttachmentsUnsupported": "הפקודה הזו לא מקבלת קבצים מצורפים.",
     "agentDescriptions": {
       "build": "סוכן ברירת מחדל עורך קבצים ומפעיל כלים.",
       "plan": "סוכן לקריאה בלבד לחקירה ותכנון.",

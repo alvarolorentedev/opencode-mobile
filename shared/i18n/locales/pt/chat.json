@@ -124,6 +124,12 @@
     "chooseAgent": "Escolher agente",
     "loadingAgents": "Carregando agentes…",
     "noEligibleAgent": "Nenhum agente selecionável disponível. Verifique a configuração de agentes do servidor.",
+    "builtinCommands": {
+      "compact": "Compactar esta conversa para libertar contexto",
+      "btw": "Fazer uma pergunta paralela sem a adicionar à conversa"
+    },
+    "sideQuestionEmpty": "Adicione uma pergunta após /btw.",
+    "builtinAttachmentsUnsupported": "Este comando não aceita anexos.",
     "agentDescriptions": {
       "build": "Agente padrão que edita arquivos e executa ferramentas.",
       "plan": "Agente somente leitura para explorar e planejar.",

@@ -10,6 +10,7 @@ type ComposerSuggestionsInput = {
   selection: { start: number; end: number };
   enabled: boolean;
   commands: Command[];
+  builtinCommands?: Command[];
   agents: AgentOption[];
   skills: Skill[];
   references: Reference[];
@@ -35,6 +36,7 @@ export function useComposerSuggestions({
   selection,
   enabled,
   commands,
+  builtinCommands = [],
   agents,
   skills,
   references,
@@ -87,7 +89,12 @@ export function useComposerSuggestions({
     const query = trigger.query.trim();
 
     if (trigger.kind === 'command') {
-      const items = commands
+      const serverNames = new Set(commands.map((command) => command.name));
+      const available = [
+        ...builtinCommands.filter((command) => !serverNames.has(command.name)),
+        ...commands,
+      ];
+      const items = available
         .filter((command) => includesQuery([command.name, command.description], query))
         .sort((left, right) => Number(!left.name.startsWith(query)) - Number(!right.name.startsWith(query)))
         .slice(0, 8)
@@ -154,7 +161,7 @@ export function useComposerSuggestions({
     if (referenceItems.length) result.push({ kind: 'reference', items: referenceItems });
 
     return result;
-  }, [agents, commands, files, references, skills, trigger]);
+  }, [agents, builtinCommands, commands, files, references, skills, trigger]);
 
   return { trigger, groups, searching, error };
 }

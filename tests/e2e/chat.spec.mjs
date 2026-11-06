@@ -566,6 +566,34 @@ test('commands execute through the primary chat action', async ({ page, request 
   await expect(page.getByText('Command /review src completed.', { exact: true }).first()).toBeVisible({ timeout: 15_000 });
 });
 
+test('V2 built-ins compact the session and answer side questions transiently', async ({ page, request }) => {
+  await resetScenario(request, 'happy-path');
+  await openReadyChat(page);
+
+  const input = page.getByTestId('chat-prompt-input');
+  await input.fill('/com');
+  await expect(page.getByTestId('composer-suggestion-command-compact')).toContainText('Compact this conversation');
+  await input.fill('/bt');
+  await expect(page.getByTestId('composer-suggestion-command-btw')).toContainText('Ask a side question');
+
+  await sendPrompt(page, '/compact');
+  await expect.poll(async () => {
+    const state = await (await request.get(`${backendOrigin()}/__control/state`)).json();
+    return Object.values(state.messagesBySession).some((messages) => messages.some((message) => message.type === 'compaction'));
+  }).toBe(true);
+
+  await sendPrompt(page, '/btw what changed?');
+  const overlay = page.getByTestId('side-question-overlay');
+  await expect(overlay).toBeVisible({ timeout: 15_000 });
+  await expect(overlay.getByText('what changed?', { exact: true })).toBeVisible();
+  await expect(overlay.getByText('Side answer: what changed?', { exact: true })).toBeVisible();
+  await overlay.getByRole('button', { name: 'Close', exact: true }).click();
+  await expect(overlay).toBeHidden();
+
+  const state = await (await request.get(`${backendOrigin()}/__control/state`)).json();
+  expect(Object.values(state.messagesBySession).flat().some((message) => message.type === 'user' && message.text === '/btw what changed?')).toBe(false);
+});
+
 test('V2 composer suggestions insert commands, context, and shell commands', async ({ page, request }) => {
   await resetScenario(request, 'happy-path');
   await openReadyChat(page);

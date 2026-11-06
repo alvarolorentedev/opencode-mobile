@@ -124,6 +124,12 @@
     "chooseAgent": "Choose agent",
     "loadingAgents": "Loading agents…",
     "noEligibleAgent": "No selectable agents are available. Check the server agent configuration.",
+    "builtinCommands": {
+      "compact": "Compact this conversation to free context",
+      "btw": "Ask a side question without adding it to the conversation"
+    },
+    "sideQuestionEmpty": "Add a question after /btw.",
+    "builtinAttachmentsUnsupported": "This command does not accept attachments.",
     "agentDescriptions": {
       "build": "Default agent that edits files and runs tools.",
       "plan": "Read-only agent for exploring and planning.",

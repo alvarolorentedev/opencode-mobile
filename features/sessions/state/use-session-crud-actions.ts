@@ -1,8 +1,9 @@
-import { createSession as svcCreateSession, deleteSession as svcDeleteSession, executeCommand as svcExecuteCommand, executeShell as svcExecuteShell, forkSession as svcForkSession, interruptSession as svcInterruptSession, revertSession as svcRevertSession, unrevertSession as svcUnrevertSession, updateSessionTitle as svcUpdateSessionTitle, waitForSessionIdle as svcWaitForSessionIdle } from '@/shared/protocol/services/session-service';
+import { createSession as svcCreateSession, compactSession as svcCompactSession, deleteSession as svcDeleteSession, executeCommand as svcExecuteCommand, executeShell as svcExecuteShell, forkSession as svcForkSession, generateSessionText as svcGenerateSessionText, interruptSession as svcInterruptSession, revertSession as svcRevertSession, unrevertSession as svcUnrevertSession, updateSessionTitle as svcUpdateSessionTitle, waitForSessionIdle as svcWaitForSessionIdle } from '@/shared/protocol/services/session-service';
 import { useCallback } from 'react';
 
 import type { Session, SessionStatus } from '@/shared/protocol/opencode/types';
 import { i18n } from '@/shared/i18n/index';
+import { buildSideQuestionPrompt, isBuiltinSessionCommand, type SideQuestionAnswer } from '@/shared/contracts/session-commands';
 import { getInitialMode, getSelectedModelParts, getSelectedModelVariant } from '@/features/ai/runtime';
 import { persistSessionCache } from '@/features/sessions/services/session-cache';
 import type { SessionCrudInput } from '@/features/sessions/model/action-inputs';
@@ -18,6 +19,7 @@ export function useSessionCrudActions({
   explicitSessionSelectionRef,
   locallyCreatedSessionsRef,
   availableAgents,
+  commands,
   currentConfig,
   availableModels,
   diffScopeBySessionRef,
@@ -220,8 +222,22 @@ export function useSessionCrudActions({
     await Promise.all([refreshSessions(), refreshMessages(sessionId, true, { mode: 'replace' }), refreshSessionDiff(sessionId, true)]);
   }, [client, refreshMessages, refreshSessionDiff, refreshSessions]);
 
-  const executeCommand = useCallback(async (sessionId: string, command: string, args: string, input?: Pick<CommandOptions, 'attachments' | 'context'>) => {
+  const executeCommand = useCallback(async (sessionId: string, command: string, args: string, input?: Pick<CommandOptions, 'attachments' | 'context'>): Promise<SideQuestionAnswer | void> => {
     if (!isCurrentClient(client)) throw new Error(i18n.t('chat:composer.noEligibleAgent'));
+    // Client built-ins are not in the server catalog. Intercept them before
+    // agent/model resolution so they never reach session.command.
+    if (client.__opencode?.contract === 'v2' && isBuiltinSessionCommand(command) && !commands.some((item) => item.name === command)) {
+      if (input?.attachments?.length) throw new Error(i18n.t('chat:composer.builtinAttachmentsUnsupported'));
+      if (command === 'compact') {
+        await svcCompactSession(client, sessionId);
+        await Promise.all([refreshMessages(sessionId, true, { mode: 'replace' }), refreshSessions()]).catch(() => undefined);
+        return;
+      }
+      const question = args.trim();
+      if (!question) throw new Error(i18n.t('chat:composer.sideQuestionEmpty'));
+      const answer = await svcGenerateSessionText(client, sessionId, buildSideQuestionPrompt(question));
+      return { question, answer };
+    }
     const agent = getInitialMode(availableAgents, currentConfig, chatPreferences.mode);
     if (!agent) throw new Error(i18n.t('chat:composer.noEligibleAgent'));
     const selected = getSelectedModelParts(chatPreferences.modelId);
@@ -240,7 +256,7 @@ export function useSessionCrudActions({
       variant,
     });
     await Promise.all([refreshMessages(sessionId, true), refreshSessions()]).catch(() => undefined);
-  }, [availableAgents, availableModels, currentConfig, isCurrentClient, chatPreferences.mode, chatPreferences.modelId, chatPreferences.modelVariantSelections, client, refreshMessages, refreshSessions, sessions]);
+  }, [availableAgents, availableModels, commands, currentConfig, isCurrentClient, chatPreferences.mode, chatPreferences.modelId, chatPreferences.modelVariantSelections, client, refreshMessages, refreshSessions, sessions]);
 
   const executeShell = useCallback(async (sessionId: string, command: string) => {
     await svcExecuteShell(client, sessionId, command);

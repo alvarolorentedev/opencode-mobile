@@ -124,6 +124,12 @@
     "chooseAgent": "选择代理",
     "loadingAgents": "正在加载代理…",
     "noEligibleAgent": "没有可选择的代理。请检查服务器的代理配置。",
+    "builtinCommands": {
+      "compact": "压缩此对话以释放上下文",
+      "btw": "提出旁支问题，不将其加入对话"
+    },
+    "sideQuestionEmpty": "请在 /btw 后添加问题。",
+    "builtinAttachmentsUnsupported": "此命令不接受附件。",
     "agentDescriptions": {
       "build": "默认代理，可编辑文件并运行工具。",
       "plan": "用于探索和规划的只读代理。",

@@ -15,10 +15,12 @@ function deferredGate<T = void>() {
 async function loadSessionCrud(runtime: ReturnType<typeof hookRuntime>) {
   const services = {
     archiveSession: vi.fn(async () => undefined),
+    compactSession: vi.fn(async () => undefined),
     createSession: vi.fn(async () => ({ id: 'new', title: '' })),
     deleteSession: vi.fn(async () => undefined),
     executeCommand: vi.fn(async () => undefined),
     forkSession: vi.fn(async () => ({ id: 'forked' })),
+    generateSessionText: vi.fn(async () => 'answer'),
     interruptSession: vi.fn(async () => undefined),
     listArchivedSessions: vi.fn(async () => []),
     revertSession: vi.fn(async () => undefined),
@@ -72,6 +74,7 @@ function sessionCrudInput(patch: Record<string, unknown> = {}) {
       diffScopeBySessionRef: { current: {} },
       sessions,
       sessionStatuses: statuses,
+      commands: [],
       bootstrapPromiseRef,
       bootstrapTokenRef,
       currentSessionIdRef,
@@ -663,6 +666,26 @@ describe('command agent eligibility', () => {
     runtime.update({ availableAgents: [{ id: 'general', label: 'General', mode: 'subagent' }] });
     await expect(runtime.value.executeCommand('s', 'review', '')).rejects.toThrow('chat:composer.noEligibleAgent');
     expect(services.executeCommand).toHaveBeenCalledOnce();
+    runtime.unmount();
+  });
+
+  it('routes built-in compact and btw before the server command', async () => {
+    const runtime = hookRuntime();
+    const { useSessionCrudActions, services } = await loadSessionCrud(runtime);
+    const { input } = sessionCrudInput({});
+    runtime.mount(useSessionCrudActions, input);
+
+    await runtime.value.executeCommand('s', 'compact', '');
+    expect(services.compactSession).toHaveBeenCalledWith(input.client, 's');
+    expect(services.executeCommand).not.toHaveBeenCalled();
+
+    await expect(runtime.value.executeCommand('s', 'btw', 'why?')).resolves.toEqual({ question: 'why?', answer: 'answer' });
+    expect(services.generateSessionText).toHaveBeenCalledWith(input.client, 's', expect.stringContaining('why?'));
+    expect(services.executeCommand).not.toHaveBeenCalled();
+
+    await expect(runtime.value.executeCommand('s', 'btw', '')).rejects.toThrow('chat:composer.sideQuestionEmpty');
+    await expect(runtime.value.executeCommand('s', 'btw', 'why?', { attachments: [{ uri: 'file:///a' }] })).rejects.toThrow('chat:composer.builtinAttachmentsUnsupported');
+
     runtime.unmount();
   });
 });

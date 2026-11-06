@@ -116,6 +116,23 @@ universal plugin or TUI command parity. See the
 [real-server fixture](../engineering/validation/server-plugins.md) for evidence
 and its limits.
 
+## Session Built-in Commands
+
+Two client-side built-ins are available on V2: `/compact` and `/btw`. They are
+not part of `command.list`; the app dispatches them before `session.command`, so
+they never become ordinary prompts. A same-named server command wins, preserving
+user configuration.
+
+- `/compact` calls `session.compact({ sessionID })`. The server owns the
+  compaction and emits the existing compaction events, which rebuild the
+  transcript window.
+- `/btw <question>` calls `session.generate({ sessionID, prompt })` with the
+  TUI side-question instructions. The server answers transiently from the
+  session's canonical context without tools, history mutation or a queue entry.
+  OpenCode renders the answer in a local sheet; closing it discards the answer.
+- Empty `/btw` input and attachments are rejected with a localized composer
+  error. V1 keeps its existing behavior; no V1 adapter is added.
+
 ## Auto Model Classifier
 
 Auto model routing can use the V2 experimental classifier endpoint:

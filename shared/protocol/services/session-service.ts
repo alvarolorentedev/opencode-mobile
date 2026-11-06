@@ -136,6 +136,12 @@ export function executeCommand(client: ScopedOpencodeClient, sessionId: string, 
 export function executeShell(client: ScopedOpencodeClient, sessionId: string, command: string) {
   return createSessionAdapter(client).executeShell(sessionId, command);
 }
+export function compactSession(client: ScopedOpencodeClient, sessionId: string) {
+  return createSessionAdapter(client).compact(sessionId);
+}
+export function generateSessionText(client: ScopedOpencodeClient, sessionId: string, prompt: string) {
+  return createSessionAdapter(client).generate(sessionId, prompt);
+}
 
 export function listServerProjects(client: ScopedOpencodeClient) { return createSessionAdapter(client).catalogProjects(); }
 export function listArchivedServerProjects(client: ScopedOpencodeClient) { return createSessionAdapter(client).catalogProjects({ archived: true }); }

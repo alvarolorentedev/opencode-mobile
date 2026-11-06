@@ -13,6 +13,7 @@ import type { SharedInput } from '@/features/sharing/index';
 import type { DiffScope , DiffTurn } from '@/shared/contracts/domain';
 
 import type { SendPrompt , SendingState } from '@/shared/contracts/prompt-actions';
+import type { SideQuestionAnswer } from '@/shared/contracts/session-commands';
 
 export type ChatContextValue = {
   pendingPrompts: PendingPrompt[];
@@ -50,7 +51,7 @@ export type ChatContextValue = {
   availableSkills: import('@/shared/protocol/opencode/types').Skill[];
   availableReferences: import('@/shared/protocol/opencode/types').Reference[];
   searchProjectFiles: (query: string) => Promise<string[]>;
-  executeCommand: (sessionId: string, command: string, args: string, input?: Pick<import('@/shared/protocol/opencode/prompt-inbox').CommandOptions, 'attachments' | 'context'>) => Promise<void>;
+  executeCommand: (sessionId: string, command: string, args: string, input?: Pick<import('@/shared/protocol/opencode/prompt-inbox').CommandOptions, 'attachments' | 'context'>) => Promise<SideQuestionAnswer | void>;
   executeShell: (sessionId: string, command: string) => Promise<void>;
   sendPrompt: SendPrompt;
   abortSession: (sessionId: string) => Promise<void>;

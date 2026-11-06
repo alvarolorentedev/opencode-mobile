@@ -919,6 +919,23 @@ const server = http.createServer(async (req, res) => {
       return;
     }
 
+    if (req.method === 'POST' && /^\/api\/session\/[^/]+\/compact$/.test(pathname)) {
+      const sessionID = pathname.split('/')[3];
+      if (!helpers.getSession(sessionID)) return notFound(res);
+      const compacted = helpers.handleCompact(sessionID);
+      sendJson(res, 200, { data: { id: compacted.id, sessionID, time: { created: compacted.time.created }, type: 'compaction', payload: {}, delivery: 'queue' } });
+      return;
+    }
+
+    if (req.method === 'POST' && /^\/api\/session\/[^/]+\/generate$/.test(pathname)) {
+      const sessionID = pathname.split('/')[3];
+      if (!helpers.getSession(sessionID)) return notFound(res);
+      const body = await readJson(req);
+      const question = String(body?.prompt || '').split('\n\n').at(-1)?.trim() || 'this conversation';
+      sendJson(res, 200, { data: { text: `Side answer: ${question}` } });
+      return;
+    }
+
     if (req.method === 'POST' && /^\/api\/session\/[^/]+\/shell$/.test(pathname)) {
       const sessionID = pathname.split('/')[3];
       if (!helpers.getSession(sessionID)) return notFound(res);

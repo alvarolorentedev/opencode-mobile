@@ -4,7 +4,7 @@ import { hookRuntime, loadTs } from '../../../tests/helpers/runtime.mjs';
 
 async function controller(contract = 'v2') {
   const driver = hookRuntime();
-  const executeCommand = vi.fn(async (..._args: unknown[]) => {});
+  const executeCommand = vi.fn(async (..._args: unknown[]): Promise<{ question: string; answer: string } | void> => {});
   const sendPrompt = vi.fn(async () => true);
   const executeShell = vi.fn(async () => {});
   const snapshot = { draft: '', attachments: [] as object[], context: [] as object[],
@@ -87,5 +87,18 @@ describe('slash submission', () => {
     expect(native.executeShell).toHaveBeenCalledWith('s', 'echo hi');
     expect(native.executeCommand).not.toHaveBeenCalled();
     native.driver.unmount();
+  });
+
+  it('opens the side question overlay with the generated answer', async () => {
+    const h = await controller();
+    h.executeCommand.mockResolvedValueOnce({ question: 'why?', answer: 'because' });
+    await h.driver.value.actions.handleSendPrompt('/btw why?');
+    h.driver.flush();
+    expect(h.executeCommand).toHaveBeenCalledWith('s', 'btw', 'why?', expect.objectContaining({ attachments: [], context: [] }));
+    expect(h.driver.value.overlay.sideQuestion).toEqual({ question: 'why?', answer: 'because' });
+    h.driver.value.actions.closeSideQuestion();
+    h.driver.flush();
+    expect(h.driver.value.overlay.sideQuestion).toBeUndefined();
+    h.driver.unmount();
   });
 });

@@ -108,5 +108,12 @@ export function createSessionHelpers({ getNow, getState, emitEvent }) {
     const assistant = createMessage(sessionID, 'assistant', { agent: 'build', model: FAKE_MODEL, content: [{ type: 'text', text: `Command ${text} completed.` }] }); finish(sessionID, assistant);
     getState().sessionStatuses[sessionID] = { type: 'idle' }; send('session.execution.succeeded', { sessionID }); return assistant;
   }
-  return { getSession, getMessages, createSession, createMessage, completePrompt, scheduleCompletion, handlePromptSubmission, handleCommand, handleShell, createPermissionRequest, createQuestionRequest };
+  function handleCompact(sessionID) {
+    const compacted = createMessage(sessionID, 'compaction', { reason: 'manual' });
+    getState().sessionStatuses[sessionID] = { type: 'idle' };
+    send('session.compaction.started', { sessionID });
+    send('session.compaction.ended', { sessionID });
+    return compacted;
+  }
+  return { getSession, getMessages, createSession, createMessage, completePrompt, scheduleCompletion, handlePromptSubmission, handleCommand, handleShell, handleCompact, createPermissionRequest, createQuestionRequest };
 }
