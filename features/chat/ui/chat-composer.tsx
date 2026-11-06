@@ -139,6 +139,12 @@ export function ChatComposer({
   const [agentPickerVisible, setAgentPickerVisible] = useState(false);
   const displayedInputHeight = draft ? Math.min(maxInputHeight, Math.max(minInputHeight, inputHeight)) : minInputHeight;
   const inputTextStyle = [styles.composerTextArea, slim && { fontSize: 15 }];
+  // iOS sizes the multiline input itself, but it can keep the last tall frame
+  // after the draft is cleared (send, delete-all), so the empty state pins the
+  // floor height with an explicit height instead of min/max bounds.
+  const inputSizingStyle = Platform.OS === 'ios'
+    ? draft ? { minHeight: minInputHeight, maxHeight: maxInputHeight } : { height: minInputHeight }
+    : { height: displayedInputHeight };
   function updateInputHeight(height: number) {
     const nextHeight = Math.min(maxInputHeight, Math.max(minInputHeight, Math.ceil(height)));
     setInputHeight((current) => (current === nextHeight ? current : nextHeight));
@@ -222,11 +228,9 @@ export function ChatComposer({
           scrollEnabled={Platform.OS === 'ios' ? true : displayedInputHeight >= maxInputHeight}
           style={[[
             inputTextStyle,
-            Platform.OS === 'ios'
-              // Let the platform size the multiline input and scroll at the cap.
-              ? { minHeight: minInputHeight, maxHeight: maxInputHeight, color: palette.text }
-              : { height: displayedInputHeight, color: palette.text },
-          ], Platform.OS === 'ios' ? [styles.inputContentCompact, { minHeight: minInputHeight, maxHeight: maxInputHeight }] : styles.inputContentCompact]}
+            inputSizingStyle,
+            { color: palette.text },
+          ], Platform.OS === 'ios' ? [styles.inputContentCompact, inputSizingStyle] : styles.inputContentCompact]}
           tint={palette.tint}
           value={draft}
         />

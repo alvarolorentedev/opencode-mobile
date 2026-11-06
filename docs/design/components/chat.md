@@ -145,7 +145,9 @@ declared once, at the leaves.
   color; web keeps the plain input
 - On iOS the native multiline input grows itself between 44 and 110 px (40 to
   90 px in slim mode) and scrolls at the cap, so height never lags a layout pass
-  behind the text. The native slim input retains its 40-point minimum.
+  behind the text. An empty draft pins that floor height with an explicit height,
+  because iOS can otherwise keep the last tall frame after the draft is cleared
+  (send or delete-all). The native slim input retains its 40-point minimum.
   Android and web retain content-size events and the explicit measured height.
 
 #### Prop contract
