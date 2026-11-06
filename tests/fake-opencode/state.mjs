@@ -113,7 +113,14 @@ export function createState(scenario) {
     diffsByTurn: {},
     integrationAttempts: {},
     authByProvider: {},
-    filesByDirectory: {},
+    filesByDirectory: {
+      // A folder that exists on the server but is not a project. Browsing it
+      // must not add it to the project catalog.
+      '/workspace/browse-only': {
+        'README.md': '# Browse only\n',
+        'src/demo.ts': 'export const workspace = "/workspace/browse-only";\n',
+      },
+    },
     files: {
       'app/(tabs)/index.tsx': 'export default function ChatLandingScreen() {\n  return null;\n}\n',
       'assets/binary.dat': '\0binary',

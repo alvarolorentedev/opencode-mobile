@@ -74,6 +74,7 @@ export type ServerAdapter = {
     };
     findFiles: (query: string, includeDirectories?: boolean) => Promise<string[]>;
     listFiles: (path: string) => Promise<ProjectFileEntry[]>;
+    listDirectoryNames: (path: string) => Promise<string[]>;
     readFile: (path: string) => Promise<FileContent>;
     readProjectFile: (path: string) => Promise<ProjectFile>;
     downloadSource: (path: string) => Promise<{ kind: 'content'; content: FileContent } | { kind: 'url' }>;
@@ -285,6 +286,14 @@ export function createServerAdapter(client: ScopedOpencodeClient): ServerAdapter
           ? (await compatibility.file.list({ path })).data
           : (await client.api!.file.list({ ...location, path })).data;
         return projectEntries(data ?? [], client.__opencode.directory || '');
+      },
+      listDirectoryNames: async (path: string) => {
+        const data = compatibility
+          ? (await compatibility.file.list({ path })).data
+          : (await client.api!.file.list({ ...location, path })).data;
+        return (data ?? []).filter((entry) => entry.type === 'directory')
+          .map((entry) => entry.path.split(/[\\/]/).filter(Boolean).pop() ?? entry.path)
+          .sort((left, right) => left.localeCompare(right));
       },
       readFile: (path: string) => compatibility
         ? v1Project.readFile(compatibility, path)

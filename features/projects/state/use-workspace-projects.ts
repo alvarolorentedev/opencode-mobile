@@ -1,7 +1,7 @@
 import { useCallback, useMemo } from 'react';
 import { buildClient, withReadSignal } from '@/shared/protocol/opencode/client';
 import { resolveProjectLocation } from '@/shared/protocol/services/session-service';
-import { listFiles } from '@/features/projects/services/project-service';
+import { listDirectoryNames } from '@/features/projects/services/project-service';
 import { useWorkspaces } from '@/runtime/workspace';
 import { buildWorkspaceProjectGroups } from '@/features/projects/model/workspace-project-groups';
 
@@ -10,7 +10,7 @@ import { buildWorkspaceProjectGroups } from '@/features/projects/model/workspace
 // because there is no local entry to remove.
 export function useWorkspaceProjects() {
   const registry = useWorkspaces();
-  const { connections, snapshots, ensure } = registry;
+  const { connections, snapshots, ensure, restoreProject } = registry;
   const groups = useMemo(() => {
     const contractByConnection = new Map<string, 'v1' | 'v2'>();
     for (const [key, snapshot] of Object.entries(snapshots)) {
@@ -37,16 +37,22 @@ export function useWorkspaceProjects() {
     const target = { connectionId, projectPath: project.directory || path };
     const runtime = await ensure(target);
     if (runtime.native.settings !== entry.settings || !runtime.enabled) throw new Error('The connection changed while adding the project.');
+    // Re-adding a path is an explicit restore for a project hidden on this device.
+    restoreProject({ connectionId, projectPath: project.worktree });
     return target;
-  }, [connections, snapshots, ensure]);
-  const listDirectories = useCallback(async (connectionId: string, path: string, signal?: AbortSignal) => {
+  }, [connections, snapshots, ensure, restoreProject]);
+  const listDirectories = useCallback(async (connectionId: string, basePath: string, path: string, signal?: AbortSignal) => {
     const entry = connections.find((item) => item.id === connectionId);
     if (!entry?.enabled) throw new Error('Connect this server first.');
     if (!path.trim()) throw new Error('Enter a folder on the OpenCode server.');
     const contract = Object.entries(snapshots).find(([key]) => (JSON.parse(key) as string[])[0] === connectionId)?.[1].values.connectionValue.serverCapabilities.contract ?? 'v2';
-    const client = buildClient({ ...entry.settings, directory: path }, contract);
-    const entries = await listFiles(signal ? withReadSignal(client, signal) : client, '');
-    return entries.filter((entry) => entry.type === 'directory').map((entry) => entry.name);
+    // V2 lists an absolute path without leaving the stable add-session
+    // location, so browsing cannot register each visited folder as a project.
+    // V1 has no absolute listing, so it keeps the scoped directory.
+    const base = basePath.trim() || path;
+    const client = buildClient({ ...entry.settings, directory: contract === 'v1' ? path : base }, contract);
+    const names = await listDirectoryNames(signal ? withReadSignal(client, signal) : client, contract === 'v1' ? '' : path);
+    return names;
   }, [connections, snapshots]);
   const options = useMemo(() => groups.flatMap((group) => group.projects.map((project) => ({
     ...project, connectionId: group.id, serverName: group.name,

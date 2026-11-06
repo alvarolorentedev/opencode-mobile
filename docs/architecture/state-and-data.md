@@ -626,7 +626,8 @@ preference, not a server archive, and hiding the active project activates the
 first remaining visible server project on that connection. If none remains, the
 current selection stays until the next picker open derives the server default.
 The Show archived projects switch is off by default; turning it on reveals the
-hidden rows under "Archived on this device" with Restore. See
+hidden rows under "Archived on this device" with Restore. Re-adding the project's
+path through Add project also clears its marker. See
 [ADR 0034](../adr/0034-device-local-project-archive.md) and
 [ADR 0038](../adr/0038-single-archived-projects-switch.md).
 
@@ -645,6 +646,11 @@ archived projects switch reveals them under "Archived on OpenCode", distinct
 from the device-local "Archived on this device" rows. Restoring resolves the
 archived directory with `location.get`, then invalidates the shared `projects`
 query resource so both the normal and archived lists reconcile.
+
+Add-project folder browsing keeps the add session's starting location and lists
+absolute folder paths. Visiting a folder is a read, not a project boot, so the
+browser cannot add unintended projects to the server catalog; only the path
+confirmed with the checkmark is resolved through `location.get`.
 
 Workspace runtimes mount on demand for the focused project (plus the retained
 placeholder that boots the connection). Switching projects keeps the previous

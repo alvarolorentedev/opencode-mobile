@@ -48,7 +48,7 @@ export function ArchivedProjectsSection({ connectionId, testID }: { connectionId
     {projects.map((project) => {
       const label = project.name || getProjectLabel(project.worktree);
       return <View key={project.id} className={cn(stylesClasses.row, "border-border")}>
-        <ListRow title={label} description={project.worktree} left={(props) => <Icon {...props} name="archive-outline" />} style={{ paddingHorizontal: 0 }} />
+        <ListRow title={label} description={project.worktree} className={cn("flex-1 min-w-0")} left={(props) => <Icon {...props} name="archive-outline" />} style={{ paddingHorizontal: 0 }} />
         <Button testID={`project-restore-${project.id}`} disabled={Boolean(busy)} onPress={() => void runRestore(project)} variant="outline" size="sm">
           {busy === project.worktree ? <Spinner size="small" /> : <Icon name="restore" size={18} color={palette.tint} />}
           <Text>{t('project:picker.restore')}</Text>

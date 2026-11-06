@@ -346,6 +346,16 @@ for (const contract of ['v1', 'v2']) {
       await expect(picker.getByTestId('project-directory-path')).toHaveValue('/workspace/demo-project/src');
       await picker.getByTestId('project-directory-up').click();
       await expect(picker.getByTestId('project-directory-path')).toHaveValue('/workspace/demo-project');
+      if (contract === 'v2') {
+        // Absolute browsing must not register visited folders as projects.
+        await picker.getByTestId('project-directory-up').click();
+        await expect(picker.getByTestId('project-directory-path')).toHaveValue('/workspace');
+        await expect(picker.getByTestId('project-directory-entry-browse-only')).toBeVisible();
+        await picker.getByTestId('project-directory-entry-browse-only').click();
+        await expect(picker.getByTestId('project-directory-path')).toHaveValue('/workspace/browse-only');
+        const projects = await (await request.get(`http://127.0.0.1:${port}/api/project`)).json();
+        expect(projects.some((project) => project.canonical === '/workspace/browse-only')).toBe(false);
+      }
       await picker.getByTestId('project-directory-path').fill('/workspace/secondary-project');
       await picker.getByTestId('project-directory-add').click();
       await page.getByTestId('project-entry-src').click();
@@ -435,6 +445,18 @@ for (const contract of ['v1', 'v2']) {
       await expect(picker.getByTestId('project-restore-hidden-/workspace/demo-project')).toBeVisible();
       await picker.getByTestId('project-restore-hidden-/workspace/demo-project').click();
       await expect(picker.getByRole('button', { name: 'Select demo-project' })).toBeVisible();
+      await expect(picker.getByTestId('project-restore-hidden-/workspace/demo-project')).toHaveCount(0);
+
+      // Re-adding the same path is also an explicit restore.
+      await picker.getByTestId('project-archive-/workspace/demo-project').click();
+      await expect(picker.getByTestId('project-restore-hidden-/workspace/demo-project')).toBeVisible();
+      await picker.getByTestId('project-add-button').click();
+      await picker.getByTestId('project-directory-path').fill('/workspace/demo-project');
+      await picker.getByTestId('project-directory-add').click();
+      await expect(picker).not.toBeVisible({ timeout: 20_000 });
+      await workspaceProjectButton(page).click();
+      await expect(picker.getByRole('button', { name: 'Select demo-project' })).toBeVisible();
+      await picker.getByTestId('project-show-archived').click();
       await expect(picker.getByTestId('project-restore-hidden-/workspace/demo-project')).toHaveCount(0);
     } finally { server.kill('SIGTERM'); }
   });

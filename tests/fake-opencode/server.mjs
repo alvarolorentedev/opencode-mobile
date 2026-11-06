@@ -1,7 +1,7 @@
 // Deterministic V2 fake server. See docs/engineering/validation/fake-server.md.
 import { models, providersForScenario, modelCatalog } from './fixtures.mjs';
 import { runProjectFileShell } from './project-files.mjs';
-import { filesForDirectory, fileNodes, addWorktree } from './workspace.mjs';
+import { filesForDirectory, filesForBrowsing, fileNodes, addWorktree } from './workspace.mjs';
 import http from 'node:http';
 import { Buffer } from 'node:buffer';
 import { WebSocketServer } from 'ws';
@@ -1130,12 +1130,14 @@ const server = http.createServer(async (req, res) => {
     if (req.method === 'GET' && ['/api/fs/find', '/api/fs/list'].includes(pathname)) {
       const directory = requireLocation(requestUrl, res);
       if (!directory) return;
-      const files = filesForDirectory(state, directory);
+      const requestedPath = requestUrl.searchParams.get('path') || '';
+      const absolute = pathname === '/api/fs/list' && requestedPath.startsWith('/');
+      const files = absolute ? filesForBrowsing(state, requestedPath) : filesForDirectory(state, directory);
       if (!files) { sendJson(res, 400, { error: 'Unknown workspace' }); return; }
       const query = (requestUrl.searchParams.get('query') || '').toLowerCase();
       const entries = pathname === '/api/fs/find'
         ? Object.keys(files).filter((path) => path.toLowerCase().includes(query)).sort().map((path) => ({ path, type: 'file' }))
-        : fileNodes(files, directory, requestUrl.searchParams.get('path') || '', state.emptyDirectories?.[directory]).map(({ path, type }) => ({ path, type }));
+        : fileNodes(files, absolute ? requestedPath : directory, absolute ? '' : requestedPath, state.emptyDirectories?.[absolute ? requestedPath : directory]);
       sendJson(res, 200, { location: { directory }, data: entries });
       return;
     }

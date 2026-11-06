@@ -7,6 +7,9 @@ export function findFiles(client: ScopedOpencodeClient, query: string, includeDi
 export function listFiles(client: ScopedOpencodeClient, path: string) {
   return createServerAdapter(client).projects.listFiles(path);
 }
+export function listDirectoryNames(client: ScopedOpencodeClient, path: string) {
+  return createServerAdapter(client).projects.listDirectoryNames(path);
+}
 export function readFile(client: ScopedOpencodeClient, path: string) {
   return createServerAdapter(client).projects.readFile(path);
 }

@@ -4,7 +4,7 @@ import { Text } from '@/shared/ui/text';
 import { Button } from '@/shared/ui/button';
 import { TextField } from '@/shared/ui/text-field';
 import { Icon } from '@/shared/ui/icon';
-import { useState, useMemo } from 'react';
+import { useRef, useState, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { View } from 'react-native';
 
@@ -37,6 +37,9 @@ export default function OnboardingProjectScreen() {
   const [query, setQuery] = useState('');
   const [addError, setAddError] = useState<string>();
   const [isAdding, setIsAdding] = useState(false);
+  // Keep one location for the add session; the first listed path seeds it when
+  // the server has no projects yet.
+  const browseBase = useRef({ connectionId: '', path: '' });
 
   const activeProject = projects.find((project) => project.path === activeProjectPath);
   const visibleProjects = useMemo(() => {
@@ -59,7 +62,8 @@ export default function OnboardingProjectScreen() {
     setIsAdding(true);
     setAddError(undefined);
     try {
-      await addProject(path);
+      const location = await addProject(path);
+      if (connectionId) registry.restoreProject({ connectionId, projectPath: location });
       navigation.next();
     } catch (reason) {
       setAddError(reason instanceof Error ? reason.message : t('project:errors.addProject'));
@@ -104,7 +108,11 @@ export default function OnboardingProjectScreen() {
       {adding ? (
         <View className={cn(stylesClasses.addForm, "border-border")}>
           {connectionId ? <ProjectDirectoryPicker startPath={startPath ?? ''} testID="onboarding-project-directory-picker"
-            loadDirectories={(path, signal) => listDirectories(connectionId, path, signal)}
+            loadDirectories={(path, signal) => {
+              if (browseBase.current.connectionId !== connectionId) browseBase.current = { connectionId, path: '' };
+              browseBase.current.path ||= path;
+              return listDirectories(connectionId, browseBase.current.path, path, signal);
+            }}
             onConfirm={(path) => void submitAdd(path)}
             busy={isAdding} scrollable={false} /> : null}
           {addError ? <Text className={cn("text-destructive")}>{addError}</Text> : null}
@@ -113,7 +121,7 @@ export default function OnboardingProjectScreen() {
           </View>
         </View>
       ) : (
-        <Button testID="onboarding-project-add" onPress={() => { setAddError(undefined); setAdding(true); }} variant="outline"><Icon name={"plus"} size={20} /><Text>{t('project:picker.add')}</Text></Button>
+        <Button testID="onboarding-project-add" onPress={() => { browseBase.current = { connectionId: '', path: '' }; setAddError(undefined); setAdding(true); }} variant="outline"><Icon name={"plus"} size={20} /><Text>{t('project:picker.add')}</Text></Button>
       )}
     </OnboardingStep>
   );

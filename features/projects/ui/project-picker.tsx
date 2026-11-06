@@ -4,7 +4,7 @@ import { TextField } from '@/shared/ui/text-field';
 import { Button } from '@/shared/ui/button';
 import { Icon } from '@/shared/ui/icon';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Pressable, ScrollView, Text as NativeText, View } from 'react-native';
 
@@ -44,6 +44,9 @@ export function ProjectPicker({ visible, onClose, activePath, onSelected, testID
   const registry = useWorkspaces();
   const palette = usePalette();
   const { groups, add, listDirectories } = useWorkspaceProjects();
+  // One stable location per add session. The first listed path seeds it when
+  // no project exists yet, so later navigation stays on the same location.
+  const browseBase = useRef({ connectionId: '', path: '' });
   const multipleServers = groups.length > 1;
   const [server, setServer] = useState('');
   const [query, setQuery] = useState('');
@@ -78,7 +81,11 @@ export function ProjectPicker({ visible, onClose, activePath, onSelected, testID
     {adding ? <View className={cn(stylesClasses.addForm, "flex-1")}>
       {multipleServers ? <WorkspaceSelect title={t('common:servers.server')} value={addServer} options={groups.map((group) => ({ value: group.id, label: group.name }))} onChange={setAddServer} /> : null}
       {addTarget ? <ProjectDirectoryPicker key={`${addTarget}:${startPath}`} startPath={startPath ?? ''} testID="project-directory-picker"
-        loadDirectories={(path, signal) => listDirectories(addTarget, path, signal)}
+        loadDirectories={(path, signal) => {
+          if (browseBase.current.connectionId !== addTarget) browseBase.current = { connectionId: addTarget, path: '' };
+          browseBase.current.path ||= path;
+          return listDirectories(addTarget, browseBase.current.path, path, signal);
+        }}
         onConfirm={(path) => {
           setSaving(true); setError(undefined);
           void add(addTarget, path).then(activate).catch((reason) => setError(reason instanceof Error ? reason.message : t('project:errors.addProject'))).finally(() => setSaving(false));
@@ -121,6 +128,7 @@ export function ProjectPicker({ visible, onClose, activePath, onSelected, testID
         </View>
         {filteredHiddenRows.map(({ group, project }) => <View key={`hidden-${group.id}-${project.path}`} className={cn(stylesClasses.hiddenRow)}>
           <ListRow title={project.label} description={multipleServers ? `${group.name} · ${project.path}` : project.path}
+            className={cn("flex-1 min-w-0")}
             left={(props) => <Icon {...props} name="archive-outline" />} style={{ paddingHorizontal: 0 }} />
           <Button testID={`project-restore-hidden-${project.path}`} onPress={() => registry.restoreProject({ connectionId: group.id, projectPath: project.path })} variant="outline" size="sm">
             <Icon name="restore" size={18} color={palette.tint} />
@@ -137,6 +145,7 @@ export function ProjectPicker({ visible, onClose, activePath, onSelected, testID
     <Button testID="project-add-button" disabled={!groups.length} onPress={() => {
       const target = server || focusConnectionId;
       setAddServer(target);
+      browseBase.current = { connectionId: '', path: '' };
       setError(undefined);
       setAdding(true);
     }} variant="ghost"><Icon name={"plus"} size={20} /><Text>{t('project:picker.add')}</Text></Button>

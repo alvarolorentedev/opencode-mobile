@@ -11,6 +11,32 @@ export function filesForDirectory(state, directory) {
   return state.filesByDirectory[directory];
 }
 
+// Browse listings must not boot a project. Absolute paths are resolved here
+// without touching the project catalog, matching the V2 fs.list contract.
+export function filesForBrowsing(state, directory) {
+  if (!directory || (directory !== state.rootPath && !directory.startsWith(`${state.rootPath}/`))) return undefined;
+  if (directory === state.rootPath) {
+    const names = new Set();
+    const add = (value) => {
+      if (value?.startsWith(`${state.rootPath}/`)) names.add(value.slice(state.rootPath.length + 1).split('/')[0]);
+    };
+    add(state.project.canonical || state.project.worktree);
+    for (const project of state.projects) add(project.canonical || project.worktree);
+    for (const worktree of state.worktrees) add(worktree.directory);
+    for (const path of Object.keys(state.filesByDirectory)) add(path);
+    const files = {};
+    for (const name of names) files[`${name}/README.md`] = `# ${name}\n`;
+    return files;
+  }
+  if (directory === (state.project.canonical || state.project.worktree)) return state.files;
+  state.filesByDirectory[directory] ||= {
+    ...state.files,
+    'README.md': `# ${directory.split('/').pop()}\n\nFiles in ${directory}.\n`,
+    'src/demo.ts': `export const workspace = "${directory}";\n`,
+  };
+  return state.filesByDirectory[directory];
+}
+
 export function fileNodes(files, directory, requestedPath = '', emptyDirectories = []) {
   const prefix = requestedPath ? `${requestedPath}/` : '';
   const nodes = new Map();

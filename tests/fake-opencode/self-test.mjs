@@ -390,6 +390,12 @@ try {
   }
   assert((await fetch(`${v2Origin}/api/fs/list`)).status === 400, 'V2 file listing requires location');
   const fileScope = { location: { directory: v2Directory } };
+  const browsedDirectory = '/workspace/browse-only';
+  const rootListing = await v2Api.file.list({ ...fileScope, path: '/workspace' });
+  assert(rootListing.data.some((entry) => entry.name === 'browse-only' && entry.type === 'directory'), 'V2 absolute listings must expose folders outside the location');
+  const browseListing = await v2Api.file.list({ ...fileScope, path: browsedDirectory });
+  assert(browseListing.data.some((entry) => entry.name === 'src' && entry.type === 'directory'), 'V2 absolute listings must return the requested folder');
+  assert(!(await v2Api.project.list({ archived: true })).some((project) => project.canonical === browsedDirectory), 'Browsing an absolute folder must not create a project');
   const savedText = 'export const demo = "V2 😀";\n';
   await v2Api.file.write({ ...fileScope, path: 'src/demo.ts', payload: new TextEncoder().encode(savedText) });
   assert(new TextDecoder().decode(await v2Api.file.read({ ...fileScope, path: 'src/demo.ts' })) === savedText, 'Native file writes must preserve UTF-8 bytes');
