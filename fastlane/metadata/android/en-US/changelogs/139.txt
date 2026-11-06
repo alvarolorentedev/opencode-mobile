@@ -1,0 +1,4 @@
+- The chat library groups projects by server and shows their paths.
+- V2 /compact and /btw built-in commands are available.
+- Downloaded updates install directly and offer a restart.
+- New chat actions stay above a scrolling option list.
