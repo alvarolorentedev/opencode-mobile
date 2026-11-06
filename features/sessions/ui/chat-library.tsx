@@ -82,8 +82,11 @@ export function ChatLibrary({ visible, onClose, onNewChat }: { visible: boolean;
   const rows = library.sessions.filter((row) => (!multipleServers || !server || row.connectionId === server) && (!project || workspaceKey(row) === project)
     && (!chatPreferences.hideSubagentChats || !row.session.parentID)
     && `${row.session.title} ${row.preview ?? ''} ${row.serverName} ${row.projectPath}`.toLowerCase().includes(needle));
-  const projectOptions = [...new Map(library.sessions.filter((row) => !multipleServers || !server || row.connectionId === server)
-    .map((row) => [workspaceKey(row), { value: workspaceKey(row), label: row.projectPath.split('/').pop() || row.projectPath, description: row.serverName }])).values()];
+  const visibleSessions = library.sessions.filter((row) => !multipleServers || !server || row.connectionId === server);
+  const connectionOrder = new Map(registry.connections.map((entry, index) => [entry.id, index]));
+  const projectOptions = [...new Map(visibleSessions.map((row) => [workspaceKey(row), row])).values()]
+    .sort((a, b) => (connectionOrder.get(a.connectionId) ?? 0) - (connectionOrder.get(b.connectionId) ?? 0))
+    .map((row) => ({ value: workspaceKey(row), label: row.projectPath.split('/').pop() || row.projectPath, description: row.projectPath, group: multipleServers ? row.serverName : undefined }));
   function renderRow(row: LibrarySession) {
     const key = sessionKey(row);
     const label = row.session.title || t('chat:library.untitledChat');

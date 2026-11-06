@@ -19,6 +19,7 @@ function Controls() {
   const [checked, setChecked] = useState(false);
   const [radio, setRadio] = useState('local');
   const [choice, setChoice] = useState('system');
+  const [project, setProject] = useState('');
   return <View className="gap-4 p-4 w-80">
     <Button><Icon name="check" /><Text>Save settings</Text></Button>
     <Button variant="outline"><Text>Secondary action</Text></Button>
@@ -29,6 +30,14 @@ function Controls() {
       {['local', 'remote'].map((value) => <View key={value} className="flex-row items-center gap-3"><RadioGroupItem value={value} aria-labelledby={`label-${value}`} /><Label nativeID={`label-${value}`} onPress={() => setRadio(value)}>{value}</Label></View>)}
     </RadioGroup>
     <CatalogSelect options={['system', 'light', 'dark'].map((value) => ({ value, label: value }))} selectedValue={choice} onValueChange={setChoice} renderTrigger={({ open }) => <Button variant="outline" onPress={open}><Text>{choice}</Text></Button>} />
+    <CatalogSelect searchable title="Projects" selectedValue={project} onValueChange={setProject}
+      options={[
+        { value: '', label: 'All projects' },
+        { value: 'local-mobile', label: 'mobile', description: '/home/me/work/mobile', group: 'local' },
+        { value: 'local-api', label: 'api', description: '/home/me/work/api', group: 'local' },
+        { value: 'staging-mobile', label: 'mobile', description: '/srv/git/mobile', group: 'staging' },
+      ]}
+      renderTrigger={({ open, selectedOption }) => <Button variant="outline" onPress={open}><Text>{selectedOption?.label ?? 'All projects'}</Text></Button>} />
     <Progress value={60} accessibilityLabel="Download progress" />
   </View>;
 }
