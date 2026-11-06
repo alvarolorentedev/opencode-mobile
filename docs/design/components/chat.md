@@ -282,8 +282,11 @@ stays in Projects and New chat.
 
 `new-chat-sheet.tsx` reuses the terminal creation-sheet pattern: server
 selector (only with multiple connections), project selector, resolved working
-directory, and an explicit confirm action. Selection stays local until confirm;
-the provider then creates and opens the session in that workspace.
+directory, and an explicit confirm action. New worktree is offered first,
+followed by Local (main) and the remaining worktrees. The option list scrolls
+inside the sheet while Cancel and confirm stay pinned at the bottom. Selection
+stays local until confirm; the provider then creates and opens the session in
+that workspace.
 
 ### `features/sessions/ui/chat-library.tsx`
 

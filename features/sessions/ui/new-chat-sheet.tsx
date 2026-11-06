@@ -8,7 +8,7 @@ import { Button } from '@/shared/ui/button';
 import { Spinner } from '@/shared/ui/spinner';
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { View } from 'react-native';
+import { ScrollView, View } from 'react-native';
 
 import { OverlaySheet } from '@/shared/ui/overlay-sheet';
 
@@ -135,57 +135,59 @@ export function NewChatSheet({ target: initial, onClose }: { target?: WorkspaceT
       title={t('chat:newChat.title')}
       testID="new-chat-sheet"
       fitContent
+      scrollable={false}
       dismissible={!busy}
       onClose={onClose}>
-      <Text>{t('chat:newChat.hint')}</Text>
-      {groups.length > 1 ? (
+      <ScrollView className={cn("shrink")} contentContainerStyle={{ gap: 8 }} keyboardShouldPersistTaps="handled">
+        <Text>{t('chat:newChat.hint')}</Text>
+        {groups.length > 1 ? (
+          <WorkspaceSelect
+            title={t('common:servers.server')}
+            value={effectiveConnectionId}
+            testID="new-chat-server-picker"
+            disabled={Boolean(busy)}
+            options={groups.map((entry) => ({ value: entry.id, label: entry.name, description: t(`common:servers.status.${entry.status}`) }))}
+            onChange={selectServer} />
+        ) : null}
         <WorkspaceSelect
-          title={t('common:servers.server')}
-          value={effectiveConnectionId}
-          testID="new-chat-server-picker"
-          disabled={Boolean(busy)}
-          options={groups.map((entry) => ({ value: entry.id, label: entry.name, description: t(`common:servers.status.${entry.status}`) }))}
-          onChange={selectServer} />
-      ) : null}
-      <WorkspaceSelect
-        title={t('common:servers.projectContext')}
-        value={effectiveProjectPath}
-        testID="new-chat-project-picker"
-        disabled={Boolean(busy) || !server}
-        options={server?.projects.map((entry) => ({ value: entry.path, label: entry.label, description: entry.path })) ?? []}
-        onChange={selectProject} />
+          title={t('common:servers.projectContext')}
+          value={effectiveProjectPath}
+          testID="new-chat-project-picker"
+          disabled={Boolean(busy) || !server}
+          options={server?.projects.map((entry) => ({ value: entry.path, label: entry.label, description: entry.path })) ?? []}
+          onChange={selectProject} />
 
-      <Text className={cn("mt-1.5")} variant="label">{t('chat:newChat.runIn')}</Text>
-      {checkouts.length ? checkouts.map((checkout) => {
-        const selected = !createMode && checkout.directory === effectiveCheckoutPath;
-        const label = checkout.isMain ? t('project:worktrees.local') : checkout.name;
-        return (
-          <View key={checkout.directory}>
-            <ListRow testID={`new-chat-checkout-${checkout.directory}`} accessibilityRole="button" accessibilityState={{ selected, disabled: Boolean(busy) }} accessibilityLabel={t('project:picker.selectLabel', { name: label })} title={label} description={checkout.isMain ? t('project:worktrees.localHint') : [checkout.branch, checkout.directory].filter(Boolean).join(' · ')} left={(props) => <Icon {...props} color={selected ? palette.tint : palette.muted} name={checkout.isMain ? 'home-outline' : 'source-branch'}></Icon>} right={(props) => <Icon {...props} color={selected ? palette.tint : palette.muted} name={selected ? 'check-circle' : 'circle-outline'}></Icon>} disabled={Boolean(busy)} onPress={() => {
+        <Text className={cn("mt-1.5")} variant="label">{t('chat:newChat.runIn')}</Text>
+        <ListRow testID="new-chat-new-worktree" accessibilityRole="button" accessibilityState={{ selected: createMode, disabled: Boolean(busy) }} title={t('chat:newChat.newWorktree')} left={(props) => <Icon {...props} color={createMode ? palette.tint : palette.muted} name={"plus"}></Icon>} right={(props) => <Icon {...props} color={createMode ? palette.tint : palette.muted} name={createMode ? 'check-circle' : 'circle-outline'}></Icon>} disabled={Boolean(busy)} onPress={() => {
+          setCreateMode(true);
+          setError(undefined);
+          setNotice(undefined);
+        }}></ListRow>
+        {createMode ? (
+          <>
+            <TextField testID="new-chat-worktree-name" label={t('chat:newChat.worktreeName')} value={name} onChangeText={setName} autoCapitalize="none" autoCorrect={false} editable={!busy}></TextField>
+            <Text className={cn("text-muted-foreground")} variant="label">{t('chat:newChat.worktreeHint')}</Text>
+          </>
+        ) : null}
+        {checkouts.length ? checkouts.map((checkout) => {
+          const selected = !createMode && checkout.directory === effectiveCheckoutPath;
+          const label = checkout.isMain ? t('project:worktrees.local') : checkout.name;
+          return (
+            <View key={checkout.directory}>
+              <ListRow testID={`new-chat-checkout-${checkout.directory}`} accessibilityRole="button" accessibilityState={{ selected, disabled: Boolean(busy) }} accessibilityLabel={t('project:picker.selectLabel', { name: label })} title={label} description={checkout.isMain ? t('project:worktrees.localHint') : [checkout.branch, checkout.directory].filter(Boolean).join(' · ')} left={(props) => <Icon {...props} color={selected ? palette.tint : palette.muted} name={checkout.isMain ? 'home-outline' : 'source-branch'}></Icon>} right={(props) => <Icon {...props} color={selected ? palette.tint : palette.muted} name={selected ? 'check-circle' : 'circle-outline'}></Icon>} disabled={Boolean(busy)} onPress={() => {
                 setCheckoutPath(checkout.directory);
                 setCreateMode(false);
                 setError(undefined);
                 setNotice(undefined);
               }}></ListRow>
-            <Separator></Separator>
-          </View>
-        );
-      }) : <Text className={cn("text-muted-foreground")}>{t('chat:newChat.noCheckouts')}</Text>}
+              <Separator></Separator>
+            </View>
+          );
+        }) : <Text className={cn("text-muted-foreground")}>{t('chat:newChat.noCheckouts')}</Text>}
 
-      <ListRow testID="new-chat-new-worktree" accessibilityRole="button" accessibilityState={{ selected: createMode, disabled: Boolean(busy) }} title={t('chat:newChat.newWorktree')} left={(props) => <Icon {...props} color={createMode ? palette.tint : palette.muted} name={"plus"}></Icon>} right={(props) => <Icon {...props} color={createMode ? palette.tint : palette.muted} name={createMode ? 'check-circle' : 'circle-outline'}></Icon>} disabled={Boolean(busy)} onPress={() => {
-          setCreateMode(true);
-          setError(undefined);
-          setNotice(undefined);
-        }}></ListRow>
-      {createMode ? (
-        <>
-          <TextField testID="new-chat-worktree-name" label={t('chat:newChat.worktreeName')} value={name} onChangeText={setName} autoCapitalize="none" autoCorrect={false} editable={!busy}></TextField>
-          <Text className={cn("text-muted-foreground")} variant="label">{t('chat:newChat.worktreeHint')}</Text>
-        </>
-      ) : null}
-
-      <Text  variant="label">{t('common:servers.workingDirectory')}</Text>
-      <Text style={{ fontFamily: 'monospace' }}>{createMode ? t('chat:newChat.newWorktree') : effectiveCheckoutPath || '—'}</Text>
+        <Text  variant="label">{t('common:servers.workingDirectory')}</Text>
+        <Text style={{ fontFamily: 'monospace' }}>{createMode ? t('chat:newChat.newWorktree') : effectiveCheckoutPath || '—'}</Text>
+      </ScrollView>
       {notice ? <Text accessibilityLiveRegion="polite" className={cn("text-warning")}>{notice}</Text> : null}
       {error ? <Text accessibilityRole="alert" className={cn("text-destructive")}>{error}</Text> : null}
       <View className={cn("flex-row justify-end gap-2")}>

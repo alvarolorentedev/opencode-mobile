@@ -83,7 +83,7 @@ A stale deep-link target that does not match any session returns a not-found err
 
 Manual behavior:
 
-- user opens `New chat` from the Chat header or the Chats overlay; the sheet mirrors `New terminal`, preselects the current server/project and lets the user choose another before confirming. The server selector is hidden with one configured connection.
+- user opens `New chat` from the Chat header or the Chats overlay; the sheet mirrors `New terminal`, preselects the current server/project and lets the user choose another before confirming. The server selector is hidden with one configured connection. New worktree is listed first, followed by Local (main) and the remaining worktrees; the option list scrolls while Cancel and the confirm action stay pinned.
 - creating a chat switches chat focus to the selected server/project and opens the new session there. The sheet closes once the server returns the new session ID; transcript content hydrates in the background.
 - user can open the Chats overlay from the Chat title to search, switch, favorite, and manage sessions; its header opens a second overlay to change project. Opening a chat commits the selection immediately and closes the overlay; transcript, diff, todo, and pending-interaction reads continue behind the chat skeleton.
 
