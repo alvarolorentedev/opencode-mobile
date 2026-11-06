@@ -625,7 +625,10 @@ path renders nothing, and no hidden path becomes a project row. The marker is a
 preference, not a server archive, and hiding the active project activates the
 first remaining visible server project on that connection. If none remains, the
 current selection stays until the next picker open derives the server default.
-See [ADR 0034](../adr/0034-device-local-project-archive.md).
+The Show archived projects switch is off by default; turning it on reveals the
+hidden rows under "Archived on this device" with Restore. See
+[ADR 0034](../adr/0034-device-local-project-archive.md) and
+[ADR 0038](../adr/0038-single-archived-projects-switch.md).
 
 On connect the retained placeholder runtime derives the active project from the
 server catalog: the server default location first, then the most recently
@@ -637,11 +640,11 @@ arrives, active roots are kept so a cold start never flashes empty).
 
 Server-archived projects are a separate on-demand read in the picker:
 `project.list({ archived: true })` filtered to `time.archived`. They are not
-added to the derived project list and are never persisted. They render under
-"Archived on OpenCode", distinct from the device-local "Archived on this
-device" section. Restoring resolves the archived directory with `location.get`,
-then invalidates the shared `projects` query resource so both the normal and
-archived lists reconcile.
+added to the derived project list and are never persisted. The same Show
+archived projects switch reveals them under "Archived on OpenCode", distinct
+from the device-local "Archived on this device" rows. Restoring resolves the
+archived directory with `location.get`, then invalidates the shared `projects`
+query resource so both the normal and archived lists reconcile.
 
 Workspace runtimes mount on demand for the focused project (plus the retained
 placeholder that boots the connection). Switching projects keeps the previous

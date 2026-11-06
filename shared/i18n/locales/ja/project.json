@@ -100,7 +100,7 @@
     "empty": "利用可能なプロジェクトはありません。",
     "changeProjectWithName": "プロジェクトを変更。{{name}}",
     "showArchived": "アーカイブされたプロジェクトを表示",
-    "showArchivedHint": "フォルダーが見つからなくなった後、OpenCode がアーカイブしたプロジェクト。",
+    "showArchivedHint": "このデバイスまたはサーバーでアーカイブされたプロジェクト。",
     "archivedTitle": "OpenCode でアーカイブ済み",
     "archivedHint": "これらのプロジェクトはサーバーによってアーカイブされました。復元するにはフォルダーが必要です。",
     "archivedEmpty": "アーカイブされたプロジェクトはありません。",
@@ -113,8 +113,7 @@
     "browseEmpty": "ここにフォルダーはありません。",
     "archiveLabel": "{{name}} をこのデバイスでアーカイブ",
     "hiddenTitle": "このデバイスでアーカイブ済み ({{count}})",
-    "hiddenHint": "このデバイスでのみ非表示です。プロジェクトはサーバーに残ります。",
-    "hiddenToggle": "このデバイスでアーカイブしたプロジェクトを表示または非表示"
+    "hiddenHint": "このデバイスでのみ非表示です。プロジェクトはサーバーに残ります。"
   },
   "errors": {
     "refreshProject": "プロジェクトを更新できませんでした。",

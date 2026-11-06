@@ -1,6 +1,6 @@
 # ADR 0034: Device-local project archive marker
 
-- Status: Accepted
+- Status: Superseded by ADR 0038
 - Date: 2026-11-05
 - Deciders: maintainers
 - Supersedes: —

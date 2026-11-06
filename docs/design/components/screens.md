@@ -17,7 +17,7 @@ Route-level controllers and platform-specific presentation surfaces. Back to the
 
 - keeps the one-line workspace breadcrumb in the header: project selection is separate from the conditional worktree selector, with a larger project title and read-at-a-glance branch context
 - the branch is shown once, in the header; the Files content title does not repeat it
-- the shared picker lists the server catalog in server order and can add a server directory as a project; a device-local archive action moves a server project into a collapsed "Archived on this device" section with Restore, separate from the server-archived section
+- the shared picker lists the server catalog in server order and can add a server directory as a project; a device-local archive action hides a server project until the Show archived projects switch reveals it under "Archived on this device" with Restore, separate from the server-archived section. The list scrolls internally and Add project stays pinned below it
 - provides one project refresh action
 - shows files directly with breadcrumbs and scoped search; worktree creation lives in New chat, not Projects
 - opens file viewing and editing in a focused full-screen surface
@@ -174,7 +174,7 @@ selection action. Terminal follows that directory.
 
 - `chat-library.tsx`: existing row and swipe treatment in one mixed list; server chips that stay visible below long titles, an in-flight row indicator while a chat opens or is managed, search, server/project dropdowns and the sole Hide subagents toggle. Its New chat action closes the library and opens the New chat sheet. The previous compatibility view is retained in `chat-library-v1.tsx`.
 - `new-chat-sheet.tsx`: confirms server, project, and checkout, and is the only worktree creation entry point. It can create a worktree and start the chat, with partial-success recovery.
-- `project-picker.tsx`: connected server groups, search, project-only rows with a device-local archive action, and a collapsed "Archived on this device" section with Restore; the server-archived "Archived on OpenCode" section stays separate. Worktree selection is a separate second-level control.
+- `project-picker.tsx`: connected server groups, search, project-only rows with a device-local archive action, and one Show archived projects switch below the filters that reveals "Archived on this device" and the server-archived "Archived on OpenCode" rows with Restore. The list scrolls internally and Add project stays pinned. Worktree selection is a separate second-level control.
 - `new-terminal-sheet.tsx`: confirms server, project and resolved cwd before PTY creation. `retained-terminals.tsx` holds the renderer hosts; the terminal picker lists all retained owners.
 - `server-context-picker.tsx`: independent Settings server/project inspection. Server selection lives on Settings home; server category sheets keep its read-only context caption and only retain the project picker for MCP/diagnostics. AI & Providers, MCP, diagnostics and approvals receive that context; app preferences remain global.
 - `server-approvals.tsx`: pending requests/questions, saved grants and per-server auto-approve, reusing chat permission cards and existing server actions.

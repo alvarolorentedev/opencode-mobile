@@ -100,7 +100,7 @@
     "empty": "Keine Projekte verfügbar.",
     "changeProjectWithName": "Projekt wechseln. {{name}}",
     "showArchived": "Archivierte Projekte anzeigen",
-    "showArchivedHint": "Projekte, die OpenCode archiviert hat, nachdem ihr Ordner verschwunden ist.",
+    "showArchivedHint": "Projekte, die auf diesem Gerät oder vom Server archiviert wurden.",
     "archivedTitle": "Auf OpenCode archiviert",
     "archivedHint": "Diese Projekte wurden vom Server archiviert. Zum Wiederherstellen muss der Ordner existieren.",
     "archivedEmpty": "Keine archivierten Projekte.",
@@ -113,8 +113,7 @@
     "browseEmpty": "Keine Ordner hier.",
     "archiveLabel": "{{name}} auf diesem Gerät archivieren",
     "hiddenTitle": "Auf diesem Gerät archiviert ({{count}})",
-    "hiddenHint": "Nur auf diesem Gerät ausgeblendet. Das Projekt bleibt auf dem Server.",
-    "hiddenToggle": "Auf diesem Gerät archivierte Projekte ein- oder ausblenden"
+    "hiddenHint": "Nur auf diesem Gerät ausgeblendet. Das Projekt bleibt auf dem Server."
   },
   "errors": {
     "refreshProject": "Der Projekt konnte nicht aktualisiert werden.",

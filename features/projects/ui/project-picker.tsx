@@ -7,7 +7,7 @@ import { Icon } from '@/shared/ui/icon';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Pressable, Text as NativeText, View } from 'react-native';
+import { Pressable, ScrollView, Text as NativeText, View } from 'react-native';
 
 import { WorkspaceSelect } from '@/shared/ui/workspace-select';
 import { useWorkspaces } from '@/runtime/workspace';
@@ -54,16 +54,16 @@ export function ProjectPicker({ visible, onClose, activePath, onSelected, testID
   const [directory, setDirectory] = useState('');
   const [saving, setSaving] = useState(false);
   const [showArchived, setShowArchived] = useState(false);
-  const [showHidden, setShowHidden] = useState(false);
   const [error, setError] = useState<string>();
   const focusConnectionId = groups.some((group) => group.id === registry.focus?.connectionId)
     ? registry.focus?.connectionId ?? ''
     : groups[0]?.id ?? '';
   const addTarget = multipleServers ? addServer : groups[0]?.id;
   const startPath = activePath || groups.find((group) => group.id === addTarget)?.projects[0]?.path;
-  const close = () => { setAdding(false); setBrowsing(false); setDirectory(''); setShowArchived(false); setShowHidden(false); setError(undefined); onClose(); };
+  const close = () => { setAdding(false); setBrowsing(false); setDirectory(''); setShowArchived(false); setError(undefined); onClose(); };
   const visibleGroups = groups.filter((group) => !multipleServers || !server || server === group.id);
-  const archivedCapable = visibleGroups.some((group) => group.contract === 'v2');
+  // Device-local archive works on every contract; the server-archived read is V2-only.
+  const archivedCapable = visibleGroups.length > 0;
   const activate = async (target: WorkspaceTarget) => {
     await registry.activate(target);
     onSelected?.();
@@ -76,68 +76,32 @@ export function ProjectPicker({ visible, onClose, activePath, onSelected, testID
   };
   const hiddenRows = visibleGroups.flatMap((group) => splitHiddenProjects(group.projects, hiddenPathsFor(group.id)).hidden
     .map((project) => ({ group, project })));
-  const hiddenExpanded = showHidden || Boolean(query.trim());
   const filteredHiddenRows = query.trim() ? hiddenRows.filter(({ project }) => matches(project.path, project.label)) : hiddenRows;
-  return <OverlaySheet visible={visible} title={t('project:picker.title')} testID={testID} onClose={close}>
-    {adding ? <View className={cn(stylesClasses.addForm)}>
-      {multipleServers ? <WorkspaceSelect title={t('common:servers.server')} value={addServer} options={groups.map((group) => ({ value: group.id, label: group.name }))} onChange={setAddServer} /> : null}
-      {browsing && addTarget && startPath ? <ProjectDirectoryPicker key={`${addTarget}:${startPath}`} startPath={startPath} testID="project-directory-picker"
-        loadDirectories={(path, signal) => listDirectories(addTarget, path, signal)}
-        onSelect={(path) => { setDirectory(path); setBrowsing(false); }}
-        onCancel={() => setBrowsing(false)} /> : <>
-        <Text className={cn("text-muted-foreground")}>{t('project:picker.enterPath')}</Text>
-        <TextField testID="project-add-path" label={t('project:picker.serverDirectory')} value={directory} onChangeText={setDirectory} autoCapitalize="none" autoCorrect={false}></TextField>
-        {startPath && addTarget ? <Button testID="project-browse-directories" onPress={() => setBrowsing(true)} variant="ghost"><Icon name="folder-search-outline" size={20} /><Text>{t('project:picker.browse')}</Text></Button> : null}
-      </>}
-      {error ? <Text className={cn("text-destructive")}>{error}</Text> : null}
-      <View className={cn(stylesClasses.formActions)}>
-        <Button disabled={saving} onPress={() => { setAdding(false); setBrowsing(false); setError(undefined); }} variant="ghost"><Text>{t('common:actions.cancel')}</Text></Button>
-        <Button testID="project-add-submit" disabled={saving || !directory.trim() || !addTarget} onPress={() => {
-          if (!addTarget) return;
-          setSaving(true); setError(undefined);
-          void add(addTarget, directory).then(activate).catch((reason) => setError(reason instanceof Error ? reason.message : t('project:errors.addProject'))).finally(() => setSaving(false));
-        }} variant="default">{saving ? <Spinner size="small" /> : null}<Text>{t('project:picker.add')}</Text></Button>
+  return <OverlaySheet visible={visible} title={t('project:picker.title')} testID={testID} onClose={close} scrollable={false}>
+    {adding ? <ScrollView className={cn("flex-1")} keyboardShouldPersistTaps="handled">
+      <View className={cn(stylesClasses.addForm)}>
+        {multipleServers ? <WorkspaceSelect title={t('common:servers.server')} value={addServer} options={groups.map((group) => ({ value: group.id, label: group.name }))} onChange={setAddServer} /> : null}
+        {browsing && addTarget && startPath ? <ProjectDirectoryPicker key={`${addTarget}:${startPath}`} startPath={startPath} testID="project-directory-picker"
+          loadDirectories={(path, signal) => listDirectories(addTarget, path, signal)}
+          onSelect={(path) => { setDirectory(path); setBrowsing(false); }}
+          onCancel={() => setBrowsing(false)} /> : <>
+          <Text className={cn("text-muted-foreground")}>{t('project:picker.enterPath')}</Text>
+          <TextField testID="project-add-path" label={t('project:picker.serverDirectory')} value={directory} onChangeText={setDirectory} autoCapitalize="none" autoCorrect={false}></TextField>
+          {startPath && addTarget ? <Button testID="project-browse-directories" onPress={() => setBrowsing(true)} variant="ghost"><Icon name="folder-search-outline" size={20} /><Text>{t('project:picker.browse')}</Text></Button> : null}
+        </>}
+        {error ? <Text className={cn("text-destructive")}>{error}</Text> : null}
+        <View className={cn(stylesClasses.formActions)}>
+          <Button disabled={saving} onPress={() => { setAdding(false); setBrowsing(false); setError(undefined); }} variant="ghost"><Text>{t('common:actions.cancel')}</Text></Button>
+          <Button testID="project-add-submit" disabled={saving || !directory.trim() || !addTarget} onPress={() => {
+            if (!addTarget) return;
+            setSaving(true); setError(undefined);
+            void add(addTarget, directory).then(activate).catch((reason) => setError(reason instanceof Error ? reason.message : t('project:errors.addProject'))).finally(() => setSaving(false));
+          }} variant="default">{saving ? <Spinner size="small" /> : null}<Text>{t('project:picker.add')}</Text></Button>
+        </View>
       </View>
-    </View> : <>
+    </ScrollView> : <>
     <TextField testID="project-search" label={t('common:servers.searchProjects')} placeholder={t('common:servers.searchProjects')} value={query} onChangeText={setQuery}></TextField>
     {multipleServers ? <WorkspaceSelect title={t('common:servers.allServers')} value={server} options={[{ value: '', label: t('common:servers.allServers') }, ...groups.map((group) => ({ value: group.id, label: group.name }))]} onChange={setServer} /> : null}
-    {!groups.length ? <Text className={cn("text-muted-foreground")}>{t('project:picker.empty')}</Text> : null}
-    {visibleGroups.map((group) => <View key={group.id} className={cn("gap-2.5")}>
-      {multipleServers ? <Text  variant="title">{group.name}</Text> : null}
-      <ProjectOptions projects={splitHiddenProjects(group.projects, hiddenPathsFor(group.id)).visible.filter((project) => matches(project.path, project.label))}
-        activePath={registry.focus?.connectionId === group.id ? group.projects.find((project) => project.checkouts.some((checkout) => checkout.directory === activePath))?.path : undefined}
-        onSelect={(path) => { void activate({ connectionId: group.id, projectPath: path }).catch((reason) => setError(String(reason))); }}
-        onArchive={(path) => {
-          const hidden = new Set(hiddenPathsFor(group.id));
-          const remaining = group.projects.filter((project) => project.path !== path && !hidden.has(project.path));
-          const activeProjectPath = registry.focus?.connectionId === group.id
-            ? group.projects.find((project) => project.checkouts.some((checkout) => checkout.directory === activePath))?.path
-            : undefined;
-          registry.hideProject({ connectionId: group.id, projectPath: path });
-          if (activeProjectPath === path && remaining[0]) {
-            void registry.activate({ connectionId: group.id, projectPath: remaining[0].path }).catch((reason) => setError(String(reason)));
-          }
-        }} />
-    </View>)}
-    {hiddenRows.length ? <View className={cn(stylesClasses.hiddenSection)}>
-      <Pressable testID="project-toggle-hidden" accessibilityRole="button" accessibilityState={{ expanded: hiddenExpanded }}
-        accessibilityLabel={t('project:picker.hiddenToggle')} onPress={() => setShowHidden((value) => !value)}
-        className={cn(stylesClasses.hiddenToggle)}>
-        <View className={cn(stylesClasses.archivedToggleText)}>
-          <Text variant="title">{t('project:picker.hiddenTitle', { count: hiddenRows.length })}</Text>
-          <Text className={cn("text-muted-foreground")}>{t('project:picker.hiddenHint')}</Text>
-        </View>
-        <Icon name={hiddenExpanded ? 'chevron-up' : 'chevron-down'} size={20} color={palette.muted} />
-      </Pressable>
-      {hiddenExpanded ? filteredHiddenRows.map(({ group, project }) => <View key={`hidden-${group.id}-${project.path}`} className={cn(stylesClasses.hiddenRow)}>
-        <ListRow title={project.label} description={multipleServers ? `${group.name} · ${project.path}` : project.path}
-          left={(props) => <Icon {...props} name="archive-outline" />} style={{ paddingHorizontal: 0 }} />
-        <Button testID={`project-restore-hidden-${project.path}`} onPress={() => registry.restoreProject({ connectionId: group.id, projectPath: project.path })} variant="outline" size="sm">
-          <Icon name="restore" size={18} color={palette.tint} />
-          <Text>{t('project:picker.restore')}</Text>
-        </Button>
-      </View>) : null}
-    </View> : null}
     {archivedCapable ? <View className={cn(stylesClasses.archivedToggle)}>
       <View className={cn(stylesClasses.archivedToggleText)}>
         <Text>{t('project:picker.showArchived')}</Text>
@@ -145,10 +109,44 @@ export function ProjectPicker({ visible, onClose, activePath, onSelected, testID
       </View>
       <Switch testID="project-show-archived" checked={showArchived} onCheckedChange={setShowArchived} accessibilityLabel={t('project:picker.showArchived')} />
     </View> : null}
-    {showArchived ? visibleGroups.filter((group) => group.contract === 'v2').map((group) => <View key={`archived-${group.id}`} className={cn("gap-2.5")}>
-      {multipleServers ? <Text variant="title">{group.name}</Text> : null}
-      <ArchivedProjectsSection connectionId={group.id} testID={`archived-projects-${group.id}`} />
-    </View>) : null}
+    <ScrollView testID="project-picker-scroll" className={cn("flex-1")} contentContainerStyle={{ gap: 8 }} keyboardShouldPersistTaps="handled">
+      {!groups.length ? <Text className={cn("text-muted-foreground")}>{t('project:picker.empty')}</Text> : null}
+      {visibleGroups.map((group) => <View key={group.id} className={cn("gap-2.5")}>
+        {multipleServers ? <Text  variant="title">{group.name}</Text> : null}
+        <ProjectOptions projects={splitHiddenProjects(group.projects, hiddenPathsFor(group.id)).visible.filter((project) => matches(project.path, project.label))}
+          activePath={registry.focus?.connectionId === group.id ? group.projects.find((project) => project.checkouts.some((checkout) => checkout.directory === activePath))?.path : undefined}
+          onSelect={(path) => { void activate({ connectionId: group.id, projectPath: path }).catch((reason) => setError(String(reason))); }}
+          onArchive={(path) => {
+            const hidden = new Set(hiddenPathsFor(group.id));
+            const remaining = group.projects.filter((project) => project.path !== path && !hidden.has(project.path));
+            const activeProjectPath = registry.focus?.connectionId === group.id
+              ? group.projects.find((project) => project.checkouts.some((checkout) => checkout.directory === activePath))?.path
+              : undefined;
+            registry.hideProject({ connectionId: group.id, projectPath: path });
+            if (activeProjectPath === path && remaining[0]) {
+              void registry.activate({ connectionId: group.id, projectPath: remaining[0].path }).catch((reason) => setError(String(reason)));
+            }
+          }} />
+      </View>)}
+      {showArchived && hiddenRows.length ? <View className={cn(stylesClasses.hiddenSection)}>
+        <View className={cn(stylesClasses.archivedToggleText)}>
+          <Text variant="title">{t('project:picker.hiddenTitle', { count: hiddenRows.length })}</Text>
+          <Text className={cn("text-muted-foreground")}>{t('project:picker.hiddenHint')}</Text>
+        </View>
+        {filteredHiddenRows.map(({ group, project }) => <View key={`hidden-${group.id}-${project.path}`} className={cn(stylesClasses.hiddenRow)}>
+          <ListRow title={project.label} description={multipleServers ? `${group.name} · ${project.path}` : project.path}
+            left={(props) => <Icon {...props} name="archive-outline" />} style={{ paddingHorizontal: 0 }} />
+          <Button testID={`project-restore-hidden-${project.path}`} onPress={() => registry.restoreProject({ connectionId: group.id, projectPath: project.path })} variant="outline" size="sm">
+            <Icon name="restore" size={18} color={palette.tint} />
+            <Text>{t('project:picker.restore')}</Text>
+          </Button>
+        </View>)}
+      </View> : null}
+      {showArchived ? visibleGroups.filter((group) => group.contract === 'v2').map((group) => <View key={`archived-${group.id}`} className={cn("gap-2.5")}>
+        {multipleServers ? <Text variant="title">{group.name}</Text> : null}
+        <ArchivedProjectsSection connectionId={group.id} testID={`archived-projects-${group.id}`} />
+      </View>) : null}
+    </ScrollView>
     {error ? <Text className={cn("text-destructive")}>{error}</Text> : null}
     <Button testID="project-add-button" disabled={!groups.length} onPress={() => {
       const target = server || focusConnectionId;
@@ -165,9 +163,8 @@ const stylesClasses = {
   "button": "flex-row items-center gap-1.25 min-h-11 px-1.5",
   "addForm": "gap-3",
   "formActions": "flex-row justify-end flex-wrap gap-2",
-  "archivedToggle": "flex-row items-center gap-3 border-t border-border pt-3",
+  "archivedToggle": "flex-row items-center gap-3",
   "archivedToggleText": "flex-1 gap-1",
   "hiddenSection": "gap-2.5 border-t border-border pt-3",
-  "hiddenToggle": "min-h-11 flex-row items-center gap-3",
   "hiddenRow": "flex-row items-center gap-2 border-b border-border pb-2"
 } as const;

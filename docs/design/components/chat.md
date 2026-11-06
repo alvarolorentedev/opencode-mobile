@@ -322,7 +322,8 @@ that workspace.
 ### `features/projects/ui/project-picker.tsx`
 
 - shared Chat project button and project picker overlay also used by Project's existing dropdown
-- renders the server catalog in server order; selecting switches the active project, and adding lets the user enter a directory on the OpenCode server that the provider resolves and selects. A row's device-local archive action hides only that server project under a collapsed "Archived on this device (N)" section with Restore; a stale marker renders nothing. This is separate from the server-archived "Archived on OpenCode" section, and nothing about project selection is recorded locally
+- renders the server catalog in server order; selecting switches the active project, and adding lets the user enter a directory on the OpenCode server that the provider resolves and selects. The search, server filter and Show archived projects switch stay fixed; the project list scrolls internally and the Add project action is pinned below it
+- the Show archived projects switch is off by default and reveals both device-local hidden projects under "Archived on this device (N)" and, on OpenCode 2, server-archived projects under "Archived on OpenCode". Both sections use Restore and neither is collapsible; a stale hidden marker renders nothing. Nothing about project selection is recorded locally
 - owns no domain state or persistence; hidden markers and actions come from the workspace registry
 
 ### `features/chat/ui/chat-cards.tsx`

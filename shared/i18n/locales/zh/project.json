@@ -100,7 +100,7 @@
     "empty": "没有可用的项目。",
     "changeProjectWithName": "更改项目。{{name}}",
     "showArchived": "显示已归档项目",
-    "showArchivedHint": "文件夹消失后由 OpenCode 归档的项目。",
+    "showArchivedHint": "在此设备上或由服务器归档的项目。",
     "archivedTitle": "已在 OpenCode 归档",
     "archivedHint": "这些项目已由服务器归档。恢复需要文件夹存在。",
     "archivedEmpty": "没有已归档项目。",
@@ -113,8 +113,7 @@
     "browseEmpty": "此处没有文件夹。",
     "archiveLabel": "在此设备上归档 {{name}}",
     "hiddenTitle": "已在此设备上归档 ({{count}})",
-    "hiddenHint": "仅在此设备上隐藏。项目仍保留在服务器上。",
-    "hiddenToggle": "显示或隐藏在此设备上归档的项目"
+    "hiddenHint": "仅在此设备上隐藏。项目仍保留在服务器上。"
   },
   "errors": {
     "refreshProject": "无法刷新项目。",

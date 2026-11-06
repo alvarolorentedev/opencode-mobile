@@ -100,7 +100,7 @@
     "empty": "Nenhum projeto disponível.",
     "changeProjectWithName": "Trocar projeto. {{name}}",
     "showArchived": "Mostrar projetos arquivados",
-    "showArchivedHint": "Projetos que o OpenCode arquivou quando a pasta desapareceu.",
+    "showArchivedHint": "Projetos arquivados neste dispositivo ou pelo servidor.",
     "archivedTitle": "Arquivados no OpenCode",
     "archivedHint": "O servidor arquivou estes projetos. Para restaurar, a pasta precisa existir.",
     "archivedEmpty": "Nenhum projeto arquivado.",
@@ -113,8 +113,7 @@
     "browseEmpty": "Nenhuma pasta aqui.",
     "archiveLabel": "Arquivar {{name}} neste dispositivo",
     "hiddenTitle": "Arquivado neste dispositivo ({{count}})",
-    "hiddenHint": "Oculto apenas neste dispositivo. O projeto permanece no servidor.",
-    "hiddenToggle": "Mostrar ou ocultar projetos arquivados neste dispositivo"
+    "hiddenHint": "Oculto apenas neste dispositivo. O projeto permanece no servidor."
   },
   "errors": {
     "refreshProject": "Não foi possível atualizar o projeto.",

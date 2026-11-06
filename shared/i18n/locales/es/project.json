@@ -100,7 +100,7 @@
     "empty": "No hay proyectos disponibles.",
     "changeProjectWithName": "Cambiar proyecto. {{name}}",
     "showArchived": "Mostrar proyectos archivados",
-    "showArchivedHint": "Proyectos que OpenCode archivó cuando desapareció su carpeta.",
+    "showArchivedHint": "Proyectos archivados en este dispositivo o por el servidor.",
     "archivedTitle": "Archivados en OpenCode",
     "archivedHint": "El servidor archivó estos proyectos. Para restaurarlos, la carpeta debe existir.",
     "archivedEmpty": "No hay proyectos archivados.",
@@ -113,8 +113,7 @@
     "browseEmpty": "No hay carpetas aquí.",
     "archiveLabel": "Archivar {{name}} en este dispositivo",
     "hiddenTitle": "Archivado en este dispositivo ({{count}})",
-    "hiddenHint": "Oculto solo en este dispositivo. El proyecto permanece en el servidor.",
-    "hiddenToggle": "Mostrar u ocultar los proyectos archivados en este dispositivo"
+    "hiddenHint": "Oculto solo en este dispositivo. El proyecto permanece en el servidor."
   },
   "errors": {
     "refreshProject": "No se pudo actualizar el proyecto.",

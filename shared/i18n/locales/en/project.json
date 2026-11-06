@@ -100,7 +100,7 @@
     "empty": "No projects available.",
     "changeProjectWithName": "Change project. {{name}}",
     "showArchived": "Show archived projects",
-    "showArchivedHint": "Projects OpenCode archived after their folder disappeared.",
+    "showArchivedHint": "Projects archived on this device or by the server.",
     "archivedTitle": "Archived on OpenCode",
     "archivedHint": "These projects were archived by the server. Restoring needs the folder to exist.",
     "archivedEmpty": "No archived projects.",
@@ -113,8 +113,7 @@
     "browseEmpty": "No folders here.",
     "archiveLabel": "Archive {{name}} on this device",
     "hiddenTitle": "Archived on this device ({{count}})",
-    "hiddenHint": "Hidden only on this device. The project stays on the server.",
-    "hiddenToggle": "Show or hide projects archived on this device"
+    "hiddenHint": "Hidden only on this device. The project stays on the server."
   },
   "errors": {
     "refreshProject": "Could not refresh the project.",
