@@ -34,8 +34,6 @@ export default function OnboardingProjectScreen() {
   const startPath = activeProjectPath || projects[0]?.path;
 
   const [adding, setAdding] = useState(false);
-  const [browsing, setBrowsing] = useState(false);
-  const [directory, setDirectory] = useState('');
   const [query, setQuery] = useState('');
   const [addError, setAddError] = useState<string>();
   const [isAdding, setIsAdding] = useState(false);
@@ -54,14 +52,14 @@ export default function OnboardingProjectScreen() {
     navigation.next();
   }
 
-  async function submitAdd() {
-    if (!directory.trim()) {
+  async function submitAdd(path: string) {
+    if (!path.trim()) {
       return;
     }
     setIsAdding(true);
     setAddError(undefined);
     try {
-      await addProject(directory);
+      await addProject(path);
       navigation.next();
     } catch (reason) {
       setAddError(reason instanceof Error ? reason.message : t('project:errors.addProject'));
@@ -105,22 +103,17 @@ export default function OnboardingProjectScreen() {
 
       {adding ? (
         <View className={cn(stylesClasses.addForm, "border-border")}>
-          {browsing && connectionId && startPath ? <ProjectDirectoryPicker startPath={startPath} testID="onboarding-project-directory-picker"
+          {connectionId ? <ProjectDirectoryPicker startPath={startPath ?? ''} testID="onboarding-project-directory-picker"
             loadDirectories={(path, signal) => listDirectories(connectionId, path, signal)}
-            onSelect={(path) => { setDirectory(path); setBrowsing(false); }}
-            onCancel={() => setBrowsing(false)} /> : <>
-            <Text className={cn("text-muted-foreground")}>{t('project:picker.enterPath')}</Text>
-            <TextField testID="onboarding-project-directory" label={t('project:picker.serverDirectory')} value={directory} onChangeText={setDirectory} autoCapitalize="none" autoCorrect={false}></TextField>
-            {connectionId && startPath ? <Button testID="onboarding-project-browse" onPress={() => setBrowsing(true)} variant="ghost"><Icon name="folder-search-outline" size={20} /><Text>{t('project:picker.browse')}</Text></Button> : null}
-          </>}
+            onConfirm={(path) => void submitAdd(path)}
+            busy={isAdding} scrollable={false} /> : null}
           {addError ? <Text className={cn("text-destructive")}>{addError}</Text> : null}
           <View className={cn(stylesClasses.addActions)}>
-            <Button disabled={isAdding} onPress={() => { setAdding(false); setBrowsing(false); setAddError(undefined); }} variant="ghost"><Text>{t('common:actions.cancel')}</Text></Button>
-            <Button testID="onboarding-project-add-submit" disabled={isAdding || !directory.trim()} onPress={() => void submitAdd()} variant="default">{isAdding ? <Spinner size="small" /> : null}<Text>{t('project:picker.add')}</Text></Button>
+            <Button disabled={isAdding} onPress={() => { setAdding(false); setAddError(undefined); }} variant="ghost"><Text>{t('common:actions.cancel')}</Text></Button>
           </View>
         </View>
       ) : (
-        <Button testID="onboarding-project-add" onPress={() => { setBrowsing(Boolean(startPath)); setAdding(true); }} variant="outline"><Icon name={"plus"} size={20} /><Text>{t('project:picker.add')}</Text></Button>
+        <Button testID="onboarding-project-add" onPress={() => { setAddError(undefined); setAdding(true); }} variant="outline"><Icon name={"plus"} size={20} /><Text>{t('project:picker.add')}</Text></Button>
       )}
     </OnboardingStep>
   );

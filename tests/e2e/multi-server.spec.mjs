@@ -241,9 +241,8 @@ test('V2 single-server mode hides redundant context and restores it when a secon
   await expect(projects.getByText('MacBook Pro', { exact: true })).toHaveCount(0);
   await projects.getByTestId('project-add-button').click();
   await expect(projects.getByRole('button', { name: /^Server:/ })).toHaveCount(0);
-  await projects.getByTestId('project-directory-manual').click();
-  await projects.getByTestId('project-add-path').fill('/workspace/secondary-project');
-  await projects.getByTestId('project-add-submit').click();
+  await projects.getByTestId('project-directory-path').fill('/workspace/secondary-project');
+  await projects.getByTestId('project-directory-add').click();
   await expect(projects).not.toBeVisible();
   await goToTab(page, 'Terminal');
   await page.getByTestId('terminal-create-button').click();

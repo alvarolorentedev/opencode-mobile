@@ -61,9 +61,8 @@ test('file clipboard survives workspace switches and folder collisions stay bloc
   await entryActions(page, 'src'); await page.getByTestId('project-entry-action-copy').click();
   const project = workspaceProjectButton(page);
   await project.click(); await page.getByTestId('project-add-button').click();
-  await page.getByTestId('project-directory-manual').click();
-  await page.getByTestId('project-add-path').fill('/workspace/secondary-project');
-  await page.getByTestId('project-add-submit').click();
+  await page.getByTestId('project-directory-path').fill('/workspace/secondary-project');
+  await page.getByTestId('project-directory-add').click();
   await expect(project).toContainText('secondary-project');
   await expect(page.getByTestId('project-file-clipboard')).toContainText('/workspace/demo-project');
   await expect(page.getByTestId('project-file-paste')).toBeEnabled();
@@ -103,9 +102,8 @@ test('Chat and Project use the same project picker @smoke', async ({ page, reque
   // without typing their path.
   await expect(page.getByTestId('project-picker').getByRole('button', { name: 'Select secondary-project' })).toBeVisible();
   await page.getByTestId('project-add-button').click();
-  await page.getByTestId('project-directory-manual').click();
-  await page.getByTestId('project-add-path').fill('/workspace/secondary-project');
-  await page.getByTestId('project-add-submit').click();
+  await page.getByTestId('project-directory-path').fill('/workspace/secondary-project');
+  await page.getByTestId('project-directory-add').click();
   await expect(page.getByText('secondary-project', { exact: true }).first()).toBeVisible();
   await projectDropdown.click();
   await expect(page.getByRole('button', { name: 'Select secondary-project' })).toBeVisible();
@@ -122,12 +120,11 @@ test('Chat and Project use the same project picker @smoke', async ({ page, reque
 
   await projectDropdown.click();
   await page.getByTestId('project-add-button').click();
-  await page.getByTestId('project-directory-manual').click();
-  await page.getByTestId('project-add-path').fill('/outside/new-project');
-  await page.getByTestId('project-add-submit').click();
+  await page.getByTestId('project-directory-path').fill('/outside/new-project');
+  await page.getByTestId('project-directory-add').click();
   await expect(page.getByText('OpenCode could not open that directory. Check the server path.')).toBeVisible();
-  await page.getByTestId('project-add-path').fill('/workspace/new-project');
-  await page.getByTestId('project-add-submit').click();
+  await page.getByTestId('project-directory-path').fill('/workspace/new-project');
+  await page.getByTestId('project-directory-add').click();
   await expect(projectDropdown).toContainText('new-project');
   await projectDropdown.click();
   await expect(page.getByRole('button', { name: 'Select new-project' })).toBeVisible();
@@ -204,9 +201,8 @@ test('OpenCode 2 adds a server project from the shared picker @smoke', async ({ 
     await openChatLibrary(page);
     await page.getByTestId('chat-library-project-button').click();
     await page.getByTestId('project-add-button').click();
-    await page.getByTestId('project-directory-manual').click();
-    await page.getByTestId('project-add-path').fill('/workspace/v2-new-project');
-    await page.getByTestId('project-add-submit').click();
+    await page.getByTestId('project-directory-path').fill('/workspace/v2-new-project');
+    await page.getByTestId('project-directory-add').click();
     await expect(chatWorkspaceContext(page)).toContainText('v2-new-project');
     const serverProjects = await (await request.get(`http://127.0.0.1:${port}/api/project`)).json();
     expect(serverProjects.some((project) => project.canonical === '/workspace/v2-new-project')).toBe(true);
@@ -347,12 +343,11 @@ for (const contract of ['v1', 'v2']) {
       await expect(picker.getByTestId('project-directory-picker')).toBeVisible();
       await expect(picker.getByTestId('project-directory-entry-src')).toBeVisible();
       await picker.getByTestId('project-directory-entry-src').click();
-      await expect(picker.getByTestId('project-directory-path')).toContainText('/workspace/demo-project/src');
+      await expect(picker.getByTestId('project-directory-path')).toHaveValue('/workspace/demo-project/src');
       await picker.getByTestId('project-directory-up').click();
-      await expect(picker.getByTestId('project-directory-path')).toContainText('/workspace/demo-project');
-      await picker.getByTestId('project-directory-manual').click();
-      await picker.getByTestId('project-add-path').fill('/workspace/secondary-project');
-      await picker.getByTestId('project-add-submit').click();
+      await expect(picker.getByTestId('project-directory-path')).toHaveValue('/workspace/demo-project');
+      await picker.getByTestId('project-directory-path').fill('/workspace/secondary-project');
+      await picker.getByTestId('project-directory-add').click();
       await page.getByTestId('project-entry-src').click();
       await page.getByTestId('project-entry-src/demo.ts').click();
       await expect(page.getByText(/export const workspace = "\/workspace\/secondary-project"/)).toBeVisible();

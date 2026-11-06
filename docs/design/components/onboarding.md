@@ -43,8 +43,8 @@ Responsibility:
 ### `features/projects/ui/project-directory-picker.tsx`
 
 - browse-first server folder picker shared by the project overlay and the onboarding project step
-- path row with Up, direct child folders, manual-path fallback, and a "Select this folder" action
-- reads with the connection-scoped `file.list`; unresolvable folders stay on manual entry
+- pinned editable path row with Up, a checkmark add action, and direct child folders
+- reads with the connection-scoped `file.list`; an unlistable folder keeps the typed path usable
 
 ### `features/onboarding/model/onboarding-state.ts`
 

@@ -2,7 +2,6 @@ import { cn } from '@/shared/ui/cn';
 import { Text } from '@/shared/ui/text';
 import { TextField } from '@/shared/ui/text-field';
 import { Button } from '@/shared/ui/button';
-import { Spinner } from '@/shared/ui/spinner';
 import { Icon } from '@/shared/ui/icon';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useState } from 'react';
@@ -50,8 +49,6 @@ export function ProjectPicker({ visible, onClose, activePath, onSelected, testID
   const [query, setQuery] = useState('');
   const [addServer, setAddServer] = useState('');
   const [adding, setAdding] = useState(false);
-  const [browsing, setBrowsing] = useState(false);
-  const [directory, setDirectory] = useState('');
   const [saving, setSaving] = useState(false);
   const [showArchived, setShowArchived] = useState(false);
   const [error, setError] = useState<string>();
@@ -60,7 +57,7 @@ export function ProjectPicker({ visible, onClose, activePath, onSelected, testID
     : groups[0]?.id ?? '';
   const addTarget = multipleServers ? addServer : groups[0]?.id;
   const startPath = activePath || groups.find((group) => group.id === addTarget)?.projects[0]?.path;
-  const close = () => { setAdding(false); setBrowsing(false); setDirectory(''); setShowArchived(false); setError(undefined); onClose(); };
+  const close = () => { setAdding(false); setShowArchived(false); setError(undefined); onClose(); };
   const visibleGroups = groups.filter((group) => !multipleServers || !server || server === group.id);
   // Device-local archive works on every contract; the server-archived read is V2-only.
   const archivedCapable = visibleGroups.length > 0;
@@ -78,28 +75,17 @@ export function ProjectPicker({ visible, onClose, activePath, onSelected, testID
     .map((project) => ({ group, project })));
   const filteredHiddenRows = query.trim() ? hiddenRows.filter(({ project }) => matches(project.path, project.label)) : hiddenRows;
   return <OverlaySheet visible={visible} title={t('project:picker.title')} testID={testID} onClose={close} scrollable={false}>
-    {adding ? <ScrollView className={cn("flex-1")} keyboardShouldPersistTaps="handled">
-      <View className={cn(stylesClasses.addForm)}>
-        {multipleServers ? <WorkspaceSelect title={t('common:servers.server')} value={addServer} options={groups.map((group) => ({ value: group.id, label: group.name }))} onChange={setAddServer} /> : null}
-        {browsing && addTarget && startPath ? <ProjectDirectoryPicker key={`${addTarget}:${startPath}`} startPath={startPath} testID="project-directory-picker"
-          loadDirectories={(path, signal) => listDirectories(addTarget, path, signal)}
-          onSelect={(path) => { setDirectory(path); setBrowsing(false); }}
-          onCancel={() => setBrowsing(false)} /> : <>
-          <Text className={cn("text-muted-foreground")}>{t('project:picker.enterPath')}</Text>
-          <TextField testID="project-add-path" label={t('project:picker.serverDirectory')} value={directory} onChangeText={setDirectory} autoCapitalize="none" autoCorrect={false}></TextField>
-          {startPath && addTarget ? <Button testID="project-browse-directories" onPress={() => setBrowsing(true)} variant="ghost"><Icon name="folder-search-outline" size={20} /><Text>{t('project:picker.browse')}</Text></Button> : null}
-        </>}
-        {error ? <Text className={cn("text-destructive")}>{error}</Text> : null}
-        <View className={cn(stylesClasses.formActions)}>
-          <Button disabled={saving} onPress={() => { setAdding(false); setBrowsing(false); setError(undefined); }} variant="ghost"><Text>{t('common:actions.cancel')}</Text></Button>
-          <Button testID="project-add-submit" disabled={saving || !directory.trim() || !addTarget} onPress={() => {
-            if (!addTarget) return;
-            setSaving(true); setError(undefined);
-            void add(addTarget, directory).then(activate).catch((reason) => setError(reason instanceof Error ? reason.message : t('project:errors.addProject'))).finally(() => setSaving(false));
-          }} variant="default">{saving ? <Spinner size="small" /> : null}<Text>{t('project:picker.add')}</Text></Button>
-        </View>
-      </View>
-    </ScrollView> : <>
+    {adding ? <View className={cn(stylesClasses.addForm, "flex-1")}>
+      {multipleServers ? <WorkspaceSelect title={t('common:servers.server')} value={addServer} options={groups.map((group) => ({ value: group.id, label: group.name }))} onChange={setAddServer} /> : null}
+      {addTarget ? <ProjectDirectoryPicker key={`${addTarget}:${startPath}`} startPath={startPath ?? ''} testID="project-directory-picker"
+        loadDirectories={(path, signal) => listDirectories(addTarget, path, signal)}
+        onConfirm={(path) => {
+          setSaving(true); setError(undefined);
+          void add(addTarget, path).then(activate).catch((reason) => setError(reason instanceof Error ? reason.message : t('project:errors.addProject'))).finally(() => setSaving(false));
+        }}
+        busy={saving} /> : null}
+      {error ? <Text className={cn("text-destructive")}>{error}</Text> : null}
+    </View> : <>
     <TextField testID="project-search" label={t('common:servers.searchProjects')} placeholder={t('common:servers.searchProjects')} value={query} onChangeText={setQuery}></TextField>
     {multipleServers ? <WorkspaceSelect title={t('common:servers.allServers')} value={server} options={[{ value: '', label: t('common:servers.allServers') }, ...groups.map((group) => ({ value: group.id, label: group.name }))]} onChange={setServer} /> : null}
     {archivedCapable ? <View className={cn(stylesClasses.archivedToggle)}>
@@ -151,8 +137,7 @@ export function ProjectPicker({ visible, onClose, activePath, onSelected, testID
     <Button testID="project-add-button" disabled={!groups.length} onPress={() => {
       const target = server || focusConnectionId;
       setAddServer(target);
-      setDirectory('');
-      setBrowsing(Boolean(activePath || groups.find((group) => group.id === target)?.projects[0]?.path));
+      setError(undefined);
       setAdding(true);
     }} variant="ghost"><Icon name={"plus"} size={20} /><Text>{t('project:picker.add')}</Text></Button>
     </>}
@@ -162,7 +147,6 @@ export function ProjectPicker({ visible, onClose, activePath, onSelected, testID
 const stylesClasses = {
   "button": "flex-row items-center gap-1.25 min-h-11 px-1.5",
   "addForm": "gap-3",
-  "formActions": "flex-row justify-end flex-wrap gap-2",
   "archivedToggle": "flex-row items-center gap-3",
   "archivedToggleText": "flex-1 gap-1",
   "hiddenSection": "gap-2.5 border-t border-border pt-3",

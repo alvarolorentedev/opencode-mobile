@@ -6,8 +6,8 @@ const meta = {
   args: {
     startPath: '/workspace',
     loadDirectories: async () => ['demo-project', 'secondary-project', 'archived-project'],
-    onSelect: () => {},
-    onCancel: () => {},
+    onConfirm: () => {},
+    scrollable: false,
   },
 } satisfies Meta<typeof ProjectDirectoryPicker>;
 export default meta;
