@@ -219,7 +219,7 @@ The domain values cover session lifecycle, commands, project editing/worktrees, 
 - `TranscriptList` exposes `Jump to latest` whenever the list is detached from the tail. New rows switch the label to `New messages`; tapping restores follow mode and saves the restored position. The control floats above the transcript without adding a list row.
 - Onboarding permission cards show `Checking…` until status resolves. When the OS will no longer prompt, the enable action becomes `Open settings` via the shared notification/voice setting helpers instead of repeatedly requesting a blocked permission.
 - The Connection sheet’s labeled Reconnect action surfaces the returned `ConnectionState` in a snackbar and keeps a two-line connection summary. The reconnect button only indicates an in-flight request while it runs.
-- The terminal picker marks the active PTY, shows a per-row opening spinner, repeats the target title and short ID in the close confirmation, and confirms copy with a snackbar.
+- The terminal picker marks the active PTY, shows a per-row opening spinner, keeps New terminal pinned below its scrolling list, repeats the target title and short ID in the close confirmation, and confirms copy with a snackbar.
 - Share staging distinguishes `expired` from `discarded`; the close action is non-destructive, while the footer Discard clears the payload. Target loading, failure/retry, empty, selected, and search-empty states live in the conversation picker.
 - Chat library rename auto-focuses, supports keyboard submit, offers Cancel, and disables Save for blank or in-flight titles.
 

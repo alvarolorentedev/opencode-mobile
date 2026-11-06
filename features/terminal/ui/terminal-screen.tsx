@@ -146,7 +146,8 @@ function TerminalContent() {
         </View>
       </KeyboardAvoidingView>
       {creating ? <NewTerminalSheet target={registry.terminalTarget ?? (registry.focus && { ...registry.focus, projectPath: activeProject?.path ?? '' })} onClose={() => setCreating(false)} onCreate={handleCreate} /> : null}
-      <OverlaySheet visible={terminalPickerVisible} fitContent testID="terminal-picker" title={t('terminal:sessions.title')} onClose={() => setTerminalPickerVisible(false)}>
+      <OverlaySheet visible={terminalPickerVisible} scrollable={false} testID="terminal-picker" title={t('terminal:sessions.title')} onClose={() => setTerminalPickerVisible(false)}>
+        <ScrollView className={cn("flex-1")} contentContainerStyle={styles.pickerContent}>
         {terminalEntries.length === 0 ? <Text className={cn("text-muted-foreground")}>{t('terminal:sessions.empty')}</Text> : null}
         {terminalEntries.map(({ key, connectionId, projectPath, serverName, terminal, actions }) => {
           const title = `${terminal.title || terminal.command}, ${terminal.id.slice(0, 8)}${multipleServers ? `, ${serverName}, ${projectPath}` : ''}`;
@@ -195,6 +196,8 @@ function TerminalContent() {
             </Pressable>
           </SwipeRow>;
         })}
+        </ScrollView>
+        <Button testID="terminal-picker-create-button" accessibilityLabel={t('terminal:console.create')} disabled={isCreating || Boolean(busyId) || Boolean(openingKey)} onPress={() => { setTerminalPickerVisible(false); setCreating(true); }} variant="ghost"><Icon name={"plus"} size={20} /><Text>{t('terminal:console.new')}</Text></Button>
       </OverlaySheet>
       <Feedback duration={1600} open={copied} onOpenChange={() => (() => setCopied(false))()}>{t('terminal:console.copied')}</Feedback>
       <Feedback  open={Boolean(error)} onOpenChange={() => (() => setError(undefined))()}>{error}</Feedback>
@@ -211,7 +214,8 @@ const styles = StyleSheet.create({
   headerSelector: { alignItems: 'center', alignSelf: 'stretch', borderRadius: 14, flexDirection: 'row', gap: 8, justifyContent: 'center', marginRight: 8, minHeight: 48, paddingRight: 4 },
   headerSelectorPressed: { opacity: 0.82 },
   headerTitle: { fontFamily: Fonts.display, fontWeight: '700' },
-  outputContent: { flexGrow: 1, padding: 16 }
+  outputContent: { flexGrow: 1, padding: 16 },
+  pickerContent: { gap: 8 }
 });
 
 const stylesClasses = {

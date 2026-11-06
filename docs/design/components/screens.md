@@ -70,7 +70,7 @@ Route-level controllers and platform-specific presentation surfaces. Back to the
 #### Responsibility
 
 - fourth tab and thin controller over provider-owned PTY state
-- render a content-sized PTY selector overlay; each terminal opens on tap and reveals Close on swipe
+- render a full-height PTY selector whose list scrolls internally with the New terminal action pinned below it; each terminal opens on tap and reveals Close on swipe
 - refresh the PTY list when the tab regains focus or the selector opens; there is no header refresh action
 - create default-shell PTYs and select/reconnect existing PTYs
 - delegate rendering and keyboard controls to `features/terminal/ui/`
@@ -175,7 +175,7 @@ selection action. Terminal follows that directory.
 - `chat-library.tsx`: existing row and swipe treatment in one mixed list; server chips that stay visible below long titles, an in-flight row indicator while a chat opens or is managed, search, server/project dropdowns and the sole Hide subagents toggle. Its New chat action closes the library and opens the New chat sheet. The previous compatibility view is retained in `chat-library-v1.tsx`.
 - `new-chat-sheet.tsx`: confirms server, project, and checkout, and is the only worktree creation entry point. It can create a worktree and start the chat, with partial-success recovery.
 - `project-picker.tsx`: connected server groups, search, project-only rows with a device-local archive action, and one Show archived projects switch below the filters that reveals "Archived on this device" and the server-archived "Archived on OpenCode" rows with Restore. Re-adding a project's path also clears its device-local marker. The list scrolls internally and Add project stays pinned. Worktree selection is a separate second-level control.
-- `new-terminal-sheet.tsx`: confirms server, project and resolved cwd before PTY creation. `retained-terminals.tsx` holds the renderer hosts; the terminal picker lists all retained owners.
+- `new-terminal-sheet.tsx`: confirms server, project and resolved cwd before PTY creation. `retained-terminals.tsx` holds the renderer hosts; the terminal picker lists all retained owners with New terminal pinned below the scrolling list.
 - `server-context-picker.tsx`: independent Settings server/project inspection. Server selection lives on Settings home; server category sheets keep its read-only context caption and only retain the project picker for MCP/diagnostics. AI & Providers, MCP, diagnostics and approvals receive that context; app preferences remain global.
 - `server-approvals.tsx`: pending requests/questions, saved grants and per-server auto-approve, reusing chat permission cards and existing server actions.
 - `workspace-select.tsx`: the house CatalogSelect with an outlined button trigger. `OverlaySheet` bridges workspace context through the RN Primitives portal host.
