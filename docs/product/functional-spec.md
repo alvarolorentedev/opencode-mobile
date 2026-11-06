@@ -343,7 +343,7 @@ Slash command behavior:
 - the suggestion panel shows up to eight matching commands with their descriptions
 - selecting a command inserts its name and closes the suggestion
 - on OpenCode 2 every named `/command` submission uses the session command API, including commands not yet in the cached catalog; the server matches the exact name and unknown/failed commands never become ordinary prompts
-- `/compact` requests `session.compact`; compaction events rebuild the transcript window
+- `/compact` requests `session.compact`; compaction events rebuild the transcript window and the session divider reports started, completed with token totals when reported, or failed
 - `/btw <question>` requests a transient answer from the session's context and shows it in a local sheet; it never adds to the conversation, does not run tools, and is discarded when the sheet closes
 - `/btw` requires an inline question, and both built-ins reject attachments and restore the draft on failure
 - argument quotes, newlines and whitespace after the first separator are preserved; files and selected mentions accompany V2 commands, and failures restore the draft

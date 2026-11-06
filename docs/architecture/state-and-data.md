@@ -844,12 +844,13 @@ Current part handling in `shared/presentation/format.ts` includes:
 - `patch` -> detail kind `patch`
 - `file` -> detail kind `file`
 - `retry` -> detail kind `retry`
-- `compaction` -> detail kind `compaction`
+- `compaction` -> detail kind `compaction` with its running/completed/failed status and summary token totals
 - `subtask` / `step-start` / `step-finish` / `agent` -> ignored (V1-only or usage markers)
 
 The display filter keeps user/assistant text, files, and errors plus every
 reasoning, tool, and patch activity row. Hidden file-mutating tools remain
-visible only when they resolved a diff.
+visible only when they resolved a diff. Compaction details render as a session
+divider row and are not part of the activity filter.
 
 That detail is important because the transcript UI is not a raw message dump.
 

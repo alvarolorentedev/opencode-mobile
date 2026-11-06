@@ -581,6 +581,7 @@ test('V2 built-ins compact the session and answer side questions transiently', a
     const state = await (await request.get(`${backendOrigin()}/__control/state`)).json();
     return Object.values(state.messagesBySession).some((messages) => messages.some((message) => message.type === 'compaction'));
   }).toBe(true);
+  await expect(page.getByText('Session compacted', { exact: false })).toBeVisible({ timeout: 15_000 });
 
   await sendPrompt(page, '/btw what changed?');
   const overlay = page.getByTestId('side-question-overlay');

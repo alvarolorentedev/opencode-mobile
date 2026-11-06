@@ -48,6 +48,7 @@ export function hasMessageBubble(entry: TranscriptEntry) {
 export type ToolDetail = Extract<TranscriptDetail, { kind: 'tool' }>;
 export type ReasoningDetail = Extract<TranscriptDetail, { kind: 'reasoning' }>;
 export type PatchDetail = Extract<TranscriptDetail, { kind: 'patch' }>;
+export type CompactionDetail = Extract<TranscriptDetail, { kind: 'compaction' }>;
 export type ActivityItem = ToolDetail | ReasoningDetail | PatchDetail;
 export type ActivityTool = { name: string; count: number };
 export type ActivityStatus = 'idle' | 'running' | 'error';
@@ -63,7 +64,8 @@ export type ActivityGroup = {
 
 export type TranscriptRow =
   | { key: string; type: 'message'; entry: TranscriptEntry }
-  | { key: string; type: 'activity'; group: ActivityGroup };
+  | { key: string; type: 'activity'; group: ActivityGroup }
+  | { key: string; type: 'compaction'; detail: CompactionDetail };
 
 // Rows rendered inside an activity run. Consecutive reads become one plain
 // one-line list. Patch summaries are removed when a file-change tool in the
@@ -173,6 +175,15 @@ export function buildTranscriptRows(entries: TranscriptEntry[], timelineDetail: 
       rows.push({ key: `message:${entry.id}`, type: 'message', entry });
     }
 
+    // A compaction marker explains a context boundary, so it stays visible at
+    // every detail level instead of joining the activity filter.
+    const compaction = entry.details.find((detail): detail is CompactionDetail => detail.kind === 'compaction');
+    if (compaction) {
+      flush();
+      rows.push({ key: `compaction:${entry.id}`, type: 'compaction', detail: compaction });
+      continue;
+    }
+
     if (timelineDetail === 'messages') continue;
 
     if (timelineDetail === 'reasoning') {
@@ -205,22 +216,22 @@ export function buildTranscriptRows(entries: TranscriptEntry[], timelineDetail: 
 }
 
 export function getTranscriptActivityLabel(entry: TranscriptEntry) {
-  const runningTool = entry.details.find((detail) => detail.kind === 'tool' && detail.status === 'running');
+  const runningTool = entry.details.find((detail): detail is ToolDetail => detail.kind === 'tool' && detail.status === 'running');
   if (runningTool) {
     return runningTool.label;
   }
 
-  const latestTool = [...entry.details].reverse().find((detail) => detail.kind === 'tool');
+  const latestTool = [...entry.details].reverse().find((detail): detail is ToolDetail => detail.kind === 'tool');
   if (latestTool) {
     return latestTool.label;
   }
 
-  const latestPatch = [...entry.details].reverse().find((detail) => detail.kind === 'patch');
+  const latestPatch = [...entry.details].reverse().find((detail): detail is PatchDetail => detail.kind === 'patch');
   if (latestPatch) {
     return latestPatch.label;
   }
 
-  const latestReasoning = [...entry.details].reverse().find((detail) => detail.kind === 'reasoning');
+  const latestReasoning = [...entry.details].reverse().find((detail): detail is ReasoningDetail => detail.kind === 'reasoning');
   if (latestReasoning) {
     return latestReasoning.label;
   }
@@ -244,7 +255,7 @@ export function isTranscriptDisplayMessage(entry: TranscriptEntry) {
 export function summarizeTranscriptDetails(details: TranscriptDetail[], labels?: { patches: (count: number) => string; files: (count: number) => string }) {
   const patches = details.filter((detail) => detail.kind === 'patch').length;
   const files = details.filter((detail) => detail.kind === 'file').length;
-  const runningTool = details.find((detail) => detail.kind === 'tool' && detail.status === 'running');
+  const runningTool = details.find((detail): detail is ToolDetail => detail.kind === 'tool' && detail.status === 'running');
   const failedRetry = details.find((detail) => detail.kind === 'retry');
   const summaries: string[] = [];
 

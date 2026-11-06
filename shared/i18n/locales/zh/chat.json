@@ -345,6 +345,12 @@
     "queued": "已排队 — 连接后将发送",
     "uncertain": "发送状态不确定 — 重试前请检查"
   },
+  "compaction": {
+    "started": "会话压缩已开始",
+    "completed": "会话已压缩",
+    "failed": "会话压缩失败",
+    "usage": "输入 {{input}} · 输出 {{output}}"
+  },
   "revertNotice": {
     "title": "已从此消息回退",
     "hint": "编辑下方提示词并发送，即可从此处继续。",

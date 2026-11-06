@@ -345,6 +345,12 @@
     "queued": "Na fila — será enviado ao conectar",
     "uncertain": "Entrega incerta — verifique antes de tentar novamente"
   },
+  "compaction": {
+    "started": "Compactação da sessão iniciada",
+    "completed": "Sessão compactada",
+    "failed": "Falha na compactação da sessão",
+    "usage": "{{input}} de entrada · {{output}} de saída"
+  },
   "revertNotice": {
     "title": "Revertido a partir desta mensagem",
     "hint": "Edite o prompt abaixo e envie para continuar a partir daqui.",

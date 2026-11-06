@@ -106,8 +106,9 @@ export function toTranscriptEntry(record: SessionMessageRecord): TranscriptEntry
       details.push({
         id,
         kind: 'compaction',
-        label: 'Context compaction',
-        body: part.auto ? 'OpenCode compacted the session automatically.' : 'OpenCode compacted the session.',
+        status: part.status ?? 'completed',
+        ...(part.inputTokens !== undefined ? { inputTokens: part.inputTokens } : {}),
+        ...(part.outputTokens !== undefined ? { outputTokens: part.outputTokens } : {}),
       });
     }
   });

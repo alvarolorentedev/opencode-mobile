@@ -345,6 +345,12 @@
     "queued": "In Warteschlange – wird gesendet, sobald verbunden",
     "uncertain": "Zustellung unklar – vor erneutem Senden prüfen"
   },
+  "compaction": {
+    "started": "Sitzungskomprimierung gestartet",
+    "completed": "Sitzung komprimiert",
+    "failed": "Sitzungskomprimierung fehlgeschlagen",
+    "usage": "{{input}} ein · {{output}} aus"
+  },
   "revertNotice": {
     "title": "Ab dieser Nachricht zurückgesetzt",
     "hint": "Bearbeite die Eingabe unten und sende sie, um von hier aus fortzufahren.",

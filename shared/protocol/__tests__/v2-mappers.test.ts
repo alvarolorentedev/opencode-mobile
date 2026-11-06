@@ -55,6 +55,39 @@ describe('v2 response mappers', () => {
     });
   });
 
+  it('maps a compaction record and its usage into a transcript detail', () => {
+    const completed = toMessageRecord({
+      id: 'msg_compact',
+      type: 'compaction',
+      sessionID: 'ses_1',
+      time: { created: 10 },
+      status: 'completed',
+      reason: 'auto',
+      tokens: { input: 97_300, output: 858, reasoning: 0, cache: { read: 0, write: 0 } },
+    } as never, 'ses_1');
+    expect(toTranscriptEntry(completed!).details).toEqual([{
+      id: 'msg_compact-0',
+      kind: 'compaction',
+      status: 'completed',
+      inputTokens: 97_300,
+      outputTokens: 858,
+    }]);
+
+    const running = toMessageRecord({
+      id: 'msg_running',
+      type: 'compaction',
+      sessionID: 'ses_1',
+      time: { created: 11 },
+      status: 'running',
+      reason: 'manual',
+    } as never, 'ses_1');
+    expect(toTranscriptEntry(running!).details).toEqual([{
+      id: 'msg_running-0',
+      kind: 'compaction',
+      status: 'running',
+    }]);
+  });
+
   it('keeps the reasoning variant recorded on an assistant reply', () => {
     const mapped = toMessageRecord({
       id: 'msg_variant',

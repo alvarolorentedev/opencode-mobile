@@ -345,6 +345,12 @@
     "queued": "Queued — will send when connected",
     "uncertain": "Delivery uncertain — check before retrying"
   },
+  "compaction": {
+    "started": "Session compaction started",
+    "completed": "Session compacted",
+    "failed": "Session compaction failed",
+    "usage": "{{input}} in · {{output}} out"
+  },
   "revertNotice": {
     "title": "Reverted from this message",
     "hint": "Edit the prompt below and send to continue from here.",

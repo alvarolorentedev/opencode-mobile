@@ -15,6 +15,7 @@ import { AppState, View, type NativeScrollEvent, type NativeSyntheticEvent } fro
 import { getModelVariantLabel } from '@/features/ai/index';
 import { TranscriptMessage } from '@/features/chat/ui/chat-cards';
 import { ActivityGroupRow } from '@/features/chat/ui/cards/activity-group';
+import { CompactionDivider } from '@/features/chat/ui/cards/compaction-divider';
 import { styles, slimStyles, stylesClasses } from '@/features/chat/ui/chat-view-styles';
 import { getCurrentTurnActivityKey, getEntryModelLabel, getPinnedActivityKey, STARTER_PROMPT_KEYS } from '@/features/chat/ui/chat-view-utils';
 import { TranscriptSkeleton } from '@/features/chat/ui/content/transcript-skeleton';
@@ -362,6 +363,18 @@ export function TranscriptList({
                 palette={palette}
                 sessionRunning={activityRunning && row.key === lastActivityKey}
               />
+            </View>
+          );
+        }
+
+        if (row.type === 'compaction') {
+          return (
+            <View style={[
+              styles.transcriptItem,
+              slim && slimStyles.transcriptItem,
+              flatTranscript && (slim ? slimStyles.transcriptItemFlat : styles.transcriptItemFlat),
+            ]}>
+              <CompactionDivider detail={row.detail} palette={palette} />
             </View>
           );
         }

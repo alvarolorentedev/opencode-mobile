@@ -156,4 +156,8 @@ export type Part = ToolPart | StepFinishPart | (PartBase & TextPartInput & {
 }) | (PartBase & {
     type: 'compaction';
     auto: boolean;
+    status?: 'running' | 'completed' | 'failed';
+    // Token totals of the summary call, when the server completed compaction.
+    inputTokens?: number;
+    outputTokens?: number;
 });

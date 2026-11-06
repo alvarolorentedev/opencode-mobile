@@ -34,7 +34,7 @@ export type TranscriptDetail =
   | { id: string; kind: 'patch'; label: string; body: string }
   | { id: string; kind: 'file'; label: string; body: string; uri?: string; mime?: string; filename?: string }
   | { id: string; kind: 'retry'; label: string; body: string }
-  | { id: string; kind: 'compaction'; label: string; body: string };
+  | { id: string; kind: 'compaction'; status: 'running' | 'completed' | 'failed'; inputTokens?: number; outputTokens?: number };
 
 export type TranscriptEntry = {
   id: string;

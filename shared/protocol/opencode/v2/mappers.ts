@@ -232,9 +232,20 @@ export function toMessageRecord(message: V2Message, sessionID: string): SessionM
   }
 
   if (type.startsWith('compaction')) {
+    const record = message as Record<string, unknown>;
+    const tokens = record.tokens && typeof record.tokens === 'object' ? record.tokens as Record<string, unknown> : undefined;
+    const status = record.status === 'running' || record.status === 'failed' ? record.status : 'completed';
     return {
       info: { ...baseInfo, role: 'assistant', providerID: '', modelID: '' },
-      parts: [{ id: `${message.id}-compaction`, sessionID, messageID: message.id, type: 'compaction', auto: stringField((message as Record<string, unknown>).reason) === 'auto' }],
+      parts: [{
+        id: `${message.id}-compaction`,
+        sessionID,
+        messageID: message.id,
+        type: 'compaction',
+        auto: stringField(record.reason) === 'auto',
+        status,
+        ...(tokens ? { inputTokens: numberField(tokens.input), outputTokens: numberField(tokens.output) } : {}),
+      }],
     };
   }
 

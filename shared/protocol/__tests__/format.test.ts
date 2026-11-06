@@ -23,7 +23,7 @@ describe('format', () => {
       info,
       parts: [{ id: 'tool-1', type: 'tool', tool: 'build', state: { status: 'error', error: 'Build failed' } }],
     } as never);
-    expect(failedTool.details[0].body).toBe('Build failed');
+    expect(failedTool.details[0]).toMatchObject({ body: 'Build failed' });
   });
 
   it('keeps only the time for messages from today', () => {
@@ -115,7 +115,7 @@ describe('format', () => {
       info,
       parts: [{ id: 'tool-2', type: 'tool', tool: 'capture', state: { status: 'completed', output: 'done', attachments: [{ type: 'file', mime: 'image/png', filename: 'result.png' }] } }],
     } as never);
-    expect(toolAttachment.details[1].label).toBe('result.png');
+    expect(toolAttachment.details[1]).toMatchObject({ label: 'result.png' });
   });
 
   it('omits V1-only step, subtask and agent parts from the transcript', () => {

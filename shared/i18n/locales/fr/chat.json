@@ -345,6 +345,12 @@
     "queued": "En file d’attente — envoi dès la reconnexion",
     "uncertain": "Livraison incertaine — vérifiez avant de réessayer"
   },
+  "compaction": {
+    "started": "Compactage de la session démarré",
+    "completed": "Session compactée",
+    "failed": "Échec du compactage de la session",
+    "usage": "{{input}} en entrée · {{output}} en sortie"
+  },
   "revertNotice": {
     "title": "Annulé depuis ce message",
     "hint": "Modifiez le prompt ci-dessous et envoyez-le pour continuer à partir d’ici.",

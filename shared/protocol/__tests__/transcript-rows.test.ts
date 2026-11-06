@@ -31,6 +31,14 @@ const patchEntry = (id: string, detailId: string): TranscriptEntry => ({
   details: [{ id: detailId, kind: 'patch', label: 'Patch 2 files', body: 'a.ts\nb.ts' }],
 });
 
+const compactionEntry = (id: string, detailId: string): TranscriptEntry => ({
+  id,
+  role: 'assistant',
+  createdAt: 1,
+  text: '',
+  details: [{ id: detailId, kind: 'compaction', status: 'completed', inputTokens: 97_300, outputTokens: 858 }],
+});
+
 const group = (row: ReturnType<typeof buildTranscriptRows>[number]): ActivityGroup => (row as Extract<typeof row, { type: 'activity' }>).group;
 
 describe('transcript rows', () => {
@@ -178,6 +186,13 @@ describe('transcript rows', () => {
     expect(childRows.map((row) => row.kind)).toEqual(['read', 'item', 'item']);
     expect(childRows[0]).toMatchObject({ kind: 'read', reads: [expect.objectContaining({ id: 'r1' }), expect.objectContaining({ id: 'r2' })] });
     expect(childRows[2]).toMatchObject({ kind: 'item', item: expect.objectContaining({ kind: 'patch', body: 'c.ts' }) });
+  });
+
+  it('renders a compaction record as its own divider at every detail level', () => {
+    const entry = compactionEntry('m1', 'c1');
+    const expected = [{ key: 'compaction:m1', type: 'compaction', detail: entry.details[0] }];
+    expect(buildTranscriptRows([entry], 'messages')).toEqual(expected);
+    expect(buildTranscriptRows([entry], 'everything')).toEqual(expected);
   });
 
   it('keeps a text bubble before its own activity run', () => {

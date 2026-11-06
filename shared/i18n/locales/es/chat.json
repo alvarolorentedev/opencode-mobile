@@ -345,6 +345,12 @@
     "queued": "En cola: se enviará al conectarse",
     "uncertain": "Entrega incierta: comprueba antes de reintentar"
   },
+  "compaction": {
+    "started": "Compactación de la sesión iniciada",
+    "completed": "Sesión compactada",
+    "failed": "Error al compactar la sesión",
+    "usage": "{{input}} de entrada · {{output}} de salida"
+  },
   "revertNotice": {
     "title": "Revertido desde este mensaje",
     "hint": "Edita el mensaje de abajo y envíalo para continuar desde aquí.",
