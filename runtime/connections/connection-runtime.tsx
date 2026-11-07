@@ -136,13 +136,17 @@ export function useConnectionLifecycle(entry: ConnectionRecord, setup: ConnectSe
       const key = `${metadata.controlPlaneUrl}:${metadata.machineId}:${metadata.expiresAt}`;
       const recover = getConnectCredentialError(metadata, entry.settings.password) || latest.current.state.connection.status === 'error';
       if (!recover && renewed.current === key) return;
-      const delay = recover ? 1000 : Math.min(Math.max(Date.parse(metadata.expiresAt) - Date.now() - 300_000, 1000), 2_147_483_647);
+      const remaining = Date.parse(metadata.expiresAt) - Date.now() - 300_000;
+      const capped = !recover && remaining > 2_147_483_647;
+      const delay = recover ? 1000 : Math.min(Math.max(remaining, 1000), 2_147_483_647);
       refreshTimer = setTimeout(() => {
         if (AppState.currentState !== 'active' || paused()) return;
         renewed.current = key;
         void connect().then((result) => {
           if (stopped || AppState.currentState !== 'active') return;
-          if (result.status !== 'connected') { renewed.current = ''; refreshTimer = setTimeout(schedule, 60_000); }
+          if (result.status !== 'connected') { renewed.current = ''; refreshTimer = setTimeout(schedule, 60_000); return; }
+          // A capped timer only wakes to re-arm the remaining lifetime.
+          if (capped) { renewed.current = ''; schedule(); }
         });
       }, delay);
     };

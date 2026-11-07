@@ -55,7 +55,7 @@ export async function authenticateConnectRequest<T>({
   setSession,
   finishPurchase,
   recoverSession,
-}: AccessDeps, request: (token: string) => Promise<T>): Promise<T> {
+}: AccessDeps, request: (token: string) => Promise<T>, options?: { recoverEntitlement?: boolean }): Promise<T> {
   const invalidateEntitlement = async () => {
     const saved = sessionRef.current;
     if (!saved) return;
@@ -76,6 +76,9 @@ export async function authenticateConnectRequest<T>({
   }
   catch (reason) {
     if (!(reason instanceof ConnectApiError) || reason.invalidPairingToken || (reason.status !== 401 && !reason.noActiveSubscription)) throw reason;
+    // A pre-expiry access check legitimately races the store renewal. Keep the
+    // still-valid credential instead of clearing the entitlement and claiming.
+    if (reason.noActiveSubscription && options?.recoverEntitlement === false) throw reason;
     if (reason.noActiveSubscription) await invalidateEntitlement();
     if (reason.noActiveSubscription && entitlementRecovery.current) {
       entitlementRecovery.current = false;
@@ -129,7 +132,7 @@ export async function saveConnectAccess({
   return profile;
 }
 
-export function requestConnectAccess(deps: AccessDeps, machineId: string, fromPairing = false): Promise<ConnectionProfile> {
+export function requestConnectAccess(deps: AccessDeps, machineId: string, fromPairing = false, recoverEntitlement = true): Promise<ConnectionProfile> {
   const { controlPlaneUrl, recoveryMachineId, beforeProfileRefresh, pendingClaim, accessRequests } = deps;
   const key = `${controlPlaneUrl}:${machineId}`;
   const existing = accessRequests.current.get(key);
@@ -144,7 +147,7 @@ export function requestConnectAccess(deps: AccessDeps, machineId: string, fromPa
     } else {
       await beforeProfileRefresh();
       const previous = (await loadConnectionProfiles(true)).find((profile) => profile.connect?.controlPlaneUrl === controlPlaneUrl && profile.connect.machineId === machineId);
-      const response = await authenticateConnectRequest(deps, (token) => accessConnectMachine(controlPlaneUrl, machineId, token));
+      const response = await authenticateConnectRequest(deps, (token) => accessConnectMachine(controlPlaneUrl, machineId, token), { recoverEntitlement });
       if (previous && new URL(previous.serverUrl).hostname !== new URL(response.server_url).hostname) throw new Error('machine_hostname_mismatch: Access returned a different hostname.');
       pendingClaim.current = { controlPlaneUrl, response, previous, fromPairing };
     }
@@ -178,8 +181,17 @@ export async function prepareConnectSettings(deps: AccessDeps, settings: Opencod
     if (refresh) {
       if (connect.controlPlaneUrl !== controlPlaneUrl) throw new Error('Select this machine’s trusted Cloud Link environment to recover access.');
       if (pendingClaim.current && pendingClaim.current.response.machine_id !== connect.machineId) throw new Error('Finish saving the pending machine before reconnecting another machine.');
-      const next = await requestConnectAccess(deps, connect.machineId);
-      return { ...settings, serverUrl: next.serverUrl, username: next.username, password: await getProfilePassword(next.id), connect: next.connect };
+      try {
+        const next = await requestConnectAccess(deps, connect.machineId, false, Boolean(credentialError));
+        return { ...settings, serverUrl: next.serverUrl, username: next.username, password: await getProfilePassword(next.id), connect: next.connect };
+      } catch (reason) {
+        // Renewal is not visible to the control plane yet. The old credential is
+        // still valid, so connect with it and let the expiry path recover.
+        if (!credentialError && reason instanceof ConnectApiError && reason.noActiveSubscription && !getConnectCredentialError(connect, password)) {
+          return { ...settings, serverUrl: profile?.serverUrl ?? settings.serverUrl, username: profile?.username ?? settings.username, password, connect };
+        }
+        throw reason;
+      }
     }
     return { ...settings, serverUrl: profile?.serverUrl ?? settings.serverUrl, username: profile?.username ?? settings.username, password, connect };
   }

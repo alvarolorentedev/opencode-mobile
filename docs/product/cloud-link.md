@@ -340,9 +340,12 @@ subscription expiry. Second-device Restore recovers store ownership and obtains
 machine access without a new QR. Expiry preserves machine/profile records;
 Purchase/Restore reactivates the same machine/tunnel/hostname. Reconnect paths
 prepare Cloud Link credentials centrally. Foreground access refresh starts five
-minutes before expiry, avoids repeatedly refreshing unchanged paid-through
-credentials, and retries transient failures. Expiry still closes SSE/terminal
-sockets and blocks all SDK/polling/background traffic.
+minutes before expiry as a best-effort renewal attempt, avoids repeatedly
+refreshing unchanged paid-through credentials, and retries transient failures.
+A pre-expiry refresh rejected for no active subscription keeps the still-valid
+credential and entitlement; hard recovery runs only after the credential expires
+or is missing. Expiry still closes SSE/terminal sockets and blocks all
+SDK/polling/background traffic.
 
 Concurrent reconnect triggers (boot, foreground refresh, activation retry,
 manual Reconnect, profile switch) join one in-flight connect when the server,

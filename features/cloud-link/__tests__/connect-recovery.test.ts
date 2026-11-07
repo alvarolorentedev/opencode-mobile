@@ -10,9 +10,9 @@ describe('connect recovery', () => {
 const CP = 'https://api.opencodecloud.link';
 const ref = (current: any) => ({ current });
 const noop = () => {};
-async function fixture({ expired = false, missing = false, storedSession = true, storeGate, ttl = 600000, unchangedExpiry = false }: { expired?: boolean; missing?: boolean; storedSession?: boolean; storeGate?: Deferred<void>; ttl?: number; unchangedExpiry?: boolean } = {}) {
+async function fixture({ expired = false, missing = false, storedSession = true, storeGate, ttl = 600000, unchangedExpiry = false, denyAccess = 0 }: { expired?: boolean; missing?: boolean; storedSession?: boolean; storeGate?: Deferred<void>; ttl?: number; unchangedExpiry?: boolean; denyAccess?: number } = {}) {
   const runtime = hookRuntime();
-  let now = Date.now(), accessCalls = 0, pairClaims = 0, catalogs = 0, resets = 0, softResets = 0, accessFailure = false, catalogFailure = false, accessGate: Deferred<void> | undefined;
+  let now = Date.now(), accessCalls = 0, pairClaims = 0, claims = 0, catalogs = 0, resets = 0, softResets = 0, accessFailure = false, catalogFailure = false, accessDenials = denyAccess, accessGate: Deferred<void> | undefined;
   const globals = { ...runtime.globals, Error, Date: class extends Date { static now() { return now; } } };
   const storage = new Map(), secrets = new Map(), listeners = new Set();
   const native = {
@@ -30,12 +30,13 @@ async function fixture({ expired = false, missing = false, storedSession = true,
     'expo/fetch': { fetch: async (url: string) => {
       let body;
       if (url.endsWith('/catalog')) body = { plans: [{ id: 'cloudlink', entitlements: ['cloudlink'], products: [{ store: 'google', productId: 'fixture', basePlanId: 'monthly', offerIds: [] }] }] };
-      else if (url.endsWith('/subscriptions/claim')) body = session;
+      else if (url.endsWith('/subscriptions/claim')) { claims++; body = session; }
       else if (/\/pairings\/[^/]+\/claim$/.test(url)) { pairClaims++; body = claim; }
       else if (url.endsWith('/access')) {
         accessCalls++;
         await accessGate?.promise;
         if (accessFailure) return new Response(JSON.stringify({ error: 'temporarily unavailable' }), { status: 503 });
+        if (accessDenials > 0) { accessDenials--; return new Response(JSON.stringify({ error: 'no active subscription' }), { status: 403 }); }
         body = { ...claim, device_id: `device-${accessCalls}`, device_secret: `secret-${accessCalls}`, expires_at: unchangedExpiry ? claim.expires_at : new Date(now + 3600000).toISOString() };
       } else body = { machines: [{ id: claim.machine_id, name: 'Mac', hostname: 'machine.test', public_url: claim.server_url, created_at: new Date(now).toISOString(), access_enabled: true }] };
       return new Response(JSON.stringify(body));
@@ -167,8 +168,8 @@ async function fixture({ expired = false, missing = false, storedSession = true,
     const connectionProfiles = profileHook.useConnectionProfiles({ clearCapabilitiesSnapshots: async () => {}, settings, switchConnection, updateSettings, profiles: savedProfiles, setProfiles });
     return { ...complete, settings, connection: result.connection, activeProjectPath, connectionProfiles };
   }, {});
-  return { runtime, profile, profiles, contractMetrics, get accesses() { return accessCalls; }, get pairClaims() { return pairClaims; }, get catalogs() { return catalogs; }, get resets() { return resets; }, get softResets() { return softResets; },
-    failAccess(value: any) { accessFailure = value; }, failCatalog(value: any) { catalogFailure = value; }, blockAccess() { accessGate = deferred<void>(); return accessGate; },
+  return { runtime, connect, profile, profiles, contractMetrics, get accesses() { return accessCalls; }, get pairClaims() { return pairClaims; }, get claims() { return claims; }, get catalogs() { return catalogs; }, get resets() { return resets; }, get softResets() { return softResets; },
+    failAccess(value: any) { accessFailure = value; }, setAccessDenials(value: number) { accessDenials = value; }, failCatalog(value: any) { catalogFailure = value; }, blockAccess() { accessGate = deferred<void>(); return accessGate; },
     advance(ms: number) { now += ms; }, appState(state: string) { native.AppState.currentState = state; [...listeners].forEach((listener: any) => listener(state)); runtime.flush(); },
   };
 }
@@ -209,6 +210,39 @@ async function fixture({ expired = false, missing = false, storedSession = true,
   f.advance(119000); f.runtime.fire(119000); await f.runtime.settle();
   assert.equal(f.runtime.value.connection.status, 'error', 'Foreground expiry still blocks old credentials.');
   assert.equal(f.runtime.countTimers(1000), 1, 'Foreground expiry schedules recovery even after an unchanged paid-through refresh.');
+  f.runtime.unmount();
+}
+// A renewal 403 before expiry keeps the still-valid credential and entitlement.
+{
+  const f = await fixture({ ttl: 120000, denyAccess: 10 }); await f.runtime.settle();
+  f.runtime.fire(1000); await f.runtime.settle();
+  assert.ok(f.accesses >= 1, 'The pre-expiry refresh must run.');
+  assert.equal(f.claims, 0, 'A proactive 403 must not clear entitlement or claim the store.');
+  assert.equal(f.runtime.value.connection.status, 'connected');
+  assert.equal(f.runtime.value.settings.password, 'secret-a', 'The still-valid credential is retained.');
+  assert.equal(f.connect.hasConnectEntitlement(await f.connect.getConnectSession(CP, 'google')), true);
+  f.runtime.unmount();
+}
+// Once the credential expires, a rejected access still recovers through the store.
+{
+  const f = await fixture({ ttl: 120000, denyAccess: 10 }); await f.runtime.settle();
+  f.runtime.fire(1000); await f.runtime.settle();
+  assert.equal(f.claims, 0);
+  f.setAccessDenials(1); f.advance(120000); f.runtime.fire(120000); await f.runtime.settle();
+  f.runtime.fire(1000); await f.runtime.settle();
+  assert.equal(f.claims, 1, 'Expiry recovery still verifies the native purchase.');
+  assert.equal(f.runtime.value.connection.status, 'connected');
+  f.runtime.unmount();
+}
+// Credentials longer than a setTimeout wake once to re-arm the remaining lifetime.
+{
+  const max = 2_147_483_647;
+  const f = await fixture({ ttl: 90 * 86400000 }); await f.runtime.settle();
+  assert.equal(f.runtime.countTimers(max), 2, 'Expiry and refresh timers are capped.');
+  f.advance(max); f.runtime.fire(max); await f.runtime.settle();
+  assert.equal(f.accesses, 0, 'The capped wake-up is not a credential refresh.');
+  assert.equal(f.runtime.value.connection.status, 'connected');
+  assert.equal(f.runtime.countTimers(max), 2, 'The refresh timer re-arms for the remaining lifetime.');
   f.runtime.unmount();
 }
 // Failed native initialization surfaces an error without sending expired auth.
