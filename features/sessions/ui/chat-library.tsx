@@ -33,12 +33,13 @@ export function ChatLibrary({ visible, onClose, onNewChat }: { visible: boolean;
   const { activeProject } = useProjects();
   const { chatPreferences, updateChatPreferences } = usePreferences();
   const registry = useWorkspaces();
-  const multipleServers = registry.connections.length > 1;
   const library = useWorkspaceLibrary(visible);
+  const multipleServers = library.servers.length > 1;
   const [projectVisible, setProjectVisible] = useState(false);
   const [query, setQuery] = useState('');
   const [server, setServer] = useState('');
   const [projectFilter, setProject] = useState('');
+  const serverFilter = library.servers.some((entry) => entry.id === server) ? server : '';
   const project = library.sessions.some((row) => workspaceKey(row) === projectFilter) ? projectFilter : '';
   const [renaming, setRenaming] = useState<LibrarySession>();
   const [title, setTitle] = useState('');
@@ -79,11 +80,11 @@ export function ChatLibrary({ visible, onClose, onNewChat }: { visible: boolean;
     }
   }
   const needle = query.trim().toLowerCase();
-  const rows = library.sessions.filter((row) => (!multipleServers || !server || row.connectionId === server) && (!project || workspaceKey(row) === project)
+  const rows = library.sessions.filter((row) => (!multipleServers || !serverFilter || row.connectionId === serverFilter) && (!project || workspaceKey(row) === project)
     && (!chatPreferences.hideSubagentChats || !row.session.parentID)
     && `${row.session.title} ${row.preview ?? ''} ${row.serverName} ${row.projectPath}`.toLowerCase().includes(needle));
-  const visibleSessions = library.sessions.filter((row) => !multipleServers || !server || row.connectionId === server);
-  const connectionOrder = new Map(registry.connections.map((entry, index) => [entry.id, index]));
+  const visibleSessions = library.sessions.filter((row) => !multipleServers || !serverFilter || row.connectionId === serverFilter);
+  const connectionOrder = new Map(library.servers.map((entry, index) => [entry.id, index]));
   const projectOptions = [...new Map(visibleSessions.map((row) => [workspaceKey(row), row])).values()]
     .sort((a, b) => (connectionOrder.get(a.connectionId) ?? 0) - (connectionOrder.get(b.connectionId) ?? 0))
     .map((row) => ({ value: workspaceKey(row), label: row.projectPath.split('/').pop() || row.projectPath, description: row.projectPath, group: multipleServers ? row.serverName : undefined }));
@@ -98,10 +99,10 @@ export function ChatLibrary({ visible, onClose, onNewChat }: { visible: boolean;
         { label: t(row.favorite ? 'chat:library.unfavorite' : 'chat:library.favorite'), icon: row.favorite ? 'star-off-outline' : 'star-outline', onPress: () => void run(key, () => library.manage(row, 'favorite', row.session.title)) },
         { label: t('common:actions.delete'), icon: 'delete-outline', onPress: () => confirmAction(t('chat:library.deleteConfirmTitle'), t('chat:library.deleteConfirm', { title: label }), t('common:actions.delete'), t('common:actions.cancel'), () => void run(key, () => library.manage(row, 'delete'))) },
       ]}>
-        <Pressable disabled={!row.connected} accessibilityRole="button" accessibilityState={{ selected: row.current, disabled: !row.connected, busy: inFlight }}
+        <Pressable accessibilityRole="button" accessibilityState={{ selected: row.current, busy: inFlight }}
           accessibilityLabel={`${t('chat:library.open', { title: label })}, ${row.serverName}, ${row.projectPath}`} accessibilityHint={t('chat:library.swipeChatActions')}
           onPress={() => void run(key, () => registry.navigate(row), close)}
-          className={cn(stylesClasses.row)} style={[{ borderColor: row.current ? palette.tint : palette.border, backgroundColor: row.current ? palette.background : 'transparent', opacity: row.connected ? 1 : 0.6 }]}>
+          className={cn(stylesClasses.row)} style={[{ borderColor: row.current ? palette.tint : palette.border, backgroundColor: row.current ? palette.background : 'transparent' }]}>
           {inFlight ? <Spinner size={20} color={palette.tint} testID="chat-library-busy" />
             : <MaterialCommunityIcons name={row.current ? 'check-circle' : row.favorite ? 'star' : running ? 'progress-clock' : 'message-outline'} size={20} color={row.current || running || row.favorite ? palette.tint : palette.muted} />}
           <View className={cn(stylesClasses.copy)}>
@@ -120,7 +121,7 @@ export function ChatLibrary({ visible, onClose, onNewChat }: { visible: boolean;
       headerAction={<ProjectPickerButton onPress={() => setProjectVisible(true)} />}>
       <TextField testID="chat-library-search" label={t('chat:library.searchPlaceholder')} placeholder={t('chat:library.searchPlaceholder')} value={query} onChangeText={setQuery}></TextField>
       <View className={cn(stylesClasses.filters)}>
-        {multipleServers ? <View className={cn("flex-1")}><WorkspaceSelect title={t('common:servers.allServers')} value={server} testID="chat-server-filter" options={[{ value: '', label: t('common:servers.allServers') }, ...registry.connections.map((entry) => ({ value: entry.id, label: entry.name }))]} onChange={(value) => { setServer(value); setProject(''); }} /></View> : null}
+        {multipleServers ? <View className={cn("flex-1")}><WorkspaceSelect title={t('common:servers.allServers')} value={serverFilter} testID="chat-server-filter" options={[{ value: '', label: t('common:servers.allServers') }, ...library.servers.map((entry) => ({ value: entry.id, label: entry.name }))]} onChange={(value) => { setServer(value); setProject(''); }} /></View> : null}
         <View className={cn("flex-1")}><WorkspaceSelect title={t('common:servers.allProjects')} value={project} testID="chat-project-filter" options={[{ value: '', label: t('common:servers.allProjects') }, ...projectOptions]} onChange={setProject} /></View>
       </View>
       <View className={cn(stylesClasses.filters)}><Text className={cn("text-muted-foreground flex-1")}>{t('chat:library.swipeHint').replace(/^\s*·\s*/, '')}</Text><Text>{t('chat:library.hideSubagents')}</Text>

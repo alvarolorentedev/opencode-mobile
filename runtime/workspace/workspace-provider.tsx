@@ -166,7 +166,7 @@ export function WorkspaceProvider({ children }: PropsWithChildren) {
     await Promise.all(Object.values(catalogs).map((catalog) => catalog.refresh()));
   }, [catalogs]);
   const shareTargets = useMemo(() => librarySessions(connections, snapshots, focus)
-    .filter((row) => row.connected && (!shell.chatPreferences.hideSubagentChats || !row.session.parentID))
+    .filter((row) => !shell.chatPreferences.hideSubagentChats || !row.session.parentID)
     .map((row) => ({ connectionScope: getConnectionScope(connections.find((entry) => entry.id === row.connectionId)!.settings),
       projectPath: row.projectPath, sessionId: row.sessionId, title: `${row.serverName} · ${row.session.title}` })), [connections, snapshots, focus, shell.chatPreferences.hideSubagentChats]);
   const sharedInput = useShareState({ hydrated: isHydrated, connectionScope: getConnectionScope(settings),

@@ -214,6 +214,7 @@ The Chats overlay opened from the Chat title provides lifecycle operations throu
 Session list behavior:
 
 - search filters the active or favorite list
+- the library lists only connected servers; a disconnected, connecting or unavailable server's cached chats and server-filter entry stay hidden until it reconnects, and its saved favorites return with it
 - favorites remain accessible across projects; choosing one switches to its project
 - the Active tab opens with an "Active across projects" group above Favorites listing up to four sessions from the whole connected server: running (busy/retry) sessions first, then the most recently updated idle ones. It is connection-wide, so it stays the same while switching projects. Subagent chats are hidden by the same switch as the rest of the library, and listed sessions are removed from the Chat list below so they never appear twice
 - picking a session from that group switches to its project and opens it in one tap through the workspace navigation action; the group is refreshed when the library opens and polled while a session is running

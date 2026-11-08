@@ -136,6 +136,12 @@ test('V2 creates a PTY on B while chat stays on A and retains its renderer', asy
   await expect(page.getByTestId('connection-connect-server-1')).toBeVisible();
   await closeSettingsOverlay(page);
   await expect(page.getByTestId('settings-server-picker')).toHaveCount(0);
+  await goToTab(page, 'Chat');
+  await openChatLibrary(page);
+  const disconnectedLibrary = page.getByTestId('chat-library');
+  await expect(disconnectedLibrary.getByTestId('chat-server-filter')).toHaveCount(0);
+  await expect(disconnectedLibrary.getByRole('button', { name: /^Open Chat on Build server,/ })).toHaveCount(0);
+  await disconnectedLibrary.getByRole('button', { name: 'Close', exact: true }).click();
   await openChat(page, 'MacBook Pro');
   await expect(page.getByPlaceholder('Ask anything...')).toHaveValue('');
   await goToTab(page, 'Projects');
@@ -155,6 +161,10 @@ test('V2 creates a PTY on B while chat stays on A and retains its renderer', asy
   await goToTab(page, 'Chat');
   await expect(page.getByRole('button', { name: /^Open chats/ })).toContainText('Chat on Build server');
   await expect(page.getByPlaceholder('Ask anything...')).toHaveValue('Retain B while disconnected');
+  await openChatLibrary(page);
+  await expect(page.getByTestId('chat-server-filter')).toBeVisible();
+  await expect(page.getByTestId('chat-library').getByRole('button', { name: /^Open Chat on Build server,/ })).toBeVisible();
+  await page.getByTestId('chat-library').getByRole('button', { name: 'Close', exact: true }).click();
   await goToTab(page, 'Terminal');
   await expect(output.locator('.xterm-accessibility-tree')).toContainText('ran: echo owned-by-B');
 });

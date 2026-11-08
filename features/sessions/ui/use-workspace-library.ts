@@ -1,6 +1,6 @@
 import { useCallback, useMemo } from 'react';
 import { useWorkspaces } from '@/runtime/workspace';
-import { librarySessions } from '@/features/sessions/model/workspace-library';
+import { connectedConnections, librarySessions } from '@/features/sessions/model/workspace-library';
 import type { SessionTarget } from '@/shared/contracts/workspace';
 export function useWorkspaceLibrary(visible = true) {
   const registry = useWorkspaces();
@@ -10,6 +10,9 @@ export function useWorkspaceLibrary(visible = true) {
   const sessions = useMemo(() => (visible
     ? librarySessions(registry.connections, registry.snapshots, registry.focus)
     : []), [registry.connections, registry.focus, registry.snapshots, visible]);
+  const servers = useMemo(() => (visible
+    ? connectedConnections(registry.connections, registry.snapshots)
+    : []), [registry.connections, registry.snapshots, visible]);
   const refresh = useCallback(async () => {
     await Promise.all(Object.values(catalogs).map((catalog) => catalog.refresh()));
   }, [catalogs]);
@@ -22,5 +25,5 @@ export function useWorkspaceLibrary(visible = true) {
     else library.toggleFavoriteSession(target.sessionId, target.projectPath, title);
     await refresh();
   }, [ensure, refresh]);
-  return { sessions, refresh, manage };
+  return { sessions, servers, refresh, manage };
 }

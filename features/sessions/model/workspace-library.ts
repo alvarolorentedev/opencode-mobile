@@ -5,8 +5,19 @@ import { sessionKey } from '@/shared/contracts/workspace';
 import { getConnectionScope } from '@/shared/contracts/connection-scope';
 export type LibrarySession = WorkspaceTarget & {
   sessionId: string; session: Session; status: SessionStatus; serverName: string; preview?: string;
-  current: boolean; favorite: boolean; connected: boolean;
+  current: boolean; favorite: boolean;
 };
+export function connectedConnections(connections: ConnectionRecord[], snapshots: Record<string, WorkspaceSnapshot>) {
+  const primaryByConnection = new Map<string, WorkspaceSnapshot>();
+  for (const [key, snapshot] of Object.entries(snapshots)) {
+    const [connectionId] = JSON.parse(key) as [string, string];
+    if (!primaryByConnection.has(connectionId)) primaryByConnection.set(connectionId, snapshot);
+  }
+  return connections.filter((entry) => {
+    const primary = primaryByConnection.get(entry.id);
+    return Boolean(entry.enabled && primary?.values.connectionValue.connection.status === 'connected');
+  });
+}
 export function librarySessions(connections: ConnectionRecord[], snapshots: Record<string, WorkspaceSnapshot>, focus?: WorkspaceTarget) {
   const rows = new Map<string, LibrarySession>();
   const runtimesByConnection = new Map<string, WorkspaceSnapshot[]>();
@@ -16,9 +27,10 @@ export function librarySessions(connections: ConnectionRecord[], snapshots: Reco
     if (list) list.push(runtime);
     else runtimesByConnection.set(connectionId, [runtime]);
   }
+  const servers = connectedConnections(connections, snapshots);
   const nameCounts = new Map<string, number>();
-  for (const entry of connections) nameCounts.set(entry.name, (nameCounts.get(entry.name) ?? 0) + 1);
-  for (const entry of connections) {
+  for (const entry of servers) nameCounts.set(entry.name, (nameCounts.get(entry.name) ?? 0) + 1);
+  for (const entry of servers) {
     const runtimes = runtimesByConnection.get(entry.id) ?? [];
     const primary = runtimes[0];
     if (!primary) continue;
@@ -26,7 +38,6 @@ export function librarySessions(connections: ConnectionRecord[], snapshots: Reco
       ? `${entry.name} · ${new URL(entry.settings.serverUrl).host}`
       : entry.name;
     const scope = getConnectionScope(entry.settings);
-    const connected = entry.enabled && primary.values.connectionValue.connection.status === 'connected';
     const localByProject = new Map<string, WorkspaceSnapshot>();
     const liveSessionsByProject = new Map<string, Map<string, Session>>();
     const catalogByIdAndDirectory = new Map<string, Session>();
@@ -66,7 +77,6 @@ export function librarySessions(connections: ConnectionRecord[], snapshots: Reco
           preview: live?.sessionPreviewById[session.id],
           current: focus?.connectionId === entry.id && (!focus.projectPath || focus.projectPath === projectPath) && local?.values.currentSessionValue.currentSessionId === session.id,
           favorite: favoriteKeys.has(`${projectPath}\u0000${session.id}`),
-          connected,
         });
       }
     }
@@ -88,7 +98,6 @@ export function librarySessions(connections: ConnectionRecord[], snapshots: Reco
         status: { type: 'idle' },
         current: false,
         favorite: true,
-        connected,
       });
     }
   }

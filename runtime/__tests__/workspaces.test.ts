@@ -24,6 +24,30 @@ describe('multi-server contracts', () => {
     expect(rows.map((row: any) => [row.connectionId, row.sessionId])).toEqual([['a', 'same'], ['b', 'busy'], ['b', 'same'], ['a', 'idle']]);
     expect(rows.filter((row: any) => row.current)).toHaveLength(1);
   });
+  it('omits connections that are not connected, including their favorites', async () => {
+    const { connectedConnections, librarySessions } = await loadTs('features/sessions/model/workspace-library.ts', {
+    '@/shared/contracts/connection-scope': identity,
+    "@/shared/contracts/workspace": keys,
+    "@/runtime/workspace/workspace-types": keys
+  });
+    const connection = (id: string, enabled = true) => ({ id, name: id, enabled, settings: { serverUrl: `http://${id}`, username: '' } });
+    const session = (id: string) => ({ id, directory: '/same', title: id, time: { updated: 1 } });
+    const snapshot = (status: string, sessions: any[], favoriteSessions: any[] = []) => ({ catalogSessions: sessions, catalogStatuses: {}, values: {
+      connectionValue: { connection: { status } }, projectsValue: { activeProjectPath: '/same' }, currentSessionValue: { currentSessionId: undefined },
+      sessionLibraryValue: { sessions, sessionStatuses: {}, favoriteSessions, sessionPreviewById: {} },
+    } });
+    const favorite = (connectionScope: string) => ({ connectionScope, projectPath: '/favorite', sessionId: 'f', title: 'f', favoritedAt: 1 });
+    const connections = [connection('disabled', false), connection('connected'), connection('connecting'), connection('errored'), connection('idle')];
+    const snapshots = {
+      '["disabled","/same"]': snapshot('connected', [], [favorite('http://disabled:')]),
+      '["connected","/same"]': snapshot('connected', [session('kept')], [favorite('http://connected:')]),
+      '["connecting","/same"]': snapshot('connecting', [session('connecting')]),
+      '["errored","/same"]': snapshot('error', [session('errored')]),
+    };
+    expect(connectedConnections(connections, snapshots).map((entry: any) => entry.id)).toEqual(['connected']);
+    expect(librarySessions(connections, snapshots).map((row: any) => [row.connectionId, row.sessionId]).sort())
+      .toEqual([['connected', 'f'], ['connected', 'kept']]);
+  });
   it('keeps unrelated workspace domains stable when only chat data changes', async () => {
     const driver = hookRuntime();
     const { useWorkspaceValues } = await loadTs('runtime/workspace/use-workspace-values.ts', {

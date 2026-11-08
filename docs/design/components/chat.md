@@ -299,6 +299,7 @@ that workspace.
 - re-seeds the cross-project snapshot when the overlay opens
 - derives cross-project rows only while visible, and mounts the shared project picker only while its nested overlay is open, so a closed library does no per-publish catalog work
 - keeps the Hide subagents switch alongside the Active filter
+- the server filter, server chips and rows include only connected servers; disconnected profiles stay in Connection management and their cached chats reappear after reconnect
 - header action opening the shared project picker overlay
 - uses provider actions for switching projects, opening chats, and persistence
 - owns only local search, section, swipe row, rename, and feedback state
