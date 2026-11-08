@@ -8,7 +8,7 @@ import { stripServerUrlCredentials } from '@/shared/contracts/server-url';
 import { normalizeWakePhrase } from '@/shared/platform/voice/wake-phrase';
 import { normalizeLocalCommandModel, normalizeLocalWakePhrase } from '@/shared/platform/voice/local-wake-word/types';
 import { normalizeAutoModelPreferences } from '@/shared/preferences/auto-model';
-import { normalizeTranscriptFontSize, type ChatPreferences } from '@/shared/preferences/opencode-preferences';
+import { normalizeTranscriptFontSize, OPENING_SCREENS, type ChatPreferences } from '@/shared/preferences/opencode-preferences';
 
 const ConnectionSettingsSchema = z.object({
   serverUrl: z.string().optional(),
@@ -52,6 +52,7 @@ const ChatPreferencesSchema = z.object({
   providerId: optionalString,
   modelId: optionalString,
   language: optionalString,
+  openingScreen: z.enum(OPENING_SCREENS).optional().catch(undefined),
   speechLocale: optionalString,
   speechVoiceId: optionalString,
   ttsEngine: z.enum(['system', 'local']).optional().catch(undefined),

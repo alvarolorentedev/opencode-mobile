@@ -5,7 +5,7 @@ import { buildClient, classifyConnectionFailure, detectServerContract, getCertif
 import { isCertificateFailureReason, isTlsTrustSupported, probeConnectionTrust } from '@/shared/platform/tls-trust';
 import { getNormalizedServerUrl, isValidServerUrl } from '@/shared/contracts/server-url';
 import { isServerConnectedEvent, serverDataResources } from '@/shared/protocol/opencode/server-data-events';
-import { useQueryClient } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { createContext, useCallback, useContext, useEffect, useLayoutEffect, useMemo, useReducer, useRef, type PropsWithChildren } from 'react';
 import { useTranslation } from 'react-i18next';
 import { AppState } from 'react-native';
@@ -14,11 +14,14 @@ import type { ConnectionLifecycle } from '@/features/connections/index';
 import type { ConnectionState } from '@/shared/contracts/domain';
 import { replaceQueryPartition } from '@/shared/server-data/keys';
 import { fetchProjectCatalog, projectsOptions } from '@/features/projects/runtime';
-import { useQueryActivity, useQueryIdentity } from '@/shared/server-data/client';
-import { useActiveSessions } from '@/features/sessions/runtime';
+import { useQueryActivity, useQueryForeground, useQueryIdentity } from '@/shared/server-data/client';
+import { useActiveSessions, useMissionActivity } from '@/features/sessions/runtime';
 import { useCoalescedRefresh } from '@/runtime/realtime/use-coalesced-refresh';
 import type { ConnectSetup } from '@/shared/contracts/cloud-link-setup';
 import type { ConnectionRecord, WorkspaceCatalog } from '@/shared/contracts/workspace';
+import type { Project } from '@/shared/protocol/opencode/types';
+
+const EMPTY_PROJECTS: Project[] = [];
 
 export function useConnectionLifecycle(entry: ConnectionRecord, setup: ConnectSetup, updateSettings: (id: string, settings: OpencodeConnectionSettings) => void, online: boolean, hydrated: boolean) {
   const { t } = useTranslation();
@@ -190,7 +193,7 @@ export function useConnectionLifecycle(entry: ConnectionRecord, setup: ConnectSe
 
 type Handle = ReturnType<typeof useConnectionLifecycle> & { catalogClient: ReturnType<typeof buildClient>; catalog: WorkspaceCatalog; isCurrentCatalogClient: (client: object) => boolean };
 const ConnectionRuntimeContext = createContext<Handle | null>(null);
-export function ConnectionRuntime({ entry, setup, updateSettings, online, hydrated, onCatalog, libraryVisible, children }: PropsWithChildren<{ entry: ConnectionRecord; setup: ConnectSetup; updateSettings: (id: string, settings: OpencodeConnectionSettings) => void; online: boolean; hydrated: boolean; libraryVisible: boolean; onCatalog: (id: string, catalog: WorkspaceCatalog) => void }>) {
+export function ConnectionRuntime({ entry, setup, updateSettings, online, hydrated, onCatalog, libraryVisible, missionVisible, children }: PropsWithChildren<{ entry: ConnectionRecord; setup: ConnectSetup; updateSettings: (id: string, settings: OpencodeConnectionSettings) => void; online: boolean; hydrated: boolean; libraryVisible: boolean; missionVisible?: boolean; onCatalog: (id: string, catalog: WorkspaceCatalog) => void }>) {
   const cache = useQueryClient();
   useEffect(() => () => {
     void cache.cancelQueries({ queryKey: ['opencode', entry.id] });
@@ -244,7 +247,17 @@ export function ConnectionRuntime({ entry, setup, updateSettings, online, hydrat
   useLayoutEffect(() => { current.current = catalogClient; });
   const isCurrentCatalogClient = useCallback((client: object) => entry.enabled && client === current.current, [entry.enabled]);
   const sessions = useActiveSessions({ catalogClient, isCurrentCatalogClient, connectionScope: getConnectionScope(entry.settings), connected: entry.enabled && lifecycle.connection.status === 'connected', currentSessionId: undefined, hideSubagentChats: false, visible: active && libraryVisible });
-  const catalog = useMemo<WorkspaceCatalog>(() => ({ sessions: sessions.catalogSessions, statuses: sessions.catalogStatuses, refresh: sessions.refreshActiveSessions, removeSession: sessions.removeSession }), [sessions.catalogSessions, sessions.catalogStatuses, sessions.refreshActiveSessions, sessions.removeSession]);
+  const sessionCatalog = useMemo<WorkspaceCatalog>(() => ({ sessions: sessions.catalogSessions, statuses: sessions.catalogStatuses, refresh: sessions.refreshActiveSessions, removeSession: sessions.removeSession }), [sessions.catalogSessions, sessions.catalogStatuses, sessions.refreshActiveSessions, sessions.removeSession]);
+  const foreground = useQueryForeground();
+  const projects = useQuery({ ...projectsOptions(identity, catalogClient),
+    enabled: entry.enabled && online && foreground && lifecycle.connection.status === 'connected' && lifecycle.serverContract === 'v2' }).data ?? EMPTY_PROJECTS;
+  const knownDirectories = useMemo(() => projects.flatMap(({ worktree, sandboxes }) => [worktree, ...(sandboxes ?? [])]).filter(Boolean), [projects]);
+  const mission = useMissionActivity({ entry, client: catalogClient, connected: lifecycle.connection.status === 'connected',
+    connectionFailed: lifecycle.connection.status === 'error',
+    authorized: lifecycle.connection.kind !== 'auth' && lifecycle.connection.kind !== 'entitlement',
+    online, foreground, visible: Boolean(missionVisible), catalog: sessionCatalog, catalogCheckedAt: sessions.catalogCheckedAt,
+    catalogError: sessions.catalogError, knownDirectories, projects, reconnect: lifecycle.connect });
+  const catalog = useMemo(() => ({ ...sessionCatalog, mission }), [sessionCatalog, mission]);
   const { refreshActiveSessions } = sessions;
   useEffect(() => { if (lifecycle.connection.status === 'connected') void refreshActiveSessions(); }, [lifecycle.connection.status, refreshActiveSessions]);
   // Warm the connection-wide project list once per connect. Project queries

@@ -33,10 +33,12 @@ export type Session = {
     time: {
         created: number;
         updated: number;
+        idle?: number;
         archived?: number;
         compacting?: number;
     };
     model?: ModelRef;
+    outcome?: 'succeeded' | 'failed' | 'interrupted';
     agent?: string;
     tokens?: TokenUsageInfo;
     cost?: number;

@@ -5,7 +5,7 @@ import { compatibilityStatus, translateCompatibilityEvent, type CompatibilityEve
 import { extractErrorMessage, numberField, stringField } from '@/shared/protocol/opencode/v2/fields';
 // Providers need the native event payload, not transport metadata. Legacy events
 // with matching semantics can therefore translate without inventing SDK records.
-export type NativeProtocolEvent<E = OpenCodeEvent> = E extends OpenCodeEvent ? Omit<E, 'id' | 'created' | 'durable' | 'metadata'> : never;
+export type NativeProtocolEvent<E = OpenCodeEvent> = E extends OpenCodeEvent ? Omit<E, 'id' | 'created' | 'durable' | 'metadata'> & { created?: number } : never;
 export type OpencodeEvent = NativeProtocolEvent | CompatibilityEvent;
 export async function* subscribeEvents(client: ScopedOpencodeClient, signal: AbortSignal, onActivity?: () => void): AsyncGenerator<OpencodeEvent> {
   if (client.compatibility) {

@@ -12,12 +12,15 @@ import { OnboardingStep } from '@/features/onboarding/ui/onboarding-step';
 import { SetupSummary } from '@/features/onboarding/ui/setup-summary';
 import { useOnboarding } from '@/features/onboarding/context';
 import { usePalette } from '@/shared/ui/theme/use-palette';
+import { usePreferences } from '@/shared/preferences/context';
+import { MISSION_PATH } from '@/shared/contracts/mission-control';
 
 export default function OnboardingReadyScreen() {
   const { t } = useTranslation();
   const router = useRouter();
   const palette = usePalette();
   const { onboardingActive, completeOnboarding, stopOnboardingReview } = useOnboarding();
+  const { chatPreferences: { openingScreen } } = usePreferences();
   const [isFinishing, setIsFinishing] = useState(false);
 
   async function finish() {
@@ -33,7 +36,7 @@ export default function OnboardingReadyScreen() {
 
       await completeOnboarding();
       // Let the guard commit before navigating so `(tabs)` is registered.
-      requestAnimationFrame(() => router.replace('/(tabs)'));
+      requestAnimationFrame(() => router.replace(openingScreen === 'mission' ? MISSION_PATH : '/(tabs)'));
     } finally {
       setIsFinishing(false);
     }

@@ -140,6 +140,8 @@
     "features/sessions/index.ts": [
       "ApprovalsContextValue",
       "ChatLibrary",
+      "MissionControlScreen",
+      "OpeningScreenField",
       "CurrentSessionContextValue",
       "NewChatSheet",
       "PendingInteractionsCard",
@@ -149,6 +151,7 @@
       "SessionDeepLinkScreen",
       "SessionLibraryContextValue",
       "useConnectionLinkActions",
+      "missionBadge",
       "useQuickActionRoute",
       "useSessionActions"
     ],
@@ -252,6 +255,9 @@
       "parseFavoriteSessions",
       "serializeFavoriteSessions",
       "useActiveSessions",
+      "MissionOverview",
+      "useMissionActivity",
+      "useMissionOverview",
       "useConnectionLinkActions",
       "useNativeSurfaces",
       "usePermissionRulesState",
@@ -307,6 +313,7 @@
       "useTerminalState"
     ],
     "features/widgets/runtime.ts": [
+      "useMissionWidget",
       "useWidgetState"
     ],
     "features/updates/runtime.ts": [

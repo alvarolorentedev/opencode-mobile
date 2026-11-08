@@ -276,6 +276,25 @@ The fourth tab uses a content-sized terminal selector overlay. The plus action c
 
 The provider requests a short-lived PTY connect ticket and opens a project-scoped `ws:`/`wss:` connection. The UI uses xterm for ANSI/VT cursor behavior, alternate-screen programs, and 10,000-line scrollback. A system-keyboard accessory provides Esc, Tab, sticky modifiers, arrows, and an expandable function/navigation/paste row. Opened displays survive tab and terminal switches; reconnect uses acknowledged cursors and fresh tickets.
 
+## Mission Control
+
+The Mission tab summarizes activity across enabled OpenCode 2 connections. The
+amber tab badge counts conversations with a confirmed pending permission or
+question. The badge includes reachable servers outside the selected filters
+and clears as requests resolve. Sessionless server requests appear separately.
+Choose Chat or Mission Control as the opening screen in Settings → Appearance or
+in onboarding. Chat is the default. Direct links open their own destinations.
+
+Use the server, project, and status filters to narrow the dashboard. Completion
+totals cover the past 24 hours and require a confirmed settlement time. Partial
+and unavailable servers are identified independently. Opening a row switches
+to the exact server, project/worktree and conversation in Chat, where existing
+permission, question, stop and review controls are available.
+
+The Android Mission Control widget shows dated counts and server coverage.
+Tapping its heading opens the dashboard. Tapping Needs attention opens that
+filter. The widget snapshot contains counts and timestamps.
+
 ## Chat Screen Detailed Behavior
 
 ## Empty State

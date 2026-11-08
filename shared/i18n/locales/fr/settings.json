@@ -44,7 +44,7 @@
       "results": "Réglages trouvés : {{count}}"
     },
     "keywords": {
-      "appearance": "affichage thème couleur sombre clair compact densité",
+      "appearance": "affichage thème couleur sombre clair compact densité démarrage ouverture premier écran chat contrôle des missions",
       "responses": "chat messages texte police taille réponses style orienter ajouter file bulles chronologie activité raisonnement outils modifications détail",
       "voice": "voix audio parole son microphone entrée lecture langue phrase activation confirm",
       "notifications": "notifications alertes batterie widgets",
@@ -775,6 +775,7 @@
     "title": "Éditeur"
   },
   "general": {
+    "openingScreen": "Écran de démarrage",
     "title": "Général",
     "resetOnboarding": "Revoir la configuration"
   },

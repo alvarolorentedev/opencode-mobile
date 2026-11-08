@@ -42,6 +42,8 @@ export function areSessionListsEqual(previous: Session[], next: Session[]): bool
     const left = previous[index];
     const right = next[index];
     if (left.id !== right.id || left.time.updated !== right.time.updated || left.title !== right.title
+      || left.directory !== right.directory || left.outcome !== right.outcome || left.time.idle !== right.time.idle
+      || left.agent !== right.agent || JSON.stringify(left.model) !== JSON.stringify(right.model)
       || left.cost !== right.cost || JSON.stringify(left.tokens) !== JSON.stringify(right.tokens)
       || JSON.stringify(left.revert) !== JSON.stringify(right.revert)) {
       return false;

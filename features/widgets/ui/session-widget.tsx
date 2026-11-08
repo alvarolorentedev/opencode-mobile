@@ -6,10 +6,12 @@ import { FlexWidget, TextWidget, type ColorProp } from 'react-native-android-wid
 import { i18n } from '@/shared/i18n/index';
 import { formatTimestamp } from '@/shared/presentation/format';
 import type { WidgetSnapshot } from '@/shared/contracts/widget-snapshot';
+import { MISSION_FILTERS, MISSION_LINK, type MissionWidgetSnapshot } from '@/shared/contracts/mission-control';
 
 export const SESSION_WIDGET_NAME = 'SessionWidget';
 export const ATTENTION_WIDGET_NAME = 'AttentionWidget';
 export const PLAN_WIDGET_NAME = 'PlanWidget';
+export const MISSION_WIDGET_NAME = 'MissionControlWidget';
 export const WIDGET_NAMES = [SESSION_WIDGET_NAME, ATTENTION_WIDGET_NAME, PLAN_WIDGET_NAME] as const;
 export type WidgetKind = 'replies' | 'attention' | 'plan';
 type WidgetScheme = 'light' | 'dark';
@@ -77,4 +79,32 @@ export function SessionWidget({ snapshot, scheme, kind = 'replies', height = 300
         maxLines={1} truncate="END" style={{ fontSize: 9, color: palette.muted }} /> : null}
     </FlexWidget>
   );
+}
+
+export function MissionWidget({ snapshot, scheme }: { snapshot?: MissionWidgetSnapshot; scheme: WidgetScheme }) {
+  const palette = PALETTE[scheme];
+  const t = snapshot?.language ? i18n.getFixedT(snapshot.language, 'chat') : i18n.getFixedT(null, 'chat');
+  const colors: Record<(typeof MISSION_FILTERS)[number], ColorProp> = { attention: scheme === 'dark' ? '#E6B35A' : '#965B00', running: palette.accent,
+    failed: scheme === 'dark' ? '#F08A8A' : '#B44343', completed: palette.text };
+  const time = snapshot ? t(snapshot.stale ? 'mission.widgetLastKnown' : 'mission.widgetChecked',
+    { time: formatTimestamp(snapshot.checkedAt, snapshot.language) }) : undefined;
+  return <FlexWidget clickAction="OPEN_URI" clickActionData={{ uri: `${MISSION_LINK}?filter=all` }}
+    style={{ height: 'match_parent', width: 'match_parent', flexDirection: 'column', justifyContent: 'space-between',
+      padding: 10, borderRadius: 16, backgroundColor: palette.surface }}>
+    <TextWidget text={t('mission.title')} maxLines={1} truncate="END" style={{ fontSize: 14, fontWeight: '600', color: palette.text }} />
+    {snapshot ? <FlexWidget style={{ width: 'match_parent', flexDirection: 'column' }}>
+      {[MISSION_FILTERS.slice(0, 2), MISSION_FILTERS.slice(2)].map((pair) => <FlexWidget key={pair[0]}
+        style={{ width: 'match_parent', flexDirection: 'row' }}>
+        {pair.map((key) => <FlexWidget key={key} clickAction={key === 'attention' ? 'OPEN_URI' : undefined}
+          clickActionData={key === 'attention' ? { uri: `${MISSION_LINK}?filter=attention` } : undefined}
+          style={{ width: 0, flex: 1, flexDirection: 'column', paddingVertical: 2 }}>
+          <TextWidget text={String(snapshot.counts[key])} style={{ fontSize: 17, fontWeight: '700', color: colors[key] }} />
+          <TextWidget text={t(`mission.${key}`)} maxLines={1} truncate="END" style={{ fontSize: 11, color: palette.text }} />
+        </FlexWidget>)}
+      </FlexWidget>)}
+      <TextWidget text={t('mission.coverage', { checked: snapshot.checkedServers, total: snapshot.totalServers })}
+        maxLines={1} truncate="END" style={{ fontSize: 10, color: palette.muted }} />
+      <TextWidget text={time ?? ''} maxLines={1} truncate="END" style={{ fontSize: 10, color: palette.muted }} />
+    </FlexWidget> : <TextWidget text={t('mission.widgetEmpty')} maxLines={3} truncate="END" style={{ fontSize: 13, color: palette.muted }} />}
+  </FlexWidget>;
 }

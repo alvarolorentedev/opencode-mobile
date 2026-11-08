@@ -89,6 +89,13 @@ provider's guarded create/open action before navigating to Chat. The composer
 merges the confirmed receipt exactly once and remains the only send path.
 Discard cancels and clears staged content. Components never fetch or persist.
 
+## Mission Control
+
+The Mission tab uses the native tab-bar badge and exposes its full localized
+count as part of the tab's accessible name. `MissionSummary` renders the four
+status filters. `MissionSessionRow` shows action reasons, connection and project
+context, and last activity. Both controls have colocated Storybook states.
+
 ## Android widget presentation
 
 `features/widgets/ui/session-widget.tsx` renders Latest replies, Awaiting actions and Plan

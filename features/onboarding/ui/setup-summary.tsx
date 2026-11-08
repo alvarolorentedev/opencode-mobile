@@ -40,6 +40,7 @@ export function SetupSummary() {
       { id: 'models', label: t('onboarding:ready.enabledModels'), value: models.map((model) => `${model.label} · ${model.providerLabel}`).join('\n') || none },
     ] : []),
     { id: 'language', label: t('settings:language.title'), value: language },
+    { id: 'opening-screen', label: t('settings:general.openingScreen'), value: t(chatPreferences.openingScreen === 'mission' ? 'chat:mission.title' : 'common:tabs.chat') },
     ...(connected && serverCapabilities.promptDeliveryAvailable ? [
       { id: 'delivery', label: t('settings:providers.promptDelivery.label'), value: t(`settings:providers.promptDelivery.${chatPreferences.promptDelivery || 'steer'}.label`) },
     ] : []),

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
-import type { ScopedOpencodeClient } from '@/shared/protocol/opencode/client';
+import { withReadSignal, type ScopedOpencodeClient } from '@/shared/protocol/opencode/client';
 import type { Session, SessionStatus } from '@/shared/protocol/opencode/types';
 import { getActiveSessions } from '@/features/sessions/model/active-sessions';
 import { areSessionListsEqual, areSessionStatusMapsEqual } from '@/features/sessions/model/session-utils';
@@ -16,6 +16,9 @@ const EMPTY_STATUSES: Record<string, SessionStatus> = {};
 
 type ActiveSessionsSnapshot = {
   scope?: string;
+  client?: ScopedOpencodeClient;
+  checkedAt?: number;
+  error?: boolean;
   sessions: Session[];
   statuses: Record<string, SessionStatus>;
 };
@@ -45,27 +48,31 @@ export function useActiveSessions({
 }) {
   const [snapshot, setSnapshot] = useState<ActiveSessionsSnapshot>({ sessions: [], statuses: {} });
 
-  const refreshActiveSessions = useCallback(async () => {
-    if (!connected) {
+  const refreshActiveSessions = useCallback(async (signal?: AbortSignal) => {
+    if (!connected || signal?.aborted) {
       return;
     }
+    const checkedAt = Date.now();
     try {
-      const result = await svcListActiveSessions(catalogClient);
-      if (!isCurrentCatalogClient(catalogClient)) {
+      const result = await svcListActiveSessions(signal ? withReadSignal(catalogClient, signal) : catalogClient);
+      if (signal?.aborted || !isCurrentCatalogClient(catalogClient)) {
         return;
       }
       setSnapshot((previous) => {
+        if (previous.client === catalogClient && (previous.checkedAt ?? 0) > checkedAt) return previous;
         const sessions = result.sessions as Session[];
         const statuses = result.statuses as Record<string, SessionStatus>;
-        if (previous.scope === connectionScope
+        if (previous.client === catalogClient
           && areSessionListsEqual(previous.sessions, sessions)
           && areSessionStatusMapsEqual(previous.statuses, statuses)) {
-          return previous;
+          return { ...previous, checkedAt, error: false };
         }
-        return { scope: connectionScope, sessions, statuses };
+        return { scope: connectionScope, client: catalogClient, checkedAt, sessions, statuses };
       });
     } catch {
-      // Keep the previous snapshot on a transient failure.
+      if (signal?.aborted || !isCurrentCatalogClient(catalogClient)) return;
+      setSnapshot((previous) => previous.client === catalogClient ? (previous.checkedAt ?? 0) > checkedAt ? previous : { ...previous, error: true }
+        : { scope: connectionScope, client: catalogClient, sessions: [], statuses: {}, error: true });
     }
   }, [catalogClient, connected, connectionScope, isCurrentCatalogClient]);
 
@@ -78,7 +85,7 @@ export function useActiveSessions({
     });
   }, []);
 
-  const current = snapshot.scope === connectionScope ? snapshot : undefined;
+  const current = snapshot.scope === connectionScope && snapshot.client === catalogClient ? snapshot : undefined;
   const activeSessions = useMemo(() => getActiveSessions({
     sessions: current?.sessions ?? [],
     statuses: current?.statuses ?? {},
@@ -101,5 +108,6 @@ export function useActiveSessions({
     return () => clearInterval(interval);
   }, [connected, hasRunning, refreshActiveSessions, visible]);
 
-  return { activeSessions, catalogStatuses: current?.statuses ?? EMPTY_STATUSES, catalogSessions: current?.sessions ?? EMPTY_SESSIONS, refreshActiveSessions, removeSession };
+  return { activeSessions, catalogStatuses: current?.statuses ?? EMPTY_STATUSES, catalogSessions: current?.sessions ?? EMPTY_SESSIONS,
+    catalogCheckedAt: current?.checkedAt, catalogError: current?.error, refreshActiveSessions, removeSession };
 }

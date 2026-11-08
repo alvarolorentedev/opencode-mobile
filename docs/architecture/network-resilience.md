@@ -152,6 +152,16 @@ visible transcript start together. Diff/todo detail waits for the transcript,
 and native surfaces/widgets run last. A reconnect pass is queued behind an
 in-flight poll instead of being swallowed by it.
 
+### Mission Control reconciliation
+
+Mission Control observes the existing shared V2 stream per connection. Initial,
+foreground and reconnect reads seed directory-scoped permissions and forms with
+two directory reads in flight per connection. While Mission is visible, a
+30-second fallback checks execution and approvals when work is active or SSE is
+degraded. Dashboard reconciliation uses the bounded connection catalog and
+does not request transcripts. Leaving Mission stops its fallback. Connection
+and foreground gates cancel Mission reads and reject stale responses.
+
 ## Connect recovery
 
 `features/connections/state/use-connection-retry.ts` retries retryable connect failures while

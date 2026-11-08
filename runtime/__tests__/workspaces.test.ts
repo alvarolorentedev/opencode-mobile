@@ -133,7 +133,7 @@ describe('multi-server contracts', () => {
     "@/shared/contracts/server-url": { stripServerUrlCredentials: (value: string) => value },
     "@/shared/platform/voice/wake-phrase": { normalizeWakePhrase: (value: string) => value },
     "@/shared/platform/voice/local-wake-word/types": { normalizeLocalWakePhrase: (value: string) => value, normalizeLocalCommandModel: (value: string) => value },
-    "@/shared/preferences/opencode-preferences": { normalizeTranscriptFontSize: (value: number) => value }
+    "@/shared/preferences/opencode-preferences": { normalizeTranscriptFontSize: (value: number) => value, OPENING_SCREENS: ['chat', 'mission'] }
   });
     const { parseWorkspaces, serializeWorkspaces } = await loadTs('shared/storage/workspace-storage.ts', {
     '@/shared/contracts/connection-scope': identity,
@@ -149,6 +149,8 @@ describe('multi-server contracts', () => {
     expect(() => parseWorkspaces(JSON.stringify({ version: 2, connections: [] }))).toThrow();
     expect(() => parseWorkspaces(JSON.stringify({ version: 1, connections: [{ ...entry, events: undefined }] }))).toThrow();
     expect(() => parseWorkspaces(JSON.stringify({ version: 1, connections: [{ ...entry, events: undefined, settings: { serverUrl: 'http://a', username: '', directory: '', headers: { 'CF-Access-Client-Secret': 'header-secret' } } }] }))).toThrow();
+    expect(parsing.parseChatPreferences('{"openingScreen":"mission"}').openingScreen).toBe('mission');
+    expect(parsing.parseChatPreferences('{"openingScreen":"unsupported"}').openingScreen).toBeUndefined();
 
     // Routing preferences must survive a workspace registry round-trip; a stale
     // or dropped value here is what makes an enabled setting look reset on launch.
@@ -214,6 +216,7 @@ it('restarts a silent shared stream even when a widget consumer stays attached',
 
 it('keeps lifecycle decisions current without resetting retained runtimes', async () => {
   const driver = hookRuntime();
+  const findSessionForNavigation = vi.fn();
   const entries = ['a', 'b'].map((id) => ({ id, name: id, settings: { serverUrl: `http://${id}`, username: '', password: '', directory: '' }, projects: ['/repo', '/other'], preferences: {}, enabled: true }));
   const paths = { 'http://a:': ['/repo', '/other'], 'http://b:': ['/repo'] };
   const shell: any = { settings: entries[0].settings, onboardingVersion: 1, chatPreferences: {}, projectPathsByConnection: paths,
@@ -232,7 +235,7 @@ it('keeps lifecycle decisions current without resetting retained runtimes', asyn
     "@/shared/contracts/server-url": { getServerHostname: (value: string) => value },
     "@/shared/storage/persistence-hydration": { createPersistenceWriter: () => writer },
     "@/shared/network/shared-event-stream": { createSharedEventStream: () => () => {} },
-    "@/shared/protocol/services/session-service": { listActiveSessions: vi.fn(async () => ({ sessions: [], statuses: {} })) },
+    "@/shared/protocol/services/session-service": { findSessionForNavigation },
     "@/shared/storage/workspace-storage": { WORKSPACES_STORAGE_KEY: 'workspaces', parseWorkspaces: () => ({ connections: entries, focus: { connectionId: 'a', projectPath: '/repo' } }), serializeWorkspaces: () => 'stored' },
     "@/shared/contracts/workspace": { workspaceKey: ({ connectionId, projectPath }: any) => JSON.stringify([connectionId, projectPath]) }
   }, driver.globals);
@@ -247,6 +250,9 @@ it('keeps lifecycle decisions current without resetting retained runtimes', asyn
   original.catalogSessions = [{ id: 'collision', directory: '/repo' }] as never[];
   await expect(driver.value.navigate({ connectionId: 'b', projectPath: '/repo', sessionId: 'collision' })).rejects.toThrow('was not found');
   expect(b.values.currentSessionValue.openSession).not.toHaveBeenCalled();
+  findSessionForNavigation.mockResolvedValueOnce({ id: 'outside-catalog', directory: '/repo', time: {} });
+  await driver.value.navigate({ connectionId: 'b', projectPath: '/repo', sessionId: 'outside-catalog' });
+  expect(b.values.currentSessionValue.openSession).toHaveBeenCalledWith('outside-catalog');
   b.catalogSessions = [{ id: 'collision', directory: '/repo' }] as never[];
   await driver.value.navigate({ connectionId: 'b', projectPath: '/repo', sessionId: 'collision' }); driver.flush();
   expect(b.values.currentSessionValue.openSession).toHaveBeenCalledWith('collision');
@@ -289,7 +295,7 @@ it('persists the focused auto-model choice and ignores background workspace copi
     "@/shared/contracts/server-url": { getServerHostname: (value: string) => value },
     "@/shared/storage/persistence-hydration": { createPersistenceWriter: () => writer },
     "@/shared/network/shared-event-stream": { createSharedEventStream: () => () => {} },
-    "@/shared/protocol/services/session-service": { listActiveSessions: vi.fn(async () => ({ sessions: [], statuses: {} })) },
+    "@/shared/protocol/services/session-service": { findSessionForNavigation: vi.fn() },
     "@/shared/storage/workspace-storage": { WORKSPACES_STORAGE_KEY: 'workspaces', parseWorkspaces: () => ({ connections: entries, focus: { connectionId: 'a', projectPath: '/repo' } }), serializeWorkspaces: () => 'stored' },
     "@/shared/contracts/workspace": { workspaceKey: ({ connectionId, projectPath }: any) => JSON.stringify([connectionId, projectPath]) }
   }, driver.globals);
@@ -401,6 +407,7 @@ it('reads the shared active-session catalog only for the owning runtime', async 
     react: driver.react,
     "@/features/sessions/model/active-sessions": { getActiveSessions: () => [] },
     "@/features/sessions/model/session-utils": { areSessionListsEqual: () => true, areSessionStatusMapsEqual: () => true },
+    "@/shared/protocol/opencode/client": { withReadSignal: (client: object) => client },
     "@/shared/protocol/services/session-service": { listActiveSessions }
   });
   driver.mount((props: any) => useActiveSessions(props), {

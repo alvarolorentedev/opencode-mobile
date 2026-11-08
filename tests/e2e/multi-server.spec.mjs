@@ -195,6 +195,16 @@ test('V2 replies to colliding approvals only on the Settings server', async ({ p
   await sendPrompt(page, 'B waits for approval');
   await expect.poll(async () => (await state(1)).pendingPermissions.length).toBe(1);
   expect((await state(0)).pendingPermissions[0].id).toBe((await state(1)).pendingPermissions[0].id);
+  const missionTab = page.getByTestId('mission-tab');
+  await expect(missionTab).toHaveAccessibleName('Mission. Conversations needing attention: 2');
+  await missionTab.click();
+  const mission = page.getByTestId('mission-control');
+  await expect(mission.getByTestId('mission-session-row').filter({ hasText: 'Permission needed' })).toHaveCount(2);
+  await choose(page, 'mission-server-filter', 'Build server');
+  await expect(mission.getByRole('button', { name: '1 Needs attention' })).toBeVisible();
+  await expect(missionTab).toHaveAccessibleName('Mission. Conversations needing attention: 2');
+  await mission.getByRole('button', { name: /^Chat on Build server, Needs attention/ }).click();
+  await expect(page.getByRole('button', { name: /^Open chats/ })).toContainText('Chat on Build server');
   await goToTab(page, 'Settings');
   await choose(page, 'settings-server-picker', 'Build server');
   await page.getByRole('button', { name: /^Approvals/ }).click();
@@ -204,6 +214,7 @@ test('V2 replies to colliding approvals only on the Settings server', async ({ p
   await expect.poll(async () => (await state(1)).pendingPermissions.length).toBe(0);
   expect((await state(0)).pendingPermissions).toHaveLength(1);
   await goToTab(page, 'Chat');
+  await expect(missionTab).toHaveAccessibleName('Mission. Conversations needing attention: 1');
   await expect(page.getByText(/Finished: permission resolved/).first()).toBeVisible();
   await openChat(page, 'MacBook Pro');
   await expect(page.getByText('Approval needed', { exact: true }).last()).toBeVisible();

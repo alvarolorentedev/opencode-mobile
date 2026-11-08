@@ -6,6 +6,7 @@ import { workspaceKey, type NewWorktreeChatResult, type NewWorktreeChatTarget, t
 import type { WorkspaceValues } from '@/runtime/workspace/workspace-types';
 import { createContext, useContext, useEffect, useMemo, useState, type PropsWithChildren } from 'react';
 import { ActivityIndicator, View } from 'react-native';
+import type { MissionOverview } from '@/features/sessions/runtime';
 
 export type WorkspaceRegistry = ReturnType<typeof useWorkspaceConnections> & {
   createChat: (target: WorkspaceTarget) => Promise<Session>;
@@ -16,6 +17,7 @@ export type WorkspaceRegistry = ReturnType<typeof useWorkspaceConnections> & {
   inspect: (target: WorkspaceTarget) => Promise<void>;
   valuesFor: (target?: WorkspaceTarget) => WorkspaceValues | undefined;
   catalogs: Record<string, WorkspaceCatalog>;
+  mission: MissionOverview;
 };
 export type WorkspaceActions = {
   createChat: (target: WorkspaceTarget) => Promise<Session>;

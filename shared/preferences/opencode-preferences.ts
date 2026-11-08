@@ -21,6 +21,9 @@ export function normalizeTranscriptFontSize(value: number | undefined) {
 export { defaultAutoModelPreferences, normalizeAutoModelPreferences } from '@/shared/preferences/auto-model';
 export type { AutoModelClassifier, AutoModelPreferences, AutoModelTierPreference } from '@/shared/preferences/auto-model';
 
+export const OPENING_SCREENS = ['chat', 'mission'] as const;
+export type OpeningScreen = typeof OPENING_SCREENS[number];
+
 export type ChatPreferences = {
   mode: string;
   // App-level appearance. Stored with chat preferences because the shell is
@@ -50,6 +53,7 @@ export type ChatPreferences = {
   // App UI language preference. `undefined` follows the OS locale; it is stored
   // alongside chat preferences because it is global and not connection-scoped.
   language?: string;
+  openingScreen: OpeningScreen;
   providerId?: string;
   modelId?: string;
   enabledModelIds: string[];
@@ -112,6 +116,7 @@ export const defaultChatPreferences: ChatPreferences = {
   timelineDetail: 'everything',
   flatTranscript: false,
   slimInterface: false,
+  openingScreen: 'chat',
   enabledModelIds: [],
   providerModelSelections: {},
   agentModelSelections: {},

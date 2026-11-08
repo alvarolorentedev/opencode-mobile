@@ -1,8 +1,29 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-import { CHAT_PREFERENCES_STORAGE_KEY, WIDGET_SNAPSHOT_STORAGE_KEY } from '@/shared/storage/keys';
+import { CHAT_PREFERENCES_STORAGE_KEY, MISSION_WIDGET_STORAGE_KEY, WIDGET_SNAPSHOT_STORAGE_KEY } from '@/shared/storage/keys';
 import { hideWidgetPreviews, parseWidgetSnapshot } from '@/features/widgets/model/widget-snapshot';
 import type { WidgetSnapshot } from '@/shared/contracts/widget-snapshot';
+import type { MissionWidgetSnapshot } from '@/shared/contracts/mission-control';
+import { parseMissionWidgetSnapshot } from '@/features/widgets/model/mission-widget-snapshot';
+
+export async function loadMissionWidgetSnapshot() {
+  try {
+    const raw = await AsyncStorage.getItem(MISSION_WIDGET_STORAGE_KEY);
+    return raw ? parseMissionWidgetSnapshot(JSON.parse(raw)) : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+export async function saveMissionWidgetSnapshot(snapshot: MissionWidgetSnapshot | undefined) {
+  try {
+    if (snapshot) await AsyncStorage.setItem(MISSION_WIDGET_STORAGE_KEY, JSON.stringify(snapshot));
+    else await AsyncStorage.removeItem(MISSION_WIDGET_STORAGE_KEY);
+    return true;
+  } catch {
+    return false;
+  }
+}
 
 // One bounded snapshot under one key. Writes come only from confirmed provider
 // state (features/widgets/state/use-widget-state.ts); the Android widget's headless task

@@ -43,8 +43,9 @@ export function createSessionHelpers({ getNow, getState, emitEvent }) {
     finish(sessionID, assistant);
     createMessage(sessionID, 'idle', { outcome: 'succeeded' });
     state.sessionStatuses[sessionID] = { type: 'idle' };
-    send('session.step.ended', { sessionID, messageID: assistant.id }); send('session.execution.succeeded', { sessionID });
     const session = getSession(sessionID);
+    if (session) { session.outcome = 'succeeded'; session.time.idle = getNow(); }
+    send('session.step.ended', { sessionID, messageID: assistant.id }); send('session.execution.succeeded', { sessionID });
     if (session && !session.title.trim()) { session.title = (promptText || 'Untitled chat').trim().split(/\s+/).slice(0, 4).join(' '); send('session.renamed', { sessionID, title: session.title }); }
   }
   function later(delay, action) {

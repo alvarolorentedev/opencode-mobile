@@ -12,7 +12,7 @@ import { getServerHostname } from '@/shared/contracts/server-url';
 import { clearCapabilitiesSnapshots } from '@/features/ai/runtime';
 import type { ChatPreferences } from '@/shared/preferences/opencode-preferences';
 import { createPersistenceWriter } from '@/shared/storage/persistence-hydration';
-import { listActiveSessions } from '@/shared/protocol/services/session-service';
+import { findSessionForNavigation } from '@/shared/protocol/services/session-service';
 import { createSharedEventStream } from '@/shared/network/shared-event-stream';
 import type { WorkspaceShellState } from '@/runtime/workspace/use-workspace-shell-state';
 import { connectedWorkspaceTarget } from '@/runtime/workspace/workspace-focus';
@@ -282,9 +282,9 @@ export function useWorkspaceConnections(shell: WorkspaceShellState, hydrated: bo
       || snapshot.values.sessionLibraryValue.sessions.some((session) => session.id === target.sessionId && (!session.directory || session.directory === target.projectPath))
     )));
     if (!known()) {
-      const catalog = await listActiveSessions(next.catalogClient);
+      const session = await findSessionForNavigation(next.catalogClient, target.sessionId, signal);
       check();
-      if (!catalog.sessions.some((session) => session.id === target.sessionId && (!session.directory || session.directory === target.projectPath))) {
+      if (!session || session.id !== target.sessionId || (session.directory && session.directory !== target.projectPath) || session.time.archived) {
         throw new Error(`Session ${target.sessionId} was not found in the ${target.projectPath} project.`);
       }
     }

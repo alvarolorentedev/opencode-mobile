@@ -12,7 +12,7 @@ Responsibility:
 - presentation only describes the app, with Continue navigation; AI and General are optional and reuse Settings controls
 - permissions, connect, AI, project, General, Voice & Responses and privacy are skippable; Skip advances without additional writes or undoing earlier choices
 - privacy owns local diagnostics recording and the master remote-telemetry switch when an OTLP backend is configured; remote sharing is off when unavailable, and turning it off clears crash/performance consent
-- General edits language and Steer/Append delivery (connected V2 only); it no longer selects a global default model
+- General edits language, the opening screen, and Steer/Append delivery (connected V2 only).
 - ready summarizes connection/project plus the applicable providers, enabled models and preferences, then completes first-run setup or closes review mode
 - thin controllers only; connection/project persistence and permission requests are delegated to the provider and existing helpers
 - seeded from current provider state so re-running from Settings reviews rather than resets

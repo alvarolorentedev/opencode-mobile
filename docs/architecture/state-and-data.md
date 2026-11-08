@@ -731,6 +731,21 @@ seconds only while the library is open and a session is running. A transient
 fetch failure keeps the previous snapshot. The snapshot is in-memory only and
 does not share the per-connection+project session cache.
 
+### Mission Control activity
+
+Each connection runtime extends its existing session catalog with V2 approval
+observations and execution evidence for Mission Control. The workspace registry
+derives one cross-server view using connection, directory and session identity.
+Its unfiltered attention total drives the tab badge. The Android widget persists
+only counts, language, coverage and observation time.
+The global opening-screen preference is persisted with app preferences. The
+shell applies it once on an unlinked launch, after hydration.
+
+Explicit server outcomes and execution events distinguish failure and success
+from idle. Active reads and event revisions guard against older results, and
+stale or unauthorized data cannot contribute to current totals. See
+[ADR 0040](../adr/0040-connection-owned-mission-control.md).
+
 ### Current Pending Requests
 
 A failed permission or question list read leaves that surface unchanged. A

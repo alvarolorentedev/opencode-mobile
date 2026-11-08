@@ -288,6 +288,22 @@ test('appearance changes persist and settings remain usable at narrow widths', a
   await expect(sheet.getByRole('switch', { name: 'Slim interface', exact: true })).toHaveAttribute('aria-checked', 'true');
   expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(320);
   await page.screenshot({ path: test.info().outputPath('settings-appearance-narrow-light.png') });
+  await expect(page.getByTestId('opening-screen-picker')).toHaveAccessibleName('Opening screen. Chat');
+  await page.getByTestId('opening-screen-picker').click();
+  await page.getByRole('option', { name: 'Mission Control', exact: true }).click();
+  await expect(page).toHaveURL(/\/settings$/);
+  await expect.poll(() => page.evaluate(() => JSON.parse(localStorage.getItem('opencode-mobile.chat-preferences')).openingScreen)).toBe('mission');
+  await page.goto('/');
+  await expect(page.getByTestId('mission-control')).toBeVisible();
+  await page.goto('/settings');
+  await expect(page.getByTestId('settings-category-appearance')).toBeVisible();
+  await page.getByTestId('settings-search').fill('opening screen');
+  await page.getByRole('button', { name: 'Opening screen. Appearance', exact: true }).click();
+  await page.getByTestId('opening-screen-picker').click();
+  await page.getByRole('option', { name: 'Chat', exact: true }).click();
+  await expect.poll(() => page.evaluate(() => JSON.parse(localStorage.getItem('opencode-mobile.chat-preferences')).openingScreen)).toBe('chat');
+  await page.goto('/');
+  await expect(page.getByPlaceholder('Ask anything...')).toBeVisible();
 });
 
 test('search follows the interface language and opens the matching category', async ({ page, request }) => {

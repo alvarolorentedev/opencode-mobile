@@ -88,12 +88,23 @@ for (const protocol of ['v1', 'v2']) {
       const snapshot = page.waitForResponse((response) => response.url().startsWith(`${origin}${sessionsPath}?`) && response.request().method() === 'GET');
       await request.post(control, { data: { suppress: true, disconnect: true } });
       await snapshot;
-      await openChatLibrary(page);
-      await page.getByText('Missed question', { exact: true }).first().click();
+      if (protocol === 'v2') {
+        const mission = page.getByTestId('mission-tab');
+        await expect(mission).toHaveAccessibleName('Mission. Conversations needing attention: 1');
+        await mission.click();
+        await page.getByRole('button', { name: /^Missed question, Needs attention/ }).click();
+      } else {
+        await openChatLibrary(page);
+        await page.getByText('Missed question', { exact: true }).first().click();
+      }
       await expect(page.getByText('Which implementation should be used?', { exact: true })).toBeVisible({ timeout: 15_000 });
       await page.getByText('Minimal', { exact: true }).click();
       await page.getByText('Submit answer', { exact: true }).click();
       await expect(page.getByText(/question resolved|selected Minimal/).first()).toBeVisible({ timeout: 20_000 });
+      if (protocol === 'v2') {
+        await page.getByTestId('mission-tab').click();
+        await expect(page.getByRole('button', { name: '1 Completed' })).toBeVisible();
+      }
     } finally {
       server.kill('SIGTERM');
     }

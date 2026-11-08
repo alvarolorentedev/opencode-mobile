@@ -51,6 +51,12 @@ test('offline prompt is queued and delivered once after connectivity returns', a
 
     await page.context().setOffline(false);
     await expect(page.getByText(/Finished: Queued while offline/).first()).toBeVisible({ timeout: 45_000 });
+    await page.getByTestId('mission-tab').click();
+    await expect(page.getByRole('button', { name: '1 Completed' })).toBeVisible();
+    await page.context().setOffline(true);
+    await expect(page.getByText(/is offline/).first()).toBeVisible();
+    await expect(page.getByRole('button', { name: '0 Completed' })).toBeVisible();
+    await page.context().setOffline(false);
 
     const state = await (await request.get(`${origin}/__control/state`)).json();
     const prompts = Object.values(state.messagesBySession).flat()

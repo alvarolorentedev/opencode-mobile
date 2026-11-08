@@ -25,6 +25,7 @@ export const LAST_SESSION_BY_PROJECT_STORAGE_KEY = 'opencode-mobile.last-session
 // confirmed provider changes and the handler renders from it. See
 // features/widgets/model/widget-snapshot.ts.
 export const WIDGET_SNAPSHOT_STORAGE_KEY = 'opencode-mobile.widget-snapshot';
+export const MISSION_WIDGET_STORAGE_KEY = 'opencode-mobile.mission-widget';
 // Per-day network usage diagnostic (requests + bytes). See
 // shared/network/data-usage.ts.
 export const DATA_USAGE_STORAGE_KEY = 'opencode-mobile.data-usage';

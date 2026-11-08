@@ -11,6 +11,7 @@ import { useColorScheme } from '@/shared/ui/theme/use-color-scheme';
 import type { ChatPreferences } from '@/shared/preferences/opencode-preferences';
 import { SettingTarget } from '@/shared/ui/settings/settings-panel';
 import { SettingSelectField, type Palette } from '@/shared/ui/settings/setting-rows';
+import { OpeningScreenField } from '@/features/sessions/index';
 
 const ACCENT_LABEL_KEYS: Record<AccentColor, string> = {
   green: 'settings:appearance.accent.green',
@@ -52,6 +53,9 @@ export function AppearanceSection({
         valueLabel={themeOptions.find((option) => option.value === themeMode)?.label ?? themeOptions[0].label}
       />
       <FieldDescription  invalid={false}>{t('settings:appearance.theme.description')}</FieldDescription>
+
+      <OpeningScreenField value={chatPreferences.openingScreen}
+        onChange={(openingScreen) => updateChatPreferences({ openingScreen })} />
 
       <SettingTarget label={t('settings:appearance.accent.label')}>
       <Text className={cn(stylesClasses.accentTitle, "text-foreground")} variant="description">{t('settings:appearance.accent.label')}</Text>

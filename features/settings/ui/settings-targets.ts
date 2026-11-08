@@ -12,7 +12,8 @@ export function settingsTargets(t: TFunction, section: string, options: {
     label: t(`settings:${key}`), group, path: group?.startsWith('extensions-') ? t(`settings:extensions.tabs.${group.split('-')[1]}`) : undefined, description: description ? t(`settings:${description}`) : undefined,
   });
   switch (section) {
-    case 'appearance': return [field('appearance.theme.label', undefined, 'appearance.theme.description'), field('appearance.accent.label', undefined, 'appearance.accent.description'), field('appearance.slimInterface.title', undefined, 'appearance.slimInterface.description')];
+    case 'appearance': return [field('appearance.theme.label', undefined, 'appearance.theme.description'), field('general.openingScreen'),
+      field('appearance.accent.label', undefined, 'appearance.accent.description'), field('appearance.slimInterface.title', undefined, 'appearance.slimInterface.description')];
     case 'responses': return [
       field('appearance.timelineDetail.label', undefined, 'appearance.timelineDetail.description'),
       field('appearance.chatTextSize', undefined, 'appearance.chatTextSizeDescription'),

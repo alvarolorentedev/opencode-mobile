@@ -1,10 +1,10 @@
 import { cn } from '@/shared/ui/cn';
 import Constants from 'expo-constants';
-import { DarkTheme, DefaultTheme, LocaleProvider, Stack, ThemeProvider, usePathname } from 'expo-router';
+import { DarkTheme, DefaultTheme, LocaleProvider, Stack, ThemeProvider, usePathname, useRootNavigationState, useRouter } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
 import * as SystemUI from 'expo-system-ui';
-import { useEffect, useLayoutEffect, useMemo } from 'react';
+import { useEffect, useLayoutEffect, useMemo, useRef } from 'react';
 import { ActivityIndicator, Platform, View } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { useTranslation } from 'react-i18next';
@@ -25,6 +25,7 @@ import { installObservabilityLifecycle } from '@/shared/observability/lifecycle'
 import '@/shared/i18n/index';
 import { getLanguageDirection } from '@/shared/i18n/languages';
 import { isConnectEnabled } from '@/shared/contracts/cloud-link';
+import { MISSION_PATH } from '@/shared/contracts/mission-control';
 import { AppearanceProvider } from '@/shared/ui/theme/appearance-context';
 import { useOnboarding } from '@/features/onboarding/context';
 import { usePreferences } from '@/shared/preferences/context';
@@ -168,7 +169,7 @@ function UpdateHost() {
   const pathname = usePathname();
   const updates = useUpdates();
   const { setSurfaceActive } = updates;
-  const eligible = ['/', '/projects', '/settings', '/terminal'].includes(pathname);
+  const eligible = ['/', '/projects', '/settings', '/terminal', MISSION_PATH].includes(pathname);
   useLayoutEffect(() => {
     setSurfaceActive(eligible);
     return () => setSurfaceActive(false);
@@ -182,17 +183,28 @@ function UpdateHost() {
 function RootNavigator() {
   const palette = usePalette();
   const { isHydrated, onboardingCompleted, onboardingActive } = useOnboarding();
+  const { chatPreferences: { openingScreen } } = usePreferences();
+  const pathname = usePathname();
+  const router = useRouter();
+  const rootKey = useRootNavigationState()?.key;
+  const startup = useRef<'pending' | 'routing' | 'ready'>('pending');
   useNotificationRoute();
   useQuickActionRoute(isHydrated);
 
   useEffect(() => {
-    if (isHydrated) {
-      observability.markStartup('workspace-ready');
-      void SplashScreen.hideAsync()
-        .then(() => observability.markStartup('interactive'))
-        .catch(() => undefined);
+    if (!isHydrated || !rootKey || startup.current === 'ready') return;
+    if (startup.current === 'pending' && onboardingCompleted && !onboardingActive && pathname === '/' && openingScreen === 'mission') {
+      startup.current = 'routing';
+      router.replace(MISSION_PATH);
+      return;
     }
-  }, [isHydrated]);
+    if (startup.current === 'routing' && pathname === '/') return;
+    startup.current = 'ready';
+    observability.markStartup('workspace-ready');
+    void SplashScreen.hideAsync()
+      .then(() => observability.markStartup('interactive'))
+      .catch(() => undefined);
+  }, [isHydrated, onboardingCompleted, onboardingActive, openingScreen, pathname, rootKey, router]);
 
   if (!isHydrated) {
     return (

@@ -6,7 +6,14 @@ type Listener = { queue: OpencodeEvent[]; wake: () => void; heartbeat: () => voi
 // A server has one transport even when several retained projects consume events.
 export function createSharedEventStream(source = subscribeEvents) {
   const observers = new Set<(event: OpencodeEvent) => void>();
+  const healthObservers = new Set<(healthy: boolean) => void>();
   let stream: { controller: AbortController; listeners: Set<Listener>; last?: OpencodeEvent } | undefined;
+  const notifyHealth = (healthy: boolean) => { for (const observer of healthObservers) observer(healthy); };
+  const release = (owned: NonNullable<typeof stream>) => {
+    if (stream !== owned) return;
+    stream = undefined;
+    if (owned.last) notifyHealth(false);
+  };
   const subscribe = async function* (client: ScopedOpencodeClient, signal: AbortSignal, heartbeat: () => void = () => {}) {
     if (signal.aborted) return;
     const owned = stream ?? { controller: new AbortController(), listeners: new Set<Listener>() };
@@ -28,7 +35,9 @@ export function createSharedEventStream(source = subscribeEvents) {
           })) {
             if (!event) continue;
             activityAt = Date.now();
+            const first = !owned.last;
             owned.last = event;
+            if (first && stream === owned) notifyHealth(true);
             for (const observer of observers) observer(event);
             for (const item of owned.listeners) {
               if (item.queue.length >= 256) { item.error = new Error('Event consumer fell behind. Reconnecting.'); item.ended = true; }
@@ -40,7 +49,7 @@ export function createSharedEventStream(source = subscribeEvents) {
         finally {
           clearInterval(watchdog);
           for (const item of owned.listeners) { item.ended = true; item.wake(); }
-          if (stream === owned) stream = undefined;
+          release(owned);
         }
       })();
     }
@@ -55,10 +64,16 @@ export function createSharedEventStream(source = subscribeEvents) {
     } finally {
       signal.removeEventListener('abort', stop);
       owned.listeners.delete(listener);
-      if (!owned.listeners.size) { owned.controller.abort(); if (stream === owned) stream = undefined; }
+      if (!owned.listeners.size) { owned.controller.abort(); release(owned); }
     }
   };
-  return Object.assign(subscribe, { observe(listener: (event: OpencodeEvent) => void) {
-    observers.add(listener); return () => { observers.delete(listener); };
-  } });
+  return Object.assign(subscribe, {
+    isHealthy: () => Boolean(stream?.last),
+    observe(listener: (event: OpencodeEvent) => void) {
+      observers.add(listener); return () => { observers.delete(listener); };
+    },
+    observeHealth(listener: (healthy: boolean) => void) {
+      healthObservers.add(listener); return () => { healthObservers.delete(listener); };
+    },
+  });
 }

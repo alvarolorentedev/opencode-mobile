@@ -44,7 +44,7 @@
       "results": "Gefundene Einstellungen: {{count}}"
     },
     "keywords": {
-      "appearance": "Anzeige Design Thema Farbe dunkel hell kompakt Dichte",
+      "appearance": "Anzeige Design Thema Farbe dunkel hell kompakt Dichte Start Öffnen erster Bildschirm Chat Missionskontrolle",
       "responses": "Chat Nachrichten Text Schrift Größe Antworten Stil steuern anhängen Warteschlange Sprechblasen Zeitleiste Aktivität Denkprozess Werkzeuge Bearbeitungen Detail",
       "voice": "Sprache Audio Stimme Ton Mikrofon Eingabe Wiedergabe Weckphrase confirm",
       "notifications": "Benachrichtigungen Hinweise Akku Widgets",
@@ -775,6 +775,7 @@
     "title": "Editor"
   },
   "general": {
+    "openingScreen": "Startbildschirm",
     "title": "Allgemein",
     "resetOnboarding": "Einrichtung überprüfen"
   },

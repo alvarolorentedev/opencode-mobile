@@ -72,6 +72,8 @@ test('fresh install walks through onboarding into a working chat @smoke', async 
 
   await expect(page.getByTestId('onboarding-general')).toBeVisible();
   await expect(page.getByText('Step 6 of 9', { exact: true })).toBeVisible();
+  await page.getByTestId('opening-screen-picker').click();
+  await page.getByRole('option', { name: 'Mission Control', exact: true }).click();
   await page.getByTestId('onboarding-general-continue').click();
   await expect(page.getByTestId('onboarding-voice')).toBeVisible();
   await page.getByTestId('onboarding-voice-continue').click();
@@ -99,13 +101,16 @@ test('fresh install walks through onboarding into a working chat @smoke', async 
   await expect(page.getByTestId('onboarding-privacy')).toBeVisible();
   await page.getByTestId('onboarding-privacy-continue').click();
   await expect(page.getByTestId('onboarding-ready')).toBeVisible();
+  await expect(page.getByTestId('onboarding-summary-opening-screen')).toContainText('Mission Control');
   await page.getByTestId('onboarding-ready-start').click();
 
-  await waitForChat(page);
+  await expect(page.getByTestId('mission-control')).toBeVisible();
   await expect.poll(async () => JSON.parse(await page.evaluate(() => localStorage.getItem('opencode-mobile.chat-preferences'))).diagnosticsEnabled).toBe(false);
 
   // Relaunch must go straight to the app.
-  await page.reload({ waitUntil: 'domcontentloaded' });
+  await page.goto('/', { waitUntil: 'domcontentloaded' });
+  await expect(page.getByTestId('mission-control')).toBeVisible();
+  await page.getByRole('tab', { name: /Chat$/ }).click();
   await waitForChat(page);
   await expect(page.getByTestId('onboarding-welcome')).toHaveCount(0);
 });

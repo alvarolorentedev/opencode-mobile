@@ -44,7 +44,7 @@
       "results": "匹配的设置：{{count}}"
     },
     "keywords": {
-      "appearance": "显示 主题 颜色 深色 浅色 紧凑 密度",
+      "appearance": "显示 主题 颜色 深色 浅色 紧凑 密度 启动 打开 首个页面 对话 任务控制台",
       "responses": "聊天 消息 文字 字体 大小 回复 风格 引导 追加 队列 气泡 时间线 活动 推理 工具 编辑 详情",
       "voice": "语音 音频 声音 麦克风 输入 播放 语言 唤醒词 confirm",
       "notifications": "通知 提醒 电池 小组件",
@@ -775,6 +775,7 @@
     "title": "编辑器"
   },
   "general": {
+    "openingScreen": "启动时打开的页面",
     "title": "常规",
     "resetOnboarding": "检查设置"
   },

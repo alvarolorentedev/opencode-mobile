@@ -9,6 +9,7 @@ import type { Session, SessionStatus } from '@/shared/protocol/opencode/types';
 import type { ChatPreferences } from '@/shared/preferences/opencode-preferences';
 
 import type { createSharedEventStream } from '@/shared/network/shared-event-stream';
+import type { MissionConnectionActivity } from '@/shared/contracts/mission-control';
 
 export type WorkspaceTarget = { connectionId: string; projectPath: string };
 
@@ -37,6 +38,7 @@ export type ConnectionRecord = {
 export type WorkspaceCatalog = {
   sessions: Session[];
   statuses: Record<string, SessionStatus>;
-  refresh: () => Promise<void>;
+  refresh: (signal?: AbortSignal) => Promise<void>;
   removeSession: (sessionId: string) => void;
+  mission?: MissionConnectionActivity;
 };

@@ -1,5 +1,8 @@
 export type { ApprovalsContextValue } from './model/types';
 export { ChatLibrary } from './ui/chat-library';
+export { MissionControlScreen } from './ui/mission-control-screen';
+export { OpeningScreenField } from './ui/opening-screen-field';
+export { missionBadge } from './model/mission-control';
 export type { CurrentSessionContextValue } from './model/types';
 export { NewChatSheet } from './ui/new-chat-sheet';
 export { PendingInteractionsCard } from './ui/approvals/pending-interactions-card';

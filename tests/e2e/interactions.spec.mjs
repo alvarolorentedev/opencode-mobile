@@ -52,11 +52,14 @@ test('assistant questions unblock the agent flow @smoke', async ({ page, request
   await sendPrompt(page, 'Ask an implementation question');
 
   await expect(page.getByText('Which implementation should be used?', { exact: true })).toBeVisible({ timeout: 15_000 });
+  const mission = page.getByTestId('mission-tab');
+  await expect(mission).toHaveAttribute('aria-label', 'Mission. Conversations needing attention: 1');
   await expect(page.getByText('Make the smallest safe change.', { exact: true })).toBeVisible();
   await expect(page.getByText('Include broader improvements.', { exact: true })).toBeVisible();
   await page.getByText('Minimal', { exact: true }).click();
   await page.getByText('Submit answer', { exact: true }).click();
   await expect(page.getByText(/"approach":"minimal"/).first()).toBeVisible({ timeout: 20_000 });
+  await expect(mission).toHaveAccessibleName('Mission');
 });
 
 test('multi-step questions keep drafts across dismissal and submit conditional custom answers', async ({ page, request }) => {

@@ -185,9 +185,10 @@ payload and route through `features/sessions/ui/session-link-screen.tsx`.
 
 ### Android Home Widgets
 
-`react-native-android-widget` (MIT, pure Android) provides three resizable 4×3
+`react-native-android-widget` (MIT, pure Android) provides four resizable 4×3
 widgets: Latest replies (`SessionWidget`, retaining existing placements), Awaiting
-actions (`AttentionWidget`) and current-chat Plan progress (`PlanWidget`). There
+actions (`AttentionWidget`), current-chat Plan progress (`PlanWidget`), and
+Mission Control (`MissionControlWidget`). There
 is no automatic update period. Provider-owned service reads and the existing SSE
 plus polling runtime update bounded snapshots; notification permission is not
 required. Headless add/resize/reboot handlers only read and render stored data.
@@ -521,7 +522,7 @@ Android has the richest current support for:
 - notification settings deep links
 - battery optimization guidance
 - development and release build pipelines
-- launcher quick actions and the three Android home widgets
+- launcher quick actions and the four Android home widgets
 
 ### iOS
 

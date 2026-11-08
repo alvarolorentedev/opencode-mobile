@@ -47,3 +47,4 @@ checking whether a platform-specific gap is intentional.
 - [Design system](../design/design-system.md) for presentation and accessibility
 - [Testing and validation](../engineering/testing-and-validation.md) for flow coverage
 - [API contract](../architecture/api-contract.md) for server capabilities
+- [Mission Control](functional-spec.md#mission-control) covers the dashboard, tab badge, and widget.

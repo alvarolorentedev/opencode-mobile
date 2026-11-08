@@ -4,6 +4,7 @@ import { createSessionAdapter, LATEST_MESSAGE_LIMIT, type PromptInput, type Reso
 import type { SessionMessageRecord } from '@/shared/presentation/format';
 import { coalesceRead } from '@/shared/protocol/opencode/in-flight';
 import type { Project, Session, SessionStatus } from '@/shared/protocol/opencode/types';
+import { toSessionView } from '@/shared/protocol/opencode/v2-mappers';
 
 export { LATEST_MESSAGE_LIMIT, MAX_MESSAGE_PAGE_LIMIT, TRANSCRIPT_PAGE_LIMIT } from '@/shared/protocol/opencode/contracts/session-adapter';
 export type { ResolvedProjectLocation, SessionMessagePage } from '@/shared/protocol/opencode/contracts/session-adapter';
@@ -35,6 +36,21 @@ export function listSessions(client: ScopedOpencodeClient) {
   return createSessionAdapter(client).list();
 }
 export const listActiveSessions = listSessions;
+
+export async function listV2RunningSessionIds(client: ScopedOpencodeClient) {
+  const active = await client.api!.session.active();
+  if (!active || typeof active !== 'object' || Array.isArray(active)) throw new Error('Active sessions are unavailable.');
+  return Object.keys(active).filter((id) => active[id]?.type === 'running');
+}
+
+export async function getV2SessionSummary(client: ScopedOpencodeClient, sessionID: string, signal?: AbortSignal) {
+  return toSessionView(await client.api!.session.get({ sessionID }, { signal }));
+}
+
+export async function findSessionForNavigation(client: ScopedOpencodeClient, sessionID: string, signal: AbortSignal) {
+  if (client.api) return getV2SessionSummary(client, sessionID, signal);
+  return (await listSessions(client)).sessions.find((session) => session.id === sessionID);
+}
 
 export type SessionSettlementState = 'running' | 'retrying' | 'blocked' | 'failed' | 'aborted' | 'finished' | 'unknown';
 export type SessionSettlement = { state: SessionSettlementState; message?: string };

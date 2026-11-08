@@ -266,6 +266,8 @@ Responsibility:
 
 `features/settings/ui/sections/appearance-section.tsx`, rendered inside
 the Appearance category above the slim-interface switch.
+Its Opening screen field is shared with onboarding and applies when launching
+at the app root.
 
 Responsibility:
 

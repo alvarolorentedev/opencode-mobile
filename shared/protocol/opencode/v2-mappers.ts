@@ -28,6 +28,7 @@ export function toSessionView(session: SessionInfo): Session {
     revert: session.revert,
     share: undefined,
     model: session.model,
+    ...(session.outcome ? { outcome: session.outcome } : {}),
     tokens: session.tokens,
     cost: session.cost,
     agent: session.agent,

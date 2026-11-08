@@ -9,6 +9,10 @@ import { IconSymbol } from '@/shared/ui/icon-symbol';
 import { UpdateBanner } from '@/features/updates/index';
 import { usePalette } from '@/shared/ui/theme/use-palette';
 import { useUpdates } from '@/features/updates/context';
+import { missionBadge } from '@/features/sessions/index';
+import { MISSION_PATH } from '@/shared/contracts/mission-control';
+import { Icon } from '@/shared/ui/icon';
+import { useWorkspaces } from '@/runtime/workspace';
 
 export default function TabLayout() {
   const { t } = useTranslation();
@@ -16,6 +20,7 @@ export default function TabLayout() {
   const insets = useSafeAreaInsets();
   const updates = useUpdates();
   const palette = usePalette();
+  const count = useWorkspaces().mission.counts.attention;
   const selected = (route: string) => route === '/' ? pathname === '/' || pathname.startsWith('/session/') : pathname.startsWith(route);
   const iconColor = (route: string, color: ColorValue) => Platform.OS === 'web' || typeof color !== 'string' ? selected(route) ? palette.tint : palette.tabIconDefault : color;
   const label = (route: string, value: string) => function TabLabel({ color }: { color: ColorValue }) {
@@ -52,6 +57,19 @@ export default function TabLayout() {
           tabBarLabel: label('/', t('common:tabs.chat')),
           tabBarIcon: ({ color }) => <IconSymbol size={28} name="message.fill" color={iconColor('/', color)} />,
           tabBarButton: (props) => <HapticTab {...props} route="/" />,
+        }}
+      />
+      <Tabs.Screen
+        name="mission-control"
+        options={{
+          title: t('chat:mission.title'),
+          tabBarLabel: label(MISSION_PATH, t('chat:mission.tab')),
+          tabBarAccessibilityLabel: count ? t('chat:mission.badge', { count }) : t('chat:mission.tab'),
+          tabBarButtonTestID: 'mission-tab',
+          tabBarBadge: missionBadge(count),
+          tabBarBadgeStyle: { backgroundColor: palette.warning, color: palette.background },
+          tabBarIcon: ({ color }) => <Icon size={28} name="radar" color={iconColor(MISSION_PATH, color)} />,
+          tabBarButton: (props) => <HapticTab {...props} route={MISSION_PATH} />,
         }}
       />
       <Tabs.Screen

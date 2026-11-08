@@ -11,6 +11,8 @@ import { hideWidgetPreviews, parseWidgetSnapshot } from '@/features/widgets/mode
 import { deriveTodosFromMessages, formatTimestamp } from '@/shared/presentation/format';
 import { i18n } from '@/shared/i18n/index';
 import * as storageKeys from '@/shared/storage/keys';
+import * as missionContract from '@/shared/contracts/mission-control';
+import { parseMissionWidgetSnapshot } from '@/features/widgets/model/mission-widget-snapshot';
 import { mergeSessionStatuses } from '@/features/sessions/model/session-utils';
 import { defaultChatPreferences } from '@/shared/preferences/opencode-preferences';
 import { parseChatPreferences } from '@/shared/storage/persisted-preferences';
@@ -270,6 +272,7 @@ describe('compiled native widgets', () => {
   function renderer(dev = false) {
     return loadModule('features/widgets/ui/session-widget.tsx', {
     'react-native-android-widget': primitives,
+    "@/shared/contracts/mission-control": missionContract,
     "@/shared/i18n/index": { i18n },
     "@/shared/presentation/format": { formatTimestamp }
   }, dev);
@@ -345,6 +348,7 @@ describe('compiled native widgets', () => {
     const snapshotStorage = loadModule('features/widgets/services/widget-snapshot-storage.ts', {
     '@react-native-async-storage/async-storage': storage,
     '@/shared/storage/keys': storageKeys,
+    "@/features/widgets/model/mission-widget-snapshot": { parseMissionWidgetSnapshot },
     "@/features/widgets/model/widget-snapshot": { hideWidgetPreviews, parseWidgetSnapshot }
   }, dev);
     loadModule('features/widgets/background.tsx', {
@@ -421,6 +425,23 @@ describe('compiled native widgets', () => {
     for (const args of [['web'], ['android', 'expo'], ['android', 'standalone', true]] as any[]) await runtime.bridge(...args).updateHomeWidget(snapshot());
     expect(runtime.native.getWidgetInfo).not.toHaveBeenCalled();
     expect(runtime.native.drawWidgetById).not.toHaveBeenCalled();
+  });
+
+  it('renders dated Mission counts and the two safe destinations in a headless resize', async () => {
+    const runtime = nativeRuntime();
+    runtime.storage.getItem.mockResolvedValue(JSON.stringify({
+      counts: { attention: 2, running: 3, failed: 1, completed: 4 }, language: 'en',
+      checkedAt: now, checkedServers: 2, totalServers: 3, stale: true,
+    }));
+    await runtime.task()({ widgetName: 'MissionControlWidget', widgetId: 42, width: 180, height: 140, widgetAction: 'WIDGET_RESIZED' });
+    expect(runtime.storage.getItem).toHaveBeenCalledExactlyOnceWith(storageKeys.MISSION_WIDGET_STORAGE_KEY);
+    const { light, dark } = runtime.native.drawWidgetById.mock.calls[0][0];
+    for (const tree of [light, dark]) {
+      expect(text(tree)).toEqual(expect.arrayContaining(['Mission Control', 'Needs attention', '2', '2 of 3 servers checked']));
+      expect(text(tree).join(' ')).toContain('Last known');
+      expect(JSON.stringify(tree)).toContain('opencodemobile://mission-control?filter=all');
+      expect(JSON.stringify(tree)).toContain('opencodemobile://mission-control?filter=attention');
+    }
   });
 });
 

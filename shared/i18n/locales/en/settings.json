@@ -44,7 +44,7 @@
       "results": "Matching settings: {{count}}"
     },
     "keywords": {
-      "appearance": "display theme color colour dark light compact density",
+      "appearance": "display theme color colour dark light compact density startup launch opening screen first screen chat mission control",
       "responses": "chat messages text font size replies response style steer append queue bubbles timeline activity reasoning tools edits detail",
       "voice": "voice audio speech sound microphone input playback language wake phrase confirm",
       "notifications": "notifications alerts battery widgets",
@@ -775,6 +775,7 @@
     "title": "Editor"
   },
   "general": {
+    "openingScreen": "Opening screen",
     "title": "General",
     "resetOnboarding": "Review setup"
   },

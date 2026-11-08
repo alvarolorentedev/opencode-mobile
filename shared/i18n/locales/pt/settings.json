@@ -44,7 +44,7 @@
       "results": "Configurações encontradas: {{count}}"
     },
     "keywords": {
-      "appearance": "tela tema cor escuro claro compacto densidade",
+      "appearance": "tela tema cor escuro claro compacto densidade início abrir primeira tela conversa controle de missões",
       "responses": "chat mensagens texto fonte tamanho respostas estilo direcionar adicionar fila balões linha do tempo atividade raciocínio ferramentas edições detalhe",
       "voice": "voz áudio fala som microfone entrada reprodução idioma frase ativação confirm",
       "notifications": "notificações alertas bateria widgets",
@@ -775,6 +775,7 @@
     "title": "Editor"
   },
   "general": {
+    "openingScreen": "Tela inicial",
     "title": "Geral",
     "resetOnboarding": "Revisar configuração"
   },

@@ -223,6 +223,12 @@ const config: ExpoConfig = {
             minWidth: '180dp', minHeight: '140dp', targetCellWidth: 4, targetCellHeight: 3,
             resizeMode: 'horizontal|vertical',
           },
+          {
+            name: 'MissionControlWidget', label: 'OpenCode Mission Control',
+            description: 'Last checked activity across OpenCode servers.',
+            minWidth: '180dp', minHeight: '140dp', targetCellWidth: 4, targetCellHeight: 3,
+            resizeMode: 'horizontal|vertical',
+          },
         ],
       },
     ],

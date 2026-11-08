@@ -44,7 +44,7 @@
       "results": "Ajustes encontrados: {{count}}"
     },
     "keywords": {
-      "appearance": "pantalla tema color oscuro claro compacto densidad",
+      "appearance": "pantalla tema color oscuro claro compacto densidad inicio abrir primera pantalla chat control de misiones",
       "responses": "chat mensajes texto fuente tamaño respuestas estilo dirigir añadir cola burbujas cronología actividad razonamiento herramientas ediciones detalle",
       "voice": "voz audio habla sonido micrófono entrada reproducción idioma frase activación confirm",
       "notifications": "notificaciones alertas batería widgets",
@@ -775,6 +775,7 @@
     "title": "Editor"
   },
   "general": {
+    "openingScreen": "Pantalla de inicio",
     "title": "General",
     "resetOnboarding": "Revisar configuración"
   },
