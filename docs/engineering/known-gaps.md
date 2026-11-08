@@ -355,9 +355,11 @@ How it is applied:
   the fields in the expected order and that the patch entry still carries them.
 - The package's `postinstall` downloads the 210 MB prebuilt archive from the
   upstream GitHub release. `ci.yml` is web-only, so it sets
-  `SITEED_SHERPA_ONNX_ALLOW_MISSING_PREBUILTS=1` and skips that download; the
-  asset has intermittently returned HTTP 504, which failed `npm ci`. Local
-  native builds and the tag release workflow still require the real prebuilts.
+  `SITEED_SHERPA_ONNX_ALLOW_MISSING_PREBUILTS=1` and
+  `RNLLAMA_SKIP_POSTINSTALL=1` to skip the sherpa-onnx and llama.rn downloads;
+  both upstream release assets have intermittently returned HTTP 504, which
+  failed `npm ci`. Local native builds and the tag release workflow still
+  require the real prebuilts.
 
 Exit plan:
 

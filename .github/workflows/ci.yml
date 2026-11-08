@@ -30,10 +30,12 @@ permissions:
   contents: read
 
 env:
-  # This workflow only builds web output, so skip the 210 MB native sherpa
-  # prebuild download; its upstream GitHub release asset has intermittently
-  # returned HTTP 504 and broke `npm ci`. Native release builds still require it.
+  # This workflow only builds web output, so skip the native prebuilt downloads
+  # for sherpa-onnx and llama.rn. Their upstream GitHub release assets have
+  # intermittently returned HTTP 504 and broke `npm ci`; native release builds
+  # still require them.
   SITEED_SHERPA_ONNX_ALLOW_MISSING_PREBUILTS: '1'
+  RNLLAMA_SKIP_POSTINSTALL: '1'
 
 jobs:
   static:
