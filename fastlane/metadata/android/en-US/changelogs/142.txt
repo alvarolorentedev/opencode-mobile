@@ -1,0 +1,4 @@
+- Cloud links now wait for the server to be ready before pairing finishes.
+- Mid-connection credential renewal and reconnection are more reliable.
+- Purchases keep their catalog when it refreshes right after checkout.
+- The composer shows a spinner instead of the stop icon while a reply stops.
