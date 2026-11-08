@@ -353,6 +353,11 @@ How it is applied:
   enough. Rebuild Android/iOS after changing the patch.
 - `shared/platform/voice/__tests__/tts-native-abi.test.ts` asserts the installed Kotlin declares
   the fields in the expected order and that the patch entry still carries them.
+- The package's `postinstall` downloads the 210 MB prebuilt archive from the
+  upstream GitHub release. `ci.yml` is web-only, so it sets
+  `SITEED_SHERPA_ONNX_ALLOW_MISSING_PREBUILTS=1` and skips that download; the
+  asset has intermittently returned HTTP 504, which failed `npm ci`. Local
+  native builds and the tag release workflow still require the real prebuilts.
 
 Exit plan:
 
