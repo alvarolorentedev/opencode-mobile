@@ -73,4 +73,14 @@ describe('plugin GUI state', () => {
     expect(plugins).toHaveBeenCalled();
     driver.unmount();
   });
+
+  it('keeps the selected plugin in the workspace runtime', async () => {
+    const { driver } = await load(() => true);
+    await driver.settle();
+    expect(driver.value.extensions.pluginGui.selectedPluginId).toBeUndefined();
+    driver.value.extensions.pluginGui.selectPlugin('flowgraph');
+    await driver.settle();
+    expect(driver.value.extensions.pluginGui.selectedPluginId).toBe('flowgraph');
+    driver.unmount();
+  });
 });

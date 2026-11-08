@@ -52,6 +52,9 @@ export function useExtensionsState({
   })), [plugins?.data]);
   const [busy, setBusy] = useState<string>();
   const [error, setError] = useState<string>();
+  // The chosen GUI plugin is presentation memory for this workspace runtime. It
+  // survives chat navigation but resets when the app relaunches.
+  const [selectedPluginId, setSelectedPluginId] = useState<string>();
   const busyRef = useRef<string | undefined>(undefined);
   const refresh = useCallback(async () => {
     if (client.__opencode.contract !== 'v2' || !isCurrentClient(client) || !active) return;
@@ -104,6 +107,8 @@ export function useExtensionsState({
       run('remove-plugin', (current) => removePlugin(client, current, scope, target)),
     pluginGui: {
       plugins: guiPlugins,
+      selectedPluginId,
+      selectPlugin: setSelectedPluginId,
       load: async () => {
         if (client.__opencode.contract !== 'v2') return;
         // Subscribe even before the workspace is active: the launcher mounts
@@ -155,7 +160,7 @@ export function useExtensionsState({
       run('remove-skill', (current) => removeSkill(client, current, scope, row)),
     restoreBackup: (scope: ExtensionScope) =>
       run('restore-backup', (current) => restoreConfig(client, current, scope)),
-  }), [busy, client, error, guiPlugins, inspection?.isFetching, inspection?.error, configuration?.isFetching, configuration?.error, skills?.isFetching, plugins?.isFetching, active, cache, identity, isCurrentClient, refresh, run, settings, snapshot]);
+  }), [busy, client, error, guiPlugins, selectedPluginId, inspection?.isFetching, inspection?.error, configuration?.isFetching, configuration?.error, skills?.isFetching, plugins?.isFetching, active, cache, identity, isCurrentClient, refresh, run, settings, snapshot]);
 
   return { extensions };
 }

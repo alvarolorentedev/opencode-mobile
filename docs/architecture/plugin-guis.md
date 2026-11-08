@@ -79,12 +79,18 @@ Known limits of this first profile:
 - A puzzle button appears in the chat header, between New chat and Usage,
   whenever the connection has at least one active plugin advertising a GUI
   (`features.gui`). It is not gated on the selected session, so it shows on
-  every chat — including a brand-new empty one — on that connection. One plugin
-  opens directly; several show the picker. The button is absent while the list
-  is loading or empty. The list stays observed for the active workspace and is
-  refetched on plugin/config/command updates, so a location that is still
-  booting cannot leave an empty list cached and hide the button.
-- The selected plugin renders in a large bottom overlay (about 72% of the
+  every chat — including a brand-new empty one — on that connection. Pressing it
+  opens the active plugin GUI directly; there is no separate chooser sheet. The
+  button is absent while the list is loading or empty. The list stays observed
+  for the active workspace and is refetched on plugin/config/command updates, so
+  a location that is still booting cannot leave an empty list cached and hide
+  the button.
+- When several plugins contribute GUIs, a dropdown at the top of the overlay
+  selects the active plugin. The selection is remembered in the workspace
+  runtime for the app session, so navigating between chats keeps it; it resets
+  on relaunch. If the remembered plugin is unavailable, the first plugin in the
+  server list is used. With no earlier choice, the first plugin is the default.
+- The active plugin renders in a large bottom overlay (about 72% of the
   window) with the host header and WebView. The overlay closes with Back, Close
   or the host's close action.
 - When a plugin contributes more than one panel, a dropdown at the top of the

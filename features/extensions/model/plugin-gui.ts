@@ -25,6 +25,8 @@ export type PluginGuiRpcRequest = {
 
 export type PluginGuiApi = {
   plugins: PluginGuiInfo[];
+  selectedPluginId?: string;
+  selectPlugin(id: string): void;
   load(): Promise<void>;
   read(id: string): Promise<PluginGuiBundle>;
   rpc(request: PluginGuiRpcRequest): Promise<unknown>;
@@ -108,6 +110,11 @@ export function pluginRpcAllowed(pluginId: string, rpcID: string, source?: strin
   const allowed = new Set([...words(pluginId), ...words(source ?? '')]);
   const rpc = words(rpcID);
   return rpc.length > 0 && rpc.every((word) => allowed.has(word));
+}
+
+/** The remembered GUI plugin when it is still available, otherwise the first one. */
+export function activePluginGui(plugins: PluginGuiInfo[], preferredId?: string): PluginGuiInfo | undefined {
+  return plugins.find((plugin) => plugin.id === preferredId) ?? plugins[0];
 }
 
 /** A plugin whose GUI can be attempted on this host. */
