@@ -8,12 +8,14 @@ import { normalizeServerUrl } from '@/shared/contracts/server-url';
 // can reject bad input before spending a round trip, but the stored response is
 // always authoritative.
 //
-// Management API revision 2 (connector 0.1.14+) gives every service a dedicated
-// `port` from the connector's pool and an optional `path`: no path means the
-// service owns the port root, a path shares the port with other path services.
-// Revision 1 and pre-version connectors only support path services on the
-// legacy `:8443` origin; those services carry an implicit port here so the rest
-// of the app can build links and render addresses uniformly.
+// Management API revision 3 adds an additive `components` object. Treat any
+// `api >= 2` as port-capable: every service has a dedicated `port` from the
+// connector's pool and an optional `path`: no path means the service owns the
+// port root, a path shares the port with other path services. Older clients may
+// ignore unknown fields such as `components`. Revision 1 and pre-version
+// connectors only support path services on the legacy `:8443` origin; those
+// services carry an implicit port here so the rest of the app can build links
+// and render addresses uniformly.
 
 export type ServiceAccess = 'private' | 'public';
 
@@ -29,8 +31,8 @@ export type ManagedService = {
 };
 
 // PUT body. `id` comes from the URL, so it is not part of the payload. `port`
-// is required by api 2 connectors and omitted only for legacy api 1 connectors,
-// which have no port concept.
+// is required by api >= 2 connectors and omitted only for legacy api 1
+// connectors, which have no port concept.
 export type ServiceInput = {
   name?: string;
   port?: number;
@@ -42,7 +44,7 @@ export type ServiceInput = {
 };
 
 // Editable form state. The path is a string in the UI; an empty path means the
-// service owns the port root (api 2 only). `port` stays undefined on api 1.
+// service owns the port root (api >= 2). `port` stays undefined on api 1.
 export type ServiceDraft = {
   id: string;
   name: string;
@@ -134,7 +136,7 @@ export function canonicalizeServicePath(input: string): { path: string } | { err
   return { path: canonical };
 }
 
-// Empty input means a root service (api 2 only): the service owns the whole
+// Empty input means a root service (api >= 2): the service owns the whole
 // port, which is what apps emitting absolute URLs need. Legacy connectors (api
 // 1) require an explicit path.
 export function canonicalizeOptionalServicePath(

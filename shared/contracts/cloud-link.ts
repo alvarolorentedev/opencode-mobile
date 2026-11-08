@@ -12,7 +12,18 @@ export type ConnectMetadata = {
 
 export type ConnectPairing = { controlPlaneUrl: string; pairingId: string; pairingToken: string; machineName: string };
 
-export type ConnectClaim = { server_url: string; machine_id: string; machine_name: string; device_id: string; device_secret: string; expires_at: string };
+export type ConnectActivationState = 'pending_approval' | 'tunnel_starting' | 'ready';
+
+// Optional activation readiness from the control plane. Older services omit it
+// entirely; a malformed value never invalidates the connection response.
+export type ConnectActivation = {
+  state: ConnectActivationState;
+  retry_after_ms?: number;
+  expires_at?: string;
+  ready_at?: string;
+};
+
+export type ConnectClaim = { server_url: string; machine_id: string; machine_name: string; device_id: string; device_secret: string; expires_at: string; activation?: ConnectActivation };
 
 export type ConnectMachine = { id: string; name: string; hostname: string; public_url: string; created_at: string; access_enabled: boolean };
 
@@ -131,6 +142,23 @@ export function hasConnectEntitlement(session: ConnectSession | undefined, now =
   return Boolean(hasConnectSession(session, now) && session?.entitlements.some(isConnectEntitlement) && Date.parse(session.subscription_expires_at) > now);
 }
 
+export function parseConnectActivation(value: unknown): ConnectActivation | undefined {
+  if (!value || typeof value !== 'object') return undefined;
+  const record = value as Record<string, unknown>;
+  if (record.state !== 'pending_approval' && record.state !== 'tunnel_starting' && record.state !== 'ready') return undefined;
+  const activation: ConnectActivation = { state: record.state };
+  if (record.retry_after_ms !== undefined) {
+    if (typeof record.retry_after_ms !== 'number' || !Number.isFinite(record.retry_after_ms) || record.retry_after_ms < 0) return undefined;
+    activation.retry_after_ms = Math.floor(record.retry_after_ms);
+  }
+  for (const key of ['expires_at', 'ready_at'] as const) {
+    if (record[key] === undefined) continue;
+    if (typeof record[key] !== 'string' || !Number.isFinite(Date.parse(record[key]))) return undefined;
+    activation[key] = record[key] as string;
+  }
+  return activation;
+}
+
 export function parseConnectClaim(controlPlaneUrl: string, value: unknown): ConnectClaim {
   const result = value as ConnectClaim | undefined;
   const fields = ['server_url', 'machine_id', 'machine_name', 'device_id', 'device_secret', 'expires_at'] as const;
@@ -140,5 +168,6 @@ export function parseConnectClaim(controlPlaneUrl: string, value: unknown): Conn
   requireControlPlane(controlPlaneUrl);
   if (server.protocol !== 'https:' || server.username || server.password || server.search || server.hash) throw new Error('The connector returned an unsafe server URL.');
   if (Date.parse(result.expires_at) <= Date.now()) throw new Error('The connector returned expired credentials. Pair again.');
-  return Object.fromEntries(fields.map((key) => [key, result[key]])) as ConnectClaim;
+  const activation = parseConnectActivation(result.activation);
+  return { ...Object.fromEntries(fields.map((key) => [key, result[key]])), ...(activation ? { activation } : {}) } as ConnectClaim;
 }

@@ -222,25 +222,55 @@ SSE reconnects with bounded backoff and reconciles sessions, pending interaction
 A paired device manages the connector's exposed services directly over the tunnel, on the `server_url` origin (never a service port), using the same HTTP Basic credential as OpenCode traffic (`username = device_id`, `password = device_secret`). The control plane is not involved.
 
 - `GET /_cloudlink/services` → `{ services: [Service, ...] }`
-- `PUT /_cloudlink/services/{id}` → `201` created / `200` replaced, body is the bare `Service` (`port` and `target` required on management revision 2), response `{ service: Service }` with stored canonical values
+- `PUT /_cloudlink/services/{id}` → `201` created / `200` replaced, body is the bare `Service` (`port` and `target` required when `api >= 2`), response `{ service: Service }` with stored canonical values
 - `DELETE /_cloudlink/services/{id}` → `204`
-- `GET /_cloudlink/version` → `{ version, api, service_ports }`; every authenticated `/_cloudlink` reply also stamps the connector version in `x-cloudlink-connector-version`
+- `GET /_cloudlink/version` → `{ version, api, service_ports, components? }`; every authenticated `/_cloudlink` reply also stamps the connector version in `x-cloudlink-connector-version`
 
-On management revision 2 (connector 0.1.14+) `Service` is `{ id, name, port, path: string | null, target, enabled, access: 'private' | 'public', strip_prefix }`. A service with no `path` owns its port root, so apps that emit absolute URLs, cookies, redirects and WebSockets work untouched; services with a `path` share a port and keep prefix stripping plus path-absolute redirect re-prefixing. `port` must be one of `service_ports`; a root service needs a fully free port, a path service may share only a root-free port, `port`/`path` pairs are unique, and at most 16 services exist. Omitted PUT fields default to `name = id`, `path = null`, `enabled = false`, `access = 'private'`, `strip_prefix = true`. Links are `https://<host>:<port>/` for root services and `https://<host>:<port><path>/` for path services.
+Management API revision 3 adds the additive `components` object (`opencode` and
+`cloudflared` versions). Clients gate on `api >= 2` for ports and root services
+and ignore unknown additive fields. On `api >= 2` `Service` is `{ id, name, port, path: string | null, target, enabled, access: 'private' | 'public', strip_prefix }`. A service with no `path` owns its port root, so apps that emit absolute URLs, cookies, redirects and WebSockets work untouched; services with a `path` share a port and keep prefix stripping plus path-absolute redirect re-prefixing. `port` must be one of `service_ports`; a root service needs a fully free port, a path service may share only a root-free port, `port`/`path` pairs are unique, and at most 16 services exist. Omitted PUT fields default to `name = id`, `path = null`, `enabled = false`, `access = 'private'`, `strip_prefix = true`. Links are `https://<host>:<port>/` for root services and `https://<host>:<port><path>/` for path services.
 
-Management revision 1 and pre-version connectors keep the legacy path-only surface on `:8443`: listed services carry an implicit `port`, links stay `https://<host>:8443<path>/`, and the PUT body omits `port`. A `404` on the version endpoint without the version header means an unknown older connector: the app warns and stays in legacy mode. Root services and the port picker require revision 2 and otherwise show a non-blocking update hint. Errors are `400` invalid, `401` unauthorized, `404` unknown id, `405` method, `413` too large, `415` wrong content type; the app shows the connector's message and never branches on its wording. The list reflects connector-side (tray/CLI) edits, so the Settings surface re-fetches on open.
+Management API revision 1 and pre-version connectors keep the legacy path-only surface on `:8443`: listed services carry an implicit `port`, links stay `https://<host>:8443<path>/`, and the PUT body omits `port`. A `404` on the version endpoint without the version header means an unknown older connector: the app warns and stays in legacy mode. Root services and the port picker require `api >= 2` and otherwise show a non-blocking update hint. Errors are `400` invalid, `401` unauthorized, `404` unknown id, `405` method, `413` too large, `415` wrong content type; the app shows the connector's message and never branches on its wording. The list reflects connector-side (tray/CLI) edits, so the Settings surface re-fetches on open.
 
 Client code and the validation mirror live in `shared/contracts/service-management.ts`; the provider exposes it through the connection domain (`useConnection().services`). The provider resolves the target machine from the active Cloud Link connection or a saved Cloud Link profile, so management keeps working while another connection is active and links use the target machine's own origin. See the connector repository's frozen service-management protocol documentation → "Service management API (device-authenticated)".
 
-## Cloud Link Activation Readiness (required service change)
+## Cloud Link Activation Readiness
 
-Not implemented by the app. The separate Cloud Link service/connector should
-report `pending_approval`, `tunnel_starting` or `ready` from pairing claim and
-machine access, with `retry_after_ms` or a long-poll, and must create or cover the
-machine hostname before returning `server_url`. Until then the app infers
-readiness from Cloudflare 1033, DNS and timeout failures for a bounded 120-second
-activation budget. A hostname resolved before its record exists can be cached as
-NXDOMAIN for the zone SOA minimum. See
+Claim and machine-access responses may include an optional `activation` object:
+
+```json
+{
+  "state": "pending_approval | tunnel_starting | ready",
+  "retry_after_ms": 2000,
+  "expires_at": "RFC3339",
+  "ready_at": "RFC3339"
+}
+```
+
+`expires_at` and `ready_at` are optional; `expires_at` is used for pairing
+approval deadlines and `ready_at` is present when ready. Older control planes and
+connectors omit the field entirely, and the app keeps the pre-existing 1033
+activation path. The app must not require it or add request headers.
+
+Read-only polling endpoints, authenticated with the CloudLink user bearer:
+
+- `GET /v1/pairings/:id/activation`
+- `GET /v1/machines/:id/activation`
+
+Both return the activation object with `200`; optional `?wait_ms=20000` holds the
+request until the state changes or the wait expires. Errors are `401` invalid
+session, `403` exact `no active subscription`, `404` unknown/other owner, `409`
+expired/declined/being provisioned/unsupported, and `429` rate limited. Polling
+never rotates the device credential; the app must not poll machine access for
+activation.
+
+The connector-only `POST /v1/machines/:id/ready` reports readiness with the
+machine tunnel token. The app must never call it.
+
+The machine DNS record is created and awaited before claim/access returns
+`server_url`, including access on an already-active machine. A hostname resolved
+before provisioning can be cached as NXDOMAIN for the zone SOA minimum; the app
+must not resolve it before claim/access exposes it. See
 [Cloud Link](../product/cloud-link.md#connector-and-control-plane-dependencies).
 
 ## Compatibility-only Features And Validation

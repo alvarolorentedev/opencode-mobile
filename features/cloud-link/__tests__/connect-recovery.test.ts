@@ -10,9 +10,10 @@ describe('connect recovery', () => {
 const CP = 'https://api.opencodecloud.link';
 const ref = (current: any) => ({ current });
 const noop = () => {};
-async function fixture({ expired = false, missing = false, storedSession = true, storeGate, ttl = 600000, unchangedExpiry = false, denyAccess = 0 }: { expired?: boolean; missing?: boolean; storedSession?: boolean; storeGate?: Deferred<void>; ttl?: number; unchangedExpiry?: boolean; denyAccess?: number } = {}) {
+async function fixture({ expired = false, missing = false, storedSession = true, storeGate, ttl = 600000, unchangedExpiry = false, denyAccess = 0, activation: initialActivation, accessActivation }: { expired?: boolean; missing?: boolean; storedSession?: boolean; storeGate?: Deferred<void>; ttl?: number; unchangedExpiry?: boolean; denyAccess?: number; activation?: any; accessActivation?: any } = {}) {
   const runtime = hookRuntime();
-  let now = Date.now(), accessCalls = 0, pairClaims = 0, claims = 0, catalogs = 0, resets = 0, softResets = 0, accessFailure = false, catalogFailure = false, accessDenials = denyAccess, accessGate: Deferred<void> | undefined;
+  let now = Date.now(), accessCalls = 0, pairClaims = 0, claims = 0, catalogs = 0, resets = 0, softResets = 0, secretWrites = 0, activationCalls = 0, accessFailure = false, catalogFailure = false, accessDenials = denyAccess, accessGate: Deferred<void> | undefined;
+  let activation = initialActivation;
   const globals = { ...runtime.globals, Error, Date: class extends Date { static now() { return now; } } };
   const storage = new Map(), secrets = new Map(), listeners = new Set();
   const native = {
@@ -20,7 +21,7 @@ async function fixture({ expired = false, missing = false, storedSession = true,
     AppState: { currentState: 'active', addEventListener(_: any, listener: any) { listeners.add(listener); return { remove: () => listeners.delete(listener) }; } },
   };
   const asyncStorage = { getItem: async (key: string) => storage.get(key) ?? null, setItem: async (key: string, value: string) => { storage.set(key, value); }, removeItem: async (key: string) => { storage.delete(key); } };
-  const secureStore = { getItemAsync: async (key: string) => secrets.get(key) ?? null, setItemAsync: async (key: string, value: string) => { secrets.set(key, value); }, deleteItemAsync: async (key: string) => { secrets.delete(key); } };
+  const secureStore = { getItemAsync: async (key: string) => secrets.get(key) ?? null, setItemAsync: async (key: string, value: string) => { secretWrites++; secrets.set(key, value); }, deleteItemAsync: async (key: string) => { secretWrites++; secrets.delete(key); } };
   const session = { user_id: 'owner', user_token: 'user-token', session_expires_at: new Date(now + 86400000).toISOString(), subscription_expires_at: new Date(now + 3600000).toISOString(), entitlements: ['cloudlink'] };
   const claim = { server_url: 'https://machine.test', machine_id: 'machine-a', machine_name: 'Mac', device_id: 'device-a', device_secret: 'secret-a', expires_at: new Date(now + (expired ? -1000 : ttl)).toISOString() };
   const connect = await loadTs(['shared/protocol/cloud-link/connect.ts', 'shared/contracts/cloud-link.ts', 'shared/storage/cloud-link.ts'], {
@@ -31,13 +32,14 @@ async function fixture({ expired = false, missing = false, storedSession = true,
       let body;
       if (url.endsWith('/catalog')) body = { plans: [{ id: 'cloudlink', entitlements: ['cloudlink'], products: [{ store: 'google', productId: 'fixture', basePlanId: 'monthly', offerIds: [] }] }] };
       else if (url.endsWith('/subscriptions/claim')) { claims++; body = session; }
-      else if (/\/pairings\/[^/]+\/claim$/.test(url)) { pairClaims++; body = claim; }
+      else if (/\/v1\/(?:pairings|machines)\/[^/]+\/activation$/.test(url)) { activationCalls++; body = activation ?? { state: 'ready' }; }
+      else if (/\/pairings\/[^/]+\/claim$/.test(url)) { pairClaims++; body = { ...claim, ...(activation ? { activation } : {}) }; }
       else if (url.endsWith('/access')) {
         accessCalls++;
         await accessGate?.promise;
         if (accessFailure) return new Response(JSON.stringify({ error: 'temporarily unavailable' }), { status: 503 });
         if (accessDenials > 0) { accessDenials--; return new Response(JSON.stringify({ error: 'no active subscription' }), { status: 403 }); }
-        body = { ...claim, device_id: `device-${accessCalls}`, device_secret: `secret-${accessCalls}`, expires_at: unchangedExpiry ? claim.expires_at : new Date(now + 3600000).toISOString() };
+        body = { ...claim, device_id: `device-${accessCalls}`, device_secret: `secret-${accessCalls}`, expires_at: unchangedExpiry ? claim.expires_at : new Date(now + 3600000).toISOString(), ...(accessActivation ? { activation: accessActivation } : {}) };
       } else body = { machines: [{ id: claim.machine_id, name: 'Mac', hostname: 'machine.test', public_url: claim.server_url, created_at: new Date(now).toISOString(), access_enabled: true }] };
       return new Response(JSON.stringify(body));
     } },
@@ -172,7 +174,8 @@ async function fixture({ expired = false, missing = false, storedSession = true,
     const connectionProfiles = profileHook.useConnectionProfiles({ clearCapabilitiesSnapshots: async () => {}, settings, switchConnection, updateSettings, profiles: savedProfiles, setProfiles });
     return { ...complete, settings, connection: result.connection, activeProjectPath, connectionProfiles };
   }, {});
-  return { runtime, connect, profile, profiles, contractMetrics, get accesses() { return accessCalls; }, get pairClaims() { return pairClaims; }, get claims() { return claims; }, get catalogs() { return catalogs; }, get resets() { return resets; }, get softResets() { return softResets; },
+  return { runtime, connect, profile, profiles, contractMetrics, get accesses() { return accessCalls; }, get pairClaims() { return pairClaims; }, get claims() { return claims; }, get catalogs() { return catalogs; }, get resets() { return resets; }, get softResets() { return softResets; }, get activations() { return activationCalls; }, get secretWrites() { return secretWrites; },
+    setActivation(value: any) { activation = value; },
     failAccess(value: any) { accessFailure = value; }, setAccessDenials(value: number) { accessDenials = value; }, failCatalog(value: any) { catalogFailure = value; }, blockAccess() { accessGate = deferred<void>(); return accessGate; },
     advance(ms: number) { now += ms; }, appState(state: string) { native.AppState.currentState = state; [...listeners].forEach((listener: any) => listener(state)); runtime.flush(); },
   };
@@ -445,6 +448,67 @@ const approvalQR = 'opencodemobile://pair?v=1&cp=https%3A%2F%2Fapi.opencodecloud
   assert.equal(f.runtime.value.connectSetup.phase, 'idle');
   assert.equal(f.runtime.value.settings.serverUrl, 'http://manual.test');
   assert.equal(f.catalogs, before + 1, 'Only the new connection probes; stale activation cannot switch back.');
+  f.runtime.unmount();
+}
+
+// Claim activation polls read-only and never rotates the saved credential.
+{
+  const activation = { state: 'pending_approval', retry_after_ms: 1000, expires_at: new Date(Date.now() + 60000).toISOString() };
+  const f = await fixture({ activation }); await f.runtime.settle();
+  await f.runtime.value.connectSetup.pairLink(approvalQR); await f.runtime.settle();
+  assert.equal(f.runtime.value.connectSetup.phase, 'waitingForApproval');
+  assert.equal(f.pairClaims, 1); assert.equal(f.accesses, 0);
+  assert.ok(f.activations > 0, 'The read-only activation endpoint must be polled.');
+  const writes = f.secretWrites;
+  f.setActivation({ state: 'ready' });
+  f.runtime.fire(1000); await f.runtime.settle();
+  assert.equal(f.runtime.value.connectSetup.phase, 'paired');
+  assert.equal(f.accesses, 0, 'Activation polling must not call access.');
+  assert.equal(f.secretWrites, writes, 'Activation polling must not write credentials.');
+  assert.equal(f.runtime.value.settings.password, 'secret-a');
+  f.runtime.unmount();
+}
+// Tunnel startup has its own waiting phase and also waits for readiness.
+{
+  const activation = { state: 'tunnel_starting', retry_after_ms: 1000, expires_at: new Date(Date.now() + 60000).toISOString() };
+  const f = await fixture({ activation }); await f.runtime.settle();
+  await f.runtime.value.connectSetup.pairLink(approvalQR); await f.runtime.settle();
+  assert.equal(f.runtime.value.connectSetup.phase, 'waitingForTunnel');
+  assert.equal(f.accesses, 0);
+  f.setActivation({ state: 'ready' });
+  f.runtime.fire(1000); await f.runtime.settle();
+  assert.equal(f.runtime.value.connectSetup.phase, 'paired');
+  assert.equal(f.accesses, 0);
+  f.runtime.unmount();
+}
+
+// Selecting another Cloud Link machine cancels a server activation wait.
+{
+  const f = await fixture({ activation: { state: 'pending_approval', retry_after_ms: 1000 } });
+  await f.runtime.settle();
+  await f.runtime.value.connectSetup.pairLink(approvalQR); await f.runtime.settle();
+  assert.equal(f.runtime.value.connectSetup.phase, 'waitingForApproval');
+  const other = await f.profiles.saveConnectProfile(CP, { server_url: 'https://other.test', machine_id: 'machine-b', machine_name: 'Other', device_id: 'device-b', device_secret: 'secret-b', expires_at: new Date(Date.now() + 3600000).toISOString() });
+  f.runtime.value.updateSettings({ serverUrl: other.serverUrl, username: other.username, password: 'secret-b', connect: other.connect });
+  await f.runtime.settle();
+  assert.equal(f.runtime.value.connectSetup.phase, 'idle');
+  assert.equal(f.runtime.value.connectSetup.busy, false);
+  f.runtime.unmount();
+}
+
+// Machine access activation is honored without polling access again.
+{
+  const f = await fixture({ activation: { state: 'tunnel_starting', retry_after_ms: 1000 }, accessActivation: { state: 'tunnel_starting', retry_after_ms: 1000 } });
+  await f.runtime.settle();
+  const connecting = f.runtime.value.connectSetup.connectMachine('machine-a');
+  await f.runtime.settle();
+  assert.equal(f.runtime.value.connectSetup.phase, 'waitingForTunnel');
+  assert.equal(f.accesses, 1);
+  f.setActivation({ state: 'ready' });
+  f.runtime.fire(1000); await f.runtime.settle();
+  await connecting; await f.runtime.settle();
+  assert.equal(f.runtime.value.connectSetup.phase, 'paired');
+  assert.equal(f.accesses, 1, 'Readiness polling must not repeat access.');
   f.runtime.unmount();
 }
 

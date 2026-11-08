@@ -387,19 +387,39 @@ recovery results cannot replace a newly selected connection.
 
 After a pairing claim is securely saved (including ambiguous-claim recovery),
 the first activation displays “Confirm this connection on your computer.” The
-connector withholds tunnel startup until its owner approves. Mobile cannot
-distinguish approval, denial, expiry and tunnel startup with the current API;
-there are no new status requests or protocol fields.
+connector withholds tunnel startup until its owner approves.
 
-Activation retries Cloudflare Error 1033, identified DNS resolution failures,
-and connection timeout/reset errors with 3/6/12/15-second delays, capped at 15
-seconds, within a 120-second elapsed budget including request time. No further
-attempt is scheduled once that budget expires; an already-running request may
-settle later. HTML 1033 responses are preserved before SDK parsing can discard
-their body. Authentication/entitlement denials, invalid/unsafe URLs, TLS/certificate
-errors and unclassified transport failures remain immediately actionable.
-Generic fetch failures are ambiguous and are not retried. Manual connections
-and general reconnects do not receive this startup wait.
+Claim and machine-access responses may include an optional `activation` object
+with `state: pending_approval | tunnel_starting | ready`, `retry_after_ms` and
+optional `expires_at`/`ready_at`. Services only include it for connectors that
+created the pairing with `features: ["activation"]`; older services omit it.
+`pending_approval` shows the approval copy and polls
+`GET /v1/pairings/:id/activation` (or the machine endpoint when no pairing id is
+available). `tunnel_starting` shows the tunnel waiting copy. Both use
+`retry_after_ms`; the client never polls machine access and never reconnects just
+to poll. `ready` connects immediately. The pairing `expires_at` is the absolute
+deadline; backgrounding pauses requests without extending it, and a ten-minute
+safety cap prevents a permanently blocked screen. Polling runs with the bearer
+session, so an exact `403` `no active subscription` uses the same entitlement
+recovery as claim/access. Transient poll failures keep the saved profile and
+retry; they never rotate or delete credentials.
+
+Activation endpoints are read-only and return `401`, `403`, `404`, `409`
+(expired/declined/being provisioned/unsupported) and `429`. A `404` or an exact
+`409` activation-unsupported response falls back to the legacy path. An expired
+or declined pairing keeps the saved profile but ends the wait in the existing
+delayed state so a fresh QR can be scanned.
+
+Without `activation`, activation retries Cloudflare Error 1033, identified DNS
+resolution failures, and connection timeout/reset errors with 3/6/12/15-second
+delays, capped at 15 seconds, within a 120-second elapsed budget including
+request time. No further attempt is scheduled once that budget expires; an
+already-running request may settle later. HTML 1033 responses are preserved
+before SDK parsing can discard their body. Authentication/entitlement denials,
+invalid/unsafe URLs, TLS/certificate errors and unclassified transport failures
+remain immediately actionable. Generic fetch failures are ambiguous and are not
+retried. Manual connections and general reconnects do not receive this startup
+wait.
 
 Backgrounding pauses further activation attempts without resetting the deadline.
 An overdue foreground return shows a neutral delayed state: “No approval yet.
@@ -413,23 +433,22 @@ results for a different active connection cannot complete the old pairing flow.
 
 ### Connector and control-plane dependencies
 
-Two service-side behaviours are required to remove the remaining first-pairing
-delay. Both belong to the separate Cloud Link service/connector repositories and
-are not implemented by the app:
+The separately deployed Cloud Link service/connector owns this contract; the app
+only consumes it. Older control planes and connectors omit `activation` and keep
+the pre-existing 1033/DNS/timeout path.
 
 - **Activation readiness.** `POST /v1/pairings/:id/claim` and
-  `POST /v1/machines/:id/access` (or a sibling endpoint) should report
-  `pending_approval`, `tunnel_starting` or `ready`, with a `retry_after_ms` hint or
-  a long-poll. The connector must publish readiness once its tunnel is reachable
-  and the owner approved. Without it the app can only infer readiness from
-  1033/DNS/timeout failures, retries for 120 seconds, then asks the user to retry.
-- **DNS before exposure.** The machine hostname returned as `server_url` must
-  resolve when the access response is produced. Create the per-machine record in
-  the provisioning request before responding, or serve a wildcard so no
-  per-machine record is created. A lookup attempted before the record exists is
-  cached as NXDOMAIN for the zone SOA minimum (Cloudflare's default is 30
-  minutes) and can outlive the record on the user's resolver. Lower TTLs do not
-  help; avoiding the negative answer is the only reliable fix.
+  `POST /v1/machines/:id/access` may include `activation`. The read-only
+  `GET /v1/pairings/:id/activation` and `GET /v1/machines/:id/activation`
+  endpoints return the same object and never rotate device credentials. The
+  connector reports readiness through its tunnel-token-authenticated
+  `POST /v1/machines/:id/ready`; the app must never call that endpoint.
+- **DNS before exposure.** The service creates and awaits the machine DNS record
+  before returning `server_url`, including access on an already-active machine.
+  A lookup attempted before the record exists is cached as NXDOMAIN for the zone
+  SOA minimum (Cloudflare's default is 30 minutes) and can outlive the record on
+  the user's resolver. Lower TTLs do not help; avoiding the negative answer is
+  the only reliable fix.
 
 The app never resolves a machine hostname before `access`/`claim` returns it, and
 assumes the connector's exposed-service links (`https://<host>:<port>/`) resolve
@@ -528,8 +547,16 @@ connection are retained and the store is not verified again. Purchase/Restore no
 refreshes the focused machine (or the saved machines while another connection is
 active), renewal timers are jittered, unchanged credentials skip SecureStore
 writes, and `cloudlink.access`/`cloudlink.activate` spans expose per-attempt
-timing and failure kind. Activation readiness and DNS provisioning remain
-external service/connector work, documented above.
+timing and failure kind.
+
+Activation readiness validation on 2026-11-08:
+claim/access activation is optional and absence keeps the exact 1033 path.
+Focused tests cover pending approval, tunnel startup, ready, unsupported
+fallback, pairing expiry, background pause, cancellation, no access polling and
+no credential writes. The Cloud Link browser spec adds approval/tunnel/ready,
+unsupported fallback and expiry/rescan flows. E2E changes require explicit human
+validation under AGENTS.md; live connector activation remains a device/service
+acceptance check.
 
 Cloud Link recovery validation on 2026-10-11: static CI, both fake-server
 self-tests and all 116 web E2E flows passed. The user explicitly confirmed live

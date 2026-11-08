@@ -707,6 +707,7 @@
       "saving": "Enregistrement sécurisé des identifiants…",
       "connecting": "Connexion à la machine…",
       "waitingForApproval": "Confirmez cette connexion sur votre ordinateur.",
+      "waitingForTunnel": "En attente du tunnel de la machine…",
       "delayed": "Aucune approbation pour le moment. Approuvez sur votre ordinateur ou scannez un nouveau code QR.",
       "paired": "Chargement…",
       "catalog": "Chargement des abonnements de la boutique…",

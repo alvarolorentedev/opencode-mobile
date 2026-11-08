@@ -74,7 +74,7 @@ async function mockControlPlane(page, options = {}) {
   const ttl = options.ttl ?? 3600000;
   const paidThrough = Date.now() + ttl;
   const machine = { id: 'machine-1', name: 'Test Mac', hostname: 'connect-machine.test', public_url: options.serverUrl ?? CONNECT_SERVER, created_at: new Date().toISOString(), access_enabled: true };
-  const state = { paidThrough, subscriptionClaims: 0, pairClaims: 0, accesses: 0, deleted: [], machines: options.owned ? [machine] : [], requests: [] };
+  const state = { paidThrough, subscriptionClaims: 0, pairClaims: 0, accesses: 0, activationCalls: 0, activation: options.activation ?? null, activationStatus: options.activationStatus ?? null, activationError: options.activationError ?? null, deleted: [], machines: options.owned ? [machine] : [], requests: [] };
   await page.route(`${CONNECT_SERVER}/**`, async (route) => {
     const url = new URL(route.request().url());
     if (/\/event$/.test(url.pathname)) { await route.abort(); return; }
@@ -112,15 +112,20 @@ async function mockControlPlane(page, options = {}) {
       await send({ user_id: 'store-owner', user_token: 'test-user-token', session_expires_at: new Date(Date.now() + 86400000).toISOString(), subscription_expires_at: new Date(state.paidThrough).toISOString(), entitlements: ['cloudlink'] }); return;
     }
     expect(request.headers().authorization).toBe('Bearer test-user-token');
-    const connection = { server_url: machine.public_url, machine_id: options.mismatch ? 'wrong-machine' : machine.id, machine_name: machine.name, device_id: `device-${state.accesses + 1}`, device_secret: 'device-test-secret', expires_at: new Date(state.paidThrough).toISOString() };
+    const connection = { server_url: machine.public_url, machine_id: options.mismatch ? 'wrong-machine' : machine.id, machine_name: machine.name, device_id: `device-${state.accesses + 1}`, device_secret: 'device-test-secret', expires_at: new Date(state.paidThrough).toISOString(), ...(state.activation ? { activation: state.activation } : {}) };
+    if (/\/activation$/.test(path)) {
+      state.activationCalls += 1;
+      if (state.activationStatus) { await send(state.activationError ?? { error: 'activation readiness is not available' }, state.activationStatus); return; }
+      await send(state.activation ?? { state: 'ready' }); return;
+    }
     if (/\/pairings\//.test(path)) {
       state.pairClaims += 1;
       expect(request.postDataJSON()).toEqual({ pairing_token: 'temporary-test-pairing', device_name: 'Web test device' });
       if (options.pairStatus && state.pairClaims === 1) { await send({ error: options.pairStatus === 409 ? 'pairing expired' : 'invalid pairing token' }, options.pairStatus); return; }
       state.machines = [machine];
       if (options.lostResponse && state.pairClaims === 1) { await route.abort(); return; }
-      if (state.pairClaims > 1 && options.lostResponse) { await send({ error: 'pairing already redeemed', machine_id: machine.id }, 409); return; }
-      if (options.reconciliation && state.pairClaims === 1) { await send({ error: 'access pending', machine_id: machine.id }, 503); return; }
+      if (state.pairClaims > 1 && options.lostResponse) { await send({ error: 'pairing already redeemed', machine_id: machine.id, ...(state.activation ? { activation: state.activation } : {}) }, 409); return; }
+      if (options.reconciliation && state.pairClaims === 1) { await send({ error: 'access pending', machine_id: machine.id, ...(state.activation ? { activation: state.activation } : {}) }, 503); return; }
       await send(connection); return;
     }
     if (/\/access$/.test(path)) {
@@ -207,6 +212,72 @@ test('Cloud Link delayed activation can scan the regenerated QR without deleting
   expect(saved).toContain('machine-1');
   startup.ready = true;
   await submitLink(page, pairingLink('regenerated').toString());
+  await expect(page).toHaveURL(/\/projects$/, { timeout: 30_000 });
+  expect(state.pairClaims).toBe(2); expect(state.accesses).toBe(0);
+});
+
+test('Cloud Link activation waits for approval, tunnel and ready without rotating credentials', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.clock.install();
+  await storeFixture(page);
+  const state = await mockControlPlane(page, { activation: { state: 'pending_approval', retry_after_ms: 10_000 } });
+  await openPair(page);
+  await page.getByTestId('connect-purchase').click();
+  await expect(page.getByTestId('connect-progress')).toHaveText('Confirm this connection on your computer.');
+  expect(state.pairClaims).toBe(1); expect(state.accesses).toBe(0);
+  await pauseClockBefore(page);
+  state.activation = { state: 'tunnel_starting', retry_after_ms: 1_000 };
+  await page.clock.runFor(10_000);
+  await expect(page.getByTestId('connect-progress')).toHaveText('Waiting for the machine tunnel…');
+  state.activation = { state: 'ready' };
+  await page.clock.runFor(1_000);
+  await expect(page).toHaveURL(/\/projects$/, { timeout: 30_000 });
+  expect(state.pairClaims).toBe(1); expect(state.accesses).toBe(0);
+  expect(state.activationCalls).toBeGreaterThanOrEqual(2);
+  await assertNoStoredSecrets(page);
+});
+
+test('Cloud Link activation unsupported falls back to the 1033 startup wait', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.clock.install();
+  await storeFixture(page, { recovered: true });
+  const startup = { ready: false, attempts: 0 };
+  const state = await mockControlPlane(page, { startup, activation: { state: 'pending_approval', retry_after_ms: 1000 }, activationStatus: 409, activationError: { error: 'activation readiness is not available' } });
+  await page.addInitScript(() => localStorage.setItem('opencode-mobile.onboarding-version', JSON.stringify({ version: 1 })));
+  await page.goto('/pair');
+  await expect(page.getByTestId('connect-options')).toBeEnabled();
+  await submitLink(page, pairingLink().toString());
+  await expect(page.getByTestId('connect-progress')).toHaveText('Confirm this connection on your computer.');
+  expect(state.activationCalls).toBeGreaterThan(0);
+  await expect.poll(() => startup.attempts).toBeGreaterThan(0);
+  await pauseClockBefore(page);
+  startup.ready = true;
+  await page.clock.runFor(3_000); await page.clock.resume();
+  await expect(page).toHaveURL(/\/projects$/, { timeout: 30_000 });
+  expect(state.pairClaims).toBe(1); expect(state.accesses).toBe(0);
+});
+
+test('Cloud Link activation expiry keeps the saved profile and accepts a fresh QR', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.clock.install();
+  await storeFixture(page, { recovered: true });
+  const state = await mockControlPlane(page, {
+    activation: { state: 'pending_approval', retry_after_ms: 1000 },
+    activationStatus: 409,
+    activationError: { error: 'pairing expired' },
+  });
+  await page.addInitScript(() => localStorage.setItem('opencode-mobile.onboarding-version', JSON.stringify({ version: 1 })));
+  await page.goto('/pair');
+  await expect(page.getByTestId('connect-options')).toBeEnabled();
+  await submitLink(page, pairingLink().toString());
+  await expect(page.getByTestId('connect-delayed')).toBeVisible();
+  const saved = await page.evaluate(() => localStorage.getItem('opencode-mobile.connection-profiles'));
+  expect(saved).toContain('machine-1');
+  state.activationStatus = null;
+  state.activation = { state: 'ready' };
+  await page.clock.resume();
+  await page.getByTestId('connect-rescan').click();
+  await submitLink(page, pairingLink('regenerated-activation').toString());
   await expect(page).toHaveURL(/\/projects$/, { timeout: 30_000 });
   expect(state.pairClaims).toBe(2); expect(state.accesses).toBe(0);
 });
@@ -480,7 +551,7 @@ test('an expired QR preserves the subscription and accepts a fresh QR without re
   expect(state.subscriptionClaims).toBe(1); expect((await events(page)).filter((event) => event === 'purchase')).toHaveLength(1);
 });
 
-for (const options of [{ lostResponse: true }, { reconciliation: true }]) {
+for (const options of [{ lostResponse: true, activation: { state: 'ready' } }, { reconciliation: true, activation: { state: 'ready' } }]) {
   test(`ambiguous pairing recovers the same owned machine (${Object.keys(options)[0]})`, async ({ page }) => {
     await storeFixture(page); const state = await mockControlPlane(page, options);
     await openPair(page); await page.getByTestId('connect-purchase').click();

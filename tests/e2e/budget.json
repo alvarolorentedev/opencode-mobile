@@ -1,5 +1,5 @@
 {
-  "tests": 177,
+  "tests": 180,
   "specs": 19,
-  "justification": "Added one app-updates scenario covering the downloaded restart toast handoff."
+  "justification": "Added Cloud Link activation readiness coverage for approval/tunnel/ready, unsupported fallback, and expiry/rescan."
 }

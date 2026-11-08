@@ -588,6 +588,14 @@ Credentials:
   recovers the saved Cloud Link machines. Provider-owned profile state refreshes
   when the Cloud Link profile snapshot changes, including renewal of inactive
   saved machines.
+- Optional claim/access activation is transient provider state; it is never
+  persisted with the profile. The first activation polls the read-only pairing or
+  machine activation endpoint with `retry_after_ms`, never machine access, and
+  waits for `pending_approval`/`tunnel_starting` before connecting. The pairing
+  deadline, background pause, teardown, environment changes and connection
+  selection cancel or end the wait; transient poll failures never rotate or
+  delete credentials. Services without activation keep the exact 1033 fallback,
+  including its 120-second budget.
 
 - the active connection password is stored in Keychain/Keystore-backed secure storage via `shared/storage/connection-password.ts`; legacy plaintext `settings.password` is migrated to secure storage and stripped from AsyncStorage on hydration
 - credentials hydrate only when stored server metadata supplies a valid identity; unread metadata never lends an old password or stored gateway headers to the default server. Invalid background connection references do not resolve credentials

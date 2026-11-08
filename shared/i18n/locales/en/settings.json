@@ -707,6 +707,7 @@
       "saving": "Saving credentials securely…",
       "connecting": "Connecting to the machine…",
       "waitingForApproval": "Confirm this connection on your computer.",
+      "waitingForTunnel": "Waiting for the machine tunnel…",
       "delayed": "No approval yet. Approve on your computer, or scan a fresh QR code.",
       "paired": "Loading…",
       "catalog": "Loading store subscriptions…",

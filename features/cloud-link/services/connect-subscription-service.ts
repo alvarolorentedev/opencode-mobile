@@ -12,7 +12,7 @@ export type PendingConnectPurchase = { purchase: Purchase; controlPlaneUrl?: str
 // Internal orchestration signal: switch scope after the current operation
 // releases its lock, then resume the same native transaction.
 export class ConnectPurchaseEnvironmentChange extends Error {
-  constructor(public controlPlaneUrl: string) { super('The purchase requires a different Cloud Link environment.'); }
+  constructor(public controlPlaneUrl: string) { super('The purchase requires a different Cloud Link environment.'); this.name = 'ConnectPurchaseEnvironmentChange'; }
 }
 
 export async function finalizeConnectPurchase(controlPlaneUrl: string, store: ConnectStore, pending: PendingConnectPurchase, api: ConnectStoreApi,

@@ -707,6 +707,7 @@
       "saving": "正在安全保存凭据…",
       "connecting": "正在连接到设备…",
       "waitingForApproval": "请在电脑上确认此连接。",
+      "waitingForTunnel": "正在等待机器隧道…",
       "delayed": "尚未批准。请在电脑上批准，或扫描新的二维码。",
       "paired": "加载中…",
       "catalog": "正在加载商店订阅…",

@@ -22,7 +22,7 @@ import { loadConnectCatalog, type ConnectPhase } from '@/features/cloud-link/sta
 import { acceptConnectLink, pairConnectLink, selectConnectControlPlane } from '@/features/cloud-link/state/connect/pairing';
 import { finishConnectPurchase, listConnectPurchases, recoverConnectSession } from '@/features/cloud-link/state/connect/purchases';
 import { ConnectPurchaseEnvironmentChange, type PendingConnectPurchase } from '@/features/cloud-link/services/connect-subscription-service';
-import type { ConnectActivation } from '@/features/cloud-link/state/connect/activation';
+import type { ConnectActivationAttempt, ConnectActivationHint } from '@/features/cloud-link/state/connect/activation';
 
 export function useConnectState({ controlPlaneUrl, setControlPlaneUrl, switchConnection, disconnect, isHydrated, onProfileRefreshed, activeMachineId, beforeProfileRefresh, migrateConnectConnectionScope, isActiveProfile, profiles, setProfiles }: {
   profiles: ConnectionProfile[];
@@ -56,7 +56,8 @@ export function useConnectState({ controlPlaneUrl, setControlPlaneUrl, switchCon
   const linkLock = useRef(false);
   const [session, setSession] = useState<ConnectSession>();
   const [pairing, setPairing] = useState<ConnectPairing>();
-  const activation = useRef<ConnectActivation | undefined>(undefined);
+  const activation = useRef<ConnectActivationAttempt | undefined>(undefined);
+  const activationHints = useRef(new Map<string, ConnectActivationHint>());
   const [offers, setOffers] = useState<ConnectOffer[]>([]);
   const foreground = useQueryForeground();
   const machineCredential = useRef<{ token: string; revision: number } | undefined>(undefined);
@@ -88,11 +89,20 @@ export function useConnectState({ controlPlaneUrl, setControlPlaneUrl, switchCon
   const activeMachineIdRef = useRef(activeMachineId);
   useLayoutEffect(() => { activeMachineIdRef.current = activeMachineId; });
   useLayoutEffect(() => {
-    if (phase === 'delayed' && activation.current && !isActiveProfile(activation.current.profile)) {
+    if (phase === 'delayed' && activation.current && !activation.current.server && !isActiveProfile(activation.current.profile)) {
       activation.current.controller.abort(); activation.current = undefined;
       setPhase('idle'); setCanRetry(false);
     }
   }, [activeMachineId, controlPlaneUrl, isActiveProfile, phase, setCanRetry, setPhase]);
+  // A server activation wait is not tied to the active profile yet. Cancel it
+  // when another Cloud Link machine is selected.
+  useLayoutEffect(() => {
+    const attempt = activation.current;
+    if (!attempt?.server || activeMachineId === attempt.startActiveMachineId) return;
+    if (phase !== 'waitingForApproval' && phase !== 'waitingForTunnel' && phase !== 'delayed') return;
+    attempt.controller.abort(); activation.current = undefined;
+    setPhase('idle'); setCanRetry(false);
+  }, [activeMachineId, phase, setCanRetry, setPhase]);
   const drainRef = useRef<() => void>(() => undefined);
   const recoveryMachineId = useRef<string | undefined>(undefined);
   const resumeRef = useRef<() => Promise<boolean | void>>(async () => undefined);
@@ -100,6 +110,7 @@ export function useConnectState({ controlPlaneUrl, setControlPlaneUrl, switchCon
 
   const changeControlPlane = useCallback((next: string) => {
     activation.current?.controller.abort(); activation.current = undefined;
+    activationHints.current.clear();
     scopeGeneration.current += 1;
     setInitialization('loading'); autoPair.current = false;
     const retainedPairing = pairingRef.current?.controlPlaneUrl === next ? pairingRef.current : undefined;
@@ -170,19 +181,19 @@ export function useConnectState({ controlPlaneUrl, setControlPlaneUrl, switchCon
   const loadCatalog = useCallback(async () => loadConnectCatalog({ catalog: await cache.fetchQuery(connectCatalogOptions(controlPlaneUrl, store)), store, apiRef, setOffers, setPhase }), [cache, controlPlaneUrl, setPhase, store]);
 
   const accessDeps = useMemo<AccessDeps>(() => ({
-    activation, isActiveProfile,
+    activation, activationHints, activeMachineId: activeMachineIdRef, isActiveProfile,
     controlPlaneUrl, store, sessionRef, pairingRef, pendingClaim, pendingPurchase, entitlementRecovery, recoveryMachineId,
     lastAccess, accessRequests, setSession, setPhase, setProfiles, setSavedProfile, switchConnection, beforeProfileRefresh, migrateConnectConnectionScope,
     onProfileRefreshed, clearPairing, finishPurchase, recoverSession, waitForInitialization,
   }), [migrateConnectConnectionScope, beforeProfileRefresh, clearPairing, controlPlaneUrl, finishPurchase, isActiveProfile, onProfileRefreshed, recoverSession, setPhase, setProfiles, store, switchConnection, waitForInitialization]);
 
   const authenticated = useCallback(<T,>(request: (token: string) => Promise<T>) => authenticateConnectRequest(accessDeps, request), [accessDeps]);
-  const requestAccess = useCallback((machineId: string, fromPairing = false) => requestConnectAccess(accessDeps, machineId, fromPairing), [accessDeps]);
+  const requestAccess = useCallback((machineId: string, fromPairing = false, hintActivation = fromPairing) => requestConnectAccess(accessDeps, machineId, fromPairing, true, hintActivation), [accessDeps]);
   const prepareSettings = useCallback((settings: OpencodeConnectionSettings) => prepareConnectSettings(accessDeps, settings), [accessDeps]);
   const activate = useCallback((profile: ConnectionProfile, waitForStartup = false) => {
     const generation = scopeGeneration.current;
-    return activateConnectProfile(accessDeps, profile, waitForStartup, () => generation === scopeGeneration.current);
-  }, [accessDeps]);
+    return activateConnectProfile(accessDeps, profile, waitForStartup, () => generation === scopeGeneration.current, undefined, authenticated);
+  }, [accessDeps, authenticated]);
   const claimAction = useCallback(() => {
     const generation = scopeGeneration.current;
     return claimConnectAction(accessDeps, () => generation === scopeGeneration.current);
@@ -387,7 +398,7 @@ export function useConnectState({ controlPlaneUrl, setControlPlaneUrl, switchCon
   const claim = useCallback(() => perform(claimAction), [claimAction, perform]);
   const refreshMachines = useCallback(() => perform(refreshMachinesAction), [perform, refreshMachinesAction]);
   const connectProfile = useCallback((profile: ConnectionProfile) => perform(() => activate(profile)), [activate, perform]);
-  const connectMachine = useCallback((id: string) => perform(async () => activate(await requestAccess(id))), [activate, perform, requestAccess]);
+  const connectMachine = useCallback((id: string) => perform(async () => activate(await requestAccess(id, false, true))), [activate, perform, requestAccess]);
   const cancelPairing = useCallback(() => perform(async () => { activation.current?.controller.abort(); activation.current = undefined; autoPair.current = false; await clearPairing(); setPhase('idle'); }), [clearPairing, perform, setPhase]);
 
   const removeProfiles = useCallback(async (removed: ConnectionProfile[]) => {

@@ -1,7 +1,7 @@
 
 import { fetch as expoFetch } from 'expo/fetch';
 
-import { ConnectPairing, ConnectClaim, ConnectMachine, ConnectCatalog, ConnectSession, ConnectProof, parseConnectSession, hasConnectEntitlement, parseConnectClaim , requireControlPlane } from '@/shared/contracts/cloud-link';
+import { ConnectPairing, ConnectClaim, ConnectMachine, ConnectCatalog, ConnectSession, ConnectProof, ConnectActivation, parseConnectActivation, parseConnectSession, hasConnectEntitlement, parseConnectClaim , requireControlPlane } from '@/shared/contracts/cloud-link';
 
 export class ConnectApiError extends Error {
   public machineId?: string;
@@ -9,6 +9,8 @@ export class ConnectApiError extends Error {
   public pairingExpired: boolean;
   public testPurchase: boolean;
   public noActiveSubscription: boolean;
+  public activation?: ConnectActivation;
+  public activationUnsupported: boolean;
   constructor(public status: number, value?: unknown) {
     super({
       400: 'Invalid subscription proof or request. Restore to recover your purchase.',
@@ -20,7 +22,7 @@ export class ConnectApiError extends Error {
       502: 'Store or machine provisioning is temporarily unavailable. Retry without purchasing again.',
       503: 'Cloud Link configuration or access reconciliation is unavailable. Try again later.',
     }[status] ?? 'The control plane could not complete the request. Try again.');
-    const record = value as { machine_id?: unknown; error?: unknown; code?: unknown } | undefined;
+    const record = value as { machine_id?: unknown; error?: unknown; code?: unknown; activation?: unknown } | undefined;
     this.testPurchase = status === 403 && record?.error === 'Google test purchases are disabled in this environment';
     this.noActiveSubscription = status === 403 && record?.error === 'no active subscription';
     if (this.noActiveSubscription) this.message = 'No active Cloud Link entitlement. Purchase or restore to recover access.';
@@ -28,6 +30,8 @@ export class ConnectApiError extends Error {
     if ((status === 409 || status === 503) && typeof record?.machine_id === 'string' && /^[a-zA-Z0-9_-]{1,128}$/.test(record.machine_id)) this.machineId = record.machine_id;
     this.pairingExpired = status === 409 && record?.error === 'pairing expired';
     this.invalidPairingToken = status === 401 && record?.error === 'invalid pairing token';
+    this.activationUnsupported = status === 409 && record?.error === 'activation readiness is not available';
+    this.activation = parseConnectActivation(record?.activation);
     if (this.invalidPairingToken) this.message = 'Invalid pairing token. Scan a fresh connector QR.';
   }
 }
@@ -119,4 +123,15 @@ export async function accessConnectMachine(controlPlaneUrl: string, machineId: s
   const result = parseConnectClaim(controlPlaneUrl, value);
   if (result.machine_id !== machineId) throw new Error('machine_identity_mismatch: Access returned a different machine.');
   return result;
+}
+
+// Read-only activation polling. Never poll access: each access call rotates the
+// device credential. Pairing polling reports approval/expiry; machine polling
+// reports tunnel/OpenCode readiness.
+export async function getConnectPairingActivation(controlPlaneUrl: string, pairingId: string, token: string, signal?: AbortSignal): Promise<ConnectActivation | undefined> {
+  return parseConnectActivation(await connectRequest(controlPlaneUrl, `/v1/pairings/${encodeURIComponent(pairingId)}/activation`, token, 'GET', undefined, signal));
+}
+
+export async function getConnectMachineActivation(controlPlaneUrl: string, machineId: string, token: string, signal?: AbortSignal): Promise<ConnectActivation | undefined> {
+  return parseConnectActivation(await connectRequest(controlPlaneUrl, `/v1/machines/${encodeURIComponent(machineId)}/activation`, token, 'GET', undefined, signal));
 }

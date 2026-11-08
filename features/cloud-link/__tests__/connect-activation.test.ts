@@ -1,12 +1,20 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { activateConnectProfile } from '@/features/cloud-link/state/connect/activation';
+import { activateConnectProfile, type ActivationAuthenticate, type ConnectActivationHint } from '@/features/cloud-link/state/connect/activation';
 import type { AccessDeps } from '@/features/cloud-link/state/connect/access';
 import type { ConnectionProfile } from '@/shared/contracts/connection-profiles';
 import type { ConnectionState } from '@/shared/contracts/domain';
+import { ConnectApiError } from '@/shared/protocol/cloud-link/connect';
 import { isRetryableCloudLinkStartupError } from '@/shared/protocol/opencode/client/errors';
 
 const platform = vi.hoisted(() => ({ state: 'active', listeners: new Set<(state: string) => void>() }));
+const activationRequests = vi.hoisted(() => ({ pairing: vi.fn(), machine: vi.fn() }));
+vi.mock('expo/fetch', () => ({ fetch: vi.fn() }));
+vi.mock('expo-constants', () => ({ default: { expoConfig: { extra: {} } } }));
+vi.mock('@/shared/protocol/cloud-link/connect', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/shared/protocol/cloud-link/connect')>();
+  return { ...actual, getConnectPairingActivation: activationRequests.pairing, getConnectMachineActivation: activationRequests.machine };
+});
 vi.mock('react-native', () => ({ AppState: {
   get currentState() { return platform.state; },
   addEventListener: (_: string, listener: (state: string) => void) => { platform.listeners.add(listener); return { remove: () => platform.listeners.delete(listener) }; },
@@ -19,14 +27,14 @@ const transient: ConnectionState = { status: 'error', message: '1033', retryable
 function fixture() {
   const phases: string[] = [];
   const deps = {
-    activation: { current: undefined }, isActiveProfile: vi.fn(() => true),
+    activation: { current: undefined }, activationHints: { current: new Map() }, activeMachineId: { current: undefined }, isActiveProfile: vi.fn(() => true),
     setSavedProfile: vi.fn(), setPhase: (phase: string) => phases.push(phase),
     switchConnection: vi.fn<AccessDeps['switchConnection']>(async () => transient),
   };
   return { deps: deps as unknown as AccessDeps, phases, switchConnection: deps.switchConnection, isActiveProfile: deps.isActiveProfile };
 }
 function appState(state: string) { platform.state = state; platform.listeners.forEach((listener) => listener(state)); }
-beforeEach(() => { vi.useFakeTimers(); vi.setSystemTime(0); platform.state = 'active'; platform.listeners.clear(); });
+beforeEach(() => { vi.useFakeTimers(); vi.setSystemTime(0); platform.state = 'active'; platform.listeners.clear(); activationRequests.pairing.mockReset(); activationRequests.machine.mockReset(); });
 afterEach(() => vi.useRealTimers());
 
 describe('Cloud Link first activation', () => {
@@ -113,6 +121,118 @@ describe('Cloud Link first activation', () => {
     expect(await activateConnectProfile(f.deps, profile, true, () => false)).toBe(false);
     expect(f.switchConnection).not.toHaveBeenCalled(); expect(f.phases).toEqual([]);
     expect(f.deps.activation.current).toBeUndefined();
+  });
+});
+
+describe('server activation readiness', () => {
+  const authenticate = vi.fn(<T,>(request: (token: string) => Promise<T>) => request('token')) as unknown as ActivationAuthenticate;
+  const connected: ConnectionState = { status: 'connected', message: 'Connected', checkedAt: 0 };
+
+  it('polls pending approval and connects only after ready', async () => {
+    const f = fixture();
+    activationRequests.pairing.mockResolvedValueOnce({ state: 'pending_approval', retry_after_ms: 1000 })
+      .mockResolvedValueOnce({ state: 'ready' });
+    f.switchConnection.mockResolvedValueOnce(connected);
+    const hint: ConnectActivationHint = { activation: { state: 'pending_approval', retry_after_ms: 1000 }, pairingId: 'pair-1' };
+    const pending = activateConnectProfile(f.deps, profile, true, undefined, hint, authenticate);
+    await vi.advanceTimersByTimeAsync(0);
+    expect(f.phases).toEqual(['waitingForApproval']);
+    expect(activationRequests.pairing).toHaveBeenCalledTimes(1);
+    expect(activationRequests.machine).not.toHaveBeenCalled();
+    expect(f.switchConnection).not.toHaveBeenCalled();
+    await vi.advanceTimersByTimeAsync(1000);
+    expect(f.switchConnection).toHaveBeenCalledTimes(1);
+    expect(await pending).toBe(true);
+    expect(f.phases.at(-1)).toBe('paired');
+  });
+
+  it('shows the tunnel wait and polls the machine endpoint without a pairing', async () => {
+    const f = fixture();
+    activationRequests.machine.mockResolvedValueOnce({ state: 'tunnel_starting', retry_after_ms: 500 })
+      .mockResolvedValueOnce({ state: 'ready' });
+    f.switchConnection.mockResolvedValueOnce(connected);
+    const hint: ConnectActivationHint = { activation: { state: 'tunnel_starting', retry_after_ms: 500 } };
+    const pending = activateConnectProfile(f.deps, profile, true, undefined, hint, authenticate);
+    await vi.advanceTimersByTimeAsync(0);
+    expect(f.phases).toEqual(['waitingForTunnel']);
+    expect(activationRequests.machine).toHaveBeenCalledTimes(1);
+    expect(activationRequests.pairing).not.toHaveBeenCalled();
+    await vi.advanceTimersByTimeAsync(500);
+    expect(await pending).toBe(true);
+    expect(f.phases.at(-1)).toBe('paired');
+  });
+
+  it('connects immediately when the claim is already ready', async () => {
+    const f = fixture();
+    f.switchConnection.mockResolvedValueOnce(connected);
+    const pending = activateConnectProfile(f.deps, profile, true, undefined, { activation: { state: 'ready' } }, authenticate);
+    await vi.advanceTimersByTimeAsync(0);
+    expect(await pending).toBe(true);
+    expect(activationRequests.pairing).not.toHaveBeenCalled();
+    expect(activationRequests.machine).not.toHaveBeenCalled();
+    expect(f.phases).toEqual(['connecting', 'paired']);
+  });
+
+  it('falls back to the 1033 retry path when activation is unsupported', async () => {
+    const f = fixture();
+    activationRequests.pairing.mockRejectedValueOnce(new ConnectApiError(404, { error: 'unknown pairing' }));
+    f.switchConnection.mockResolvedValueOnce(transient).mockResolvedValueOnce(connected);
+    const pending = activateConnectProfile(f.deps, profile, true, undefined, { activation: { state: 'pending_approval', retry_after_ms: 1000 }, pairingId: 'pair-1' }, authenticate);
+    await vi.advanceTimersByTimeAsync(0);
+    expect(f.switchConnection).toHaveBeenCalledTimes(1);
+    expect(f.phases).toContain('waitingForApproval');
+    await vi.advanceTimersByTimeAsync(3000);
+    expect(await pending).toBe(true);
+    expect(f.switchConnection).toHaveBeenCalledTimes(2);
+  });
+
+  it('pauses polling in the background and resumes without extending expiry', async () => {
+    const f = fixture();
+    platform.state = 'background';
+    activationRequests.pairing.mockResolvedValue({ state: 'ready' });
+    f.switchConnection.mockResolvedValueOnce(connected);
+    const hint: ConnectActivationHint = { activation: { state: 'pending_approval', retry_after_ms: 1000 }, pairingId: 'pair-1' };
+    const pending = activateConnectProfile(f.deps, profile, true, undefined, hint, authenticate);
+    await vi.advanceTimersByTimeAsync(0);
+    expect(activationRequests.pairing).not.toHaveBeenCalled();
+    appState('active');
+    await vi.advanceTimersByTimeAsync(0);
+    expect(activationRequests.pairing).toHaveBeenCalledTimes(1);
+    expect(await pending).toBe(true);
+  });
+
+  it('stops at pairing expiry returned by the activation endpoint', async () => {
+    const f = fixture();
+    activationRequests.pairing.mockRejectedValue(new ConnectApiError(409, { error: 'pairing expired' }));
+    const pending = activateConnectProfile(f.deps, profile, true, undefined, { activation: { state: 'pending_approval', retry_after_ms: 1000 }, pairingId: 'pair-1' }, authenticate);
+    await vi.advanceTimersByTimeAsync(0);
+    expect(await pending).toBe(false);
+    expect(f.phases).toEqual(['waitingForApproval', 'delayed']);
+    expect(f.switchConnection).not.toHaveBeenCalled();
+    expect(f.deps.activation.current?.hint).toBeUndefined();
+  });
+
+  it('stops at pairing expiry and keeps the delayed checkpoint', async () => {
+    const f = fixture();
+    activationRequests.pairing.mockResolvedValue({ state: 'pending_approval', retry_after_ms: 1000 });
+    const hint: ConnectActivationHint = { activation: { state: 'pending_approval', retry_after_ms: 1000, expires_at: new Date(500).toISOString() }, pairingId: 'pair-1' };
+    const pending = activateConnectProfile(f.deps, profile, true, undefined, hint, authenticate);
+    await vi.advanceTimersByTimeAsync(1000);
+    expect(await pending).toBe(false);
+    expect(f.phases).toEqual(['waitingForApproval', 'delayed']);
+    expect(f.switchConnection).not.toHaveBeenCalled();
+  });
+
+  it('cancels an in-flight poll without connecting', async () => {
+    const f = fixture();
+    activationRequests.pairing.mockResolvedValue({ state: 'pending_approval', retry_after_ms: 1000 });
+    const pending = activateConnectProfile(f.deps, profile, true, undefined, { activation: { state: 'pending_approval', retry_after_ms: 1000 }, pairingId: 'pair-1' }, authenticate);
+    await vi.advanceTimersByTimeAsync(0);
+    f.deps.activation.current!.controller.abort();
+    await vi.advanceTimersByTimeAsync(0);
+    expect(await pending).toBe(false);
+    expect(f.switchConnection).not.toHaveBeenCalled();
+    expect(f.phases).toEqual(['waitingForApproval']);
   });
 });
 

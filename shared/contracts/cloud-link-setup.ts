@@ -3,7 +3,7 @@ import type { ConnectionProfile } from '@/shared/contracts/connection-profiles';
 import type { ConnectOffer } from '@/shared/platform/billing/connect-store';
 import type { OpencodeConnectionSettings } from '@/shared/protocol/opencode/client';
 
-export type ConnectPhase = 'idle' | 'catalog' | 'purchasing' | 'pending' | 'restoring' | 'verifying' | 'savingSession' | 'finalizing' | 'claiming' | 'saving' | 'connecting' | 'waitingForApproval' | 'delayed' | 'paired';
+export type ConnectPhase = 'idle' | 'catalog' | 'purchasing' | 'pending' | 'restoring' | 'verifying' | 'savingSession' | 'finalizing' | 'claiming' | 'saving' | 'connecting' | 'waitingForApproval' | 'waitingForTunnel' | 'delayed' | 'paired';
 
 export type ConnectSetup = {
   enabled: boolean;

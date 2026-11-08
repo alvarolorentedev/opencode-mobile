@@ -707,6 +707,7 @@
       "saving": "Zugangsdaten werden sicher gespeichert…",
       "connecting": "Verbindung zum Rechner wird hergestellt…",
       "waitingForApproval": "Bestätige diese Verbindung auf deinem Computer.",
+      "waitingForTunnel": "Warte auf den Maschinentunnel…",
       "delayed": "Noch keine Bestätigung. Bestätige auf deinem Computer oder scanne einen neuen QR-Code.",
       "paired": "Wird geladen…",
       "catalog": "Store-Abonnements werden geladen…",

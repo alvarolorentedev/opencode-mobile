@@ -707,6 +707,7 @@
       "saving": "Guardando credenciales de forma segura…",
       "connecting": "Conectando con el equipo…",
       "waitingForApproval": "Confirma esta conexión en tu ordenador.",
+      "waitingForTunnel": "Esperando el túnel de la máquina…",
       "delayed": "Aún no hay aprobación. Aprueba en tu ordenador o escanea un nuevo código QR.",
       "paired": "Cargando…",
       "catalog": "Cargando suscripciones de la tienda…",

@@ -12,13 +12,15 @@ import type { ChatPreferences } from '@/shared/preferences/opencode-preferences'
 import type { ConnectionState } from '@/shared/contracts/domain';
 import { ConnectPurchaseEnvironmentChange, type PendingConnectPurchase } from '@/features/cloud-link/services/connect-subscription-service';
 import type { ConnectPhase } from '@/features/cloud-link/state/connect/catalog';
-import { activateConnectProfile, type ConnectActivation } from '@/features/cloud-link/state/connect/activation';
+import { activateConnectProfile, type ActivationAuthenticate, type ConnectActivationAttempt, type ConnectActivationHint } from '@/features/cloud-link/state/connect/activation';
 export { activateConnectProfile } from '@/features/cloud-link/state/connect/activation';
 
-export type PendingAccess = { controlPlaneUrl: string; response: ConnectClaim; previous?: ConnectionProfile; fromPairing?: boolean };
+export type PendingAccess = { controlPlaneUrl: string; response: ConnectClaim; previous?: ConnectionProfile; fromPairing?: boolean; pairingId?: string };
 
 export type AccessDeps = {
-  activation: { current: ConnectActivation | undefined };
+  activation: { current: ConnectActivationAttempt | undefined };
+  activationHints: { current: Map<string, ConnectActivationHint> };
+  activeMachineId: { current: string | undefined };
   isActiveProfile: (profile: ConnectionProfile) => boolean;
   controlPlaneUrl: string;
   store: ConnectStore;
@@ -133,7 +135,7 @@ export async function saveConnectAccess({
   return profile;
 }
 
-export function requestConnectAccess(deps: AccessDeps, machineId: string, fromPairing = false, recoverEntitlement = true): Promise<ConnectionProfile> {
+export function requestConnectAccess(deps: AccessDeps, machineId: string, fromPairing = false, recoverEntitlement = true, hintActivation = false): Promise<ConnectionProfile> {
   const { controlPlaneUrl, recoveryMachineId, beforeProfileRefresh, pendingClaim, accessRequests } = deps;
   const key = `${controlPlaneUrl}:${machineId}`;
   const existing = accessRequests.current.get(key);
@@ -150,6 +152,10 @@ export function requestConnectAccess(deps: AccessDeps, machineId: string, fromPa
       const previous = (await loadConnectionProfiles(true)).find((profile) => profile.connect?.controlPlaneUrl === controlPlaneUrl && profile.connect.machineId === machineId);
       const response = await authenticateConnectRequest(deps, (token) => accessConnectMachine(controlPlaneUrl, machineId, token), { recoverEntitlement });
       if (previous && new URL(previous.serverUrl).hostname !== new URL(response.server_url).hostname) throw new Error('machine_hostname_mismatch: Access returned a different hostname.');
+      if (hintActivation && response.activation) deps.activationHints.current.set(machineId, {
+        activation: response.activation,
+        ...(fromPairing && deps.pairingRef.current ? { pairingId: deps.pairingRef.current.pairingId } : {}),
+      });
       pendingClaim.current = { controlPlaneUrl, response, previous, fromPairing };
     }
     const saved = await saveConnectAccess(deps);
@@ -202,10 +208,12 @@ export async function prepareConnectSettings(deps: AccessDeps, settings: Opencod
 
 export async function claimConnectAction(deps: AccessDeps, isCurrent = () => true) {
   const { controlPlaneUrl, pairingRef, pendingClaim, pendingPurchase, finishPurchase, setPhase, clearPairing } = deps;
+  const authenticate: ActivationAuthenticate = (request) => authenticateConnectRequest(deps, request);
   await Promise.allSettled([...deps.accessRequests.current.values()]);
   if (pendingClaim.current) {
-    const fromPairing = pendingClaim.current.fromPairing;
-    return activateConnectProfile(deps, await requestConnectAccess(deps, pendingClaim.current.response.machine_id), fromPairing, isCurrent);
+    const pending = pendingClaim.current;
+    const hint = pending.response.activation ? { activation: pending.response.activation, ...(pending.pairingId ? { pairingId: pending.pairingId } : {}) } : undefined;
+    return activateConnectProfile(deps, await requestConnectAccess(deps, pending.response.machine_id), pending.fromPairing, isCurrent, hint, authenticate);
   }
   const current = pairingRef.current;
   if (!current) throw new Error('Scan or open a pairing link first.');
@@ -217,11 +225,15 @@ export async function claimConnectAction(deps: AccessDeps, isCurrent = () => tru
     const deviceName = Platform.OS === 'ios' ? 'iPhone' : Platform.OS === 'android' ? 'Android phone' : 'Web test device';
     response = await authenticateConnectRequest(deps, (token) => claimConnectPairing(current, token, deviceName));
   } catch (reason) {
-    if (reason instanceof ConnectApiError && reason.machineId) return activateConnectProfile(deps, await requestConnectAccess(deps, reason.machineId, true), true, isCurrent);
+    if (reason instanceof ConnectApiError && reason.machineId) {
+      const hint = reason.activation ? { activation: reason.activation, pairingId: current.pairingId } : undefined;
+      return activateConnectProfile(deps, await requestConnectAccess(deps, reason.machineId, true, true, true), true, isCurrent, hint, authenticate);
+    }
     if (reason instanceof ConnectApiError && (reason.status === 404 || reason.invalidPairingToken || reason.pairingExpired)) await clearPairing();
     throw reason;
   }
   const previous = (await loadConnectionProfiles(true)).find((profile) => profile.connect?.controlPlaneUrl === current.controlPlaneUrl && profile.connect.machineId === response.machine_id);
-  pendingClaim.current = { controlPlaneUrl: current.controlPlaneUrl, response, previous, fromPairing: true };
-  return activateConnectProfile(deps, await requestConnectAccess(deps, response.machine_id, true), true, isCurrent);
+  pendingClaim.current = { controlPlaneUrl: current.controlPlaneUrl, response, previous, fromPairing: true, pairingId: current.pairingId };
+  const hint = response.activation ? { activation: response.activation, pairingId: current.pairingId } : undefined;
+  return activateConnectProfile(deps, await requestConnectAccess(deps, response.machine_id, true), true, isCurrent, hint, authenticate);
 }
