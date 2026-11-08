@@ -232,6 +232,17 @@ Management revision 1 and pre-version connectors keep the legacy path-only surfa
 
 Client code and the validation mirror live in `shared/contracts/service-management.ts`; the provider exposes it through the connection domain (`useConnection().services`). The provider resolves the target machine from the active Cloud Link connection or a saved Cloud Link profile, so management keeps working while another connection is active and links use the target machine's own origin. See the connector repository's frozen service-management protocol documentation → "Service management API (device-authenticated)".
 
+## Cloud Link Activation Readiness (required service change)
+
+Not implemented by the app. The separate Cloud Link service/connector should
+report `pending_approval`, `tunnel_starting` or `ready` from pairing claim and
+machine access, with `retry_after_ms` or a long-poll, and must create or cover the
+machine hostname before returning `server_url`. Until then the app infers
+readiness from Cloudflare 1033, DNS and timeout failures for a bounded 120-second
+activation budget. A hostname resolved before its record exists can be cached as
+NXDOMAIN for the zone SOA minimum. See
+[Cloud Link](../product/cloud-link.md#connector-and-control-plane-dependencies).
+
 ## Compatibility-only Features And Validation
 
 Sharing, archive/restore, title summarization, general config writes, persistent MCP enablement, worktree reset, and LSP/formatter diagnostics are not supported on V1 because they have no V2 equivalent.

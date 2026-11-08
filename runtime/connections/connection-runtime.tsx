@@ -138,7 +138,9 @@ export function useConnectionLifecycle(entry: ConnectionRecord, setup: ConnectSe
       if (!recover && renewed.current === key) return;
       const remaining = Date.parse(metadata.expiresAt) - Date.now() - 300_000;
       const capped = !recover && remaining > 2_147_483_647;
-      const delay = recover ? 1000 : Math.min(Math.max(remaining, 1000), 2_147_483_647);
+      // Spread renewals across devices; never delay past the pre-expiry window.
+      const jitter = capped ? 0 : Math.floor(Math.random() * 60_000);
+      const delay = recover ? 1000 : Math.min(Math.max(remaining - jitter, 1000), 2_147_483_647);
       refreshTimer = setTimeout(() => {
         if (AppState.currentState !== 'active' || paused()) return;
         renewed.current = key;

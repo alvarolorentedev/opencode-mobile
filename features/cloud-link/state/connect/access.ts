@@ -2,6 +2,7 @@ import type { Purchase } from 'expo-iap';
 import { Platform } from 'react-native';
 
 import { accessConnectMachine, claimConnectPairing, ConnectApiError } from '@/shared/protocol/cloud-link/connect';
+import { withSpan } from '@/shared/observability/client';
 import { getConnectCredentialError, hasConnectSession, isConnectEntitlement, type ConnectClaim, type ConnectPairing, type ConnectSession, type ConnectStore } from '@/shared/contracts/cloud-link';
 import { getConnectSession, saveConnectSession } from '@/shared/storage/cloud-link';
 import { getProfilePassword, loadConnectionProfiles, saveConnectProfile } from '@/shared/storage/connection-profiles';
@@ -139,7 +140,7 @@ export function requestConnectAccess(deps: AccessDeps, machineId: string, fromPa
   if (existing) return fromPairing ? existing.then(async (profile) => { await deps.clearPairing(); return profile; }) : existing;
   // The secure-save checkpoint is shared, so different machines save in order.
   const preceding = [...accessRequests.current.values()];
-  const request = (async () => {
+  const request = withSpan('cloudlink.access', { source: fromPairing ? 'pairing' : 'renewal' }, async (span) => {
     await Promise.allSettled(preceding);
     recoveryMachineId.current = machineId;
     if (pendingClaim.current) {
@@ -154,8 +155,9 @@ export function requestConnectAccess(deps: AccessDeps, machineId: string, fromPa
     const saved = await saveConnectAccess(deps);
     recoveryMachineId.current = undefined;
     deps.setPhase('idle');
+    span.setAttribute('result', 'saved');
     return saved;
-  })().finally(() => { accessRequests.current.delete(key); });
+  }).finally(() => { accessRequests.current.delete(key); });
   accessRequests.current.set(key, request);
   return request;
 }
@@ -185,9 +187,10 @@ export async function prepareConnectSettings(deps: AccessDeps, settings: Opencod
         const next = await requestConnectAccess(deps, connect.machineId, false, Boolean(credentialError));
         return { ...settings, serverUrl: next.serverUrl, username: next.username, password: await getProfilePassword(next.id), connect: next.connect };
       } catch (reason) {
-        // Renewal is not visible to the control plane yet. The old credential is
-        // still valid, so connect with it and let the expiry path recover.
-        if (!credentialError && reason instanceof ConnectApiError && reason.noActiveSubscription && !getConnectCredentialError(connect, password)) {
+        // A best-effort renewal must not break a still-valid connection: the old
+        // credential can keep working until it actually expires. A purchase
+        // environment change must still unwind the current scope.
+        if (!(reason instanceof ConnectPurchaseEnvironmentChange) && !getConnectCredentialError(connect, password)) {
           return { ...settings, serverUrl: profile?.serverUrl ?? settings.serverUrl, username: profile?.username ?? settings.username, password, connect };
         }
         throw reason;

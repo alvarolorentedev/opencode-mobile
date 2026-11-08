@@ -84,9 +84,11 @@ export function useWorkspaceConnections(shell: WorkspaceShellState, hydrated: bo
     const headers = settings.connect ? {} : settings.headers;
     const certificate = settings.connect ? undefined : settings.certificate;
     if (!settings.connect && (previousPassword !== settings.password || JSON.stringify(previousHeaders) !== JSON.stringify(settings.headers ?? {}) || JSON.stringify(previousCertificate) !== JSON.stringify(certificate) || JSON.stringify(existing?.oidc) !== JSON.stringify(settings.oidc))) await clearCapabilitiesSnapshots(getConnectionScope(settings));
-    await saveProfilePassword(profile.id, settings.password, Boolean(settings.connect));
-    await saveProfileHeaders(profile.id, headers);
-    await saveProfileCertificate(profile.id, certificate);
+    // Reconnects repeat the same credentials; only touch secure storage when a
+    // value actually changed.
+    if (previousPassword !== settings.password) await saveProfilePassword(profile.id, settings.password, Boolean(settings.connect));
+    if (JSON.stringify(previousHeaders) !== JSON.stringify(headers)) await saveProfileHeaders(profile.id, headers);
+    if (JSON.stringify(previousCertificate) !== JSON.stringify(certificate)) await saveProfileCertificate(profile.id, certificate);
     try { if (!existing) await save([...profiles, profile]); }
     catch (error) {
       if (existing) {

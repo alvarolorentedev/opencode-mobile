@@ -340,14 +340,18 @@ non-secret cache/remembered-session copies remain for interruption-safe recovery
 `GET /v1/machines` exposes owned machines and `access_enabled`, including after
 subscription expiry. Second-device Restore recovers store ownership and obtains
 machine access without a new QR. Expiry preserves machine/profile records;
-Purchase/Restore reactivates the same machine/tunnel/hostname. Reconnect paths
-prepare Cloud Link credentials centrally. Foreground access refresh starts five
-minutes before expiry as a best-effort renewal attempt, avoids repeatedly
+Purchase/Restore reactivates the same machine/tunnel/hostname. A completed
+purchase refreshes only the focused Cloud Link machine; when another connection
+is active, Restore still recovers the saved Cloud Link machines. Other saved
+machines refresh lazily when selected. Reconnect paths prepare Cloud Link
+credentials centrally. Foreground access refresh starts five minutes before
+expiry (jittered per device) as a best-effort renewal attempt, avoids repeatedly
 refreshing unchanged paid-through credentials, and retries transient failures.
-A pre-expiry refresh rejected for no active subscription keeps the still-valid
-credential and entitlement; hard recovery runs only after the credential expires
-or is missing. Expiry still closes SSE/terminal sockets and blocks all
-SDK/polling/background traffic.
+A pre-expiry refresh that fails for any reason while the credential is still
+valid keeps that credential and entitlement; hard recovery runs only after the
+credential expires or is missing. A pending purchase environment switch is never
+swallowed by this fallback. Expiry still closes SSE/terminal sockets and blocks
+all SDK/polling/background traffic.
 
 Concurrent reconnect triggers (boot, foreground refresh, activation retry,
 manual Reconnect, profile switch) join one in-flight connect when the server,
@@ -406,6 +410,31 @@ QR code on your computer” returns to the scanner and accepts the connector's
 regenerated QR while preserving saved profiles. Foreground recovery cannot overlap
 or restart a waiting/delayed activation. Teardown/environment changes cancel waits;
 results for a different active connection cannot complete the old pairing flow.
+
+### Connector and control-plane dependencies
+
+Two service-side behaviours are required to remove the remaining first-pairing
+delay. Both belong to the separate Cloud Link service/connector repositories and
+are not implemented by the app:
+
+- **Activation readiness.** `POST /v1/pairings/:id/claim` and
+  `POST /v1/machines/:id/access` (or a sibling endpoint) should report
+  `pending_approval`, `tunnel_starting` or `ready`, with a `retry_after_ms` hint or
+  a long-poll. The connector must publish readiness once its tunnel is reachable
+  and the owner approved. Without it the app can only infer readiness from
+  1033/DNS/timeout failures, retries for 120 seconds, then asks the user to retry.
+- **DNS before exposure.** The machine hostname returned as `server_url` must
+  resolve when the access response is produced. Create the per-machine record in
+  the provisioning request before responding, or serve a wildcard so no
+  per-machine record is created. A lookup attempted before the record exists is
+  cached as NXDOMAIN for the zone SOA minimum (Cloudflare's default is 30
+  minutes) and can outlive the record on the user's resolver. Lower TTLs do not
+  help; avoiding the negative answer is the only reliable fix.
+
+The app never resolves a machine hostname before `access`/`claim` returns it, and
+assumes the connector's exposed-service links (`https://<host>:<port>/`) resolve
+for the same reason. The control plane owns DNS, Worker routing and connector
+publishing.
 
 Sessions are SecureStore records scoped by trusted environment and store; Apple
 and Google identities never merge. Session/pending-QR storage requires an
@@ -491,6 +520,16 @@ claim or finish twice; Apple still finishes StoreKit and Google never does.
 Locally, `npm run validate:commit` passed (147 files, 895 tests) along with the
 focused Cloud Link suites. Real native store-sheet behavior remains a device
 acceptance check.
+
+Renewal resilience validation on 2026-11-08:
+`features/cloud-link/__tests__/connect-recovery.test.ts` covers a transient
+control-plane failure before credential expiry; the still-valid credential and
+connection are retained and the store is not verified again. Purchase/Restore now
+refreshes the focused machine (or the saved machines while another connection is
+active), renewal timers are jittered, unchanged credentials skip SecureStore
+writes, and `cloudlink.access`/`cloudlink.activate` spans expose per-attempt
+timing and failure kind. Activation readiness and DNS provisioning remain
+external service/connector work, documented above.
 
 Cloud Link recovery validation on 2026-10-11: static CI, both fake-server
 self-tests and all 116 web E2E flows passed. The user explicitly confirmed live

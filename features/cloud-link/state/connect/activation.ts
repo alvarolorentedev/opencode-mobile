@@ -1,6 +1,7 @@
 import { AppState } from 'react-native';
 
 import { getProfilePassword } from '@/shared/storage/connection-profiles';
+import { withSpan } from '@/shared/observability/client';
 import type { ConnectionProfile } from '@/shared/contracts/connection-profiles';
 import type { AccessDeps } from '@/features/cloud-link/state/connect/access';
 
@@ -48,7 +49,13 @@ export async function activateConnectProfile(deps: AccessDeps, profile: Connecti
       if (startup && Date.now() >= deadline) {
         delayed = true; setPhase('delayed'); return false;
       }
-      const result = await switchConnection({ serverUrl: profile.serverUrl, username: profile.username, password, connect: profile.connect }, profile.modelPreferences);
+      const result = await withSpan('cloudlink.activate', { startup, attempt: index }, async (span) => {
+        const value = await switchConnection({ serverUrl: profile.serverUrl, username: profile.username, password, connect: profile.connect }, profile.modelPreferences);
+        span.setAttribute('status', value.status);
+        if (value.kind) span.setAttribute('failureKind', value.kind);
+        if (value.retryableStartup) span.setAttribute('retryableStartup', true);
+        return value;
+      });
       if (!current()) return false;
       if (!isActiveProfile(profile)) { setPhase('idle'); return false; }
       if (result.status === 'connected') { setPhase('paired'); return true; }

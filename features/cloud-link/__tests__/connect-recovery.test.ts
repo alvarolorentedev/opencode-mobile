@@ -81,11 +81,15 @@ async function fixture({ expired = false, missing = false, storedSession = true,
     warn: () => {},
     markStartup: () => {},
   };
+  const observability = {
+    telemetry,
+    withSpan: async (_name: string, _attrs: unknown, run: (span: { setAttribute: () => void }) => Promise<unknown>) => run({ setAttribute: () => undefined }),
+  };
   const imports: Record<string, any> = {
     react: runtime.react,
     'react-i18next': { useTranslation: () => ({ t: (key: string) => key }) },
     'react-native': native,
-    '@/shared/observability/client': { telemetry },
+    '@/shared/observability/client': observability,
     "@/shared/contracts/cloud-link": connect,
     "@/shared/protocol/cloud-link/connect": connect,
     "@/shared/storage/cloud-link": connect,
@@ -221,6 +225,19 @@ async function fixture({ expired = false, missing = false, storedSession = true,
   assert.equal(f.runtime.value.connection.status, 'connected');
   assert.equal(f.runtime.value.settings.password, 'secret-a', 'The still-valid credential is retained.');
   assert.equal(f.connect.hasConnectEntitlement(await f.connect.getConnectSession(CP, 'google')), true);
+  f.runtime.unmount();
+}
+// A transient renewal failure before expiry keeps the still-valid credential.
+{
+  const f = await fixture({ ttl: 360000 }); await f.runtime.settle();
+  assert.equal(f.accesses, 0, 'A credential outside the renewal window is not refreshed.');
+  f.failAccess(true);
+  f.advance(120000);
+  await f.runtime.value.connect(); await f.runtime.settle();
+  assert.equal(f.accesses, 1, 'The pre-expiry refresh must run.');
+  assert.equal(f.claims, 0, 'A transient control-plane failure must not verify the store again.');
+  assert.equal(f.runtime.value.connection.status, 'connected');
+  assert.equal(f.runtime.value.settings.password, 'secret-a', 'The still-valid credential is retained.');
   f.runtime.unmount();
 }
 // Once the credential expires, a rejected access still recovers through the store.

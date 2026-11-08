@@ -580,9 +580,14 @@ Credentials:
   recovery cannot replace a connection selected while it was in flight.
 - Foreground return schedules recovery even after credential expiry or loss.
   Failed automatic recovery retries after 60 seconds while active; backgrounding
-  cancels retry timers. Same-machine renewal keeps the project selection.
-  Provider-owned profile state refreshes when the Cloud Link profile snapshot
-  changes, including renewal of inactive saved machines.
+  cancels retry timers. A pre-expiry access refresh that fails while the saved
+  credential is still valid keeps that credential and entitlement; only expiry or
+  a missing credential starts store recovery. Renewal timers are jittered per
+  device. Same-machine renewal keeps the project selection. Purchase/Restore
+  refreshes the focused Cloud Link machine; with another connection active it
+  recovers the saved Cloud Link machines. Provider-owned profile state refreshes
+  when the Cloud Link profile snapshot changes, including renewal of inactive
+  saved machines.
 
 - the active connection password is stored in Keychain/Keystore-backed secure storage via `shared/storage/connection-password.ts`; legacy plaintext `settings.password` is migrated to secure storage and stripped from AsyncStorage on hydration
 - credentials hydrate only when stored server metadata supplies a valid identity; unread metadata never lends an old password or stored gateway headers to the default server. Invalid background connection references do not resolve credentials

@@ -204,8 +204,13 @@ export function useConnectState({ controlPlaneUrl, setControlPlaneUrl, switchCon
     if (pairingRef.current || pendingClaim.current) return claimAction();
     const owned = await readMachines();
     const stored = await loadConnectionProfiles();
+    const candidates = stored.filter((entry) => entry.connect?.controlPlaneUrl === controlPlaneUrl
+      && owned.some((machine) => machine.id === entry.connect!.machineId));
+    // A focused machine refreshes alone; Restore while another connection is
+    // active still recovers every saved Cloud Link machine.
+    const focused = candidates.find((entry) => entry.connect!.machineId === activeMachineIdRef.current);
     let active: ConnectionProfile | undefined;
-    for (const profile of stored.filter((entry) => entry.connect?.controlPlaneUrl === controlPlaneUrl && owned.some((machine) => machine.id === entry.connect!.machineId))) {
+    for (const profile of focused ? [focused] : candidates) {
       const refreshed = await requestAccess(profile.connect!.machineId);
       if (refreshed.connect!.machineId === activeMachineIdRef.current) active = refreshed;
     }
