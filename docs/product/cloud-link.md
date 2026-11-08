@@ -72,8 +72,10 @@ profiles remain stored but cannot reconnect through an old control plane. Use
 Restore on the new service or pair with a fresh connector QR to recover access.
 Machine URLs continue to come directly from backend responses.
 
-The public catalog is cached in memory for five minutes per trusted environment;
-concurrent reads share a request and callers receive independent copies. Failed
+The public catalog is retained in memory for the session per trusted environment
+and refreshed after five minutes; the provider reads it outside React observers to
+attribute store purchases, so eviction must not depend on a mounted catalog view.
+Concurrent reads share a request and callers receive independent copies. Failed
 refreshes are not cached. Concurrent claims of the same native proof in the same
 environment share verification, but completed grants are never cached. Existing
 secure-session expiry, explicit Restore and server-rejection recovery remain

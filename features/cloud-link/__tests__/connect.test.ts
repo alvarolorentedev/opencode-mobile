@@ -1,6 +1,6 @@
 import { moduleSourceUri } from '../../../tests/helpers/module-source.mjs';
 import assert from 'node:assert/strict';
-import { QueryClient } from '@tanstack/react-query';
+import { QueryClient, queryOptions } from '@tanstack/react-query';
 import { Buffer } from 'node:buffer';
 import { readFile } from 'node:fs/promises';
 import { createRequire } from 'node:module';
@@ -197,6 +197,18 @@ try {
     response = catalog;
     assert.deepEqual(await readCatalog(pairing.controlPlaneUrl), catalog, 'Failed refreshes can be retried.');
   } finally { Date.now = originalNow; }
+  // The provider attributes store events through this catalog without a mounted
+  // React observer; eviction would silently drop a paid transaction until restart.
+  const catalogQueries = await loadTs('features/cloud-link/services/queries/cloud-link.ts', {
+    '@/shared/protocol/cloud-link/connect': connect,
+    '@tanstack/react-query': { queryOptions },
+  });
+  const retained = new QueryClient({ defaultOptions: { queries: { retry: false, gcTime: 25, staleTime: 300_000 } } });
+  const retainedOptions = catalogQueries.connectCatalogOptions(pairing.controlPlaneUrl, 'apple');
+  assert.deepEqual(await retained.fetchQuery(retainedOptions), catalog);
+  await new Promise((resolve) => setTimeout(resolve, 75));
+  assert.deepEqual(retained.getQueryData(retainedOptions.queryKey), catalog, 'Purchase attribution must survive the default cache window.');
+  retained.clear();
   assert.equal(new connect.ConnectApiError(409, { machine_id: 'machine-1' }).machineId, 'machine-1');
   assert.equal(new connect.ConnectApiError(503, { machine_id: 'machine-1' }).machineId, 'machine-1');
   status = 204;
