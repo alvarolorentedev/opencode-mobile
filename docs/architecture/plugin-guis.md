@@ -34,7 +34,8 @@ documented window contract, not the desktop host implementation.
 
 `MOBILE_GUI_API = 1` supports:
 
-- identity, options, app metadata, signal, `t`, `plural`, `add`, `list`;
+- identity, options, app metadata, signal, `t`, `plural` (both `{name}` and
+  `{{name}}` placeholders), `add`, `list`;
 - sessions (current), servers (the active connection), RPC and current-session
   reads, tabs (single session route), layout (full-screen panel), storage and
   declared stores, dialogs (`confirm`, `alert`, `prompt`, `select`), toasts,
@@ -62,7 +63,9 @@ Known limits of this first profile:
 
 - Plugin code runs in a WebView, never in the React Native realm.
 - The WebView receives no server credential. `ctx.client.rpc` and
-  `session.get` call native callbacks; RPC ids are scoped to the plugin and
+  `session.get` call native callbacks; an RPC id is allowed only when every
+  word in it also appears in the plugin id or package source (so
+  `@slkiser/opencode-quota.server` may call `slkiser.opencode-quota`), and
   session reads are restricted to the routed session.
 - Direct `fetch`, XHR, WebSocket, EventSource, `sendBeacon` and `window.open`
   are blocked best-effort before the bundle evaluates. This is not a process

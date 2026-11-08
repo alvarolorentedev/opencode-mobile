@@ -80,6 +80,36 @@ export type PluginGuiHostProps = {
   onSessionGet: (request: { sessionID: string }) => Promise<unknown>;
 };
 
+/**
+ * A bundle message may use either `{name}` or `{{name}}` placeholders. Both
+ * forms are used by published GUI plugins, so the host formats both.
+ */
+export function formatPluginMessage(
+  message: string,
+  params?: Record<string, string | number | boolean>,
+): string {
+  let value = message;
+  for (const [name, replacement] of Object.entries(params ?? {})) {
+    const text = String(replacement);
+    value = value.replaceAll(`{{${name}}}`, () => text).replaceAll(`{${name}}`, () => text);
+  }
+  return value;
+}
+
+/**
+ * A plugin may call an RPC whose id is built from its own words. The server
+ * exposes the quota plugin as `@slkiser/opencode-quota.server` while its RPC
+ * id is `slkiser.opencode-quota`, so contiguous substring matching rejected a
+ * legitimate call. Words from the package source are included, but another
+ * plugin's id still does not match.
+ */
+export function pluginRpcAllowed(pluginId: string, rpcID: string, source?: string): boolean {
+  const words = (value: string) => value.toLowerCase().split(/[^a-z0-9]+/).filter(Boolean);
+  const allowed = new Set([...words(pluginId), ...words(source ?? '')]);
+  const rpc = words(rpcID);
+  return rpc.length > 0 && rpc.every((word) => allowed.has(word));
+}
+
 /** A plugin whose GUI can be attempted on this host. */
 export function isPluginGui(plugin: RawPluginInfo): plugin is RawPluginInfo & { id: string } {
   return Boolean(

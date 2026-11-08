@@ -12,7 +12,7 @@ import { Spinner } from '@/shared/ui/spinner';
 import { Text } from '@/shared/ui/text';
 import { FieldDescription } from '@/shared/ui/text-field';
 import { getErrorMessage } from '@/shared/utilities/error-message';
-import type { PluginGuiBundle, PluginGuiPanel, PluginGuiTheme } from '@/features/extensions/model/plugin-gui';
+import { pluginRpcAllowed, type PluginGuiBundle, type PluginGuiPanel, type PluginGuiTheme } from '@/features/extensions/model/plugin-gui';
 import PluginGuiDom from '@/features/extensions/ui/plugin-gui-dom';
 
 type SessionView = {
@@ -27,10 +27,6 @@ type Props = {
   onClose: () => void;
   onOpenSession: (sessionID: string) => Promise<void>;
 };
-
-function normalize(value: string) {
-  return value.toLowerCase().replace(/^@[^/]+\//, '').replace(/[^a-z0-9]/g, '');
-}
 
 /** The bundle loader, panel switcher and WebView shared by the chat overlay and the deep-link route. */
 export function PluginGuiView({ pluginId, session, onClose, onOpenSession }: Props) {
@@ -95,13 +91,12 @@ export function PluginGuiView({ pluginId, session, onClose, onOpenSession }: Pro
   }, []);
 
   const rpc = useCallback(async (request: { rpcID: string; method: string; input?: unknown; directory?: string }) => {
-    const pluginKey = normalize(pluginId);
-    const rpcKey = normalize(request.rpcID);
-    if (!pluginKey || (!pluginKey.includes(rpcKey) && !rpcKey.includes(pluginKey))) {
+    const source = plugin?.source.type === 'package' ? plugin.source.target : plugin?.source.type === 'local' ? plugin.source.path : undefined;
+    if (!pluginRpcAllowed(pluginId, request.rpcID, source)) {
       throw new Error(`This plugin cannot call the "${request.rpcID}" RPC.`);
     }
     return extensions.pluginGui.rpc({ ...request, directory: session.directory });
-  }, [extensions.pluginGui, pluginId, session.directory]);
+  }, [extensions.pluginGui, plugin, pluginId, session.directory]);
 
   const sessionGet = useCallback(async (request: { sessionID: string }) => {
     if (request.sessionID !== session.id) throw new Error('This plugin can only read the current session.');

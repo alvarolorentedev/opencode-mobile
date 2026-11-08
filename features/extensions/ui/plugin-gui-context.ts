@@ -1,10 +1,11 @@
 import { createSignal, untrack } from 'solid-js';
 import type { PluginBundle } from '@/features/extensions/ui/plugin-gui-loader';
-import type {
-  PluginGuiRpcRequest,
-  PluginGuiServer,
-  PluginGuiSession,
-  PluginGuiTheme,
+import {
+  formatPluginMessage,
+  type PluginGuiRpcRequest,
+  type PluginGuiServer,
+  type PluginGuiSession,
+  type PluginGuiTheme,
 } from '@/features/extensions/model/plugin-gui';
 import { createUi } from '@/features/extensions/ui/plugin-gui-ui';
 import { createOverlays } from '@/features/extensions/ui/plugin-gui-dialogs';
@@ -93,13 +94,8 @@ export function createPluginContext(args: Args) {
   const messages = definition.i18n ?? {};
   const baseLocale = locale.split('-')[0];
 
-  const resolve = (key: string, params?: Record<string, string | number | boolean>) => {
-    let value = messages[locale]?.[key] ?? messages[baseLocale]?.[key] ?? messages.en?.[key] ?? key;
-    for (const [name, replacement] of Object.entries(params ?? {})) {
-      value = value.replaceAll(`{${name}}`, String(replacement));
-    }
-    return value;
-  };
+  const resolve = (key: string, params?: Record<string, string | number | boolean>) =>
+    formatPluginMessage(messages[locale]?.[key] ?? messages[baseLocale]?.[key] ?? messages.en?.[key] ?? key, params);
 
   const stores: Record<string, unknown> = {};
   const sessionStores = new Map<string, Persisted>();
