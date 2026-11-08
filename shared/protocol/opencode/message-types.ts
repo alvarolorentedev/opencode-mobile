@@ -39,6 +39,9 @@ export type Message = (MessageBase & {
     // Server notices (for example a plugin command reply) are stored as
     // synthetic input. They render as text but are not model output.
     synthetic?: boolean;
+    // Plugin-posted command reports use the distinct notice card; other
+    // synthetic notices keep the assistant-style notice rendering.
+    noticeKind?: 'server' | 'plugin';
     cost?: number;
     tokens?: TokenUsageInfo;
     finish?: string;

@@ -100,7 +100,7 @@ onboarding, which reopens the existing setup review without clearing settings.
 
 #### Responsibility
 
-- `transcript-list.tsx`: render the transcript area, empty states, connection issues, and load older history on scroll-up; running progress lives on the newest activity header (including after its tools complete) and the active child row instead of a separate footer. When no activity row exists yet, it appends one transient non-interactive activity row in the same position; this is also the only activity visible at `Messages only` while a turn is working. Revert status and cancellation live in the composer notice
+- `transcript-list.tsx`: render the transcript area, empty states, connection issues, and load older history on scroll-up; running progress lives on the newest activity header (including after its tools complete) and the active child row instead of a separate footer. When no activity row exists yet, it appends one transient non-interactive activity row in the same position; this is also the only activity visible at `Messages only` while a turn is working. Plugin notices (`entry.noticeKind === 'plugin'`) render with `NoticeCard`; all other messages use `TranscriptMessage`. Revert status and cancellation live in the composer notice
 - `changes-overlay.tsx`: render the Files changed overlay with refresh, scope selection, and diff accordions
 - `side-question-overlay.tsx`: render a transient `/btw` answer without adding it to the transcript
 - `pending-interactions.tsx`: render server-owned tasks, permissions, and questions, including the compact progress view
@@ -374,6 +374,20 @@ Responsibility:
 - show copy state, optional TTS button, fork/revert actions for user messages, timestamp, markdown text, error, and summary chips
 - keep only the time for messages from today and include the date for older messages, so the header stays readable on narrow screens
 - an explicit copy button keeps copying available without capturing table-scroll gestures; taps still dismiss the keyboard
+
+#### `NoticeCard`
+
+Responsibility:
+
+- render plugin-posted command reports (`noticeKind: 'plugin'`) as a distinct inline notice, not a user or assistant message bubble
+- show an information icon, a localized `Notice` label, timestamp, copy action, and Markdown body
+- never show a model label, read-aloud, fork, or revert action
+- in flat mode, drop the card chrome and side margins and use a left accent rule; in slim mode, reduce padding and icon size
+- keep the existing `transcript-message-<id>` test ID and expose `transcript-notice-<id>` for notice-specific assertions
+- existing synthetic server notices keep the `TranscriptMessage` rendering; only plugin notices use this card
+
+The component is `features/chat/ui/cards/notice-card.tsx`, exported through
+`chat-cards.tsx`, with a colocated Storybook story.
 
 ### `features/chat/ui/chat-markdown.tsx`
 

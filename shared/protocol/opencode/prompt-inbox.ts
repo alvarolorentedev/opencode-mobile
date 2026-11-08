@@ -44,6 +44,9 @@ export type PendingNotice = {
   createdAt: number;
   text: string;
   description?: string;
+  // Plugin reports use the distinct notice card; synthetic notices default to
+  // the existing server-notice rendering.
+  kind?: 'server' | 'plugin';
 };
 
 export type PromptInboxApi = {

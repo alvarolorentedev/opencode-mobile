@@ -13,7 +13,7 @@ import { useTranslation } from 'react-i18next';
 import { AppState, View, type NativeScrollEvent, type NativeSyntheticEvent } from 'react-native';
 
 import { getModelVariantLabel } from '@/features/ai/index';
-import { TranscriptMessage } from '@/features/chat/ui/chat-cards';
+import { NoticeCard, TranscriptMessage } from '@/features/chat/ui/chat-cards';
 import { ActivityGroupRow } from '@/features/chat/ui/cards/activity-group';
 import { CompactionDivider } from '@/features/chat/ui/cards/compaction-divider';
 import { styles, slimStyles, stylesClasses } from '@/features/chat/ui/chat-view-styles';
@@ -386,24 +386,35 @@ export function TranscriptList({
             slim && slimStyles.transcriptItem,
             flatTranscript && (slim ? slimStyles.transcriptItemFlat : styles.transcriptItemFlat),
           ]}>
-            <TranscriptMessage
-              canSpeak={entry.role === 'assistant' && !entry.notice && Boolean(entry.text.trim())}
-              copied={copiedMessageId === entry.id}
-              entry={entry}
-              flat={flatTranscript}
-              fontSize={transcriptFontSize}
-              modelLabel={getEntryModelLabel(
-                entry,
-                modelLabels,
-                entry.model?.variant ? getModelVariantLabel(entry.model.variant, t) : undefined,
-              )}
-              slim={slim}
-              onCopy={onCopyMessage}
-              onFork={entry.role === 'user' ? onForkMessage : undefined}
-              onRevert={entry.role === 'user' ? onRevertMessage : undefined}
-              onToggleSpeak={onToggleSpeak}
-              speaking={speakingMessageId === entry.id}
-            />
+            {entry.noticeKind === 'plugin' ? (
+              <NoticeCard
+                copied={copiedMessageId === entry.id}
+                entry={entry}
+                flat={flatTranscript}
+                fontSize={transcriptFontSize}
+                slim={slim}
+                onCopy={onCopyMessage}
+              />
+            ) : (
+              <TranscriptMessage
+                canSpeak={entry.role === 'assistant' && !entry.notice && Boolean(entry.text.trim())}
+                copied={copiedMessageId === entry.id}
+                entry={entry}
+                flat={flatTranscript}
+                fontSize={transcriptFontSize}
+                modelLabel={getEntryModelLabel(
+                  entry,
+                  modelLabels,
+                  entry.model?.variant ? getModelVariantLabel(entry.model.variant, t) : undefined,
+                )}
+                slim={slim}
+                onCopy={onCopyMessage}
+                onFork={entry.role === 'user' ? onForkMessage : undefined}
+                onRevert={entry.role === 'user' ? onRevertMessage : undefined}
+                onToggleSpeak={onToggleSpeak}
+                speaking={speakingMessageId === entry.id}
+              />
+            )}
           </View>
         );
       }}

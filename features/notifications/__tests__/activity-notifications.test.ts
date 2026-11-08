@@ -44,6 +44,9 @@ function snapshot(ids = ['one']): ActivitySnapshot {
 function assistant(error?: string, parts: any[] = []) {
   return { info: { id: 'message', role: 'assistant', time: { created: 2 }, ...(error ? { error: { name: error, data: {} } } : {}) }, parts } as any;
 }
+function pluginNotice() {
+  return { info: { id: 'notice', role: 'assistant', time: { created: 3 }, synthetic: true, noticeKind: 'plugin' }, parts: [] } as any;
+}
 function props() {
   return { catalogClient: {} as any, settings: { serverUrl: 'https://server', username: '', password: '', directory: '' },
     contract: 'v2' as const, connectionScope: 'scope', connected: true, currentSessionId: 'one', sessions: [session('one')], sendingState: { active: false }, streamConnectedRef: { current: true } };
@@ -76,6 +79,13 @@ describe('activity selection', () => {
     state.statuses.one = { type: 'idle' }; state.queued.clear();
     state.messages.one = [assistant('MessageAbortedError')]; state.messages.new = [assistant('APIError')];
     expect(getSessionActivities(state).map((activity) => activity.state)).toEqual(['stopped', 'failed']);
+  });
+
+  it('does not let a plugin notice hide the last assistant failure', () => {
+    const state = snapshot();
+    state.statuses.one = { type: 'idle' };
+    state.messages.one = [assistant('APIError'), pluginNotice()];
+    expect(getSessionActivities(state)[0].state).toBe('failed');
   });
 
   it('uses running tools and never exposes tool output', () => {

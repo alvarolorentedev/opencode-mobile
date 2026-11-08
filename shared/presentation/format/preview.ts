@@ -39,7 +39,9 @@ export function getMessagePreview(record: SessionMessageRecord) {
 }
 
 export function getHistoryPreview(messages: SessionMessageRecord[]) {
-  const latest = [...messages].reverse().find((record) => getMessagePreview(record));
+  // A plugin report is a display-only notice, not the session's last message.
+  const latest = [...messages].reverse().find((record) =>
+    !(record.info.role === 'assistant' && record.info.noticeKind === 'plugin') && getMessagePreview(record));
   if (!latest) {
     return 'Start a new conversation';
   }

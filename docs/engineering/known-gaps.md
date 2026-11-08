@@ -218,6 +218,9 @@ has no durable config/plugin/skill/command mutation surface. Consequences:
   shared list because they are system-managed
 - the V2 command list exposes no provenance, so built-in commands are matched by
   their upstream name/description pair; new built-ins need that set updated
+- plugin command reports are detected by non-empty user metadata without the
+  composer's `displayText` marker; a plugin that omits metadata or copies composer
+  metadata still renders as a user message until the server exposes a notice flag
 - the clean long-term fix is an upstream scoped config-write/validate endpoint
   and extension file CRUD; the current transaction and shell fallback should be
   removed once those exist

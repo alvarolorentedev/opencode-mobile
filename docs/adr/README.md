@@ -90,6 +90,7 @@ coverage, and documentation links.
 | [0036](0036-flexible-first-with-play-urgency.md) | Flexible-first store updates with a Play urgency override | Accepted |
 | [0037](0037-per-agent-model-memory.md) | Per-agent model memory and explicit auto-model thinking levels | Accepted |
 | [0038](0038-single-archived-projects-switch.md) | One archived-projects switch in the project picker | Accepted |
+| [0039](0039-plugin-command-reports-as-notices.md) | Plugin command reports render as distinct notices | Accepted |
 
 ## Template
 

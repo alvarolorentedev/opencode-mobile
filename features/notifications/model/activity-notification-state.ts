@@ -38,7 +38,7 @@ export function getSessionActivities(snapshot: ActivitySnapshot): SessionActivit
     const busy = family.some((child) => snapshot.statuses[child.id]?.type === 'busy');
     const queued = family.some((child) => snapshot.queued.has(child.id));
     const records = family.flatMap((child) => snapshot.messages[child.id] ?? []).sort((a, b) => a.info.time.created - b.info.time.created);
-    const latest = records.filter((record) => record.info.role === 'assistant').at(-1);
+    const latest = records.filter((record) => record.info.role === 'assistant' && record.info.noticeKind !== 'plugin').at(-1);
     const runningTool = records.flatMap((record) => record.parts).findLast((part) => part.type === 'tool' && part.state.status === 'running');
     const error = latest?.info.role === 'assistant' ? latest.info.error : undefined;
     return {

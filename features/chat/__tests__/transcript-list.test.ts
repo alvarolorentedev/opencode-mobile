@@ -46,7 +46,7 @@ async function mountTranscriptList(overrides: Overrides = {}) {
     'expo-router': { useIsFocused: () => true },
     'react-i18next': { useTranslation: () => ({ t: (key: string) => key === 'chat:reasoning.high' ? 'High' : key }) },
     'react-native': { AppState: { addEventListener: () => ({ remove: () => undefined }) }, View: 'View' },
-    "@/features/chat/ui/cards/message-card": { TranscriptMessage: 'TranscriptMessage' },
+    "@/features/chat/ui/chat-cards": { TranscriptMessage: 'TranscriptMessage', NoticeCard: 'NoticeCard' },
     "@/features/chat/ui/cards/activity-group": { ActivityGroupRow: 'ActivityGroupRow' },
     "@/features/chat/ui/chat-view-styles": { styles: {}, slimStyles: {}, stylesClasses: {}, slimStylesClasses: {} },
     "@/features/chat/ui/chat-view-utils": { getCurrentTurnActivityKey, getEntryModelLabel, STARTER_PROMPT_KEYS: [] },
@@ -184,6 +184,26 @@ describe('transcript empty state', () => {
     };
     const { list } = await mountTranscriptList({ transcriptRows: [row] });
     expect(JSON.stringify(list.props.renderItem({ item: row }))).toContain('"canSpeak":false');
+  });
+
+  it('renders plugin notices with the distinct notice card', async () => {
+    const row = {
+      key: 'message:plugin-notice',
+      type: 'message' as const,
+      entry: {
+        id: 'plugin-notice',
+        role: 'assistant' as const,
+        createdAt: 0,
+        text: '[OpenCode Quota report]',
+        details: [],
+        notice: true,
+        noticeKind: 'plugin' as const,
+      },
+    };
+    const { list } = await mountTranscriptList({ transcriptRows: [row] });
+    const rendered = JSON.stringify(list.props.renderItem({ item: row }));
+    expect(rendered).toContain('"type":"NoticeCard"');
+    expect(rendered).not.toContain('"canSpeak"');
   });
 
   it('passes the resolved model label to assistant message rows', async () => {

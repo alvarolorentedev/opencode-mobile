@@ -3,16 +3,21 @@ import type { OpencodeConnectionSettings, ScopedOpencodeClient } from '@/shared/
 import { resolvePromptContext } from '@/shared/protocol/opencode/prompt-context';
 import { buildV2Raw } from '@/shared/protocol/opencode/v2/raw';
 import { buildProviderAuth } from '@/shared/protocol/opencode/v2/capabilities';
-import { isInternalSyntheticNotice, toFileDetail } from '@/shared/protocol/opencode/v2/mappers';
+import { isInternalSyntheticNotice, isServerNoticeMetadata, toFileDetail } from '@/shared/protocol/opencode/v2/mappers';
 import { syncSessionInstructions } from '@/shared/protocol/opencode/v2/shared';
 import type { PendingNotice, PendingPrompt, PromptInput } from '@/shared/protocol/opencode/prompt-inbox';
-import type { SessionInboxInfo, SessionInboxSynthetic, SessionInboxUser } from '@opencode/client';
+import type { SessionInboxInfo, SessionInboxUser } from '@opencode/client';
 
 export function toPendingPrompt(item: SessionInboxUser): PendingPrompt {
   return { id: item.id, sessionId: item.sessionID, createdAt: item.time.created, text: item.payload.text, delivery: item.delivery, state: 'waiting', attachments: (item.payload.files ?? []).map((file) => { const detail = toFileDetail(file); return { uri: detail.url, mime: detail.mime, filename: detail.filename }; }) };
 }
 
-export function toPendingNotice(item: SessionInboxSynthetic): PendingNotice | undefined {
+export function toPendingNotice(item: SessionInboxInfo): PendingNotice | undefined {
+  if (item.type === 'user') {
+    if (!isServerNoticeMetadata(item.payload.metadata)) return undefined;
+    return { id: item.id, sessionId: item.sessionID, createdAt: item.time.created, text: item.payload.text, kind: 'plugin' };
+  }
+  if (item.type !== 'synthetic') return undefined;
   if (isInternalSyntheticNotice({ text: item.payload.text, metadata: item.payload.metadata })) return undefined;
   return { id: item.id, sessionId: item.sessionID, createdAt: item.time.created, text: item.payload.text, ...(item.payload.description ? { description: item.payload.description } : {}) };
 }
@@ -33,8 +38,8 @@ export function buildV2Client(settings: OpencodeConnectionSettings, signal?: Abo
   return {
     api, context, mcpOAuth: buildMcpOAuth(context), __opencode: { contract: 'v2', directory }, ...buildProviderAuth(context),
     promptInbox: {
-      list: async (sessionID) => (await readInbox(sessionID)).filter((item): item is SessionInboxUser => item.type === 'user').map(toPendingPrompt),
-      listNotices: async (sessionID) => (await readInbox(sessionID)).filter((item): item is SessionInboxSynthetic => item.type === 'synthetic').map(toPendingNotice).filter((notice): notice is PendingNotice => Boolean(notice)),
+      list: async (sessionID) => (await readInbox(sessionID)).filter((item): item is SessionInboxUser => item.type === 'user' && !isServerNoticeMetadata(item.payload.metadata)).map(toPendingPrompt),
+      listNotices: async (sessionID) => (await readInbox(sessionID)).map(toPendingNotice).filter((notice): notice is PendingNotice => Boolean(notice)),
       cancel: async (sessionID, inboxID) => { await api.session.inbox.cancel({ sessionID, inboxID }); },
       submit: async (input: PromptInput, delivery) => {
         const { sessionID, agent, model, variant } = input;

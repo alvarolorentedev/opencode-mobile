@@ -92,6 +92,12 @@ export function isInternalSyntheticNotice(input: { metadata?: Record<string, unk
   return Boolean(input.metadata?.instruction) || (input.text ?? '').trimStart().startsWith('<system-reminder>');
 }
 
+// A plugin may post a command report as a user message with its own metadata.
+// OpenCode composer prompts carry `displayText`; plugin reports do not.
+export function isServerNoticeMetadata(metadata?: Record<string, unknown>) {
+  return Boolean(metadata && Object.keys(metadata).length > 0 && !('displayText' in metadata));
+}
+
 export function toMessageRecord(message: V2Message, sessionID: string): SessionMessageRecord | undefined {
   const type = stringField(message.type);
   const created = numberField((message.time as Record<string, unknown> | undefined)?.created);
@@ -116,6 +122,10 @@ export function toMessageRecord(message: V2Message, sessionID: string): SessionM
           ...toFileDetail(file),
         });
       });
+    }
+    const metadata = (message as Record<string, unknown>).metadata as Record<string, unknown> | undefined;
+    if (isServerNoticeMetadata(metadata)) {
+      return { info: { ...baseInfo, role: 'assistant', providerID: '', modelID: '', synthetic: true, noticeKind: 'plugin' }, parts };
     }
     return { info: { ...baseInfo, role: 'user' }, parts };
   }

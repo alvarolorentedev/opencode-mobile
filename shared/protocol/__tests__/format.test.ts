@@ -1,6 +1,6 @@
 import { describe, it, expect, vi } from 'vitest';
 
-import { formatDuration, formatMessageTime, getMessagePreview, toTranscriptEntry, deriveTodosFromMessages } from '@/shared/presentation/format';
+import { formatDuration, formatMessageTime, getHistoryPreview, getMessagePreview, toTranscriptEntry, deriveTodosFromMessages } from '@/shared/presentation/format';
 
 vi.mock('@/shared/i18n/index', () => ({ getFormatLocale: () => 'en' }));
 
@@ -16,6 +16,14 @@ const todoWritePart = (id: string, todos: unknown[]) => ({
 describe('format', () => {
   it('prefers visible text over reasoning', () => {
     expect(getMessagePreview({ info, parts: [{ type: 'reasoning', text: 'private reasoning' }, { type: 'text', text: 'Visible reply' }] } as never)).toBe('Visible reply');
+  });
+
+  it('does not use a plugin notice as the session history preview', () => {
+    const preview = getHistoryPreview([
+      { info: { ...info, role: 'user' }, parts: [{ type: 'text', text: 'hello' }] },
+      { info: { ...info, id: 'notice', role: 'assistant', synthetic: true, noticeKind: 'plugin' }, parts: [{ type: 'text', text: '[OpenCode Quota report]' }] },
+    ] as never);
+    expect(preview).toBe('hello');
   });
 
   it('renders a failed tool body', () => {

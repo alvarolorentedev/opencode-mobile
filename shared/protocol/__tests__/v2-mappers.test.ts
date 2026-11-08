@@ -121,6 +121,38 @@ describe('v2 response mappers', () => {
     });
   });
 
+  it('maps a plugin report posted as a user message to a distinct notice', () => {
+    const mapped = toMessageRecord({
+      id: 'msg_quota',
+      type: 'user',
+      sessionID: 'ses_1',
+      time: { created: 1 },
+      text: '[OpenCode Quota report]\nQuota · 7 days',
+      metadata: { opencodeQuota: { command: 'quota', at: 1 } },
+    } as never, 'ses_1');
+
+    expect(mapped?.info).toMatchObject({
+      role: 'assistant', providerID: '', modelID: '', synthetic: true, noticeKind: 'plugin',
+    });
+    expect(toTranscriptEntry(mapped!)).toMatchObject({
+      role: 'assistant', notice: true, noticeKind: 'plugin', text: '[OpenCode Quota report]\nQuota · 7 days',
+    });
+  });
+
+  it('keeps composer user prompts as user messages', () => {
+    const mapped = toMessageRecord({
+      id: 'msg_user',
+      type: 'user',
+      sessionID: 'ses_1',
+      time: { created: 1 },
+      text: 'hello',
+      metadata: { displayText: 'hello', agent: 'build', model: { providerID: 'openai', modelID: 'gpt-4.1-mini' } },
+    } as never, 'ses_1');
+
+    expect(mapped?.info).toMatchObject({ role: 'user' });
+    expect(toTranscriptEntry(mapped!).notice).toBeUndefined();
+  });
+
   it('hides internal synthetic prompt context from the transcript', () => {
     const reminder = toMessageRecord({
       id: 'msg_reminder',
@@ -148,17 +180,22 @@ describe('v2 response mappers', () => {
   it('shares one inbox read between pending prompts and notices', async () => {
     const list = vi.fn(async () => [
       { id: 'prompt-1', type: 'user', sessionID: 'session-1', time: { created: 1 }, delivery: 'steer', payload: { text: 'hello', files: [] } },
-      { id: 'notice-1', type: 'synthetic', sessionID: 'session-1', time: { created: 2 }, delivery: 'steer', payload: { text: 'No workflows found.' } },
-      { id: 'reminder-1', type: 'synthetic', sessionID: 'session-1', time: { created: 3 }, delivery: 'steer', payload: { text: '<system-reminder>Plan mode.</system-reminder>' } },
-      { id: 'instructions-1', type: 'synthetic', sessionID: 'session-1', time: { created: 4 }, delivery: 'steer', payload: { text: 'Instructions from: /repo/AGENTS.md', metadata: { instruction: { paths: ['/repo/AGENTS.md'] } } } },
+      { id: 'prompt-2', type: 'user', sessionID: 'session-1', time: { created: 2 }, delivery: 'steer', payload: { text: 'desktop prompt', metadata: { displayText: 'desktop prompt', agent: 'build' } } },
+      { id: 'notice-1', type: 'synthetic', sessionID: 'session-1', time: { created: 3 }, delivery: 'steer', payload: { text: 'No workflows found.' } },
+      { id: 'plugin-1', type: 'user', sessionID: 'session-1', time: { created: 4 }, delivery: 'steer', payload: { text: '[OpenCode Quota report]', metadata: { opencodeQuota: { command: 'quota', at: 1 } } } },
+      { id: 'reminder-1', type: 'synthetic', sessionID: 'session-1', time: { created: 5 }, delivery: 'steer', payload: { text: '<system-reminder>Plan mode.</system-reminder>' } },
+      { id: 'instructions-1', type: 'synthetic', sessionID: 'session-1', time: { created: 6 }, delivery: 'steer', payload: { text: 'Instructions from: /repo/AGENTS.md', metadata: { instruction: { paths: ['/repo/AGENTS.md'] } } } },
     ]);
     h.api = { session: { inbox: { list } } };
     const client = buildV2Client({ serverUrl: 'http://test', directory: '/repo', username: '', password: '' } as never);
 
     const [prompts, notices] = await Promise.all([client.promptInbox!.list('session-1'), client.promptInbox!.listNotices('session-1')]);
     expect(list).toHaveBeenCalledTimes(1);
-    expect(prompts.map((prompt: any) => prompt.id)).toEqual(['prompt-1']);
-    expect(notices).toEqual([{ id: 'notice-1', sessionId: 'session-1', createdAt: 2, text: 'No workflows found.' }]);
+    expect(prompts.map((prompt: any) => prompt.id)).toEqual(['prompt-1', 'prompt-2']);
+    expect(notices).toEqual([
+      { id: 'notice-1', sessionId: 'session-1', createdAt: 3, text: 'No workflows found.' },
+      { id: 'plugin-1', sessionId: 'session-1', createdAt: 4, text: '[OpenCode Quota report]', kind: 'plugin' },
+    ]);
   });
 
   it('maps a saved permission rule', () => {

@@ -349,6 +349,7 @@ Slash command behavior:
 - `/btw` requires an inline question, and both built-ins reject attachments and restore the draft on failure
 - argument quotes, newlines and whitespace after the first separator are preserved; files and selected mentions accompany V2 commands, and failures restore the draft
 - command replies returned as synthetic server notices render as text notices, not user messages or model replies, and are never read aloud as an assistant answer; internal prompt context such as instruction loads and mode reminders stays out of the transcript
+- plugin command reports posted as user messages with `resume: false` and namespaced metadata render in the distinct inline notice card, not as user bubbles or pending steer prompts; they stay in the transcript, are never read aloud, and do not mark the session busy
 - V1 preserves known-command execution and its existing attachment prompt flow
 - catalogs refresh on project activation, connection restoration, foreground return and server command/config/plugin update events; see the [compatibility boundary](../architecture/api-contract.md#server-plugin-commands)
 

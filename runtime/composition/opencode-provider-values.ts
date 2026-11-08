@@ -34,6 +34,7 @@ function pendingNoticeRecord(notice: PendingNotice): SessionMessageRecord {
       providerID: '',
       modelID: '',
       synthetic: true,
+      noticeKind: notice.kind ?? 'server',
     },
     parts: notice.text ? [{ id: `${notice.id}-text-0`, sessionID: notice.sessionId, messageID: notice.id, type: 'text', text: notice.text }] : [],
   };
