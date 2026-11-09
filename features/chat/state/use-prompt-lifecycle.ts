@@ -342,7 +342,7 @@ export function usePromptLifecycle({
         // skip the extra status read; otherwise (for example a cold start from a
         // persisted record) the settlement read verifies the server instead of
         // trusting a cached idle status.
-        const settlement = await readSessionSettlement(client, sessionId, latched ? status : undefined);
+        const settlement = await readSessionSettlement(client, sessionId, latched ? status : undefined, pending.requestedAt);
         if (cancelled) {
           return;
         }

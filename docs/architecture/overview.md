@@ -552,7 +552,9 @@ selection folds descendants into their root tasks. No screen owns this state.
 Local completion and needs-input notifications share
 `shared/protocol/services/session-service`'s `readSessionSettlement`, so the
 foreground flush (`use-prompt-lifecycle`) and the background monitor
-(`shared/notifications`) clear and label a task identically. The same global-event
+(`shared/notifications`) clear and label a task identically. An idle session
+without an assistant response for the tracked request stays unknown instead of
+alerting as finished. The same global-event
 callback that drives activity reconciliation also raises a deduped needs-input
 alert for tracked tasks while the app is not foregrounded. Notifications carry a
 non-secret route payload; `features/notifications/state/use-notification-route.ts` in the root shell

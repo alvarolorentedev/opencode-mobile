@@ -959,7 +959,12 @@ so the provider and activity observer cannot both emit completion notifications.
 The foreground flush and the background monitor classify a session through the
 shared settlement read (`readSessionSettlement`): running, retrying, and blocked
 states keep the record, aborted clears it silently, and finished/failed notify
-with matching copy. A record from a previous app session is only cleared after a
+with matching copy. An idle session only counts as terminal when the newest
+assistant message was created after the record's `requestedAt` (small clock skew
+allowed); otherwise the read reports unknown and keeps the record, so a prompt
+that has been accepted but has not started answering, or was never delivered,
+cannot alert as finished. Assistant errors older than the request are ignored for
+the same reason. A record from a previous app session is only cleared after a
 fresh server read confirms a terminal state, so a cold start cannot post a
 completion from a persisted idle status. A record whose project differs from the
 active project is left untouched rather than cleared from the wrong session list.

@@ -235,7 +235,7 @@ if (Platform.OS !== 'web' && !TaskManager.isTaskDefined(CHAT_COMPLETION_TASK_NAM
           const client = buildClient(settings, contract);
           const { statuses, sessions } = await listSessions(client);
 
-          const settlement = await readSessionSettlement(client, pending.sessionId, statuses[pending.sessionId]);
+          const settlement = await readSessionSettlement(client, pending.sessionId, statuses[pending.sessionId], pending.requestedAt);
           if (settlement.state === 'running' || settlement.state === 'retrying' || settlement.state === 'unknown') continue;
           if (settlement.state === 'blocked') {
             await raisePendingAttention(pending.connectionScope, pending.sessionId, 'blocked').catch(() => undefined);

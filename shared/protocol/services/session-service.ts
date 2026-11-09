@@ -55,22 +55,35 @@ export async function findSessionForNavigation(client: ScopedOpencodeClient, ses
 export type SessionSettlementState = 'running' | 'retrying' | 'blocked' | 'failed' | 'aborted' | 'finished' | 'unknown';
 export type SessionSettlement = { state: SessionSettlementState; message?: string };
 
+// A response created slightly before the recorded request can still be this
+// turn's answer when the server clock trails the device clock by a little.
+const RESPONSE_CLOCK_TOLERANCE_MS = 2_000;
+
 // Pure decision table shared by the live read below and unit tests, so copy and
 // clearing rules cannot drift from the observed inputs.
 export function classifySessionSettlement(input: {
   status?: SessionStatus;
   queued: boolean;
   blocked: boolean;
-  error?: { name: string; data?: { message?: string }; message?: string };
+  // Newest assistant record and the submit time it must follow. When the
+  // caller ties the read to a request, an idle session whose request has no
+  // response yet is still starting, not finished.
+  latestAssistant?: { created: number; error?: { name: string; data?: { message?: string }; message?: string } };
+  notBefore?: number;
 }): SessionSettlement {
   if (input.status && input.status.type !== 'idle') {
     return { state: input.status.type === 'retry' ? 'retrying' : 'running' };
   }
   if (input.queued) return { state: 'running' };
   if (input.blocked) return { state: 'blocked' };
-  if (!input.error) return { state: 'finished' };
-  if (input.error.name === 'MessageAbortedError') return { state: 'aborted' };
-  return { state: 'failed', message: input.error.data?.message || input.error.message };
+  if (input.notBefore !== undefined
+    && (!input.latestAssistant || input.latestAssistant.created < input.notBefore - RESPONSE_CLOCK_TOLERANCE_MS)) {
+    return { state: 'unknown' };
+  }
+  const error = input.latestAssistant?.error;
+  if (!error) return { state: 'finished' };
+  if (error.name === 'MessageAbortedError') return { state: 'aborted' };
+  return { state: 'failed', message: error.data?.message || error.message };
 }
 
 /**
@@ -83,11 +96,17 @@ export function classifySessionSettlement(input: {
  * read; when omitted, the server's current status is fetched, which is what
  * makes a cold-start completion wait for confirmation instead of trusting a
  * persisted idle status.
+ *
+ * `notBefore` is the pending record's request time. With it, an idle session
+ * only settles once an assistant response exists for that request; otherwise
+ * a prompt that has been accepted but has not started yet (or was never
+ * delivered) would notify as finished.
  */
 export async function readSessionSettlement(
   client: ScopedOpencodeClient,
   sessionID: string,
   knownStatus?: SessionStatus,
+  notBefore?: number,
 ): Promise<SessionSettlement> {
   try {
     const status = knownStatus ?? (await listSessions(client)).statuses[sessionID];
@@ -103,7 +122,10 @@ export async function readSessionSettlement(
       queued: Boolean(inbox?.length),
       blocked: Boolean(permissions?.some((request) => request.sessionID === sessionID)
         || questions?.some((question) => question.sessionID === sessionID)),
-      error: latest?.info.role === 'assistant' ? latest.info.error : undefined,
+      latestAssistant: latest?.info.role === 'assistant'
+        ? { created: latest.info.time.created, error: latest.info.error }
+        : undefined,
+      notBefore,
     });
   } catch {
     return { state: 'unknown' };
