@@ -166,6 +166,7 @@ test('happy path keeps the main chat flow stable @smoke', async ({ page, request
   await goToTab(page, 'Projects');
   await expect(page.getByRole('tab', { name: 'Projects' })).toHaveAttribute('aria-selected', 'true');
   await expect(page.getByRole('button', { name: /^Open chats/ })).toHaveCount(0);
+  await page.getByTestId('project-view-changes').click();
   await expect(page.getByText('Modified', { exact: true })).toHaveCount(2);
 });
 
