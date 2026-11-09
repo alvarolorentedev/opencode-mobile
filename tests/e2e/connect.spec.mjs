@@ -1072,3 +1072,187 @@ test('exposed services stay available while a different connection is active', a
   await expect(page.getByTestId('service-api')).toHaveCount(1, { timeout: 15_000 });
   await expect(page.getByTestId('service-use-machine')).toBeVisible();
 });
+
+const DEVICE_AUTH = `Basic ${Buffer.from('device-1:device-test-secret').toString('base64')}`;
+
+// Read the fake connector's stored list directly so a flow can assert what the
+// app actually sent, not only what it rendered.
+async function readServices(request) {
+  const response = await request.get(`${SERVER}/_cloudlink/services`, { headers: { Authorization: DEVICE_AUTH } });
+  expect(response.ok()).toBeTruthy();
+  return response.json();
+}
+
+async function useAccessConnector(request, api) {
+  for (const id of ['device-1', 'device-2', 'device-3']) {
+    await request.post(`${SERVER}/__control/device`, { data: { device_id: id, device_secret: 'device-test-secret' } });
+  }
+  await request.post(`${SERVER}/__control/connector-api`, { data: { api } });
+}
+
+async function openServices(page) {
+  await page.getByRole('tab', { name: 'Settings' }).click();
+  await page.getByRole('button', { name: /^Cloud Link/ }).click();
+  await expect(page.getByTestId('services-section')).toBeVisible();
+}
+
+async function pairWebDevice(page) {
+  await page.addInitScript(() => localStorage.setItem('opencode-mobile.onboarding-version', JSON.stringify({ version: 1 })));
+  await page.goto(`/pair?${pairingLink().searchParams}`);
+  await expect(page).toHaveURL(/\/projects$/, { timeout: 30_000 });
+}
+
+test('a public share can be copied, extended and revoked', async ({ page, request }) => {
+  await storeFixture(page, { recovered: true });
+  await mockControlPlane(page);
+  await useAccessConnector(request, 4);
+  await pairWebDevice(page);
+  await openServices(page);
+
+  await page.getByTestId('service-add').click();
+  await expect(page).toHaveURL(/\/service$/, { timeout: 15_000 });
+  await page.getByTestId('service-id-input').fill('share');
+  await page.getByTestId('service-path-input').fill('/share');
+  await page.getByTestId('service-target-input').fill('127.0.0.1:3000');
+  await page.getByTestId('service-access-select').click();
+  await page.getByRole('option', { name: 'Public', exact: true }).click();
+  // A new external service defaults to a one-hour share.
+  await expect(page.getByTestId('service-expiration-select')).toContainText('1 hour');
+  // Expose it for paired devices too, so revocation can prove routing survives.
+  await page.getByRole('switch', { name: 'Enabled', exact: true }).click();
+  await page.getByTestId('service-save').click();
+  await expect(page.getByTestId('services-section')).toBeVisible({ timeout: 15_000 });
+
+  const row = page.getByTestId('service-share');
+  await expect(page.getByTestId('service-access-share')).toContainText('Public');
+  await expect(page.getByTestId('service-expiration-share')).toContainText('left');
+  await expect(row).toContainText('cl_share=');
+
+  // Copying shares the tokenized URL, never the bare one.
+  await page.context().grantPermissions(['clipboard-read', 'clipboard-write']);
+  await page.getByTestId('service-copy-share').click();
+  await expect(page.getByTestId('services-feedback')).toContainText('Service link copied.');
+  const copied = await page.evaluate(() => navigator.clipboard.readText());
+  expect(copied).toContain('/share/');
+  expect(copied).toContain('cl_share=');
+
+  const listed = await readServices(request);
+  const stored = listed.services.find((service) => service.id === 'share');
+  expect(stored.access_policy.mode).toBe('public');
+  expect(stored.access_policy.share_token).toBeTruthy();
+  expect(stored.access_policy.expires_at).toBeGreaterThan(listed.server_time + 3000);
+
+  // Extending keeps the same link and moves the deadline forward.
+  await page.getByTestId('service-edit-share').click();
+  await expect(page).toHaveURL(/\/service\?id=share$/, { timeout: 15_000 });
+  await expect(page.getByTestId('service-expiration-select')).toContainText('Keep current expiration');
+  await page.getByTestId('service-expiration-select').click();
+  await page.getByRole('option', { name: '24 hours', exact: true }).click();
+  await page.getByTestId('service-save').click();
+  await expect(page.getByTestId('services-section')).toBeVisible({ timeout: 15_000 });
+  const extended = await readServices(request);
+  const extendedShare = extended.services.find((service) => service.id === 'share');
+  expect(extendedShare.access_policy.expires_at).toBeGreaterThan(extended.server_time + 80_000);
+  expect(extendedShare.access_policy.share_token).toBe(stored.access_policy.share_token);
+
+  await page.getByTestId('service-revoke-share').click();
+  await respondToConfirmation(page);
+  await expect(page.getByTestId('service-access-share')).toContainText('Private');
+  await expect(page.getByTestId('service-expiration-share')).toHaveCount(0);
+  await expect(row).not.toContainText('cl_share=');
+  await expect(row).toContainText('Enabled');
+  const revoked = await readServices(request);
+  const revokedShare = revoked.services.find((service) => service.id === 'share');
+  expect(revokedShare.access_policy.mode).toBe('private');
+  expect(revokedShare.access_policy.share_token).toBeNull();
+  expect(revokedShare.access_policy.password_set).toBe(false);
+  // Revocation is not deletion: paired devices keep the service.
+  expect(revokedShare.enabled).toBe(true);
+});
+
+test('a password share never shows its password again', async ({ page, request }) => {
+  await storeFixture(page, { recovered: true });
+  await mockControlPlane(page);
+  await useAccessConnector(request, 4);
+  await pairWebDevice(page);
+  await openServices(page);
+
+  await page.getByTestId('service-add').click();
+  await expect(page).toHaveURL(/\/service$/, { timeout: 15_000 });
+  await page.getByTestId('service-id-input').fill('vault');
+  await page.getByTestId('service-path-input').fill('/vault');
+  await page.getByTestId('service-target-input').fill('127.0.0.1:3001');
+  await page.getByTestId('service-access-select').click();
+  await page.getByRole('option', { name: 'Password protected', exact: true }).click();
+  await expect(page.getByTestId('service-password-input')).toBeVisible();
+  await expect(page.getByTestId('service-password-guidance')).toContainText('8-128');
+  await page.getByTestId('service-password-input').fill('correct horse battery staple');
+  await page.getByTestId('service-save').click();
+  await expect(page.getByTestId('services-section')).toBeVisible({ timeout: 15_000 });
+  await expect(page.getByTestId('service-access-vault')).toContainText('Password protected');
+
+  // The connector reports the password as set and never returns it.
+  const listed = await readServices(request);
+  expect(JSON.stringify(listed)).not.toContain('correct horse battery staple');
+  const stored = listed.services.find((service) => service.id === 'vault');
+  expect(stored.access_policy.mode).toBe('password');
+  expect(stored.access_policy.password_set).toBe(true);
+  expect(stored.access_policy.share_token).toBeTruthy();
+
+  // Reopening shows an empty field plus the "password is set" guidance, and
+  // saving without retyping keeps the stored password.
+  await page.getByTestId('service-edit-vault').click();
+  await expect(page).toHaveURL(/\/service\?id=vault$/, { timeout: 15_000 });
+  await expect(page.getByTestId('service-password-input')).toHaveValue('');
+  await expect(page.getByTestId('service-password-guidance')).toContainText('A password is set');
+  await page.getByTestId('service-save').click();
+  await expect(page.getByTestId('services-section')).toBeVisible({ timeout: 15_000 });
+  const afterSave = await readServices(request);
+  expect(afterSave.services.find((service) => service.id === 'vault').access_policy.password_set).toBe(true);
+});
+
+test('a pre-0.20.0 connector keeps the legacy service controls', async ({ page, request }) => {
+  await storeFixture(page, { recovered: true });
+  await mockControlPlane(page);
+  await useAccessConnector(request, 3);
+  await pairWebDevice(page);
+  await openServices(page);
+
+  // Capability gate: the hint names the minimum release, the controls stay hidden.
+  await expect(page.getByTestId('services-access-hint')).toContainText('0.20.0');
+  await page.getByTestId('service-add').click();
+  await expect(page).toHaveURL(/\/service$/, { timeout: 15_000 });
+  await expect(page.getByTestId('services-access-hint')).toContainText('0.20.0');
+  await expect(page.getByTestId('service-expiration-select')).toHaveCount(0);
+  await expect(page.getByTestId('service-password-input')).toHaveCount(0);
+  await expect(page.getByTestId('service-access-select')).toBeVisible();
+
+  await page.getByTestId('service-id-input').fill('legacy');
+  await page.getByTestId('service-path-input').fill('/legacy');
+  await page.getByTestId('service-target-input').fill('127.0.0.1:3000');
+  await page.getByTestId('service-access-select').click();
+  await page.getByRole('option', { name: 'Public', exact: true }).click();
+  await page.getByTestId('service-save').click();
+  await expect(page.getByTestId('services-section')).toBeVisible({ timeout: 15_000 });
+  await expect(page.getByTestId('service-access-legacy')).toContainText('Public');
+  await expect(page.getByTestId('service-expiration-legacy')).toHaveCount(0);
+
+  // The legacy contract is untouched: bare `access`, no policy, no clock.
+  const listed = await readServices(request);
+  expect('server_time' in listed).toBe(false);
+  const stored = listed.services.find((service) => service.id === 'legacy');
+  expect(stored.access).toBe('public');
+  expect(stored.access_policy).toBeUndefined();
+
+  // Editing the name/target keeps it legacy and never mints a token.
+  await page.getByTestId('service-edit-legacy').click();
+  await expect(page).toHaveURL(/\/service\?id=legacy$/, { timeout: 15_000 });
+  await page.getByTestId('service-name-input').fill('Legacy renamed');
+  await page.getByTestId('service-save').click();
+  await expect(page.getByTestId('services-section')).toBeVisible({ timeout: 15_000 });
+  const afterEdit = await readServices(request);
+  const edited = afterEdit.services.find((service) => service.id === 'legacy');
+  expect(edited.name).toBe('Legacy renamed');
+  expect(edited.access).toBe('public');
+  expect(edited.access_policy).toBeUndefined();
+});

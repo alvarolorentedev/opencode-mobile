@@ -838,6 +838,13 @@
     "copyLink": "Link kopieren",
     "linkCopied": "Dienst-Link kopiert.",
     "linkUnavailable": "Für diesen Dienst konnte kein Link erstellt werden.",
+    "open": "Öffnen",
+    "openFailed": "Dieser Dienst-Link konnte nicht geöffnet werden.",
+    "revoke": "Freigabe widerrufen",
+    "revokeTitle": "Freigabe für {{name}} widerrufen?",
+    "revokeMessage": "Externer Zugriff stoppt sofort. Der Dienst bleibt für gekoppelte Geräte verfügbar.",
+    "revoked": "Freigabe für {{name}} widerrufen.",
+    "revokeFailed": "Freigabe konnte nicht widerrufen werden.",
     "machine": "Gerät",
     "notActive": "Dienste für {{name}} — dies ist nicht deine aktive Verbindung.",
     "useMachine": "Zu diesem Gerät wechseln",
@@ -860,12 +867,41 @@
       "path": "Pfad",
       "target": "Ziel",
       "access": "Zugriff",
+      "expiration": "Ablauf",
+      "customExpiration": "Dauer",
+      "password": "Passwort",
       "enabled": "Aktiviert",
       "stripPrefix": "Pfadpräfix entfernen"
     },
     "access": {
       "private": "Privat",
-      "public": "Öffentlich"
+      "public": "Öffentlich",
+      "password": "Passwortgeschützt"
+    },
+    "expiration": {
+      "none": "Kein Ablaufdatum",
+      "fifteenMinutes": "15 Minuten",
+      "oneHour": "1 Stunde",
+      "twentyFourHours": "24 Stunden",
+      "custom": "Benutzerdefiniert",
+      "keep": "Aktuelles Ablaufdatum behalten ({{date}})",
+      "choose": "Neues Ablaufdatum wählen",
+      "expiresAt": "Läuft ab am {{date}}",
+      "remaining": "noch {{time}}",
+      "expired": "Abgelaufen",
+      "expiredHint": "Diese Freigabe ist abgelaufen. Wähle ein neues Ablaufdatum oder Kein Ablaufdatum.",
+      "passwordHint": "Verwende 8-128 Zeichen. Teile das Passwort getrennt vom Link.",
+      "passwordSet": "Ein Passwort ist gesetzt. Leer lassen, um es zu behalten, oder ein neues eingeben.",
+      "sharePassword": "Passwortgeschützt – teile das Passwort getrennt vom Link.",
+      "legacyWarning": "Dadurch entsteht ein neuer Link mit Token. Zuvor kopierte einfache Links funktionieren nicht mehr.",
+      "privateWarning": "Speichern als Privat stoppt den externen Zugriff und entfernt Passwort und Freigabe-Link.",
+      "updateConnector": "Aktualisiere diesen Desktop-Connector auf {{version}} oder neuer, um Zugriff, Passwörter und temporäre Freigabe-Links zu verwalten."
+    },
+    "units": {
+      "label": "Einheit",
+      "minutes": "Minuten",
+      "hours": "Stunden",
+      "days": "Tage"
     },
     "errors": {
       "required": "Dieses Feld ist erforderlich.",
@@ -881,7 +917,14 @@
       "targetFormat": "Verwende eine Adresse wie 127.0.0.1:3000.",
       "targetLoopback": "Das Ziel muss Loopback sein (127.0.0.1 oder ::1).",
       "targetReserved": "Dieser Port ist für freigegebene Dienste reserviert.",
-      "targetPort": "Verwende einen unprivilegierten Port zwischen 1024 und 65535."
+      "targetPort": "Verwende einen unprivilegierten Port zwischen 1024 und 65535.",
+      "passwordRequired": "Gib ein Passwort für diese Freigabe ein.",
+      "passwordLength": "Verwende 8 bis 128 Zeichen.",
+      "expirationRequired": "Wähle ein neues Ablaufdatum oder Kein Ablaufdatum.",
+      "expirationPast": "Wähle ein Ablaufdatum in der Zukunft.",
+      "expirationRange": "Verwende zwischen 1 Minute und 366 Tagen.",
+      "expirationFormat": "Gib eine ganze Zahl ein.",
+      "accessUnsupported": "Aktualisiere diesen Desktop-Connector, um diesen geschützten Dienst zu bearbeiten."
     }
   },
   "extensions": {

@@ -598,6 +598,59 @@ try {
   assert((await fetch(`${v2Origin}/_cloudlink/services/missing`, { method: 'DELETE', headers: deviceHeaders })).status === 404, 'Deleting an unknown service must return 404');
   assert((await fetch(`${v2Origin}/_cloudlink/services/api`, { method: 'DELETE', headers: deviceHeaders })).status === 204, 'Deleting a service must return 204');
 
+  // Revision 4 (connector 0.20.0) adds the `service-access-v1` capability, the
+  // connector clock, access policies and revocation. The release string is
+  // only documentation: a pre-0.20.0 connector simply lacks the capability.
+  await v2request('/__control/connector-api', json('POST', { api: 4 }));
+  const accessVersion = await (await fetch(`${v2Origin}/_cloudlink/version`, { headers: deviceHeaders })).json();
+  assert(accessVersion.api === 4 && accessVersion.version === '0.20.0', 'api 4 must report the access-capable release');
+  assert(JSON.stringify(accessVersion.capabilities) === JSON.stringify(['service-access-v1']), 'api 4 must advertise the service access capability');
+  const accessList = await v2request('/_cloudlink/services', { headers: deviceHeaders });
+  assert(typeof accessList.server_time === 'number' && accessList.server_time > 0, 'Service list must carry the connector clock');
+  const deadline = accessList.server_time + 3600;
+
+  const shareCreate = await fetch(`${v2Origin}/_cloudlink/services/share`, deviceJson('PUT', { port: 2083, path: null, target: '127.0.0.1:4000', enabled: true, access: 'public', strip_prefix: true, access_policy: { mode: 'public', expires_at: deadline } }));
+  assert(shareCreate.status === 201, `Public share create must return 201, got ${shareCreate.status}`);
+  const share = (await shareCreate.json()).service;
+  assert(share.access === 'public' && share.access_policy.mode === 'public', 'A public share must project access=public and store the real mode');
+  assert(share.access_policy.expires_at === deadline && share.access_policy.expired === false, 'A public share must store the absolute deadline');
+  assert(typeof share.access_policy.share_token === 'string' && share.access_policy.share_token.length > 0, 'A public share must mint a share token');
+  assert(!('password' in share.access_policy), 'A policy response must never carry a password');
+
+  const passwordCreate = await fetch(`${v2Origin}/_cloudlink/services/vault`, deviceJson('PUT', { port: 2087, path: null, target: '127.0.0.1:4001', enabled: true, access: 'public', strip_prefix: true, access_policy: { mode: 'password', expires_at: deadline, password: 'correct horse battery staple' } }));
+  assert(passwordCreate.status === 201, `Password share create must return 201, got ${passwordCreate.status}`);
+  const vault = (await passwordCreate.json()).service;
+  assert(vault.access_policy.password_set === true && !('password' in vault.access_policy), 'A stored password must only be reported as set');
+  const keepPassword = await fetch(`${v2Origin}/_cloudlink/services/vault`, deviceJson('PUT', { port: 2087, path: null, target: '127.0.0.1:4001', enabled: true, access: 'public', strip_prefix: true, access_policy: { mode: 'password', expires_at: deadline } }));
+  assert(keepPassword.status === 200, 'Omitting the password must keep the stored one');
+  assert((await keepPassword.json()).service.access_policy.password_set === true, 'The password must survive an edit that omits it');
+
+  // An older client's full-service PUT would clear the protection: refuse it.
+  const downgrade = await fetch(`${v2Origin}/_cloudlink/services/share`, deviceJson('PUT', { port: 2083, path: null, target: '127.0.0.1:4000', enabled: true, access: 'public', strip_prefix: true }));
+  assert(downgrade.status === 409, 'A legacy PUT on a protected service must be rejected');
+  assert((await downgrade.json()).error === 'connector_update_required', 'The 409 must carry the stable update code');
+
+  const revokeResponse = await fetch(`${v2Origin}/_cloudlink/services/share/revoke`, { method: 'POST', headers: deviceHeaders });
+  assert(revokeResponse.status === 200, 'Revoke must return 200');
+  const revokedShare = (await revokeResponse.json()).service;
+  assert(revokedShare.access_policy.mode === 'private' && revokedShare.access_policy.share_token === null && revokedShare.access_policy.password_set === false, 'Revoke must clear the share');
+  assert(revokedShare.enabled === true, 'Revoke must keep the service enabled');
+  const secondRevoke = await fetch(`${v2Origin}/_cloudlink/services/share/revoke`, { method: 'POST', headers: deviceHeaders });
+  assert(secondRevoke.status === 200 && (await secondRevoke.json()).service.access_policy.mode === 'private', 'Revoke must be idempotent');
+  assert((await fetch(`${v2Origin}/_cloudlink/services/vault/revoke`, { method: 'POST', headers: deviceHeaders })).status === 200, 'Revoke must work on a password share');
+  const afterRevoke = await v2request('/_cloudlink/services', { headers: deviceHeaders });
+  assert(!JSON.stringify(afterRevoke).includes('correct horse battery staple'), 'The password must never be readable back');
+
+  // A pre-0.20.0 connector keeps the bare contract: no capability, no clock,
+  // and no policy on the wire.
+  await v2request('/__control/connector-api', json('POST', { api: 3 }));
+  const preAccessVersion = await (await fetch(`${v2Origin}/_cloudlink/version`, { headers: deviceHeaders })).json();
+  assert(preAccessVersion.version === '0.19.9' && preAccessVersion.capabilities === undefined, 'A pre-0.20.0 connector must not advertise the capability');
+  const preAccessList = await v2request('/_cloudlink/services', { headers: deviceHeaders });
+  assert(preAccessList.server_time === undefined, 'A pre-revision-4 list must keep the bare services shape');
+  assert(!('access_policy' in preAccessList.services.find((service) => service.id === 'vault')), 'A legacy list must never expose a policy');
+  await v2request('/__control/connector-api', json('POST', { api: 2 }));
+
   // api 1 keeps the legacy shape: no port pool, port-less PUT bodies.
   await v2request('/__control/reset', json('POST', { scenario: 'happy-path' }));
   await v2request('/__control/device', json('POST', { device_id: 'device-smoke', device_secret: 'device-secret-smoke' }));

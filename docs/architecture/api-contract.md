@@ -221,18 +221,38 @@ SSE reconnects with bounded backoff and reconciles sessions, pending interaction
 
 A paired device manages the connector's exposed services directly over the tunnel, on the `server_url` origin (never a service port), using the same HTTP Basic credential as OpenCode traffic (`username = device_id`, `password = device_secret`). The control plane is not involved.
 
-- `GET /_cloudlink/services` → `{ services: [Service, ...] }`
+- `GET /_cloudlink/services` → `{ services: [Service, ...], server_time }` (`server_time` from revision 4)
 - `PUT /_cloudlink/services/{id}` → `201` created / `200` replaced, body is the bare `Service` (`port` and `target` required when `api >= 2`), response `{ service: Service }` with stored canonical values
 - `DELETE /_cloudlink/services/{id}` → `204`
-- `GET /_cloudlink/version` → `{ version, api, service_ports, components? }`; every authenticated `/_cloudlink` reply also stamps the connector version in `x-cloudlink-connector-version`
+- `POST /_cloudlink/services/{id}/revoke` → `200` `{ service: Service }`, clears the share and keeps the service enabled (revision 4)
+- `GET /_cloudlink/version` → `{ version, api, service_ports, components?, capabilities? }`; every authenticated `/_cloudlink` reply also stamps the connector version in `x-cloudlink-connector-version`
 
 Management API revision 3 adds the additive `components` object (`opencode` and
 `cloudflared` versions). Clients gate on `api >= 2` for ports and root services
 and ignore unknown additive fields. On `api >= 2` `Service` is `{ id, name, port, path: string | null, target, enabled, access: 'private' | 'public', strip_prefix }`. A service with no `path` owns its port root, so apps that emit absolute URLs, cookies, redirects and WebSockets work untouched; services with a `path` share a port and keep prefix stripping plus path-absolute redirect re-prefixing. `port` must be one of `service_ports`; a root service needs a fully free port, a path service may share only a root-free port, `port`/`path` pairs are unique, and at most 16 services exist. Omitted PUT fields default to `name = id`, `path = null`, `enabled = false`, `access = 'private'`, `strip_prefix = true`. Links are `https://<host>:<port>/` for root services and `https://<host>:<port><path>/` for path services.
 
-Management API revision 1 and pre-version connectors keep the legacy path-only surface on `:8443`: listed services carry an implicit `port`, links stay `https://<host>:8443<path>/`, and the PUT body omits `port`. A `404` on the version endpoint without the version header means an unknown older connector: the app warns and stays in legacy mode. Root services and the port picker require `api >= 2` and otherwise show a non-blocking update hint. Errors are `400` invalid, `401` unauthorized, `404` unknown id, `405` method, `413` too large, `415` wrong content type; the app shows the connector's message and never branches on its wording. The list reflects connector-side (tray/CLI) edits, so the Settings surface re-fetches on open.
+Management API revision 4 (connector 0.20.0) adds connector-enforced sharing and
+is gated on `capabilities` containing `service-access-v1`, never on the release
+string ([ADR 0041](../adr/0041-connector-enforced-service-access.md)):
 
-Client code and the validation mirror live in `shared/contracts/service-management.ts`; the provider exposes it through the connection domain (`useConnection().services`). The provider resolves the target machine from the active Cloud Link connection or a saved Cloud Link profile, so management keeps working while another connection is active and links use the target machine's own origin. See the connector repository's frozen service-management protocol documentation → "Service management API (device-authenticated)".
+- `version` reports `"api": 4` and `"capabilities": ["service-access-v1"]`.
+- A service may carry `access_policy: { mode: 'private' | 'public' | 'password', expires_at: Unix seconds | null, expired: boolean, password_set: boolean, share_token: string | null, revision: number }`. It is omitted for legacy services, where `access` stays the source of truth; where it exists, `access` is only a legacy projection (`private` stays `private`, `public`/`password` report `public`) and the real mode comes from `mode`.
+- `GET /_cloudlink/services` adds `server_time` in Unix seconds. Countdowns and computed deadlines anchor on it, advanced by the local time since the list arrived, not on the phone clock.
+- `PUT` accepts an optional `access_policy: { mode, expires_at?, password? }`. `expires_at` is absolute Unix seconds; `null`/omitted means no expiration and it is only valid for `public`/`password`. `password` is write-only: omit it to keep the stored password, include it to replace it, and selecting `private`/`public` removes protection. `share_token`, `revision`, `expired` and `password_set` are connector-managed and ignored if sent. Passwords are never returned by any response.
+- A `409` `{ "error": "connector_update_required", "message": ... }` means a client without the capability tried to edit a protected service; the app shows the connector message and does not retry without a policy.
+- `POST /_cloudlink/services/{id}/revoke` clears password, expiration and share token, sets `mode` to `private`, keeps `enabled` and the target, and is idempotent.
+- Share URLs are the service link plus `?cl_share=<share_token>`; the connector validates it, strips it before forwarding and exchanges it for a session cookie. Existing links keep working across an extension and stop permanently after revocation.
+
+The app never sends `access_policy` to a connector without the capability, and
+never rewrites a stored policy with a legacy body: that is exactly what would
+silently clear a password, deadline or token. Older connectors keep the
+pre-policy contract unchanged — `{ services }` without `server_time`, no
+`capabilities`, `access` authoritative — so a legacy service edited by name or
+target stays legacy and never mints a token.
+
+Management API revision 1 and pre-version connectors keep the legacy path-only surface on `:8443`: listed services carry an implicit `port`, links stay `https://<host>:8443<path>/`, and the PUT body omits `port`. A `404` on the version endpoint without the version header means an unknown older connector: the app warns and stays in legacy mode. Root services and the port picker require `api >= 2` and otherwise show a non-blocking update hint. Errors are `400` invalid, `401` unauthorized, `404` unknown id, `405` method, `409` protected-service conflict, `413` too large, `415` wrong content type and `429` rate limited; the app shows the connector's message and never branches on its wording. The list reflects connector-side (tray/CLI) edits, so the Settings surface re-fetches on open.
+
+Client code and the validation mirror live in `shared/contracts/service-management.ts` and `shared/contracts/service-access.ts`; the provider exposes it through the connection domain (`useConnection().services`). The provider resolves the target machine from the active Cloud Link connection or a saved Cloud Link profile, so management keeps working while another connection is active and links use the target machine's own origin. See the connector repository's frozen service-management protocol documentation → "Service management API (device-authenticated)".
 
 ## Cloud Link Activation Readiness
 

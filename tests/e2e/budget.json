@@ -1,5 +1,5 @@
 {
-  "tests": 180,
+  "tests": 183,
   "specs": 19,
-  "justification": "Added Cloud Link activation readiness coverage for approval/tunnel/ready, unsupported fallback, and expiry/rescan."
+  "justification": "Added Cloud Link temporary-sharing coverage: public share copy/extend/revoke, password share without a readable password, and the pre-0.20.0 legacy connector path."
 }

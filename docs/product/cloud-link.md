@@ -235,6 +235,49 @@ and Cloud Link availability guidance; only the development web E2E harness
 enables mocked Cloud Link. Purchase/Restore, credentials, activation and
 environment routing remain provider-owned and unchanged.
 
+## Exposed service access and temporary sharing
+
+Cloud Link → Exposed services gains connector-enforced sharing when the target
+connector advertises `service-access-v1` (connector 0.20.0 and later). That
+capability, never the release string, unlocks the controls
+([ADR 0041](../adr/0041-connector-enforced-service-access.md)). On an older
+connector the section keeps the private/public control, hides the expiration and
+password controls, shows a concise update hint, and keeps sending only the
+legacy fields.
+
+The service editor gains an Access select with Private, Public and Password
+protected, plus an Expiration select for public/password shares: No expiration,
+15 minutes, 1 hour, 24 hours and Custom (a minutes/hours/days field bounded to
+1 minute through 366 days). A new external service defaults to one hour. Preset
+and custom deadlines are computed from the connector's `server_time` — advanced
+by the local time since the list arrived — and the editor shows the resulting
+local date and time. A saved share offers "Keep current expiration" so editing a
+name or target cannot move the deadline, and an expired share must be given a
+new future deadline or an explicit No expiration before it will save.
+
+The password field is never prefilled; an empty value keeps the stored password
+and the guidance says a password is set. Switching to password without a stored
+one requires 8-128 characters, and selecting Private or Public explicitly
+removes protection. A password never enters a URL, a query cache or a log, and
+no response ever returns one.
+
+Editing a legacy service keeps it legacy: a name/target edit sends the old body
+and mints no token. Only switching to password or choosing a non-legacy
+expiration converts it into a managed share, and the editor warns first that a
+new tokenized link is created and previously copied bare links stop working.
+
+Each row shows the access mode badge, the enabled state, and the expiration
+status with remaining time counted from `server_time` while the section is
+visible (ticking every 30 seconds, still refreshed on focus). Actions are Open,
+Copy link, Edit, Remove and Revoke sharing. Copy link and Open use the tokenized
+URL `https://<host>:<port><path>/?cl_share=<share_token>`, and password guidance
+tells the user to send the password separately from the link. Revocation asks
+for confirmation, explains that external access stops immediately while the
+service stays available to paired devices, then clears the password, deadline
+and token without touching routing. Connector 400/409/429 messages are shown as
+returned — including `connector_update_required` — and the app never retries a
+protected service without its policy.
+
 ## Purchase, Restore and pairing
 
 The app renders native localized pricing, periods and eligible advertised offers.
@@ -557,6 +600,18 @@ no credential writes. The Cloud Link browser spec adds approval/tunnel/ready,
 unsupported fallback and expiry/rescan flows. E2E changes require explicit human
 validation under AGENTS.md; live connector activation remains a device/service
 acceptance check.
+
+Temporary service sharing validation on 2026-11-09:
+`npm run validate:commit` passed (lint, both typechecks and the full Vitest
+suite), together with `npm run gen:i18n` and the strict i18n parity test, the
+focused services suites (48 tests), both fake-server self-tests, the E2E budget
+(183/183) and all 52 Chromium flows in `tests/e2e/connect.spec.mjs`, including
+the three new flows for a public share (copy, extend, revoke), a password share
+that is never shown again, and the pre-0.20.0 legacy connector. Contract coverage
+parses `access_policy`, `server_time`, `capabilities` and revoke, and the fake
+connector rejects a legacy PUT on a protected service with `409`. Live connector
+behavior, native device acceptance and the new E2E flows still require explicit
+human validation under AGENTS.md.
 
 Cloud Link recovery validation on 2026-10-11: static CI, both fake-server
 self-tests and all 116 web E2E flows passed. The user explicitly confirmed live

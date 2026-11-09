@@ -111,10 +111,16 @@ export type ServiceManagementUnavailableReason = 'no-cloud-link-machine' | 'cred
 // without a saved Cloud Link machine, or when its credentials expired.
 export type ServiceManagementApi = {
   services: ManagedService[];
-  // Connector-reported management revision and port pool; undefined until the
-  // first refresh answers. `api < 2` (or an unknown older connector) is legacy
-  // path-only mode with an update hint instead of the port picker.
+  // Connector-reported management revision, port pool and feature list;
+  // undefined until the first refresh answers. `api < 2` (or an unknown older
+  // connector) is legacy path-only mode with an update hint instead of the port
+  // picker. The new sharing controls require the `service-access-v1`
+  // capability, never a release string.
   version?: ServiceManagementVersion;
+  // Connector clock (Unix seconds) from the last list read and the local time
+  // it arrived, so countdowns and expirations stay anchored to the connector.
+  serverTime?: number;
+  serverTimeAt?: number;
   available: boolean;
   target?: ServiceManagementTarget;
   machines: ServiceManagementMachine[];
@@ -125,6 +131,8 @@ export type ServiceManagementApi = {
   refresh: () => Promise<void>;
   save: (id: string, input: ServiceInput) => Promise<ManagedService>;
   remove: (id: string) => Promise<void>;
+  // Clear the password, deadline and share token without touching routing.
+  revoke: (id: string) => Promise<ManagedService>;
   // Switch the services target machine (saved Cloud Link profiles).
   selectMachine: (id: string) => void;
   // Reconnect the target machine's Cloud Link access; also makes it the active

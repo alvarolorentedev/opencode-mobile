@@ -838,6 +838,13 @@
     "copyLink": "复制链接",
     "linkCopied": "已复制服务链接。",
     "linkUnavailable": "无法为此服务生成链接。",
+    "open": "打开",
+    "openFailed": "无法打开此服务链接。",
+    "revoke": "撤销分享",
+    "revokeTitle": "撤销 {{name}} 的分享？",
+    "revokeMessage": "外部访问会立即停止。服务仍可由已配对设备访问。",
+    "revoked": "已撤销 {{name}} 的分享。",
+    "revokeFailed": "无法撤销分享。",
     "machine": "设备",
     "notActive": "正在显示 {{name}} 的服务——这不是你当前的连接。",
     "useMachine": "切换到此设备",
@@ -860,12 +867,41 @@
       "path": "路径",
       "target": "目标",
       "access": "访问权限",
+      "expiration": "有效期",
+      "customExpiration": "时长",
+      "password": "密码",
       "enabled": "已启用",
       "stripPrefix": "移除路径前缀"
     },
     "access": {
       "private": "私有",
-      "public": "公开"
+      "public": "公开",
+      "password": "密码保护"
+    },
+    "expiration": {
+      "none": "永不过期",
+      "fifteenMinutes": "15 分钟",
+      "oneHour": "1 小时",
+      "twentyFourHours": "24 小时",
+      "custom": "自定义",
+      "keep": "保持当前有效期（{{date}}）",
+      "choose": "选择新的有效期",
+      "expiresAt": "{{date}} 过期",
+      "remaining": "剩余 {{time}}",
+      "expired": "已过期",
+      "expiredHint": "此分享已过期。请选择新的有效期或永不过期。",
+      "passwordHint": "使用 8-128 个字符。密码请与链接分开分享。",
+      "passwordSet": "已设置密码。留空可保持不变，或输入新密码。",
+      "sharePassword": "密码保护 — 密码请与链接分开分享。",
+      "legacyWarning": "这会创建带令牌的新分享链接，之前复制的普通链接将失效。",
+      "privateWarning": "保存为私有会立即停止外部访问，并移除密码和分享链接。",
+      "updateConnector": "将此桌面连接器更新到 {{version}} 或更高版本，以管理访问、密码和临时分享链接。"
+    },
+    "units": {
+      "label": "单位",
+      "minutes": "分钟",
+      "hours": "小时",
+      "days": "天"
     },
     "errors": {
       "required": "此字段为必填项。",
@@ -881,7 +917,14 @@
       "targetFormat": "请使用类似 127.0.0.1:3000 的地址。",
       "targetLoopback": "目标必须是回环地址（127.0.0.1 或 ::1）。",
       "targetReserved": "该端口保留给已公开的服务。",
-      "targetPort": "请使用 1024 到 65535 之间的非特权端口。"
+      "targetPort": "请使用 1024 到 65535 之间的非特权端口。",
+      "passwordRequired": "请输入此分享的密码。",
+      "passwordLength": "请输入 8 到 128 个字符。",
+      "expirationRequired": "请选择新的有效期或永不过期。",
+      "expirationPast": "请选择将来的时间。",
+      "expirationRange": "请输入 1 分钟到 366 天之间。",
+      "expirationFormat": "请输入整数。",
+      "accessUnsupported": "请更新此桌面连接器以编辑此受保护的服务。"
     }
   },
   "extensions": {

@@ -838,6 +838,13 @@
     "copyLink": "Copy link",
     "linkCopied": "Service link copied.",
     "linkUnavailable": "Could not build a link for this service.",
+    "open": "Open",
+    "openFailed": "Could not open this service link.",
+    "revoke": "Revoke sharing",
+    "revokeTitle": "Revoke sharing for {{name}}?",
+    "revokeMessage": "External access stops immediately. The service remains available to paired devices.",
+    "revoked": "Sharing revoked for {{name}}.",
+    "revokeFailed": "Could not revoke sharing.",
     "machine": "Machine",
     "notActive": "Showing services for {{name}} — this is not your active connection.",
     "useMachine": "Switch to this machine",
@@ -860,12 +867,41 @@
       "path": "Path",
       "target": "Target",
       "access": "Access",
+      "expiration": "Expiration",
+      "customExpiration": "Duration",
+      "password": "Password",
       "enabled": "Enabled",
       "stripPrefix": "Strip path prefix"
     },
     "access": {
       "private": "Private",
-      "public": "Public"
+      "public": "Public",
+      "password": "Password protected"
+    },
+    "expiration": {
+      "none": "No expiration",
+      "fifteenMinutes": "15 minutes",
+      "oneHour": "1 hour",
+      "twentyFourHours": "24 hours",
+      "custom": "Custom",
+      "keep": "Keep current expiration ({{date}})",
+      "choose": "Choose a new expiration",
+      "expiresAt": "Expires {{date}}",
+      "remaining": "{{time}} left",
+      "expired": "Expired",
+      "expiredHint": "This share expired. Choose a new expiration or No expiration.",
+      "passwordHint": "Use 8-128 characters. Share the password separately from the link.",
+      "passwordSet": "A password is set. Leave blank to keep it, or enter a new one.",
+      "sharePassword": "Password protected — share the password separately from the link.",
+      "legacyWarning": "This creates a new tokenized share link. Bare links copied earlier stop working.",
+      "privateWarning": "Saving as private stops external access and removes the password and share link.",
+      "updateConnector": "Update this desktop connector to {{version}} or later to manage access, passwords and temporary share links."
+    },
+    "units": {
+      "label": "Unit",
+      "minutes": "Minutes",
+      "hours": "Hours",
+      "days": "Days"
     },
     "errors": {
       "required": "This field is required.",
@@ -881,7 +917,14 @@
       "targetFormat": "Use an address like 127.0.0.1:3000.",
       "targetLoopback": "The target must be loopback (127.0.0.1 or ::1).",
       "targetReserved": "That port is reserved for exposed services.",
-      "targetPort": "Use an unprivileged port between 1024 and 65535."
+      "targetPort": "Use an unprivileged port between 1024 and 65535.",
+      "passwordRequired": "Enter a password for this share.",
+      "passwordLength": "Use 8 to 128 characters.",
+      "expirationRequired": "Choose a new expiration or No expiration.",
+      "expirationPast": "Choose an expiration in the future.",
+      "expirationRange": "Use between 1 minute and 366 days.",
+      "expirationFormat": "Enter a whole number.",
+      "accessUnsupported": "Update this desktop connector to edit this protected service."
     }
   },
   "extensions": {

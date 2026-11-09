@@ -838,6 +838,13 @@
     "copyLink": "Copiar enlace",
     "linkCopied": "Enlace del servicio copiado.",
     "linkUnavailable": "No se pudo crear un enlace para este servicio.",
+    "open": "Abrir",
+    "openFailed": "No se pudo abrir el enlace de este servicio.",
+    "revoke": "Revocar acceso",
+    "revokeTitle": "¿Revocar el acceso de {{name}}?",
+    "revokeMessage": "El acceso externo se detiene de inmediato. El servicio sigue disponible para los dispositivos vinculados.",
+    "revoked": "Acceso revocado para {{name}}.",
+    "revokeFailed": "No se pudo revocar el acceso.",
     "machine": "Máquina",
     "notActive": "Servicios de {{name}}: esta no es tu conexión activa.",
     "useMachine": "Cambiar a esta máquina",
@@ -860,12 +867,41 @@
       "path": "Ruta",
       "target": "Destino",
       "access": "Acceso",
+      "expiration": "Caducidad",
+      "customExpiration": "Duración",
+      "password": "Contraseña",
       "enabled": "Activado",
       "stripPrefix": "Quitar prefijo de ruta"
     },
     "access": {
       "private": "Privado",
-      "public": "Público"
+      "public": "Público",
+      "password": "Protegido con contraseña"
+    },
+    "expiration": {
+      "none": "Sin caducidad",
+      "fifteenMinutes": "15 minutos",
+      "oneHour": "1 hora",
+      "twentyFourHours": "24 horas",
+      "custom": "Personalizada",
+      "keep": "Mantener la caducidad actual ({{date}})",
+      "choose": "Elige una caducidad nueva",
+      "expiresAt": "Caduca el {{date}}",
+      "remaining": "quedan {{time}}",
+      "expired": "Caducado",
+      "expiredHint": "Este enlace caducó. Elige una caducidad nueva o Sin caducidad.",
+      "passwordHint": "Usa de 8 a 128 caracteres. Comparte la contraseña por separado del enlace.",
+      "passwordSet": "Hay una contraseña. Déjala en blanco para conservarla o escribe una nueva.",
+      "sharePassword": "Protegido con contraseña — comparte la contraseña por separado del enlace.",
+      "legacyWarning": "Esto crea un enlace con token nuevo. Los enlaces simples copiados antes dejarán de funcionar.",
+      "privateWarning": "Guardar como Privado detiene el acceso externo y elimina la contraseña y el enlace de acceso.",
+      "updateConnector": "Actualiza este connector de escritorio a {{version}} o superior para gestionar accesos, contraseñas y enlaces temporales."
+    },
+    "units": {
+      "label": "Unidad",
+      "minutes": "Minutos",
+      "hours": "Horas",
+      "days": "Días"
     },
     "errors": {
       "required": "Este campo es obligatorio.",
@@ -881,7 +917,14 @@
       "targetFormat": "Usa una dirección como 127.0.0.1:3000.",
       "targetLoopback": "El destino debe ser loopback (127.0.0.1 o ::1).",
       "targetReserved": "Ese puerto está reservado para servicios expuestos.",
-      "targetPort": "Usa un puerto no privilegiado entre 1024 y 65535."
+      "targetPort": "Usa un puerto no privilegiado entre 1024 y 65535.",
+      "passwordRequired": "Escribe una contraseña para este enlace.",
+      "passwordLength": "Usa de 8 a 128 caracteres.",
+      "expirationRequired": "Elige una caducidad nueva o Sin caducidad.",
+      "expirationPast": "Elige una caducidad futura.",
+      "expirationRange": "Usa entre 1 minuto y 366 días.",
+      "expirationFormat": "Escribe un número entero.",
+      "accessUnsupported": "Actualiza este connector de escritorio para editar este servicio protegido."
     }
   },
   "extensions": {

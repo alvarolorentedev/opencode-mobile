@@ -189,21 +189,62 @@ let pairingSequence = 0;
 // Device-authenticated connector management surface. `deviceCredentials` mirrors
 // the connector's paired-device Basic credentials; `managedServices` is the
 // exposed-service list the `/_cloudlink/services` API reads and mutates.
-// `connectorApi` mirrors the management API revision: `2` serves dedicated
-// service ports and root services, `1` is the legacy path-only surface.
+// `connectorApi` mirrors the management API revision: `4` adds access policies,
+// `2`/`3` serve dedicated service ports and root services, `1` is the legacy
+// path-only surface. The release string only follows the revision, so the app's
+// capability gate (never a version comparison) is what unlocks sharing.
 const deviceCredentials = new Map();
 let managedServices = [];
 let connectorApi = 2;
-const CONNECTOR_VERSION = '0.1.14';
+const CONNECTOR_VERSION_LEGACY = '0.1.14';
+const CONNECTOR_VERSION_PRE_ACCESS = '0.19.9';
+const CONNECTOR_VERSION_ACCESS = '0.20.0';
+const ACCESS_CAPABILITY = 'service-access-v1';
 const SERVICE_PORTS = [8443, 2053, 2083, 2087, 2096];
 const MANAGEMENT_PREFIX = '/_cloudlink';
 
+function connectorVersion() {
+  if (connectorApi >= 4) return CONNECTOR_VERSION_ACCESS;
+  if (connectorApi >= 3) return CONNECTOR_VERSION_PRE_ACCESS;
+  return CONNECTOR_VERSION_LEGACY;
+}
+
+function accessCapable() {
+  return connectorApi >= 4;
+}
+
+function nowSeconds() {
+  return Math.floor(Date.now() / 1000);
+}
+
 function connectorHeaders() {
-  return { 'x-cloudlink-connector-version': CONNECTOR_VERSION };
+  return { 'x-cloudlink-connector-version': connectorVersion() };
 }
 
 function storedServicePort(service) {
   return service.port ?? SERVICE_PORTS[0];
+}
+
+// Wire projection of a stored service. Legacy connectors (no capability) never
+// see a policy at all; capable ones get it with the sticky expiration applied
+// and the write-only password (which is never stored) left out.
+function publicService(service) {
+  if (!accessCapable()) {
+    const legacy = { ...service };
+    delete legacy.access_policy;
+    return legacy;
+  }
+  const policy = service.access_policy;
+  if (!policy) return { ...service };
+  return {
+    ...service,
+    access: policy.mode === 'private' ? 'private' : 'public',
+    access_policy: { ...policy, expired: policy.expired || (policy.expires_at !== null && policy.expires_at <= nowSeconds()) },
+  };
+}
+
+function newShareToken(id, revision) {
+  return Buffer.from(`share:${id}:${revision}:${Math.random().toString(36).slice(2)}`).toString('base64url');
 }
 
 function sendText(res, statusCode, body, extraHeaders = {}) {
@@ -385,13 +426,39 @@ const server = http.createServer(async (req, res) => {
       if (!deviceOk && !operatorOk) return sendText(res, 401, 'device credential required');
       const headers = connectorHeaders();
       if (req.method === 'GET' && pathname === '/_cloudlink/version') {
-        return sendJson(res, 200, connectorApi >= 2
-          ? { version: CONNECTOR_VERSION, api: connectorApi, service_ports: SERVICE_PORTS }
-          : { version: CONNECTOR_VERSION, api: connectorApi }, headers);
+        const payload = { version: connectorVersion(), api: connectorApi };
+        if (connectorApi >= 2) payload.service_ports = SERVICE_PORTS;
+        // The capability, not the release string, is what the app gates on.
+        if (accessCapable()) payload.capabilities = [ACCESS_CAPABILITY];
+        return sendJson(res, 200, payload, headers);
       }
       if (pathname === '/_cloudlink/services' || pathname.startsWith('/_cloudlink/services/')) {
-        const id = pathname === '/_cloudlink/services' ? undefined : decodeURIComponent(pathname.slice('/_cloudlink/services/'.length));
-        if (req.method === 'GET' && id === undefined) return sendJson(res, 200, { services: managedServices }, headers);
+        const suffix = pathname.slice('/_cloudlink/services/'.length);
+        const isRevoke = suffix.endsWith('/revoke');
+        const id = pathname === '/_cloudlink/services' ? undefined : decodeURIComponent(isRevoke ? suffix.slice(0, -'/revoke'.length) : suffix);
+        if (req.method === 'GET' && id === undefined) {
+          // Only revision 4 stamps the connector clock beside the list; older
+          // connectors answer with the bare `{ services }` shape.
+          const payload = accessCapable()
+            ? { services: managedServices.map(publicService), server_time: nowSeconds() }
+            : { services: managedServices.map(publicService) };
+          return sendJson(res, 200, payload, headers);
+        }
+        if (req.method === 'POST' && id && isRevoke) {
+          if (!accessCapable()) return sendText(res, 404, 'not found', headers);
+          const index = managedServices.findIndex((service) => service.id === id);
+          if (index < 0) return sendText(res, 404, 'unknown service', headers);
+          const current = managedServices[index];
+          const revoked = current.access_policy
+            ? {
+              ...current,
+              access: 'private',
+              access_policy: { mode: 'private', expires_at: null, expired: false, password_set: false, share_token: null, revision: current.access_policy.revision + 1 },
+            }
+            : { ...current, access: 'private' };
+          managedServices = managedServices.map((service, position) => (position === index ? revoked : service));
+          return sendJson(res, 200, { service: publicService(revoked) }, headers);
+        }
         if (req.method === 'PUT' && id) {
           const body = await readJson(req) || {};
           const wantsPort = connectorApi >= 2;
@@ -424,7 +491,17 @@ const server = http.createServer(async (req, res) => {
           const targetPort = Number(target.slice(target.lastIndexOf(':') + 1));
           if (targetPort < 1024 || targetPort > 65_535) return sendText(res, 400, 'invalid service: target port must be 1024-65535', headers);
           if (SERVICE_PORTS.includes(targetPort)) return sendText(res, 400, 'invalid service: target cannot use a service port', headers);
-          const created = !managedServices.some((service) => service.id === id);
+          const existing = managedServices.find((service) => service.id === id);
+          const incomingPolicy = body.access_policy;
+          // An older client's full-service PUT would silently clear a password,
+          // deadline or share token: refuse it instead of downgrading.
+          if (existing?.access_policy && !incomingPolicy) {
+            return sendJson(res, 409, { error: 'connector_update_required', message: 'This service has access protection set by a newer app. Update the app to edit it.' }, headers);
+          }
+          if (incomingPolicy !== undefined && incomingPolicy !== null && !accessCapable()) {
+            return sendText(res, 400, 'invalid service: this connector does not support access policies', headers);
+          }
+          const created = !existing;
           if (created && managedServices.length >= 16) return sendText(res, 400, 'invalid service: at most 16 services are allowed', headers);
           const others = managedServices.filter((service) => service.id !== id);
           if (canonicalPath === null) {
@@ -437,6 +514,44 @@ const server = http.createServer(async (req, res) => {
               return sendText(res, 400, `invalid service: duplicate service path on port ${servicePort}`, headers);
             }
           }
+          let accessPolicy;
+          if (incomingPolicy) {
+            const mode = incomingPolicy.mode;
+            if (mode !== 'private' && mode !== 'public' && mode !== 'password') {
+              return sendText(res, 400, 'invalid service: access mode must be private, public or password', headers);
+            }
+            const previous = existing?.access_policy;
+            let expiresAt = null;
+            if (incomingPolicy.expires_at !== undefined && incomingPolicy.expires_at !== null) {
+              if (mode === 'private') return sendText(res, 400, 'invalid service: private services cannot expire', headers);
+              if (!Number.isInteger(incomingPolicy.expires_at) || incomingPolicy.expires_at <= nowSeconds()) {
+                return sendText(res, 400, 'invalid service: expiration must be in the future', headers);
+              }
+              expiresAt = incomingPolicy.expires_at;
+            }
+            let passwordSet = false;
+            if (mode === 'password') {
+              if (typeof incomingPolicy.password === 'string') {
+                if (incomingPolicy.password.length < 8 || incomingPolicy.password.length > 128) {
+                  return sendText(res, 400, 'invalid service: password must be 8-128 characters', headers);
+                }
+                passwordSet = true;
+              } else {
+                // Omitting the password keeps the stored one.
+                passwordSet = Boolean(previous?.password_set);
+                if (!passwordSet) return sendText(res, 400, 'invalid service: password is required', headers);
+              }
+            }
+            const revision = (previous?.revision ?? 0) + 1;
+            accessPolicy = {
+              mode,
+              expires_at: expiresAt,
+              expired: false,
+              password_set: passwordSet,
+              share_token: mode === 'private' ? null : previous?.share_token || newShareToken(id, revision),
+              revision,
+            };
+          }
           const service = {
             id,
             name: typeof body.name === 'string' && body.name.trim() ? body.name.trim() : id,
@@ -444,11 +559,12 @@ const server = http.createServer(async (req, res) => {
             path: canonicalPath,
             target,
             enabled: body.enabled === true,
-            access: body.access === 'public' ? 'public' : 'private',
+            access: accessPolicy ? (accessPolicy.mode === 'private' ? 'private' : 'public') : (body.access === 'public' ? 'public' : 'private'),
             strip_prefix: body.strip_prefix !== false,
+            ...(accessPolicy ? { access_policy: accessPolicy } : {}),
           };
           managedServices = managedServices.filter((entry) => entry.id !== id).concat(service);
-          return sendJson(res, created ? 201 : 200, { service }, headers);
+          return sendJson(res, created ? 201 : 200, { service: publicService(service) }, headers);
         }
         if (req.method === 'DELETE' && id) {
           if (!managedServices.some((service) => service.id === id)) return sendText(res, 404, 'unknown service', headers);

@@ -3,7 +3,6 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { OpencodeConnectionSettings } from '@/shared/protocol/opencode/client/types';
 import {
   DEFAULT_SERVICES_PORT,
-  buildServiceShareUrl,
   canonicalizeOptionalServicePath,
   canonicalizeServicePath,
   canonicalizeServiceTarget,
@@ -12,6 +11,7 @@ import {
   isValidServiceId,
   prepareServiceDraft,
   type ManagedService,
+  type ServiceDraft,
 } from '@/shared/contracts/service-management';
 import {
   ServiceManagementError,
@@ -19,6 +19,7 @@ import {
   getServiceManagementVersion,
   listManagedServices,
   putManagedService,
+  revokeManagedService,
 } from '@/shared/protocol/opencode/client/management-api';
 
 vi.mock('react-native', () => ({ Platform: { OS: 'web' } }));
@@ -46,6 +47,28 @@ const SERVICE_PORTS = [8443, 2053, 2083, 2087, 2096];
 
 function service(overrides: Record<string, unknown> = {}): ManagedService {
   return { id: 'api', name: 'API', port: 8443, path: '/test/api', target: '127.0.0.1:3000', enabled: false, access: 'private', strip_prefix: true, ...overrides };
+}
+
+function draft(overrides: Partial<ServiceDraft> = {}): ServiceDraft {
+  return {
+    id: 'api',
+    name: '',
+    port: 8443,
+    path: 'test/api/',
+    target: 'localhost:3000',
+    enabled: false,
+    accessMode: 'private',
+    stripPrefix: true,
+    expiration: 'none',
+    customExpirationAmount: '1',
+    customExpirationUnit: 'hours',
+    password: '',
+    passwordSet: false,
+    hasPolicy: false,
+    legacy: true,
+    currentExpiresAt: null,
+    ...overrides,
+  };
 }
 
 function jsonResponse(payload: unknown, status = 200, headers: Record<string, string> = {}) {
@@ -97,14 +120,14 @@ describe('service validation mirror', () => {
   });
 
   it('builds a legacy PUT body without a port on api 1', () => {
-    const prepared = prepareServiceDraft({ id: 'api', name: '', path: 'test/api/', target: 'localhost:3000', enabled: false, access: 'private', stripPrefix: true });
+    const prepared = prepareServiceDraft(draft({ id: 'api', name: '', path: 'test/api/', target: 'localhost:3000', port: undefined }));
     expect(prepared.errors).toEqual({});
     expect(prepared.input).toEqual({ path: '/test/api', target: '127.0.0.1:3000', enabled: false, access: 'private', strip_prefix: true });
   });
 
   it('builds an api 2 path body with the port and prefix toggle', () => {
     const prepared = prepareServiceDraft(
-      { id: 'api', name: 'API', port: 2053, path: 'test/api/', target: 'localhost:3000', enabled: true, access: 'public', stripPrefix: false },
+      draft({ name: 'API', port: 2053, target: 'localhost:3000', enabled: true, accessMode: 'public', stripPrefix: false }),
       { api: 2, servicePorts: SERVICE_PORTS, services: [] },
     );
     expect(prepared.errors).toEqual({});
@@ -113,15 +136,12 @@ describe('service validation mirror', () => {
 
   it('builds an api 2 root body without strip_prefix and requires a port', () => {
     const prepared = prepareServiceDraft(
-      { id: 'app', name: '', port: 2053, path: '', target: '127.0.0.1:3000', enabled: false, access: 'private', stripPrefix: true },
+      draft({ id: 'app', port: 2053, path: '' }),
       { api: 2, servicePorts: SERVICE_PORTS, services: [] },
     );
     expect(prepared.errors).toEqual({});
     expect(prepared.input).toEqual({ port: 2053, path: null, target: '127.0.0.1:3000', enabled: false, access: 'private' });
-    const missing = prepareServiceDraft(
-      { id: 'app', name: '', path: '', target: '127.0.0.1:3000', enabled: false, access: 'private', stripPrefix: true },
-      { api: 2, servicePorts: SERVICE_PORTS, services: [] },
-    );
+    const missing = prepareServiceDraft(draft({ id: 'app', port: undefined, path: '' }), { api: 2, servicePorts: SERVICE_PORTS, services: [] });
     expect(missing.input).toBeUndefined();
     expect(missing.errors).toEqual({ port: 'portRequired' });
   });
@@ -130,7 +150,7 @@ describe('service validation mirror', () => {
     const root = service({ id: 'site', port: 2053, path: null });
     const path = service({ id: 'api', port: 8443, path: '/test/api' });
     const services = [root, path];
-    const rootDraft = { id: 'other', name: '', port: 2053, path: '', target: '127.0.0.1:3000', enabled: false, access: 'private' as const, stripPrefix: true };
+    const rootDraft = draft({ id: 'other', name: '', port: 2053, path: '' });
     expect(prepareServiceDraft(rootDraft, { api: 2, servicePorts: SERVICE_PORTS, services }).errors).toEqual({ port: 'portInUse' });
     expect(prepareServiceDraft({ ...rootDraft, port: 8443 }, { api: 2, servicePorts: SERVICE_PORTS, services }).errors).toEqual({ port: 'portInUse' });
     // Path services may share 8443 with another path service, but not a port
@@ -146,10 +166,10 @@ describe('service validation mirror', () => {
   });
 
   it('returns per-field errors without an input', () => {
-    const prepared = prepareServiceDraft({ id: 'API', name: '', path: '/', target: '10.0.0.1:70000', enabled: true, access: 'public', stripPrefix: false });
+    const prepared = prepareServiceDraft(draft({ id: 'API', name: '', path: '/', target: '10.0.0.1:70000', enabled: true, accessMode: 'public', stripPrefix: false }));
     expect(prepared.input).toBeUndefined();
     expect(prepared.errors).toEqual({ id: 'idFormat', path: 'pathRoot', target: 'targetPort' });
-    expect(prepareServiceDraft({ id: 'api', name: '', path: '', target: '127.0.0.1:3000', enabled: false, access: 'private', stripPrefix: true }).errors).toEqual({ path: 'required' });
+    expect(prepareServiceDraft(draft({ id: 'api', name: '', path: '', target: '127.0.0.1:3000' })).errors).toEqual({ path: 'required' });
   });
 
   it('computes selectable ports for root and path modes', () => {
@@ -172,10 +192,7 @@ describe('service validation mirror', () => {
     expect(getServicePortOptions({ editingId: 'site', path: null, servicePorts: SERVICE_PORTS, services })[1]).toEqual({ port: 2053, usable: true, shared: false });
   });
 
-  it('builds shareable links for root, path and legacy services', () => {
-    expect(buildServiceShareUrl('https://m-opaque.opencodecloud.link', { port: 2053, path: null })).toBe('https://m-opaque.opencodecloud.link:2053/');
-    expect(buildServiceShareUrl('https://m-opaque.opencodecloud.link', { port: 2083, path: '/test/api' })).toBe('https://m-opaque.opencodecloud.link:2083/test/api/');
-    expect(buildServiceShareUrl('https://m-opaque.opencodecloud.link', { port: DEFAULT_SERVICES_PORT, path: '/test/api' })).toBe('https://m-opaque.opencodecloud.link:8443/test/api/');
+  it('formats service addresses', () => {
     expect(formatServiceAddress({ port: 2053, path: null })).toBe(':2053');
     expect(formatServiceAddress({ port: 8443, path: '/test/api' })).toBe(':8443/test/api');
   });
@@ -183,9 +200,9 @@ describe('service validation mirror', () => {
 
 describe('service management requests', () => {
   it('lists services with the device Basic credential', async () => {
-    const fetch = vi.fn(async () => jsonResponse({ services: [service()] }));
+    const fetch = vi.fn(async () => jsonResponse({ services: [service()], server_time: 1_760_000_000 }));
     vi.stubGlobal('fetch', fetch);
-    await expect(listManagedServices(settings)).resolves.toEqual([service()]);
+    await expect(listManagedServices(settings)).resolves.toEqual({ services: [service()], serverTime: 1_760_000_000 });
     const [url, init] = fetch.mock.calls[0] as unknown as [string, RequestInit];
     expect(url).toBe('https://m-opaque.opencodecloud.link/_cloudlink/services');
     expect(init.method).toBe('GET');
@@ -197,38 +214,71 @@ describe('service management requests', () => {
     vi.stubGlobal('fetch', vi.fn(async () => jsonResponse({ services: [
       service({ id: 'app', port: 2053, path: null }),
       service({ id: 'api', port: 8443, path: '/test/api' }),
-    ] })));
-    await expect(listManagedServices(settings)).resolves.toEqual([
+    ], server_time: 1_760_000_000 })));
+    const listed = await listManagedServices(settings);
+    expect(listed.services).toEqual([
       service({ id: 'app', port: 2053, path: null }),
       service({ id: 'api', port: 8443, path: '/test/api' }),
     ]);
+    expect(listed.serverTime).toBe(1_760_000_000);
   });
 
   it('defaults pre-port list entries to the legacy 8443 origin', async () => {
     vi.stubGlobal('fetch', vi.fn(async () => jsonResponse({ services: [
       { id: 'api', name: 'API', path: '/test/api', target: '127.0.0.1:3000', enabled: false, access: 'private', strip_prefix: true },
     ] })));
-    await expect(listManagedServices(settings)).resolves.toEqual([service({ port: 8443, path: '/test/api' })]);
+    const listed = await listManagedServices(settings);
+    expect(listed.services).toEqual([service({ port: 8443, path: '/test/api' })]);
+    // A connector predating revision 4 has no clock; the client falls back to
+    // its own so the legacy (policy-free) path still renders.
+    expect(listed.serverTime).toBeGreaterThan(1_700_000_000);
+  });
+
+  it('reads a policy service and keeps the legacy access field as a projection', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => jsonResponse({ server_time: 1_760_000_000, services: [
+      service({ access: 'public', access_policy: { mode: 'password', expires_at: 1_760_003_600, expired: false, password_set: true, share_token: 'cap', revision: 3 } }),
+    ] })));
+    const listed = await listManagedServices(settings);
+    expect(listed.services[0].access).toBe('public');
+    expect(listed.services[0].access_policy).toEqual({ mode: 'password', expires_at: 1_760_003_600, expired: false, password_set: true, share_token: 'cap', revision: 3 });
+  });
+
+  it('keeps legacy services policy-free', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => jsonResponse({ server_time: 1_760_000_000, services: [service()] })));
+    const listed = await listManagedServices(settings);
+    expect(listed.services[0].access_policy).toBeUndefined();
+  });
+
+  it('rejects a malformed policy instead of guessing a mode', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => jsonResponse({ services: [
+      service({ access_policy: { mode: 'open', expires_at: null, expired: false, password_set: false, share_token: null, revision: 1 } }),
+    ] })));
+    await expect(listManagedServices(settings)).rejects.toMatchObject({ name: 'ServiceManagementError', message: 'The connector returned an invalid service.' });
   });
 
   it('reads the api 2 version response with its service port pool', async () => {
     vi.stubGlobal('fetch', vi.fn(async () => jsonResponse({ version: '0.1.14', api: 2, service_ports: SERVICE_PORTS }, 200, { 'x-cloudlink-connector-version': '0.1.14' })));
-    await expect(getServiceManagementVersion(settings)).resolves.toEqual({ api: 2, version: '0.1.14', known: true, servicePorts: SERVICE_PORTS });
+    await expect(getServiceManagementVersion(settings)).resolves.toEqual({ api: 2, version: '0.1.14', known: true, servicePorts: SERVICE_PORTS, capabilities: [] });
+  });
+
+  it('reads the api 4 version response with its capability list', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => jsonResponse({ version: '0.20.0', api: 4, service_ports: SERVICE_PORTS, capabilities: ['service-access-v1'] }, 200, { 'x-cloudlink-connector-version': '0.20.0' })));
+    await expect(getServiceManagementVersion(settings)).resolves.toEqual({ api: 4, version: '0.20.0', known: true, servicePorts: SERVICE_PORTS, capabilities: ['service-access-v1'] });
   });
 
   it('reads an api 1 version response without a port pool', async () => {
     vi.stubGlobal('fetch', vi.fn(async () => jsonResponse({ version: '0.1.14-dev', api: 1 }, 200, { 'x-cloudlink-connector-version': '0.1.14-dev' })));
-    await expect(getServiceManagementVersion(settings)).resolves.toEqual({ api: 1, version: '0.1.14-dev', known: true, servicePorts: [DEFAULT_SERVICES_PORT] });
+    await expect(getServiceManagementVersion(settings)).resolves.toEqual({ api: 1, version: '0.1.14-dev', known: true, servicePorts: [DEFAULT_SERVICES_PORT], capabilities: [] });
   });
 
   it('treats a 404 without a version header as an unknown older connector', async () => {
     vi.stubGlobal('fetch', vi.fn(async () => new Response('not found', { status: 404 })));
-    await expect(getServiceManagementVersion(settings)).resolves.toEqual({ api: 1, version: undefined, known: false, servicePorts: [DEFAULT_SERVICES_PORT] });
+    await expect(getServiceManagementVersion(settings)).resolves.toEqual({ api: 1, version: undefined, known: false, servicePorts: [DEFAULT_SERVICES_PORT], capabilities: [] });
   });
 
   it('falls back to the version header when the body omits it', async () => {
     vi.stubGlobal('fetch', vi.fn(async () => jsonResponse({ api: 2, service_ports: [8443] }, 200, { 'x-cloudlink-connector-version': '0.1.14' })));
-    await expect(getServiceManagementVersion(settings)).resolves.toEqual({ api: 2, version: '0.1.14', known: true, servicePorts: [8443] });
+    await expect(getServiceManagementVersion(settings)).resolves.toEqual({ api: 2, version: '0.1.14', known: true, servicePorts: [8443], capabilities: [] });
   });
 
   it('creates a root service with the api 2 PUT body', async () => {
@@ -248,11 +298,31 @@ describe('service management requests', () => {
     expect((fetch.mock.calls[0] as unknown as [string, RequestInit])[1].body).toBe(JSON.stringify({ path: '/test/api', target: '127.0.0.1:3000' }));
   });
 
+  it('sends an access policy exactly as prepared', async () => {
+    const fetch = vi.fn(async () => jsonResponse({ service: service({ access: 'public' }) }, 200));
+    vi.stubGlobal('fetch', fetch);
+    await putManagedService(settings, 'api', { port: 8443, path: '/test/api', target: '127.0.0.1:3000', access: 'public', access_policy: { mode: 'password', expires_at: 1_760_003_600, password: 'correct horse battery staple' } });
+    expect(JSON.parse((fetch.mock.calls[0] as unknown as [string, RequestInit])[1].body as string)).toEqual({
+      port: 8443, path: '/test/api', target: '127.0.0.1:3000', access: 'public',
+      access_policy: { mode: 'password', expires_at: 1_760_003_600, password: 'correct horse battery staple' },
+    });
+  });
+
   it('deletes a service', async () => {
     const fetch = vi.fn(async () => new Response(null, { status: 204 }));
     vi.stubGlobal('fetch', fetch);
     await expect(deleteManagedService(settings, 'api')).resolves.toBeUndefined();
     expect((fetch.mock.calls[0] as unknown as [string, RequestInit])[1].method).toBe('DELETE');
+  });
+
+  it('revokes sharing with POST and returns the stored service', async () => {
+    const fetch = vi.fn(async () => jsonResponse({ service: service({ access: 'private', access_policy: { mode: 'private', expires_at: null, expired: false, password_set: false, share_token: null, revision: 4 } }) }, 200));
+    vi.stubGlobal('fetch', fetch);
+    await expect(revokeManagedService(settings, 'api')).resolves.toMatchObject({ access: 'private', access_policy: { mode: 'private', share_token: null, revision: 4 } });
+    const [url, init] = fetch.mock.calls[0] as unknown as [string, RequestInit];
+    expect(url).toBe('https://m-opaque.opencodecloud.link/_cloudlink/services/api/revoke');
+    expect(init.method).toBe('POST');
+    expect(init.body).toBeUndefined();
   });
 
   it('surfaces the connector message and status on failure', async () => {
@@ -262,6 +332,18 @@ describe('service management requests', () => {
       status: 400,
       message: 'invalid service: missing field `port`',
     });
+  });
+
+  it('shows the connector message when an older client hits a protected service', async () => {
+    const fetch = vi.fn(async () => jsonResponse({ error: 'connector_update_required', message: 'This service has access protection set by a newer app. Update the app to edit it.' }, 409));
+    vi.stubGlobal('fetch', fetch);
+    await expect(putManagedService(settings, 'api', { port: 8443, path: '/test/api', target: '127.0.0.1:3000', access: 'public' })).rejects.toMatchObject({
+      status: 409,
+      message: 'This service has access protection set by a newer app. Update the app to edit it.',
+    });
+    // One attempt only: the app never retries a protected service without a
+    // policy, because that would downgrade it.
+    expect(fetch).toHaveBeenCalledTimes(1);
   });
 
   it('rejects management without a Cloud Link connection', async () => {

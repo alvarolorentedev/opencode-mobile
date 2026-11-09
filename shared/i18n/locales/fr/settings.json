@@ -838,6 +838,13 @@
     "copyLink": "Copier le lien",
     "linkCopied": "Lien du service copié.",
     "linkUnavailable": "Impossible de créer un lien pour ce service.",
+    "open": "Ouvrir",
+    "openFailed": "Impossible d'ouvrir le lien de ce service.",
+    "revoke": "Révoquer le partage",
+    "revokeTitle": "Révoquer le partage de {{name}} ?",
+    "revokeMessage": "L'accès externe s'arrête immédiatement. Le service reste disponible pour les appareils appairés.",
+    "revoked": "Partage révoqué pour {{name}}.",
+    "revokeFailed": "Impossible de révoquer le partage.",
     "machine": "Machine",
     "notActive": "Services pour {{name}} — ce n'est pas votre connexion active.",
     "useMachine": "Basculer sur cette machine",
@@ -860,12 +867,41 @@
       "path": "Chemin",
       "target": "Cible",
       "access": "Accès",
+      "expiration": "Expiration",
+      "customExpiration": "Durée",
+      "password": "Mot de passe",
       "enabled": "Activé",
       "stripPrefix": "Retirer le préfixe"
     },
     "access": {
       "private": "Privé",
-      "public": "Public"
+      "public": "Public",
+      "password": "Protégé par mot de passe"
+    },
+    "expiration": {
+      "none": "Sans expiration",
+      "fifteenMinutes": "15 minutes",
+      "oneHour": "1 heure",
+      "twentyFourHours": "24 heures",
+      "custom": "Personnalisée",
+      "keep": "Conserver l'expiration actuelle ({{date}})",
+      "choose": "Choisir une nouvelle expiration",
+      "expiresAt": "Expire le {{date}}",
+      "remaining": "{{time}} restantes",
+      "expired": "Expiré",
+      "expiredHint": "Ce partage a expiré. Choisissez une nouvelle expiration ou Sans expiration.",
+      "passwordHint": "Utilisez 8 à 128 caractères. Partagez le mot de passe séparément du lien.",
+      "passwordSet": "Un mot de passe est défini. Laissez vide pour le conserver, ou saisissez-en un nouveau.",
+      "sharePassword": "Protégé par mot de passe — partagez le mot de passe séparément du lien.",
+      "legacyWarning": "Cela crée un nouveau lien jeton. Les liens simples copiés précédemment cessent de fonctionner.",
+      "privateWarning": "Enregistrer en Privé arrête l'accès externe et supprime le mot de passe et le lien de partage.",
+      "updateConnector": "Mettez à jour ce connecteur de bureau vers {{version}} ou supérieur pour gérer les accès, les mots de passe et les liens temporaires."
+    },
+    "units": {
+      "label": "Unité",
+      "minutes": "Minutes",
+      "hours": "Heures",
+      "days": "Jours"
     },
     "errors": {
       "required": "Ce champ est obligatoire.",
@@ -881,7 +917,14 @@
       "targetFormat": "Utilisez une adresse comme 127.0.0.1:3000.",
       "targetLoopback": "La cible doit être en loopback (127.0.0.1 ou ::1).",
       "targetReserved": "Ce port est réservé aux services exposés.",
-      "targetPort": "Utilisez un port non privilégié entre 1024 et 65535."
+      "targetPort": "Utilisez un port non privilégié entre 1024 et 65535.",
+      "passwordRequired": "Saisissez un mot de passe pour ce partage.",
+      "passwordLength": "Utilisez 8 à 128 caractères.",
+      "expirationRequired": "Choisissez une nouvelle expiration ou Sans expiration.",
+      "expirationPast": "Choisissez une expiration future.",
+      "expirationRange": "Utilisez entre 1 minute et 366 jours.",
+      "expirationFormat": "Saisissez un nombre entier.",
+      "accessUnsupported": "Mettez à jour ce connecteur de bureau pour modifier ce service protégé."
     }
   },
   "extensions": {

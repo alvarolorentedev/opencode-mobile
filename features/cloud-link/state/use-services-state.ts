@@ -4,7 +4,7 @@ import { getConnectCredentialError } from '@/shared/contracts/cloud-link';
 import { findMatchingProfile, type ConnectionProfile } from '@/shared/contracts/connection-profiles';
 import { getProfilePassword } from '@/shared/storage/connection-profiles';
 import { getConnectionScope, getConnectionUiScope } from '@/shared/contracts/connection-scope';
-import { deleteManagedService, getServiceManagementVersion, listManagedServices, putManagedService, ServiceManagementError, type OpencodeConnectionSettings } from '@/shared/protocol/opencode/client';
+import { deleteManagedService, getServiceManagementVersion, listManagedServices, putManagedService, revokeManagedService, ServiceManagementError, type OpencodeConnectionSettings } from '@/shared/protocol/opencode/client';
 import { type ServiceInput } from '@/shared/contracts/service-management';
 import type { ServiceManagementApi, ServiceManagementTarget, ServiceManagementUnavailableReason } from '@/shared/contracts/domain';
 import { useQueryForeground } from '@/shared/server-data/client';
@@ -132,7 +132,12 @@ export function useServicesState({
     queryFn: ({ signal }: { signal: AbortSignal }) => getServiceManagementVersion(targetSettings!, signal) }), [key, targetSettings]);
   const [list] = useQueries({ queries: [listOptions].filter(() => requested && foreground && Boolean(targetSettings)) });
   const [versionQuery] = useQueries({ queries: [versionOptions].filter(() => requested && foreground && Boolean(targetSettings)) });
-  const services = useMemo(() => list?.error ? [] : list?.data ?? [], [list?.error, list?.data]);
+  const listData = list?.data;
+  const services = useMemo(() => list?.error ? [] : listData?.services ?? [], [list?.error, listData]);
+  // Connector clock plus the local time the list arrived: the UI derives
+  // "now" from these instead of the phone clock, and re-derives it on focus.
+  const serverTime = listData?.serverTime;
+  const serverTimeAt = list?.dataUpdatedAt;
   const version = versionQuery?.data;
   const credentialFailure = list?.error instanceof ServiceManagementError && list?.error.status === 401;
   const loadFailed = Boolean(list?.error) && !credentialFailure;
@@ -162,6 +167,18 @@ export function useServicesState({
     try { await cache.cancelQueries({ queryKey: key }); await deleteManagedService(targetSettings, id); await cache.invalidateQueries({ queryKey: key }); }
     finally { setIsSaving(false); }
   }, [cache, key, targetSettings]);
+  // Revocation is not deletion: routing keeps working for paired devices while
+  // the share capability, password and deadline are cleared.
+  const revoke = useCallback(async (id: string) => {
+    if (!targetSettings) throw new Error('Connect a Cloud Link machine before managing services.');
+    setIsSaving(true);
+    try {
+      await cache.cancelQueries({ queryKey: key });
+      const saved = await revokeManagedService(targetSettings, id);
+      await cache.invalidateQueries({ queryKey: key });
+      return saved;
+    } finally { setIsSaving(false); }
+  }, [cache, key, targetSettings]);
   const isRefreshing = Boolean(list?.isFetching || versionQuery?.isFetching);
   const selectMachine = useCallback((id: string) => {
     setSelectedProfileId((current) => (current === id ? current : id));
@@ -179,6 +196,8 @@ export function useServicesState({
   const servicesValue = useMemo<ServiceManagementApi>(() => ({
     services,
     version,
+    serverTime,
+    serverTimeAt,
     available,
     target,
     machines,
@@ -189,9 +208,10 @@ export function useServicesState({
     refresh,
     save,
     remove,
+    revoke,
     selectMachine,
     activateTarget,
-  }), [activateTarget, available, isRefreshing, isSaving, loadFailed, machines, refresh, remove, save, selectMachine, services, target, unavailableReason, version]);
+  }), [activateTarget, available, isRefreshing, isSaving, loadFailed, machines, refresh, remove, revoke, save, selectMachine, services, serverTime, serverTimeAt, target, unavailableReason, version]);
 
   return { servicesValue };
 }

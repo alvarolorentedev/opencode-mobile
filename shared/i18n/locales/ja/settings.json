@@ -838,6 +838,13 @@
     "copyLink": "リンクをコピー",
     "linkCopied": "サービスのリンクをコピーしました。",
     "linkUnavailable": "このサービスのリンクを作成できませんでした。",
+    "open": "開く",
+    "openFailed": "このサービスのリンクを開けませんでした。",
+    "revoke": "共有を取り消す",
+    "revokeTitle": "{{name}} の共有を取り消しますか？",
+    "revokeMessage": "外部アクセスは即時に停止します。サービスはペアリング済みデバイスから引き続き利用できます。",
+    "revoked": "{{name}} の共有を取り消しました。",
+    "revokeFailed": "共有を取り消せませんでした。",
     "machine": "マシン",
     "notActive": "{{name}} のサービスを表示中 — これは現在の接続ではありません。",
     "useMachine": "このマシンに切り替える",
@@ -860,12 +867,41 @@
       "path": "パス",
       "target": "ターゲット",
       "access": "アクセス",
+      "expiration": "有効期限",
+      "customExpiration": "期間",
+      "password": "パスワード",
       "enabled": "有効",
       "stripPrefix": "パスプレフィックスを削除"
     },
     "access": {
       "private": "プライベート",
-      "public": "パブリック"
+      "public": "パブリック",
+      "password": "パスワード保護"
+    },
+    "expiration": {
+      "none": "期限なし",
+      "fifteenMinutes": "15分",
+      "oneHour": "1時間",
+      "twentyFourHours": "24時間",
+      "custom": "カスタム",
+      "keep": "現在の有効期限を維持（{{date}}）",
+      "choose": "新しい有効期限を選択",
+      "expiresAt": "{{date}} に期限切れ",
+      "remaining": "残り {{time}}",
+      "expired": "期限切れ",
+      "expiredHint": "この共有は期限切れです。新しい有効期限か期限なしを選択してください。",
+      "passwordHint": "8〜128文字を使用してください。パスワードはリンクとは別に共有してください。",
+      "passwordSet": "パスワードが設定されています。空欄で維持するか、新しいパスワードを入力してください。",
+      "sharePassword": "パスワード保護 — パスワードはリンクとは別に共有してください。",
+      "legacyWarning": "新しいトークン付き共有リンクが作成されます。以前コピーした通常のリンクは動作しなくなります。",
+      "privateWarning": "「プライベート」で保存すると外部アクセスが停止し、パスワードと共有リンクが削除されます。",
+      "updateConnector": "アクセス・パスワード・一時共有リンクを管理するには、このデスクトップコネクタを {{version}} 以降に更新してください。"
+    },
+    "units": {
+      "label": "単位",
+      "minutes": "分",
+      "hours": "時間",
+      "days": "日"
     },
     "errors": {
       "required": "この項目は必須です。",
@@ -881,7 +917,14 @@
       "targetFormat": "127.0.0.1:3000 のようなアドレスを使用してください。",
       "targetLoopback": "ターゲットはループバック（127.0.0.1 または ::1）である必要があります。",
       "targetReserved": "そのポートは公開サービス用に予約されています。",
-      "targetPort": "1024〜65535 の非特権ポートを使用してください。"
+      "targetPort": "1024〜65535 の非特権ポートを使用してください。",
+      "passwordRequired": "この共有のパスワードを入力してください。",
+      "passwordLength": "8〜128文字を使用してください。",
+      "expirationRequired": "新しい有効期限か期限なしを選択してください。",
+      "expirationPast": "将来の日時を選択してください。",
+      "expirationRange": "1分から366日の範囲で入力してください。",
+      "expirationFormat": "整数を入力してください。",
+      "accessUnsupported": "この保護されたサービスを編集するには、デスクトップコネクタを更新してください。"
     }
   },
   "extensions": {

@@ -838,6 +838,13 @@
     "copyLink": "Copiar ligação",
     "linkCopied": "Ligação do serviço copiada.",
     "linkUnavailable": "Não foi possível criar uma ligação para este serviço.",
+    "open": "Abrir",
+    "openFailed": "Não foi possível abrir o link deste serviço.",
+    "revoke": "Revogar partilha",
+    "revokeTitle": "Revogar a partilha de {{name}}?",
+    "revokeMessage": "O acesso externo para imediatamente. O serviço continua disponível para dispositivos pareados.",
+    "revoked": "Partilha revogada para {{name}}.",
+    "revokeFailed": "Não foi possível revogar a partilha.",
     "machine": "Máquina",
     "notActive": "Serviços de {{name}} — esta não é a sua ligação ativa.",
     "useMachine": "Mudar para esta máquina",
@@ -860,12 +867,41 @@
       "path": "Caminho",
       "target": "Destino",
       "access": "Acesso",
+      "expiration": "Expiração",
+      "customExpiration": "Duração",
+      "password": "Palavra-passe",
       "enabled": "Ativado",
       "stripPrefix": "Remover prefixo"
     },
     "access": {
       "private": "Privado",
-      "public": "Público"
+      "public": "Público",
+      "password": "Protegido por palavra-passe"
+    },
+    "expiration": {
+      "none": "Sem expiração",
+      "fifteenMinutes": "15 minutos",
+      "oneHour": "1 hora",
+      "twentyFourHours": "24 horas",
+      "custom": "Personalizada",
+      "keep": "Manter a expiração atual ({{date}})",
+      "choose": "Escolher uma nova expiração",
+      "expiresAt": "Expira em {{date}}",
+      "remaining": "restam {{time}}",
+      "expired": "Expirado",
+      "expiredHint": "Esta partilha expirou. Escolha uma nova expiração ou Sem expiração.",
+      "passwordHint": "Use 8 a 128 caracteres. Partilhe a palavra-passe separadamente do link.",
+      "passwordSet": "Está definida uma palavra-passe. Deixe em branco para a manter ou introduza uma nova.",
+      "sharePassword": "Protegido por palavra-passe — partilhe a palavra-passe separadamente do link.",
+      "legacyWarning": "Isto cria um novo link com token. Os links simples copiados antes deixam de funcionar.",
+      "privateWarning": "Guardar como Privado pára o acesso externo e remove a palavra-passe e o link de partilha.",
+      "updateConnector": "Atualize este conector de desktop para {{version}} ou superior para gerir acessos, palavras-passe e links temporários."
+    },
+    "units": {
+      "label": "Unidade",
+      "minutes": "Minutos",
+      "hours": "Horas",
+      "days": "Dias"
     },
     "errors": {
       "required": "Este campo é obrigatório.",
@@ -881,7 +917,14 @@
       "targetFormat": "Use um endereço como 127.0.0.1:3000.",
       "targetLoopback": "O destino tem de ser loopback (127.0.0.1 ou ::1).",
       "targetReserved": "Essa porta está reservada para serviços expostos.",
-      "targetPort": "Use uma porta não privilegiada entre 1024 e 65535."
+      "targetPort": "Use uma porta não privilegiada entre 1024 e 65535.",
+      "passwordRequired": "Introduza uma palavra-passe para esta partilha.",
+      "passwordLength": "Use 8 a 128 caracteres.",
+      "expirationRequired": "Escolha uma nova expiração ou Sem expiração.",
+      "expirationPast": "Escolha uma expiração no futuro.",
+      "expirationRange": "Use entre 1 minuto e 366 dias.",
+      "expirationFormat": "Introduza um número inteiro.",
+      "accessUnsupported": "Atualize este conector de desktop para editar este serviço protegido."
     }
   },
   "extensions": {
