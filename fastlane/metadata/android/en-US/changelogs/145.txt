@@ -1,0 +1,3 @@
+- Mission Control gains a usage chart with daily contributions.
+- Completion alerts wait for the assistant's response instead of firing too early.
+- Mission Control, terminal and project views are simpler.
