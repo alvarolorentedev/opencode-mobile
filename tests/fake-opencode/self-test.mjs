@@ -493,6 +493,11 @@ try {
   await v2request('/__control/session-page', json('POST', {}));
   assert((await v2request(pagePath)).data.length === 3, 'Default session page size must restore the full list');
 
+  const statsRange = { from: v2Assistant.time.created, to: v2Assistant.time.created + 1 };
+  const stats = await v2Api.experimental.session.stats({ ...statsRange, project: v2Session.projectID, tools: 'none' });
+  assert(stats.sessions >= 1 && stats.tokens.input >= v2Assistant.tokens.input && stats.cost >= v2Assistant.cost, 'V2 range stats must include completed usage');
+  const unrelatedStats = await v2Api.experimental.session.stats({ ...statsRange, project: 'unrelated-project', tools: 'none' });
+  assert(unrelatedStats.sessions === 0 && unrelatedStats.cost === 0, 'V2 range stats must respect project scope');
   const fork = await v2Api.session.fork({ sessionID: v2Session.id, before: v2Assistant.id });
   assert(fork.parentID === v2Session.id, 'Native fork must retain parent identity');
   assert(!(await v2Api.message.list({ sessionID: fork.id })).data.some((entry) => entry.id === v2Assistant.id), 'Native fork before cursor must exclude the cursor');

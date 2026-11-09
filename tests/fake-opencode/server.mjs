@@ -824,6 +824,36 @@ const server = http.createServer(async (req, res) => {
       return;
     }
 
+    if (req.method === 'GET' && pathname === '/api/experimental/session/stats') {
+      const from = Number(requestUrl.searchParams.get('from'));
+      const to = Number(requestUrl.searchParams.get('to'));
+      const project = requestUrl.searchParams.get('project');
+      if (!Number.isFinite(from) || !Number.isFinite(to) || from >= to) {
+        sendJson(res, 400, { message: 'Stats range must end after it starts' });
+        return;
+      }
+      const data = { range: { from, to }, sessions: 0, subagents: 0, prompts: 0, steps: 0, cost: 0,
+        tokens: { input: 0, output: 0, reasoning: 0, cache: { read: 0, write: 0 } },
+        tools: { mode: 'none' }, activeDays: 0, streak: 0, activity: [], models: [] };
+      for (const session of state.sessions) {
+        if (project && session.projectID !== project) continue;
+        const messages = (state.messagesBySession[session.id] ?? []).filter(({ type, time }) =>
+          (type === 'assistant' || type === 'user') && time.created >= from && time.created < to);
+        if (!messages.length) continue;
+        data[session.parentID ? 'subagents' : 'sessions']++;
+        for (const message of messages) {
+          if (message.type === 'user') { if (!session.parentID) data.prompts++; continue; }
+          data.steps++;
+          data.cost += message.cost ?? 0;
+          if (!message.tokens) continue;
+          for (const key of ['input', 'output', 'reasoning']) data.tokens[key] += message.tokens[key];
+          for (const key of ['read', 'write']) data.tokens.cache[key] += message.tokens.cache[key];
+        }
+      }
+      sendJson(res, 200, { data });
+      return;
+    }
+
     if (req.method === 'GET' && pathname === '/api/session') {
       const directory = requestUrl.searchParams.get('directory');
       const all = directory ? state.sessions.filter((session) => session.location.directory === directory) : state.sessions;

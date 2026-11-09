@@ -413,6 +413,22 @@
     "retryPrompt": "לא קיבלתי אישור. אמור כן, נסה שוב, ערוך או בטל."
   },
   "mission": {
+    "currentJobs": "משימות נוכחיות",
+    "activity": "פעילות",
+    "metric": {
+      "conversations": "שיחות",
+      "tokens": "טוקנים",
+      "cost": "עלות"
+    },
+    "metricTotal": {
+      "conversations": "שיחות פעילות",
+      "tokens": "טוקנים בשימוש",
+      "cost": "עלות שנרשמה"
+    },
+    "usageCoverage": "שימוש מ־{{checked}} מתוך {{total}} שרתים",
+    "activityUnavailable": "נתוני הפעילות אינם זמינים.",
+    "recordedCostNote": "ייתכן שלחלק מהשימוש לא נרשם מחיר ב־OpenCode.",
+    "chartPoint": "מ־{{from}} עד {{to}}: {{value}}",
     "tab": "משימות",
     "title": "מרכז בקרת משימות",
     "badge": "משימות. שיחות שדורשות תשומת לב: {{count}}",

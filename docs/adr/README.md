@@ -93,6 +93,7 @@ coverage, and documentation links.
 | [0039](0039-plugin-command-reports-as-notices.md) | Plugin command reports render as distinct notices | Accepted |
 | [0040](0040-connection-owned-mission-control.md) | Connection-owned Mission Control activity | Accepted |
 | [0041](0041-connector-enforced-service-access.md) | Connector-enforced exposed-service access | Accepted |
+| [0042](0042-mission-server-aggregates.md) | Server aggregates for Mission Control history | Accepted |
 
 ## Template
 

@@ -92,9 +92,12 @@ Discard cancels and clears staged content. Components never fetch or persist.
 ## Mission Control
 
 The Mission tab uses the native tab-bar badge and exposes its full localized
-count as part of the tab's accessible name. `MissionSummary` renders the four
-status filters. `MissionSessionRow` shows action reasons, connection and project
-context, and last activity. Both controls have colocated Storybook states.
+count as part of the tab's accessible name. `MissionSummary` renders the three
+current job counts and opens the selected status in an `OverlaySheet`.
+`MissionSessionRow` shows action reasons, connection and project context, and
+last activity inside the sheet. `MissionActivityChart` presents historical usage
+and independent range controls on the overview. The components have colocated
+Storybook states.
 
 ## Android widget presentation
 

@@ -419,6 +419,22 @@
     "retryPrompt": "لم أحصل على تأكيد. قل نعم، أو أعد المحاولة، أو قم بالتحرير، أو الإلغاء."
   },
   "mission": {
+    "currentJobs": "المهام الحالية",
+    "activity": "النشاط",
+    "metric": {
+      "conversations": "المحادثات",
+      "tokens": "الرموز",
+      "cost": "التكلفة"
+    },
+    "metricTotal": {
+      "conversations": "محادثات نشطة",
+      "tokens": "رموز مستخدمة",
+      "cost": "التكلفة المسجّلة"
+    },
+    "usageCoverage": "الاستخدام من {{checked}} من أصل {{total}} خوادم",
+    "activityUnavailable": "بيانات النشاط غير متاحة.",
+    "recordedCostNote": "قد لا يكون لبعض الاستخدام سعر مسجّل في OpenCode.",
+    "chartPoint": "من {{from}} إلى {{to}}: {{value}}",
     "tab": "المهام",
     "title": "مركز التحكم بالمهام",
     "badge": "المهام. المحادثات التي تتطلب الانتباه: {{count}}",

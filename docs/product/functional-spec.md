@@ -285,15 +285,23 @@ and clears as requests resolve. Sessionless server requests appear separately.
 Choose Chat or Mission Control as the opening screen in Settings → Appearance or
 in onboarding. Chat is the default. Direct links open their own destinations.
 
-Use the server, project, and status filters to narrow the dashboard. Completion
-totals cover the past 24 hours and require a confirmed settlement time. Partial
-and unavailable servers are identified independently. Opening a row switches
-to the exact server, project/worktree and conversation in Chat, where existing
-permission, question, stop and review controls are available.
+The server and project selectors scope the current jobs and activity chart.
+Tap Needs attention, Running, or Failed to open its conversation list in a
+bottom sheet. Sessionless requests are shown separately in the Needs attention
+sheet at server scope. Opening a row switches to the exact server,
+project/worktree and conversation in Chat, where existing permission,
+question, stop and review controls are available.
+
+The activity chart shows active conversations, tokens used, or recorded USD
+cost. Ranges are 1h, 12h, 24h (the default), 5d, 7d, 15d and 30d. The range
+affects only the chart. An active conversation has at least one user or
+assistant message in the interval. A conversation can appear in several bars
+and counts once in the range total. The chart reports its own server coverage.
 
 The Android Mission Control widget shows dated counts and server coverage.
 Tapping its heading opens the dashboard. Tapping Needs attention opens that
-filter. The widget snapshot contains counts and timestamps.
+sheet. Widget completion totals cover the past 24 hours and require confirmed
+settlement times. The widget snapshot contains counts and timestamps.
 
 ## Chat Screen Detailed Behavior
 

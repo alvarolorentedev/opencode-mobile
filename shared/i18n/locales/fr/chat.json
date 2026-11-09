@@ -407,6 +407,22 @@
     "retryPrompt": "Je n’ai pas saisi la confirmation. Dites oui, réessayer, modifier ou annuler."
   },
   "mission": {
+    "currentJobs": "Tâches en cours",
+    "activity": "Activité",
+    "metric": {
+      "conversations": "Conversations",
+      "tokens": "Jetons",
+      "cost": "Coût"
+    },
+    "metricTotal": {
+      "conversations": "conversations actives",
+      "tokens": "jetons utilisés",
+      "cost": "coût enregistré"
+    },
+    "usageCoverage": "Utilisation sur {{checked}} serveurs sur {{total}}",
+    "activityUnavailable": "Les données d’activité sont indisponibles.",
+    "recordedCostNote": "Certains usages peuvent être sans prix enregistré dans OpenCode.",
+    "chartPoint": "Du {{from}} au {{to}} : {{value}}",
     "tab": "Mission",
     "title": "Contrôle des missions",
     "badge": "Mission. Conversations nécessitant une action : {{count}}",

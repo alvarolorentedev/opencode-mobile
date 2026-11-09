@@ -407,6 +407,22 @@
     "retryPrompt": "確認が聞き取れませんでした。「はい」「やり直す」「編集」「キャンセル」と言ってください。"
   },
   "mission": {
+    "currentJobs": "現在のジョブ",
+    "activity": "アクティビティ",
+    "metric": {
+      "conversations": "会話",
+      "tokens": "トークン",
+      "cost": "費用"
+    },
+    "metricTotal": {
+      "conversations": "件のアクティブな会話",
+      "tokens": "使用トークン数",
+      "cost": "記録された費用"
+    },
+    "usageCoverage": "{{total}} 台中 {{checked}} 台のサーバーの使用状況",
+    "activityUnavailable": "アクティビティデータを取得できません。",
+    "recordedCostNote": "一部の使用量には OpenCode に料金の記録がない場合があります。",
+    "chartPoint": "{{from}} から {{to}} まで: {{value}}",
     "tab": "ミッション",
     "title": "ミッション管理",
     "badge": "ミッション。対応が必要な会話は{{count}}件",

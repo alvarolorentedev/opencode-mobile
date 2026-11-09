@@ -407,6 +407,22 @@
     "retryPrompt": "मुझे पुष्टि समझ नहीं आई। हाँ, पुनः प्रयास, संपादित करें या रद्द करें कहें।"
   },
   "mission": {
+    "currentJobs": "मौजूदा काम",
+    "activity": "गतिविधि",
+    "metric": {
+      "conversations": "बातचीत",
+      "tokens": "टोकन",
+      "cost": "लागत"
+    },
+    "metricTotal": {
+      "conversations": "सक्रिय बातचीत",
+      "tokens": "इस्तेमाल किए गए टोकन",
+      "cost": "दर्ज लागत"
+    },
+    "usageCoverage": "{{total}} में से {{checked}} सर्वरों का उपयोग",
+    "activityUnavailable": "गतिविधि का डेटा उपलब्ध नहीं है।",
+    "recordedCostNote": "कुछ उपयोग की कीमत OpenCode में दर्ज नहीं हो सकती है।",
+    "chartPoint": "{{from}} से {{to}} तक: {{value}}",
     "tab": "मिशन",
     "title": "मिशन कंट्रोल",
     "badge": "मिशन। ध्यान देने वाली बातचीत: {{count}}",

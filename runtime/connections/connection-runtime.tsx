@@ -15,6 +15,8 @@ import type { ConnectionState } from '@/shared/contracts/domain';
 import { replaceQueryPartition } from '@/shared/server-data/keys';
 import { fetchProjectCatalog, projectsOptions } from '@/features/projects/runtime';
 import { useQueryActivity, useQueryForeground, useQueryIdentity } from '@/shared/server-data/client';
+import { readSessionStats } from '@/shared/protocol/services/session-stats';
+import type { SessionStatsSource } from '@/shared/server-data/session-stats';
 import { useActiveSessions, useMissionActivity } from '@/features/sessions/runtime';
 import { useCoalescedRefresh } from '@/runtime/realtime/use-coalesced-refresh';
 import type { ConnectSetup } from '@/shared/contracts/cloud-link-setup';
@@ -252,12 +254,18 @@ export function ConnectionRuntime({ entry, setup, updateSettings, online, hydrat
   const projects = useQuery({ ...projectsOptions(identity, catalogClient),
     enabled: entry.enabled && online && foreground && lifecycle.connection.status === 'connected' && lifecycle.serverContract === 'v2' }).data ?? EMPTY_PROJECTS;
   const knownDirectories = useMemo(() => projects.flatMap(({ worktree, sandboxes }) => [worktree, ...(sandboxes ?? [])]).filter(Boolean), [projects]);
+  const connected = lifecycle.connection.status === 'connected';
+  const authorized = lifecycle.connection.kind !== 'auth' && lifecycle.connection.kind !== 'entitlement';
+  const statsAvailable = entry.enabled && online && connected && authorized && lifecycle.serverContract === 'v2';
+  const stats = useMemo<SessionStatsSource | undefined>(() => statsAvailable ? {
+    identity, read: (range, project, signal) => readSessionStats(catalogClient, range, project, signal),
+  } : undefined, [catalogClient, identity, statsAvailable]);
   const mission = useMissionActivity({ entry, client: catalogClient, connected: lifecycle.connection.status === 'connected',
     connectionFailed: lifecycle.connection.status === 'error',
-    authorized: lifecycle.connection.kind !== 'auth' && lifecycle.connection.kind !== 'entitlement',
+    authorized,
     online, foreground, visible: Boolean(missionVisible), catalog: sessionCatalog, catalogCheckedAt: sessions.catalogCheckedAt,
     catalogError: sessions.catalogError, knownDirectories, projects, reconnect: lifecycle.connect });
-  const catalog = useMemo(() => ({ ...sessionCatalog, mission }), [sessionCatalog, mission]);
+  const catalog = useMemo(() => ({ ...sessionCatalog, mission: { ...mission, stats } }), [sessionCatalog, mission, stats]);
   const { refreshActiveSessions } = sessions;
   useEffect(() => { if (lifecycle.connection.status === 'connected') void refreshActiveSessions(); }, [lifecycle.connection.status, refreshActiveSessions]);
   // Warm the connection-wide project list once per connect. Project queries

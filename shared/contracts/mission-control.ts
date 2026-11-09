@@ -1,9 +1,12 @@
 import type { Project, Session, SessionStatus } from '@/shared/protocol/opencode/types';
+import type { SessionStatsSource } from '@/shared/server-data/session-stats';
 
 export const MISSION_PATH = '/mission-control';
 export const MISSION_LINK = 'opencodemobile://mission-control';
 export const MISSION_FILTERS = ['attention', 'running', 'failed', 'completed'] as const;
 export type MissionFilter = typeof MISSION_FILTERS[number];
+export const MISSION_JOB_STATUSES = ['attention', 'running', 'failed'] as const;
+export type MissionJobStatus = typeof MISSION_JOB_STATUSES[number];
 export type MissionCounts = Record<MissionFilter, number>;
 
 export type MissionWidgetSnapshot = {
@@ -31,5 +34,6 @@ export type MissionConnectionActivity = {
   catalogAt?: number;
   running?: { ids: ReadonlySet<string>; at: number };
   checkedAt?: number;
+  stats?: SessionStatsSource;
   refresh: () => void;
 };

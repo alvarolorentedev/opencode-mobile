@@ -407,6 +407,22 @@
     "retryPrompt": "I didn’t catch a confirmation. Say yes, retry, edit, or cancel."
   },
   "mission": {
+    "currentJobs": "Current jobs",
+    "activity": "Activity",
+    "metric": {
+      "conversations": "Conversations",
+      "tokens": "Tokens",
+      "cost": "Cost"
+    },
+    "metricTotal": {
+      "conversations": "active conversations",
+      "tokens": "tokens used",
+      "cost": "recorded cost"
+    },
+    "usageCoverage": "Usage from {{checked}} of {{total}} servers",
+    "activityUnavailable": "Activity data is unavailable.",
+    "recordedCostNote": "OpenCode may have no recorded price for some usage.",
+    "chartPoint": "{{from}} to {{to}}: {{value}}",
     "tab": "Mission",
     "title": "Mission Control",
     "badge": "Mission. Conversations needing attention: {{count}}",

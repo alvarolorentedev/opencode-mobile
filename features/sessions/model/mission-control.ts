@@ -11,6 +11,7 @@ export type MissionRow = {
   server: string;
   project: string;
   projectKey: string;
+  projectId?: string;
   worktree?: string;
   agent?: string;
   model?: string;
@@ -97,7 +98,7 @@ export function selectMission(connections: readonly Pick<ConnectionRecord, 'id' 
         const status = live ? permission || question ? 'attention' : state.status : 'unknown';
         const row: MissionRow = { key: sessionKey(target), target, title: session.title, status, permission, question, retrying: state.retrying,
           updatedAt: session.time.updated, server: connection.name, project: project?.name || basename(project?.worktree || session.directory),
-          projectKey: JSON.stringify([connection.id, project?.id ?? session.directory]),
+          projectKey: JSON.stringify([connection.id, project?.id ?? session.directory]), projectId: project?.id,
           worktree: project && project.worktree !== session.directory ? basename(session.directory) : undefined,
           agent: session.agent, model: session.model?.id, stale: !live || (state.status === 'unknown' && status !== 'attention' && phase !== 'checking') };
         rows.push(row);
@@ -106,7 +107,7 @@ export function selectMission(connections: readonly Pick<ConnectionRecord, 'id' 
       }
       if (live && activity.checkedAt) checkedAt = Math.min(checkedAt ?? Infinity, activity.checkedAt);
     }
-    servers.push({ id: connection.id, name: connection.name, phase, refresh: activity?.refresh, authorized: activity?.authorized,
+    servers.push({ id: connection.id, name: connection.name, phase, refresh: activity?.refresh, authorized: activity?.authorized, stats: activity?.stats,
       requests: global.permissions.size + global.questions.size, globalTarget });
   }
   rows.sort((a, b) => order.indexOf(a.status) - order.indexOf(b.status) || b.updatedAt - a.updatedAt || a.key.localeCompare(b.key));

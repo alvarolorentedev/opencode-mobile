@@ -92,6 +92,7 @@ for (const protocol of ['v1', 'v2']) {
         const mission = page.getByTestId('mission-tab');
         await expect(mission).toHaveAccessibleName('Mission. Conversations needing attention: 1');
         await mission.click();
+        await page.getByRole('button', { name: '1 Needs attention' }).click();
         await page.getByRole('button', { name: /^Missed question, Needs attention/ }).click();
       } else {
         await openChatLibrary(page);
@@ -103,7 +104,8 @@ for (const protocol of ['v1', 'v2']) {
       await expect(page.getByText(/question resolved|selected Minimal/).first()).toBeVisible({ timeout: 20_000 });
       if (protocol === 'v2') {
         await page.getByTestId('mission-tab').click();
-        await expect(page.getByRole('button', { name: '1 Completed' })).toBeVisible();
+        await expect(page.getByRole('button', { name: '0 Needs attention' })).toBeVisible();
+        await expect(page.getByRole('button', { name: '0 Running' })).toBeVisible();
       }
     } finally {
       server.kill('SIGTERM');

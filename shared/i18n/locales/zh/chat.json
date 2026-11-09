@@ -407,6 +407,22 @@
     "retryPrompt": "我没有听清确认。请说“是”、“重试”、“编辑”或“取消”。"
   },
   "mission": {
+    "currentJobs": "当前任务",
+    "activity": "活动",
+    "metric": {
+      "conversations": "会话",
+      "tokens": "令牌",
+      "cost": "费用"
+    },
+    "metricTotal": {
+      "conversations": "个活跃会话",
+      "tokens": "个已用令牌",
+      "cost": "已记录的费用"
+    },
+    "usageCoverage": "来自 {{total}} 台服务器中 {{checked}} 台的用量",
+    "activityUnavailable": "活动数据不可用。",
+    "recordedCostNote": "OpenCode 可能未记录部分用量的价格。",
+    "chartPoint": "{{from}} 至 {{to}}：{{value}}",
     "tab": "任务",
     "title": "任务控制台",
     "badge": "任务。需要处理的对话：{{count}}",

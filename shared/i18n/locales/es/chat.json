@@ -407,6 +407,22 @@
     "retryPrompt": "No entendí la confirmación. Di sí, reintentar, editar o cancelar."
   },
   "mission": {
+    "currentJobs": "Tareas actuales",
+    "activity": "Actividad",
+    "metric": {
+      "conversations": "Conversaciones",
+      "tokens": "Tokens",
+      "cost": "Coste"
+    },
+    "metricTotal": {
+      "conversations": "conversaciones activas",
+      "tokens": "tokens utilizados",
+      "cost": "coste registrado"
+    },
+    "usageCoverage": "Uso de {{checked}} de {{total}} servidores",
+    "activityUnavailable": "Los datos de actividad no están disponibles.",
+    "recordedCostNote": "Es posible que OpenCode no tenga un precio registrado para parte del uso.",
+    "chartPoint": "Del {{from}} al {{to}}: {{value}}",
     "tab": "Misión",
     "title": "Control de misiones",
     "badge": "Misión. Conversaciones que requieren atención: {{count}}",

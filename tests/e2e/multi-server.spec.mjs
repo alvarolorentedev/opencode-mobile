@@ -199,11 +199,25 @@ test('V2 replies to colliding approvals only on the Settings server', async ({ p
   await expect(missionTab).toHaveAccessibleName('Mission. Conversations needing attention: 2');
   await missionTab.click();
   const mission = page.getByTestId('mission-control');
-  await expect(mission.getByTestId('mission-session-row').filter({ hasText: 'Permission needed' })).toHaveCount(2);
+  const status = page.getByTestId('mission-status-overlay');
+  await expect(mission.getByTestId('mission-session-row')).toHaveCount(0);
+  await mission.getByRole('button', { name: '2 Needs attention' }).click();
+  await expect(status.getByTestId('mission-session-row').filter({ hasText: 'Permission needed' })).toHaveCount(2);
+  await status.getByRole('button', { name: 'Close', exact: true }).click();
   await choose(page, 'mission-server-filter', 'Build server');
+  const projectStats = page.waitForRequest((request) => {
+    const url = new URL(request.url());
+    return url.origin === servers[1].serverUrl && url.pathname === '/api/experimental/session/stats'
+      && url.searchParams.get('project') === servers[1].session.projectID;
+  });
+  await choose(page, 'mission-project-filter', /^demo-project/);
+  await projectStats;
+  await expect(mission.getByText('Usage from 1 of 1 servers', { exact: true })).toBeVisible();
   await expect(mission.getByRole('button', { name: '1 Needs attention' })).toBeVisible();
   await expect(missionTab).toHaveAccessibleName('Mission. Conversations needing attention: 2');
-  await mission.getByRole('button', { name: /^Chat on Build server, Needs attention/ }).click();
+  await mission.getByRole('button', { name: '1 Needs attention' }).click();
+  await expect(status.getByTestId('mission-session-row')).toHaveCount(1);
+  await status.getByRole('button', { name: /^Chat on Build server, Needs attention/ }).click();
   await expect(page.getByRole('button', { name: /^Open chats/ })).toContainText('Chat on Build server');
   await goToTab(page, 'Settings');
   await choose(page, 'settings-server-picker', 'Build server');

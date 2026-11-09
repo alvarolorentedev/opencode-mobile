@@ -746,6 +746,13 @@ from idle. Active reads and event revisions guard against older results, and
 stale or unauthorized data cannot contribute to current totals. See
 [ADR 0040](../adr/0040-connection-owned-mission-control.md).
 
+The chart uses the shared Query cache and connection-owned V2 stats readers.
+Each visible, foreground request uses a common time window and reads the full
+range followed by up to seven time buckets per server. A successful range
+contributes to the chart only when its buckets also succeed. Removing demand
+cancels remaining reads. Connection credential and project scopes partition
+results. See [ADR 0042](../adr/0042-mission-server-aggregates.md).
+
 ### Current Pending Requests
 
 A failed permission or question list read leaves that surface unchanged. A
