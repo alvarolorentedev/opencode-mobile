@@ -171,8 +171,17 @@ export function formatEstimatedCost(value: number, currency = 'USD', locale = 'e
   }
 }
 
-export function formatTokenCount(value: number) {
-  if (value < 1000) return String(value);
-  if (value < 1_000_000) return `${(value / 1000).toFixed(1).replace(/\.0$/, '')}K`;
-  return `${(value / 1_000_000).toFixed(1).replace(/\.0$/, '')}M`;
+export function formatTokenCount(value: number, locale?: string) {
+  const unit = value >= 1_000_000_000_000 ? { scale: 1_000_000_000_000, suffix: 'T' }
+    : value >= 1_000_000_000 ? { scale: 1_000_000_000, suffix: 'B' }
+      : value >= 1_000_000 ? { scale: 1_000_000, suffix: 'M' }
+        : value >= 1_000 ? { scale: 1_000, suffix: 'K' } : undefined;
+  if (!unit) return String(value);
+  const scaled = value / unit.scale;
+  if (!locale) return `${scaled.toFixed(1).replace(/\.0$/, '')}${unit.suffix}`;
+  try {
+    return `${new Intl.NumberFormat(locale, { maximumFractionDigits: 1 }).format(scaled)}${unit.suffix}`;
+  } catch {
+    return `${scaled.toFixed(1).replace(/\.0$/, '')}${unit.suffix}`;
+  }
 }

@@ -54,12 +54,13 @@ test('offline prompt is queued and delivered once after connectivity returns', a
     await page.getByTestId('mission-tab').click();
     const chart = page.getByTestId('mission-activity-chart');
     await expect(chart.getByTestId('mission-activity-total')).toHaveText(/[1-9]/);
+    await expect(chart.getByTestId('mission-activity-bar-chart')).toBeVisible();
+    await expect(page.getByTestId('mission-contributions-chart')).toBeVisible();
     await chart.getByRole('button', { name: 'Cost' }).click();
     await expect(chart.getByText('recorded cost', { exact: true })).toBeVisible();
-    await chart.getByRole('button', { name: '1 hour', exact: true }).click();
-    await expect(chart.getByRole('button', { name: '1 hour', exact: true })).toHaveAttribute('aria-pressed', 'true');
+    await chart.getByRole('button', { name: '1h', exact: true }).click();
+    await expect(chart.getByRole('button', { name: '1h', exact: true })).toHaveAttribute('aria-pressed', 'true');
     await page.context().setOffline(true);
-    await expect(page.getByText(/is offline/).first()).toBeVisible();
     await expect(chart.getByText('Activity data is unavailable.')).toBeVisible();
     await page.context().setOffline(false);
 

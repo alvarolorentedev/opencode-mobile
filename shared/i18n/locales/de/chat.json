@@ -410,18 +410,15 @@
     "currentJobs": "Aktuelle Aufgaben",
     "activity": "Aktivität",
     "metric": {
-      "conversations": "Unterhaltungen",
       "tokens": "Token",
       "cost": "Kosten"
     },
     "metricTotal": {
-      "conversations": "aktive Unterhaltungen",
       "tokens": "verwendete Token",
       "cost": "erfasste Kosten"
     },
     "activityUnavailable": "Aktivitätsdaten sind nicht verfügbar.",
     "recordedCostNote": "Für einen Teil der Nutzung hat OpenCode möglicherweise keinen Preis erfasst.",
-    "chartPoint": "{{from}} bis {{to}}: {{value}}",
     "tab": "Mission",
     "title": "Missionskontrolle",
     "badge": "Mission. Unterhaltungen mit Handlungsbedarf: {{count}}",
@@ -451,6 +448,10 @@
     "widgetLastKnown": "Letzter bekannter Stand · {{time}}",
     "widgetChecked": "Zuletzt geprüft · {{time}}",
     "widgetEmpty": "Öffne die Missionskontrolle, um die Aktivität zu prüfen.",
-    "activityPartial": "Die Aktivität einiger Server konnte nicht einbezogen werden."
+    "activityPartial": "Die Aktivität einiger Server konnte nicht einbezogen werden.",
+    "contributions": "Beiträge",
+    "contributionsCaption": "30 Tage",
+    "contributionsSummary": "Letzte 30 Tage: {{steps}} Schritte an {{days}} aktiven Tagen",
+    "attentionShort": "Achtung"
   }
 }

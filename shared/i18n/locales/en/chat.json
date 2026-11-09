@@ -410,18 +410,15 @@
     "currentJobs": "Current jobs",
     "activity": "Activity",
     "metric": {
-      "conversations": "Conversations",
       "tokens": "Tokens",
       "cost": "Cost"
     },
     "metricTotal": {
-      "conversations": "active conversations",
       "tokens": "tokens used",
       "cost": "recorded cost"
     },
     "activityUnavailable": "Activity data is unavailable.",
     "recordedCostNote": "OpenCode may have no recorded price for some usage.",
-    "chartPoint": "{{from}} to {{to}}: {{value}}",
     "tab": "Mission",
     "title": "Mission Control",
     "badge": "Mission. Conversations needing attention: {{count}}",
@@ -451,6 +448,10 @@
     "widgetLastKnown": "Last known · {{time}}",
     "widgetChecked": "Last checked · {{time}}",
     "widgetEmpty": "Open Mission Control to check activity.",
-    "activityPartial": "Some server activity could not be included."
+    "activityPartial": "Some server activity could not be included.",
+    "contributions": "Contributions",
+    "contributionsCaption": "30 days",
+    "contributionsSummary": "Last 30 days: {{steps}} steps across {{days}} active days",
+    "attentionShort": "Attention"
   }
 }

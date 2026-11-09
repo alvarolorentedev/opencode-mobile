@@ -410,18 +410,15 @@
     "currentJobs": "当前任务",
     "activity": "活动",
     "metric": {
-      "conversations": "会话",
       "tokens": "令牌",
       "cost": "费用"
     },
     "metricTotal": {
-      "conversations": "个活跃会话",
       "tokens": "个已用令牌",
       "cost": "已记录的费用"
     },
     "activityUnavailable": "活动数据不可用。",
     "recordedCostNote": "OpenCode 可能未记录部分用量的价格。",
-    "chartPoint": "{{from}} 至 {{to}}：{{value}}",
     "tab": "任务",
     "title": "任务控制台",
     "badge": "任务。需要处理的对话：{{count}}",
@@ -451,6 +448,10 @@
     "widgetLastKnown": "上次已知状态 · {{time}}",
     "widgetChecked": "上次检查 · {{time}}",
     "widgetEmpty": "打开任务控制台以检查活动。",
-    "activityPartial": "部分服务器的活动未能包含在内。"
+    "activityPartial": "部分服务器的活动未能包含在内。",
+    "contributions": "贡献",
+    "contributionsCaption": "30 天",
+    "contributionsSummary": "最近 30 天：{{days}} 个活跃日共 {{steps}} 步",
+    "attentionShort": "需注意"
   }
 }

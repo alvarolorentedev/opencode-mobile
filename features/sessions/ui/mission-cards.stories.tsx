@@ -2,6 +2,7 @@ import type { Meta, StoryObj } from '@storybook/react-vite';
 import { View } from 'react-native';
 import { MissionSessionRow, MissionSummary } from '@/features/sessions/ui/mission-cards';
 import { MissionActivityChart } from '@/features/sessions/ui/mission-activity-chart';
+import { MissionContributionChart } from '@/features/sessions/ui/mission-contribution-chart';
 import type { MissionRow } from '@/features/sessions/model/mission-control';
 import { missionStatsBuckets } from '@/features/sessions/model/mission-stats';
 
@@ -27,3 +28,12 @@ export const Activity: Story = { render: () => <MissionActivityChart {...chart} 
 }} /> };
 export const ActivityLoading: Story = { render: () => <MissionActivityChart {...chart} checked={0} loading /> };
 export const ActivityUnavailable: Story = { render: () => <MissionActivityChart {...chart} checked={0} /> };
+const end = Date.now();
+const contributions = Array.from({ length: 30 }, (_, index) => ({
+  date: new Date(end - (29 - index) * 86_400_000).toISOString().slice(0, 10),
+  steps: index % 4 === 0 ? 0 : (index * 7) % 18,
+}));
+const contributionProps = { days: contributions, endDate: end, loading: false, unavailable: false, partial: false };
+export const Contributions: Story = { render: () => <MissionContributionChart {...contributionProps} /> };
+export const ContributionsLoading: Story = { render: () => <MissionContributionChart {...contributionProps} loading /> };
+export const ContributionsUnavailable: Story = { render: () => <MissionContributionChart {...contributionProps} unavailable /> };

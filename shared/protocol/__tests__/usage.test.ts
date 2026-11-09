@@ -86,6 +86,8 @@ describe('session usage aggregation', () => {
     assert.equal(formatTokenCount(842), '842');
     assert.equal(formatTokenCount(12_400), '12.4K');
     assert.equal(formatTokenCount(1_800_000), '1.8M');
+    assert.equal(formatTokenCount(2_400_000_000), '2.4B');
+    assert.equal(formatTokenCount(1_200_000_000_000), '1.2T');
 
     // Context fill is the last step's prompt plus reply, not the sum across steps or turns.
     const multiStep: SessionMessageRecord[] = [

@@ -410,18 +410,15 @@
     "currentJobs": "Tâches en cours",
     "activity": "Activité",
     "metric": {
-      "conversations": "Conversations",
       "tokens": "Jetons",
       "cost": "Coût"
     },
     "metricTotal": {
-      "conversations": "conversations actives",
       "tokens": "jetons utilisés",
       "cost": "coût enregistré"
     },
     "activityUnavailable": "Les données d’activité sont indisponibles.",
     "recordedCostNote": "Certains usages peuvent être sans prix enregistré dans OpenCode.",
-    "chartPoint": "Du {{from}} au {{to}} : {{value}}",
     "tab": "Mission",
     "title": "Contrôle des missions",
     "badge": "Mission. Conversations nécessitant une action : {{count}}",
@@ -451,6 +448,10 @@
     "widgetLastKnown": "Dernier état connu · {{time}}",
     "widgetChecked": "Dernière vérification · {{time}}",
     "widgetEmpty": "Ouvrez le contrôle des missions pour consulter l’activité.",
-    "activityPartial": "L’activité de certains serveurs n’a pas pu être incluse."
+    "activityPartial": "L’activité de certains serveurs n’a pas pu être incluse.",
+    "contributions": "Contributions",
+    "contributionsCaption": "30 jours",
+    "contributionsSummary": "30 derniers jours : {{steps}} étapes sur {{days}} jours actifs",
+    "attentionShort": "Attention"
   }
 }

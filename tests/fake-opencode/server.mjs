@@ -835,6 +835,7 @@ const server = http.createServer(async (req, res) => {
       const data = { range: { from, to }, sessions: 0, subagents: 0, prompts: 0, steps: 0, cost: 0,
         tokens: { input: 0, output: 0, reasoning: 0, cache: { read: 0, write: 0 } },
         tools: { mode: 'none' }, activeDays: 0, streak: 0, activity: [], models: [] };
+      const activity = new Map();
       for (const session of state.sessions) {
         if (project && session.projectID !== project) continue;
         const messages = (state.messagesBySession[session.id] ?? []).filter(({ type, time }) =>
@@ -844,12 +845,16 @@ const server = http.createServer(async (req, res) => {
         for (const message of messages) {
           if (message.type === 'user') { if (!session.parentID) data.prompts++; continue; }
           data.steps++;
+          const date = new Date(message.time.created).toISOString().slice(0, 10);
+          activity.set(date, (activity.get(date) ?? 0) + 1);
           data.cost += message.cost ?? 0;
           if (!message.tokens) continue;
           for (const key of ['input', 'output', 'reasoning']) data.tokens[key] += message.tokens[key];
           for (const key of ['read', 'write']) data.tokens.cache[key] += message.tokens.cache[key];
         }
       }
+      data.activity = [...activity].sort(([left], [right]) => left.localeCompare(right)).map(([date, steps]) => ({ date, steps }));
+      data.activeDays = data.activity.length;
       sendJson(res, 200, { data });
       return;
     }

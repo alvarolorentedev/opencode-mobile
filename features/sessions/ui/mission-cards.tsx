@@ -19,15 +19,11 @@ export function MissionSummary({ counts, onOpen }: {
   const colors = { attention: palette.warning, running: palette.tint, failed: palette.danger };
   return <View className="flex-row rounded-control border border-border bg-secondary">
     {MISSION_JOB_STATUSES.map((key, index) => <Pressable key={key}
-      className={cn('min-h-target flex-1 min-w-0 gap-1 px-1.5 py-3 active:bg-muted', index > 0 && 'border-s border-border')}
+      className={cn('min-h-target flex-1 min-w-0 flex-row items-center justify-center gap-1 px-1 py-2 active:bg-muted', index > 0 && 'border-s border-border')}
       accessibilityRole="button" accessibilityLabel={`${counts[key]} ${t(`mission.${key}`)}`} onPress={() => onOpen(key)}>
-      <View className="flex-row flex-wrap items-center gap-1">
-        <Icon name={icons[key]} size={18} color={colors[key]} />
-        <Text variant="title" style={{ color: colors[key] }}>{counts[key]}</Text>
-        <View className="flex-1" />
-        <Icon name="chevron-right" size={16} color={palette.muted} />
-      </View>
-      <Text variant="description" className="text-center">{t(`mission.${key}`)}</Text>
+      <Icon name={icons[key]} size={16} color={colors[key]} />
+      <Text variant="label" style={{ color: colors[key] }}>{counts[key]}</Text>
+      <Text variant="label" numberOfLines={1} className="shrink text-muted-foreground">{t(key === 'attention' ? 'mission.attentionShort' : `mission.${key}`)}</Text>
     </Pressable>)}
   </View>;
 }

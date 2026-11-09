@@ -410,18 +410,15 @@
     "currentJobs": "Tareas actuales",
     "activity": "Actividad",
     "metric": {
-      "conversations": "Conversaciones",
       "tokens": "Tokens",
       "cost": "Coste"
     },
     "metricTotal": {
-      "conversations": "conversaciones activas",
       "tokens": "tokens utilizados",
       "cost": "coste registrado"
     },
     "activityUnavailable": "Los datos de actividad no están disponibles.",
     "recordedCostNote": "Es posible que OpenCode no tenga un precio registrado para parte del uso.",
-    "chartPoint": "Del {{from}} al {{to}}: {{value}}",
     "tab": "Misión",
     "title": "Control de misiones",
     "badge": "Misión. Conversaciones que requieren atención: {{count}}",
@@ -451,6 +448,10 @@
     "widgetLastKnown": "Último estado conocido · {{time}}",
     "widgetChecked": "Última consulta · {{time}}",
     "widgetEmpty": "Abre el control de misiones para consultar la actividad.",
-    "activityPartial": "No se pudo incluir la actividad de algunos servidores."
+    "activityPartial": "No se pudo incluir la actividad de algunos servidores.",
+    "contributions": "Contribuciones",
+    "contributionsCaption": "30 días",
+    "contributionsSummary": "Últimos 30 días: {{steps}} pasos en {{days}} días activos",
+    "attentionShort": "Atención"
   }
 }

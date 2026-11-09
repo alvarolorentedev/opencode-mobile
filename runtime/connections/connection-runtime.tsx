@@ -258,7 +258,7 @@ export function ConnectionRuntime({ entry, setup, updateSettings, online, hydrat
   const authorized = lifecycle.connection.kind !== 'auth' && lifecycle.connection.kind !== 'entitlement';
   const statsAvailable = entry.enabled && online && connected && authorized && lifecycle.serverContract === 'v2';
   const stats = useMemo<SessionStatsSource | undefined>(() => statsAvailable ? {
-    identity, read: (range, project, signal) => readSessionStats(catalogClient, range, project, signal),
+    identity, read: (range, project, signal, timezone) => readSessionStats(catalogClient, range, project, signal, timezone),
   } : undefined, [catalogClient, identity, statsAvailable]);
   const mission = useMissionActivity({ entry, client: catalogClient, connected: lifecycle.connection.status === 'connected',
     connectionFailed: lifecycle.connection.status === 'error',

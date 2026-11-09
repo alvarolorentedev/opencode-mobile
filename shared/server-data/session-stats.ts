@@ -4,10 +4,19 @@ import { connectionQueryKey, type QueryIdentity } from '@/shared/server-data/key
 
 export type SessionStatsSource = {
   identity: QueryIdentity;
-  read: (range: SessionStatsRange, project: string | undefined, signal: AbortSignal) => Promise<SessionStats>;
+  read: (range: SessionStatsRange, project: string | undefined, signal: AbortSignal, timezone?: string) => Promise<SessionStats>;
 };
 
 export type SessionStatsSeries = { total: SessionStats; buckets: SessionStats[] };
+
+export function sessionStatsRangeOptions(source: SessionStatsSource, project: string | undefined, range: SessionStatsRange, timezone: string | undefined) {
+  return queryOptions({
+    queryKey: [...connectionQueryKey(source.identity, 'v2'), 'server', 'session-stats', project, range.from, range.to, 'total', timezone ?? ''],
+    gcTime: 60_000,
+    staleTime: 0,
+    queryFn: ({ signal }): Promise<SessionStats> => source.read(range, project, signal, timezone),
+  });
+}
 
 export function sessionStatsOptions(source: SessionStatsSource, project: string | undefined, buckets: SessionStatsRange[]) {
   const range = { from: buckets[0].from, to: buckets[buckets.length - 1].to };

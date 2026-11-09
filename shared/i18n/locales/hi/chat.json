@@ -410,18 +410,15 @@
     "currentJobs": "मौजूदा काम",
     "activity": "गतिविधि",
     "metric": {
-      "conversations": "बातचीत",
       "tokens": "टोकन",
       "cost": "लागत"
     },
     "metricTotal": {
-      "conversations": "सक्रिय बातचीत",
       "tokens": "इस्तेमाल किए गए टोकन",
       "cost": "दर्ज लागत"
     },
     "activityUnavailable": "गतिविधि का डेटा उपलब्ध नहीं है।",
     "recordedCostNote": "कुछ उपयोग की कीमत OpenCode में दर्ज नहीं हो सकती है।",
-    "chartPoint": "{{from}} से {{to}} तक: {{value}}",
     "tab": "मिशन",
     "title": "मिशन कंट्रोल",
     "badge": "मिशन। ध्यान देने वाली बातचीत: {{count}}",
@@ -451,6 +448,10 @@
     "widgetLastKnown": "पिछली ज्ञात स्थिति · {{time}}",
     "widgetChecked": "पिछली जाँच · {{time}}",
     "widgetEmpty": "गतिविधि जाँचने के लिए मिशन कंट्रोल खोलें।",
-    "activityPartial": "कुछ सर्वरों की गतिविधि शामिल नहीं की जा सकी।"
+    "activityPartial": "कुछ सर्वरों की गतिविधि शामिल नहीं की जा सकी।",
+    "contributions": "योगदान",
+    "contributionsCaption": "30 दिन",
+    "contributionsSummary": "पिछले 30 दिन: {{days}} सक्रिय दिनों में {{steps}} चरण",
+    "attentionShort": "ध्यान"
   }
 }

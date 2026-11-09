@@ -422,18 +422,15 @@
     "currentJobs": "المهام الحالية",
     "activity": "النشاط",
     "metric": {
-      "conversations": "المحادثات",
       "tokens": "الرموز",
       "cost": "التكلفة"
     },
     "metricTotal": {
-      "conversations": "محادثات نشطة",
       "tokens": "رموز مستخدمة",
       "cost": "التكلفة المسجّلة"
     },
     "activityUnavailable": "بيانات النشاط غير متاحة.",
     "recordedCostNote": "قد لا يكون لبعض الاستخدام سعر مسجّل في OpenCode.",
-    "chartPoint": "من {{from}} إلى {{to}}: {{value}}",
     "tab": "المهام",
     "title": "مركز التحكم بالمهام",
     "badge": "المهام. المحادثات التي تتطلب الانتباه: {{count}}",
@@ -463,6 +460,10 @@
     "widgetLastKnown": "آخر حالة معروفة · {{time}}",
     "widgetChecked": "آخر تحقق · {{time}}",
     "widgetEmpty": "افتح مركز التحكم بالمهام للتحقق من النشاط.",
-    "activityPartial": "تعذّر تضمين نشاط بعض الخوادم."
+    "activityPartial": "تعذّر تضمين نشاط بعض الخوادم.",
+    "contributions": "المساهمات",
+    "contributionsCaption": "30 يومًا",
+    "contributionsSummary": "آخر 30 يومًا: {{steps}} خطوة خلال {{days}} يومًا نشطًا",
+    "attentionShort": "انتباه"
   }
 }

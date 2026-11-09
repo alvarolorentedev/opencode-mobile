@@ -49,6 +49,9 @@ const config: StorybookConfig = {
       : Object.entries(existing ?? {}).map(([find, replacement]) => ({ find, replacement }));
     viteConfig.resolve.alias = [
       { find: /^react-native$/, replacement: 'react-native-web' },
+      { find: 'react-native-svg', replacement: path.resolve(root, '../node_modules/react-native-svg/lib/module/ReactNativeSVG.web.js') },
+      { find: /^\.\.\/fabric\/NativeSvgSoundModule$/, replacement: path.resolve(root, 'stubs/native-svg-sound-module.js') },
+      { find: '@react-native/assets-registry/registry', replacement: path.resolve(root, 'stubs/assets-registry.js') },
       { find: /^@expo\/vector-icons\/MaterialCommunityIcons$/, replacement: path.resolve(root, 'stubs/vector-icons.tsx') },
       { find: /^@expo\/vector-icons$/, replacement: path.resolve(root, 'stubs/vector-icons.tsx') },
       { find: /^@\//, replacement: `${path.resolve(root, '..')}/` },

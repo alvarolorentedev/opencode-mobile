@@ -416,18 +416,15 @@
     "currentJobs": "משימות נוכחיות",
     "activity": "פעילות",
     "metric": {
-      "conversations": "שיחות",
       "tokens": "טוקנים",
       "cost": "עלות"
     },
     "metricTotal": {
-      "conversations": "שיחות פעילות",
       "tokens": "טוקנים בשימוש",
       "cost": "עלות שנרשמה"
     },
     "activityUnavailable": "נתוני הפעילות אינם זמינים.",
     "recordedCostNote": "ייתכן שלחלק מהשימוש לא נרשם מחיר ב־OpenCode.",
-    "chartPoint": "מ־{{from}} עד {{to}}: {{value}}",
     "tab": "משימות",
     "title": "מרכז בקרת משימות",
     "badge": "משימות. שיחות שדורשות תשומת לב: {{count}}",
@@ -457,6 +454,10 @@
     "widgetLastKnown": "מצב ידוע אחרון · {{time}}",
     "widgetChecked": "נבדק לאחרונה · {{time}}",
     "widgetEmpty": "יש לפתוח את מרכז בקרת המשימות כדי לבדוק פעילות.",
-    "activityPartial": "לא ניתן היה לכלול את הפעילות של חלק מהשרתים."
+    "activityPartial": "לא ניתן היה לכלול את הפעילות של חלק מהשרתים.",
+    "contributions": "תרומות",
+    "contributionsCaption": "30 ימים",
+    "contributionsSummary": "30 הימים האחרונים: {{steps}} צעדים ב-{{days}} ימים פעילים",
+    "attentionShort": "תשומת לב"
   }
 }

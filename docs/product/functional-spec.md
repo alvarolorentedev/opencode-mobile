@@ -292,13 +292,12 @@ sheet at server scope. Opening a row switches to the exact server,
 project/worktree and conversation in Chat, where existing permission,
 question, stop and review controls are available.
 
-The activity chart shows active conversations, tokens used, or recorded USD
-cost. Ranges are 1h, 12h, 24h (the default), 5d, 7d, 15d and 30d. The range
-affects only the chart. An active conversation has at least one user or
-assistant message in the interval. A conversation can appear in several bars
-and counts once in the range total. The chart keeps a stable layout and shows a
-loading skeleton while the selected range loads; it does not display server
-coverage counters.
+The usage chart shows tokens used or recorded USD cost. Ranges are 1h, 12h,
+24h (the default), 5d, 7d, 15d and 30d. The range affects only the usage chart,
+which keeps a stable layout and shows a loading skeleton while it loads. A
+separate contributions card shows the last 30 days of daily activity steps as a
+compact full-width grid. The usage chart does not display server coverage
+counters.
 
 The Android Mission Control widget shows dated counts and server coverage.
 Tapping its heading opens the dashboard. Tapping Needs attention opens that

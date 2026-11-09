@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { MISSION_STATS_RANGES, missionStatsBuckets, sumMissionStats } from '@/features/sessions/model/mission-stats';
+import { MISSION_STATS_RANGES, missionStatsBuckets, sumMissionActivity, sumMissionStats } from '@/features/sessions/model/mission-stats';
 import type { ScopedOpencodeClient } from '@/shared/protocol/opencode/client';
 import { readSessionStats } from '@/shared/protocol/services/session-stats';
 import { sessionStatsOptions } from '@/shared/server-data/session-stats';
@@ -25,14 +25,24 @@ describe('Mission activity statistics', () => {
       buckets: [{ conversations: 2, tokens: 4, cost: 0.5 }, { conversations: 2, tokens: 6, cost: 0.5 }] });
   });
 
-  it('reads project-scoped usage with a cancelable signal and validates window and numbers', async () => {
+  it('merges daily activity across servers', () => {
+    expect(sumMissionActivity([
+      { activity: [{ date: '2026-11-08', steps: 2 }, { date: '2026-11-09', steps: 1 }] },
+      { activity: [{ date: '2026-11-08', steps: 3 }] },
+    ])).toEqual([{ date: '2026-11-08', steps: 5 }, { date: '2026-11-09', steps: 1 }]);
+  });
+
+  it('reads project-scoped usage and daily activity with a cancelable signal and validates numbers', async () => {
     const range = { from: 10, to: 20 };
     const signal = new AbortController().signal;
-    const result = { range, sessions: 3, cost: 0.01, tokens: { input: 1, output: 2, reasoning: 3, cache: { read: 4, write: 5 } } };
+    const result = { range, sessions: 3, cost: 0.01, tokens: { input: 1, output: 2, reasoning: 3, cache: { read: 4, write: 5 } },
+      activity: [{ date: '2026-11-09', steps: 7 }] };
     const stats = vi.fn().mockResolvedValueOnce(result).mockResolvedValueOnce({ ...result, cost: -1 });
     const client = { api: { experimental: { session: { stats } } } } as unknown as ScopedOpencodeClient;
-    await expect(readSessionStats(client, range, 'project', signal)).resolves.toEqual({ conversations: 3, cost: 0.01, tokens: 15 });
-    expect(stats).toHaveBeenCalledWith({ ...range, project: 'project', tools: 'none' }, { signal });
+    await expect(readSessionStats(client, range, 'project', signal, 'Europe/Madrid')).resolves.toEqual({
+      conversations: 3, cost: 0.01, tokens: 15, activity: [{ date: '2026-11-09', steps: 7 }],
+    });
+    expect(stats).toHaveBeenCalledWith({ ...range, project: 'project', tools: 'none', timezone: 'Europe/Madrid' }, { signal });
     await expect(readSessionStats(client, range, 'project', signal)).rejects.toThrow('unavailable');
   });
 

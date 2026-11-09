@@ -94,6 +94,7 @@ coverage, and documentation links.
 | [0040](0040-connection-owned-mission-control.md) | Connection-owned Mission Control activity | Accepted |
 | [0041](0041-connector-enforced-service-access.md) | Connector-enforced exposed-service access | Accepted |
 | [0042](0042-mission-server-aggregates.md) | Server aggregates for Mission Control history | Accepted |
+| [0043](0043-react-native-chart-kit.md) | ChartKit for the Mission Control usage chart | Accepted |
 
 ## Template
 

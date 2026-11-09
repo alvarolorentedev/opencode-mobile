@@ -1,4 +1,4 @@
-import type { SessionStats } from '@/shared/protocol/services/session-stats';
+import type { SessionStats, SessionStatsActivityDay } from '@/shared/protocol/services/session-stats';
 import type { SessionStatsSeries } from '@/shared/server-data/session-stats';
 
 export const MISSION_STATS_RANGES = [
@@ -28,4 +28,14 @@ export function sumMissionStats(rows: SessionStatsSeries[], bucketCount: number)
     row.buckets.forEach((value, index) => add(buckets[index], value));
   }
   return { total, buckets };
+}
+
+export function sumMissionActivity(rows: Pick<SessionStats, 'activity'>[]): SessionStatsActivityDay[] {
+  const totals = new Map<string, number>();
+  for (const row of rows) {
+    for (const day of row.activity ?? []) totals.set(day.date, (totals.get(day.date) ?? 0) + day.steps);
+  }
+  return [...totals]
+    .sort(([left], [right]) => left.localeCompare(right))
+    .map(([date, steps]) => ({ date, steps }));
 }

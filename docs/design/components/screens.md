@@ -95,10 +95,15 @@ The Mission tab uses the native tab-bar badge and exposes its full localized
 count as part of the tab's accessible name. `MissionSummary` renders the three
 current job counts and opens the selected status in an `OverlaySheet`.
 `MissionSessionRow` shows action reasons, connection and project context, and
-last activity inside the sheet. `MissionActivityChart` presents historical usage
-and independent range controls on the overview. It reserves the chart layout and
-renders a skeleton while a range loads, and shows a warning only when some server
-activity is missing. The components have colocated Storybook states.
+last activity inside the sheet. The overview uses a compact one-line jobs strip,
+then the contribution grid, then the usage chart filling the remaining height;
+section headings are omitted. `MissionActivityChart` uses ChartKit's `BarChart`
+for tokens and recorded cost with independent range controls.
+`MissionContributionChart` renders the last 30 days of daily activity steps as a
+compact full-width 10-by-3 palette-colored grid. Both reserve their layout, render
+a skeleton while loading, and show a warning only when some server activity is
+missing. The components have colocated Storybook states.
+See [ADR 0043](../../adr/0043-react-native-chart-kit.md).
 
 ## Android widget presentation
 

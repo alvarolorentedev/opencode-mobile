@@ -753,6 +753,11 @@ contributes to the chart only when its buckets also succeed. Removing demand
 cancels remaining reads. Connection credential and project scopes partition
 results. See [ADR 0042](../adr/0042-mission-server-aggregates.md).
 
+The stats reader also normalizes the server's daily `activity` steps and accepts
+the device timezone. The contributions card requests one 30-day range per server
+and merges the returned days by date into a compact grid. See
+[ADR 0043](../adr/0043-react-native-chart-kit.md).
+
 ### Current Pending Requests
 
 A failed permission or question list read leaves that surface unchanged. A

@@ -19,6 +19,8 @@ import type { MissionStatsHours } from '@/features/sessions/model/mission-stats'
 import { useMissionStats } from '@/features/sessions/state/use-mission-stats';
 import { MissionActivityChart } from '@/features/sessions/ui/mission-activity-chart';
 import { MissionSessionRow, MissionSummary } from '@/features/sessions/ui/mission-cards';
+import { MissionContributionChart } from '@/features/sessions/ui/mission-contribution-chart';
+import { useMissionContributions } from '@/features/sessions/state/use-mission-contributions';
 
 const ALL = '';
 export function MissionControlScreen() {
@@ -55,12 +57,7 @@ export function MissionControlScreen() {
   const scopedServer = selectedProject?.connectionId ?? selectedServer;
   const servers = mission.servers.filter(({ id }) => !scopedServer || scopedServer === id);
   const chart = useMissionStats(servers, selectedProject ? selectedProject.projectId ?? null : undefined, hours, visible, refreshedAt);
-  const unavailable = servers.filter(({ phase }) => phase === 'offline' || phase === 'unsupported');
-  const partial = servers.filter(({ phase }) => phase === 'partial');
-  const warnings = [
-    ...unavailable.map(({ name, phase }) => t(phase === 'unsupported' ? 'mission.unsupportedServer' : 'mission.offlineServer', { name })),
-    ...partial.map(({ name }) => t('mission.partialServer', { name })),
-  ];
+  const contributions = useMissionContributions(servers, selectedProject ? selectedProject.projectId ?? null : undefined, visible, refreshedAt);
   const checking = servers.some(({ phase }) => phase === 'checking');
   const serverRequests = status === 'attention' && !selectedProject ? servers.filter(({ requests }) => requests > 0) : [];
   const open = async (target: SessionTarget) => {
@@ -86,7 +83,7 @@ export function MissionControlScreen() {
         <Icon name="refresh" size={24} />
       </Button>
     </ScreenHeader>
-    <ScrollView contentContainerStyle={{ gap: 16, paddingHorizontal: 16, paddingVertical: 12 }}>
+    <ScrollView contentContainerStyle={{ flexGrow: 1, gap: 8, paddingHorizontal: 16, paddingVertical: 8 }}>
       <View className="flex-row gap-2">
         <View className="flex-1 min-w-0">
           <WorkspaceSelect title={t('common:servers.allServers')} value={selectedServer} testID="mission-server-filter"
@@ -99,13 +96,9 @@ export function MissionControlScreen() {
             onChange={(value) => { setProject(value); setRefreshedAt(Date.now()); }} />
         </View>
       </View>
-      <View className="gap-2">
-        <Text variant="heading" accessibilityRole="header">{t('mission.currentJobs')}</Text>
-        {!servers.length || warnings.length ? <Text variant="description" className="text-muted-foreground">
-          {servers.length ? warnings.join(' · ') : t('mission.noServers')}
-        </Text> : null}
-        <MissionSummary counts={counts} onOpen={setStatus} />
-      </View>
+      {!servers.length ? <Text variant="description" className="text-muted-foreground">{t('mission.noServers')}</Text> : null}
+      <MissionSummary counts={counts} onOpen={setStatus} />
+      <MissionContributionChart {...contributions} />
       <MissionActivityChart hours={hours} onRangeChange={(value) => {
         if (value !== hours) setHours(value);
       }} {...chart} />

@@ -29,16 +29,20 @@ describe('Mission activity chart', () => {
       'react/jsx-runtime': { jsx: element, jsxs: element },
       'react-native': { Platform: { OS: 'web' }, Pressable: 'Pressable', View: 'View' },
       'react-i18next': { useTranslation: () => ({ t: (key: string) => key, i18n: { language: 'en', resolvedLanguage: 'en' } }) },
+      'react-native-chart-kit/v2': { BarChart: 'BarChart' },
       '@/features/sessions/model/mission-stats': { MISSION_STATS_RANGES: [{ hours: 24, buckets: 6 }] },
-      '@/shared/presentation/format': { formatMessageTime: String, formatTimestamp: String },
+      '@/features/sessions/ui/use-chart-size': { useChartSize: () => ({ width: 300, height: 200, onLayout: () => {} }) },
+      '@/features/sessions/ui/use-mission-chart-theme': { useMissionChartTheme: () => ({}) },
+      '@/shared/presentation/format': { formatMessageTime: String },
       '@/shared/presentation/usage': { formatEstimatedCost: String, formatTokenCount: String },
       '@/shared/ui/skeleton': { Skeleton: 'Skeleton' },
     }, runtime.globals);
 
     runtime.mount(MissionActivityChart, { hours: 24, onRangeChange: () => {}, buckets, checked: 0, total: 2, loading: true });
-    expect(find(runtime.value, (entry) => entry.type === 'Skeleton')).toHaveLength(4 + buckets.length);
+    expect(find(runtime.value, (entry) => entry.type === 'Skeleton')).toHaveLength(1 + buckets.length);
     expect(find(runtime.value, (entry) => entry.props?.testID === 'mission-activity-loading')).toHaveLength(1);
     expect(find(runtime.value, (entry) => entry.props?.testID === 'mission-activity-total')).toHaveLength(0);
+    expect(find(runtime.value, (entry) => entry.type === 'Text' && textContent(entry) === '24h')).toHaveLength(1);
 
     runtime.update({ loading: false, checked: 1, series: {
       total: { conversations: 2, tokens: 123, cost: 0.1 },
@@ -46,6 +50,7 @@ describe('Mission activity chart', () => {
     } });
     expect(find(runtime.value, (entry) => entry.props?.testID === 'mission-activity-loading')).toHaveLength(0);
     expect(find(runtime.value, (entry) => entry.props?.testID === 'mission-activity-total')).toHaveLength(1);
+    expect(find(runtime.value, (entry) => entry.type === 'BarChart')[0].props).toMatchObject({ width: 300, height: 200 });
     expect(find(runtime.value, (entry) => entry.type === 'Text' && textContent(entry) === 'mission.activityPartial')).toHaveLength(1);
 
     runtime.update({ loading: false, series: undefined });

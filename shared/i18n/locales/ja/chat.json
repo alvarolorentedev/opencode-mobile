@@ -410,18 +410,15 @@
     "currentJobs": "現在のジョブ",
     "activity": "アクティビティ",
     "metric": {
-      "conversations": "会話",
       "tokens": "トークン",
       "cost": "費用"
     },
     "metricTotal": {
-      "conversations": "件のアクティブな会話",
       "tokens": "使用トークン数",
       "cost": "記録された費用"
     },
     "activityUnavailable": "アクティビティデータを取得できません。",
     "recordedCostNote": "一部の使用量には OpenCode に料金の記録がない場合があります。",
-    "chartPoint": "{{from}} から {{to}} まで: {{value}}",
     "tab": "ミッション",
     "title": "ミッション管理",
     "badge": "ミッション。対応が必要な会話は{{count}}件",
@@ -451,6 +448,10 @@
     "widgetLastKnown": "最後に確認した状態 · {{time}}",
     "widgetChecked": "最終確認 · {{time}}",
     "widgetEmpty": "ミッション管理を開いてアクティビティを確認してください。",
-    "activityPartial": "一部のサーバーのアクティビティを含められませんでした。"
+    "activityPartial": "一部のサーバーのアクティビティを含められませんでした。",
+    "contributions": "コントリビューション",
+    "contributionsCaption": "30日",
+    "contributionsSummary": "過去30日間: {{days}}日間で{{steps}}ステップ",
+    "attentionShort": "要注意"
   }
 }

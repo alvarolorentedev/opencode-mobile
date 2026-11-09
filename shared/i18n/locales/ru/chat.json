@@ -410,18 +410,15 @@
     "currentJobs": "Текущие задачи",
     "activity": "Активность",
     "metric": {
-      "conversations": "Чаты",
       "tokens": "Токены",
       "cost": "Стоимость"
     },
     "metricTotal": {
-      "conversations": "активных чатов",
       "tokens": "использовано токенов",
       "cost": "учтённая стоимость"
     },
     "activityUnavailable": "Данные об активности недоступны.",
     "recordedCostNote": "Для части использования в OpenCode может не быть данных о стоимости.",
-    "chartPoint": "С {{from}} по {{to}}: {{value}}",
     "tab": "Миссия",
     "title": "Центр управления задачами",
     "badge": "Миссия. Диалоги, требующие внимания: {{count}}",
@@ -451,6 +448,10 @@
     "widgetLastKnown": "Последнее известное состояние · {{time}}",
     "widgetChecked": "Последняя проверка · {{time}}",
     "widgetEmpty": "Откройте центр управления, чтобы проверить активность.",
-    "activityPartial": "Не удалось включить активность некоторых серверов."
+    "activityPartial": "Не удалось включить активность некоторых серверов.",
+    "contributions": "Вклад",
+    "contributionsCaption": "30 дней",
+    "contributionsSummary": "За последние 30 дней: {{steps}} шагов, {{days}} активных дней",
+    "attentionShort": "Внимание"
   }
 }
