@@ -1,0 +1,5 @@
+- New Mission Control panel per connection for sessions, queues and runtime health.
+- Cloud links enforce connector rules and support temporary sharing.
+- Open plugin GUIs directly with an inline switcher; visualizations render correctly.
+- Plugin command replies appear as distinct notices in chat.
+- Disconnected servers are hidden from the chat library.
