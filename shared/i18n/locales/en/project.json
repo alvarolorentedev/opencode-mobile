@@ -22,7 +22,6 @@
     "searching": "Searching…",
     "noMatches": "No files match “{{query}}”.",
     "resultsFor": "Results for “{{query}}”",
-    "searchScope": "Search in {{project}}",
     "clearSearch": "Clear search",
     "loading": "Loading files…",
     "emptyFolder": "This folder is empty.",

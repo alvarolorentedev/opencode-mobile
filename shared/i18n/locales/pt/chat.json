@@ -419,7 +419,6 @@
       "tokens": "tokens usados",
       "cost": "custo registrado"
     },
-    "usageCoverage": "Uso de {{checked}} de {{total}} servidores",
     "activityUnavailable": "Os dados de atividade estão indisponíveis.",
     "recordedCostNote": "O OpenCode pode não ter um preço registrado para parte do uso.",
     "chartPoint": "De {{from}} a {{to}}: {{value}}",
@@ -451,6 +450,7 @@
     "empty": "Nenhuma conversa corresponde a estes filtros.",
     "widgetLastKnown": "Último estado conhecido · {{time}}",
     "widgetChecked": "Última verificação · {{time}}",
-    "widgetEmpty": "Abra o controle de missões para verificar a atividade."
+    "widgetEmpty": "Abra o controle de missões para verificar a atividade.",
+    "activityPartial": "Não foi possível incluir a atividade de alguns servidores."
   }
 }

@@ -419,7 +419,6 @@
       "tokens": "tokens used",
       "cost": "recorded cost"
     },
-    "usageCoverage": "Usage from {{checked}} of {{total}} servers",
     "activityUnavailable": "Activity data is unavailable.",
     "recordedCostNote": "OpenCode may have no recorded price for some usage.",
     "chartPoint": "{{from}} to {{to}}: {{value}}",
@@ -451,6 +450,7 @@
     "empty": "No conversations match these filters.",
     "widgetLastKnown": "Last known · {{time}}",
     "widgetChecked": "Last checked · {{time}}",
-    "widgetEmpty": "Open Mission Control to check activity."
+    "widgetEmpty": "Open Mission Control to check activity.",
+    "activityPartial": "Some server activity could not be included."
   }
 }

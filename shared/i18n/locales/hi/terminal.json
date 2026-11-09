@@ -9,11 +9,9 @@
   "console": {
     "selectTerminal": "टर्मिनल चुनें",
     "create": "टर्मिनल बनाएँ",
-    "openOrCreate": "शुरू करने के लिए टर्मिनल खोलें या बनाएँ।",
     "terminateTitle": "टर्मिनल बंद करें?",
     "terminateAction": "बंद करें",
     "new": "नया टर्मिनल",
-    "interactiveHint": "सीधे टर्मिनल में टाइप करें। टर्मिनल कुंजियों के लिए टूलबार का उपयोग करें।",
     "pasteTitle": "टर्मिनल में पेस्ट करें?",
     "pasteMessage": "इस पाठ में कई पंक्तियाँ या नियंत्रण वर्ण हैं और यह कमांड चला सकता है। जारी रखें?",
     "terminateMessage": "{{terminal}} ({{id}})\n{{server}} / {{project}}",

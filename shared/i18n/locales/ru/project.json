@@ -22,7 +22,6 @@
     "searching": "Ищем…",
     "noMatches": "Нет файлов, подходящих под «{{query}}».",
     "resultsFor": "Результаты по «{{query}}»",
-    "searchScope": "Поиск в {{project}}",
     "clearSearch": "Очистить поиск",
     "loading": "Загружаем файлы…",
     "emptyFolder": "Эта папка пуста.",

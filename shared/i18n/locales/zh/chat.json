@@ -419,7 +419,6 @@
       "tokens": "个已用令牌",
       "cost": "已记录的费用"
     },
-    "usageCoverage": "来自 {{total}} 台服务器中 {{checked}} 台的用量",
     "activityUnavailable": "活动数据不可用。",
     "recordedCostNote": "OpenCode 可能未记录部分用量的价格。",
     "chartPoint": "{{from}} 至 {{to}}：{{value}}",
@@ -451,6 +450,7 @@
     "empty": "没有符合这些筛选条件的对话。",
     "widgetLastKnown": "上次已知状态 · {{time}}",
     "widgetChecked": "上次检查 · {{time}}",
-    "widgetEmpty": "打开任务控制台以检查活动。"
+    "widgetEmpty": "打开任务控制台以检查活动。",
+    "activityPartial": "部分服务器的活动未能包含在内。"
   }
 }

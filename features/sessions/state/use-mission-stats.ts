@@ -18,9 +18,10 @@ export function useMissionStats(servers: MissionOverview['servers'], projectId: 
   const queries = useQueries({ queries: visible && foreground && focusedAt !== undefined && projectId !== null
     ? servers.flatMap(({ stats }) => stats ? [sessionStatsOptions(stats, projectId, buckets)] : []) : [] });
   const results = queries.flatMap((query) => query.data && !query.isError ? [query.data] : []);
+  const unavailable = servers.length > 0 && servers.every(({ phase }) => phase === 'offline' || phase === 'unsupported');
   return {
     buckets,
-    series: results.length ? sumMissionStats(results, buckets.length) : undefined,
+    series: !unavailable && results.length ? sumMissionStats(results, buckets.length) : undefined,
     checked: results.length,
     total: servers.length,
     loading: queries.some((query) => query.isPending) || servers.some(({ phase, stats }) => phase === 'checking' && !stats),

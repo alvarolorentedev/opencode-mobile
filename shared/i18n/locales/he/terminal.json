@@ -9,11 +9,9 @@
   "console": {
     "selectTerminal": "בחר מסוף",
     "create": "צור מסוף",
-    "openOrCreate": "פתח או צור מסוף כדי להתחיל.",
     "terminateTitle": "לסיים את המסוף?",
     "terminateAction": "לסיים",
     "new": "טרמינל חדש",
-    "interactiveHint": "הקלד ישירות בטרמינל. השתמש באביזר עבור מפתחות מסוף.",
     "pasteTitle": "להדביק במסוף?",
     "pasteMessage": "הדבקה זו מכילה מספר שורות או תווי בקרה ועשויה לבצע פקודות. לְהַמשִׁיך?",
     "terminateMessage": "{{terminal}} ({{id}})\n{{server}} / {{project}}",

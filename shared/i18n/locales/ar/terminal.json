@@ -9,11 +9,9 @@
   "console": {
     "selectTerminal": "حدد المحطة",
     "create": "إنشاء محطة",
-    "openOrCreate": "افتح أو أنشئ محطة طرفية للبدء.",
     "terminateTitle": "إنهاء المحطة؟",
     "terminateAction": "إنهاء",
     "new": "محطة جديدة",
-    "interactiveHint": "اكتب مباشرة في المحطة. استخدم الملحق للمفاتيح الطرفية.",
     "pasteTitle": "لصق في المحطة؟",
     "pasteMessage": "يحتوي هذا اللصق على عدة أسطر أو أحرف تحكم ويمكنه تنفيذ الأوامر. يكمل؟",
     "terminateMessage": "{{terminal}} ({{id}})\n{{server}} / {{project}}",

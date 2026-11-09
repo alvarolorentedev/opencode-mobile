@@ -9,11 +9,9 @@
   "console": {
     "selectTerminal": "选择终端",
     "create": "创建终端",
-    "openOrCreate": "打开或创建终端以开始。",
     "terminateTitle": "终止终端？",
     "terminateAction": "终止",
     "new": "新建终端",
-    "interactiveHint": "直接在终端中输入。使用工具栏上的终端按键。",
     "pasteTitle": "粘贴到终端？",
     "pasteMessage": "此文本包含多行或控制字符，可能执行命令。是否继续？",
     "terminateMessage": "{{terminal}}（{{id}}）\n{{server}} / {{project}}",

@@ -22,7 +22,6 @@
     "searching": "検索中…",
     "noMatches": "「{{query}}」に一致するファイルがありません。",
     "resultsFor": "「{{query}}」の検索結果",
-    "searchScope": "{{project}} 内を検索",
     "clearSearch": "検索をクリア",
     "loading": "ファイルを読み込み中…",
     "emptyFolder": "このフォルダーは空です。",

@@ -21,8 +21,9 @@ export const LastKnown: Story = { args: { row: { ...row, status: 'unknown', stal
 export const Counts: Story = { render: () => <MissionSummary counts={{ attention: 2, running: 3, failed: 1, completed: 4 }}
   onOpen={() => undefined} /> };
 const chart = { hours: 24 as const, buckets: missionStatsBuckets(24, Date.now()), total: 4, loading: false, onRangeChange: () => undefined };
-export const Activity: Story = { render: () => <MissionActivityChart {...chart} checked={3} series={{
+export const Activity: Story = { render: () => <MissionActivityChart {...chart} checked={4} series={{
   total: { conversations: 12, tokens: 128_400, cost: 0.12 },
   buckets: [8_400, 18_000, 12_000, 24_000, 36_000, 30_000].map((tokens) => ({ conversations: 4, tokens, cost: 0.02 })),
 }} /> };
+export const ActivityLoading: Story = { render: () => <MissionActivityChart {...chart} checked={0} loading /> };
 export const ActivityUnavailable: Story = { render: () => <MissionActivityChart {...chart} checked={0} /> };

@@ -22,7 +22,6 @@
     "searching": "Suche läuft…",
     "noMatches": "Keine Dateien entsprechen „{{query}}“.",
     "resultsFor": "Ergebnisse für „{{query}}“",
-    "searchScope": "Suche in {{project}}",
     "clearSearch": "Suche löschen",
     "loading": "Dateien werden geladen…",
     "emptyFolder": "Dieser Ordner ist leer.",

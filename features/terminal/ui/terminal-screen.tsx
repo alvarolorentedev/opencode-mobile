@@ -140,7 +140,7 @@ function TerminalContent() {
           </View>
         ) : (
           <ScrollView className={cn(stylesClasses.output)} contentContainerStyle={styles.outputContent}>
-            <Card className={cn("bg-surface rounded-[16px]")}><CardHeader><CardTitle>{t('terminal:screen.title')}</CardTitle><CardDescription>{activeProject?.label}</CardDescription></CardHeader><CardContent className={cn("gap-3")}><Text className={cn("text-muted-foreground")}>{t('terminal:console.openOrCreate')}</Text><Button disabled={isCreating || Boolean(busyId)} onPress={() => setCreating(true)} variant="default">{isCreating ? <Spinner size="small" /> : null}<Icon name={"plus"} size={20} /><Text>{t('terminal:console.new')}</Text></Button><Text className={cn("text-muted-foreground")} variant="label">{t('terminal:console.interactiveHint')}</Text></CardContent></Card>
+            <Card className={cn("bg-surface rounded-[16px]")}><CardHeader><CardTitle>{t('terminal:screen.title')}</CardTitle><CardDescription>{activeProject?.label}</CardDescription></CardHeader><CardContent><Button disabled={isCreating || Boolean(busyId)} onPress={() => setCreating(true)} variant="default">{isCreating ? <Spinner size="small" /> : null}<Icon name={"plus"} size={20} /><Text>{t('terminal:console.new')}</Text></Button></CardContent></Card>
           </ScrollView>
         )}
         </View>

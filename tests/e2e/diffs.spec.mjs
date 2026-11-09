@@ -110,12 +110,14 @@ test('project shows changed files, deleted scope, search states and failure reco
   ] } }));
   await openReadyChat(page);
   await goToTab(page, 'Projects');
+  await page.getByTestId('project-view-changes').click();
   await expect(page.getByText('Deleted file content is unavailable.', { exact: false })).toBeVisible();
-  await expect(page.getByRole('button', { name: 'Search', exact: true })).toBeDisabled();
   await page.getByText('src/demo.ts', { exact: true }).click();
   await expect(page.getByText(/OpenCode 1\.18\.3/)).toBeVisible();
   await page.getByLabel('Close file').click();
   await expect(page.getByLabel('Close file')).toHaveCount(0);
+  await page.getByTestId('project-view-files').click();
+  await expect(page.getByRole('button', { name: 'Search', exact: true })).toBeDisabled();
   const search = page.getByTestId('project-file-search');
   await search.fill('no-match-zz');
   await expect(page.getByRole('button', { name: 'Search', exact: true })).toBeEnabled();

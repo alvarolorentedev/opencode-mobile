@@ -9,11 +9,9 @@
   "console": {
     "selectTerminal": "Seleccionar terminal",
     "create": "Crear terminal",
-    "openOrCreate": "Abre o crea una terminal para empezar.",
     "terminateTitle": "¿Terminar la terminal?",
     "terminateAction": "Terminar",
     "new": "Nueva terminal",
-    "interactiveHint": "Escribe directamente en el terminal. Usa la barra para las teclas del terminal.",
     "pasteTitle": "¿Pegar en el terminal?",
     "pasteMessage": "El texto contiene varias líneas o caracteres de control y puede ejecutar comandos. ¿Continuar?",
     "terminateMessage": "{{terminal}} ({{id}})\n{{server}} / {{project}}",

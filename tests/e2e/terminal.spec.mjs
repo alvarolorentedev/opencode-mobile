@@ -14,7 +14,7 @@ test('terminal streams input and output over the PTY websocket', async ({ page, 
   await page.getByTestId('terminal-selector').click();
   await expect(page.getByTestId('terminal-picker-sheet')).toBeVisible();
   await page.getByTestId('terminal-picker').getByRole('button', { name: 'Close', exact: true }).click();
-  await expect(page.getByText('Type directly in the terminal. Use the accessory for terminal keys.')).toBeVisible();
+  await expect(page.getByRole('button', { name: 'New terminal', exact: true })).toBeVisible();
   await page.getByRole('button', { name: 'New terminal', exact: true }).click();
   const { output, input, id, snapshot } = await exerciseInteractiveTerminal(page, request, fakeV2Origin(), 'echo web');
   await page.getByTestId('terminal-create-button').click();

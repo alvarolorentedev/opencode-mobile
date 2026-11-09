@@ -242,7 +242,7 @@ The Projects tab provides source inspection and text editing:
 - open returned files in a focused full-screen viewer/editor
 - preview raster images, audio, and video from OpenCode 2 file bytes; show a download card for PDFs, archives, installers, and other binaries
 - download any readable project file from its preview; web uses a browser download, native uses the OS save/share sheet
-- show the number of changed files from file status
+- separate the worktree file browser from a Changes view that lists changed files with their status
 - show the current VCS branch when available
 - edit the selected text file and save the complete replacement as a VCS patch
 
@@ -296,7 +296,9 @@ The activity chart shows active conversations, tokens used, or recorded USD
 cost. Ranges are 1h, 12h, 24h (the default), 5d, 7d, 15d and 30d. The range
 affects only the chart. An active conversation has at least one user or
 assistant message in the interval. A conversation can appear in several bars
-and counts once in the range total. The chart reports its own server coverage.
+and counts once in the range total. The chart keeps a stable layout and shows a
+loading skeleton while the selected range loads; it does not display server
+coverage counters.
 
 The Android Mission Control widget shows dated counts and server coverage.
 Tapping its heading opens the dashboard. Tapping Needs attention opens that

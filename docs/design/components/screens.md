@@ -19,7 +19,7 @@ Route-level controllers and platform-specific presentation surfaces. Back to the
 - the branch is shown once, in the header; the Files content title does not repeat it
 - the shared picker lists the server catalog in server order and can add a server directory as a project; a device-local archive action hides a server project until the Show archived projects switch reveals it under "Archived on this device" with Restore, separate from the server-archived section. The list scrolls internally and Add project stays pinned below it
 - provides one project refresh action
-- shows files directly with breadcrumbs and scoped search; worktree creation lives in New chat, not Projects
+- separates the worktree file browser from a Changes view, with breadcrumbs and scoped search in the browser; worktree creation lives in New chat, not Projects
 - opens file viewing and editing in a focused full-screen surface
 - File entries reuse `SwipeRow` for Copy path, Rename and More. Long-press and
   More open `entry-action-sheet.tsx`; its `entry-action-content.tsx` renders
@@ -96,8 +96,9 @@ count as part of the tab's accessible name. `MissionSummary` renders the three
 current job counts and opens the selected status in an `OverlaySheet`.
 `MissionSessionRow` shows action reasons, connection and project context, and
 last activity inside the sheet. `MissionActivityChart` presents historical usage
-and independent range controls on the overview. The components have colocated
-Storybook states.
+and independent range controls on the overview. It reserves the chart layout and
+renders a skeleton while a range loads, and shows a warning only when some server
+activity is missing. The components have colocated Storybook states.
 
 ## Android widget presentation
 
@@ -145,11 +146,12 @@ screen-reader mode is enabled. Native screen-reader/input validation remains req
 
 ## Project file browser components
 
-- `features/projects/ui/files-panel.tsx` renders sorted folders/files, breadcrumbs,
-  explicit project-wide search scope, changed files, loading/empty/error states,
-  and retry actions. Only the unsubmitted search input is local; listing/search
-  state and actions come from the provider's `browser` member. Android back walks
-  up the folder tree before leaving the tab.
+- `features/projects/ui/files-panel.tsx` renders the worktree browser and a
+  separate Changes view with sorted folders/files, breadcrumbs, loading/empty/error
+  states, and retry actions. The root breadcrumb is omitted because the project
+  selector already owns that context. Only the unsubmitted search input and view
+  selection are local; listing/search state and actions come from the provider's
+  `browser` member. Android back walks up the folder tree before leaving the tab.
 - `features/projects/ui/file-preview.tsx` renders the full-screen text preview,
   local edit draft, save feedback and discard confirmation. It calls the existing
   provider save action; unsupported editing is capability-gated.

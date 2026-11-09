@@ -7,6 +7,7 @@ import { Spinner } from '@/shared/ui/spinner';
 import { ListRow } from '@/shared/ui/list-row';
 import { Separator } from '@/shared/ui/separator';
 import { Feedback } from '@/shared/ui/feedback';
+import { ToggleGroup, ToggleGroupItem } from '@/shared/ui/toggle-group';
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { FlashList } from '@shopify/flash-list';
 import { useTranslation } from 'react-i18next';
@@ -23,6 +24,8 @@ import type { File } from '@/shared/protocol/opencode/types';
 import type { ProjectFilesContextValue } from '@/features/projects/model/types';
 import { usePalette } from '@/shared/ui/theme/use-palette';
 
+type FileRow = { kind: 'entry'; entry: ProjectFileEntry } | { kind: 'changed'; file: File };
+
 export function FilesPanel({ statuses, browser, projectLabel, onOpen, header, contentStyle }: {
   header?: ReactNode;
   contentStyle?: StyleProp<ViewStyle>;
@@ -38,6 +41,8 @@ export function FilesPanel({ statuses, browser, projectLabel, onOpen, header, co
   const { initialized, openDirectory, actions } = browser;
   useEffect(() => { if (!browser.query) setQuery(''); }, [browser.query]); // eslint-disable-line react-hooks/set-state-in-effect -- clear the local input when back dismisses project search.
   const [selection, setSelection] = useState<{ entry: ProjectFileEntry; mode: 'actions' | 'rename' }>();
+  const [view, setView] = useState<'files' | 'changes'>('files');
+  const activeView = statuses.length ? view : 'files';
   const probe = actions?.probe;
   useEffect(() => { if (probe) void probe(); }, [probe]);
   const show = (entry: ProjectFileEntry, mode: 'actions' | 'rename') => {
@@ -59,39 +64,46 @@ export function FilesPanel({ statuses, browser, projectLabel, onOpen, header, co
 
   const listHeader = <View className={cn("gap-3")}>
     {header}
-    <TextField testID="project-file-search" accessibilityLabel={t('project:files.searchPlaceholder')} placeholder={t('project:files.searchPlaceholder')} value={query} onChangeText={(value) => {
-        setQuery(value);
-        if (!value.trim()) void browser.search('');
-      }} autoCapitalize="none" autoCorrect={false} returnKeyType="search" blurOnSubmit onSubmitEditing={search} endAdornment={<Button accessibilityLabel={t('project:files.search')} disabled={busy || !query.trim()} onPress={search} variant={"ghost"} size="icon"><Icon name={"magnify"} size={24} /></Button>} startAdornment={query ? <Button accessibilityLabel={t('project:files.clearSearch')} onPress={() => { setQuery(''); void browser.search(''); }} variant={"ghost"} size="icon"><Icon name={"close"} size={24} /></Button> : undefined}></TextField>
-    <Text className={cn("text-muted-foreground")}>{t('project:files.searchScope', { project: projectLabel })}</Text>
-    <View className={cn("flex-row flex-wrap items-center")}>
-      <Button onPress={() => { setQuery(''); void openDirectory(''); }} variant={"ghost"}><Icon name={"folder-outline"} size={20} /><Text>{projectLabel}</Text></Button>
-      {crumbs.map((crumb, index) => <View key={index} className={cn("flex-row items-center")}>
-        <Text className={cn("text-muted-foreground")}>›</Text>
-        <Button onPress={() => { setQuery(''); void openDirectory(crumbs.slice(0, index + 1).join('/')); }} variant={"ghost"}><Text>{crumb}</Text></Button>
-      </View>)}
-    </View>
-    {actions?.clipboard ? <FileClipboardStrip entry={actions.clipboard} busy={actions.busy} available={actions.available} onPaste={() => void paste(browser.path)} onClear={actions.clear} /> : null}
-    {actions ? <Text className={cn("text-muted-foreground")}>{t('project:files.actions.swipeHint')}</Text> : null}
-    {actions?.error ? <Text accessibilityRole="alert" className={cn("text-destructive")}>{actions.error}</Text> : null}
-    {busy ? <Spinner accessibilityLabel={t('project:files.loading')} /> : null}
-    <Text accessibilityLiveRegion="polite" style={{ color: browser.error ? palette.danger : palette.muted }}>{browser.error || (browser.searching ? t('project:files.searching') : browser.query ? entries.length ? t('project:files.resultsFor', { query: browser.query }) : t('project:files.noMatches', { query: browser.query }) : !browser.loading && initialized && !entries.length ? t('project:files.emptyFolder') : '')}</Text>
-    {browser.error ? <Button onPress={() => { if (browser.query) void browser.search(browser.query); else void openDirectory(browser.path); }} variant={"ghost"}><Text>{t('common:actions.retry')}</Text></Button> : null}
+    {statuses.length ? <ToggleGroup type="single" value={activeView} onValueChange={(value) => { if (value) setView(value as 'files' | 'changes'); }} className={cn("flex-row w-full")}>
+      <ToggleGroupItem value="files" testID="project-view-files" className={cn("flex-1")}><Text>{t('project:screen.filesTab')}</Text></ToggleGroupItem>
+      <ToggleGroupItem value="changes" testID="project-view-changes" className={cn("flex-1")}><Text>{t('project:files.changedFiles', { value: statuses.length })}</Text></ToggleGroupItem>
+    </ToggleGroup> : null}
+    {activeView === 'files' ? <>
+      <TextField testID="project-file-search" accessibilityLabel={t('project:files.searchPlaceholder')} placeholder={t('project:files.searchPlaceholder')} value={query} onChangeText={(value) => {
+          setQuery(value);
+          if (!value.trim()) void browser.search('');
+        }} autoCapitalize="none" autoCorrect={false} returnKeyType="search" blurOnSubmit onSubmitEditing={search} endAdornment={<Button accessibilityLabel={t('project:files.search')} disabled={busy || !query.trim()} onPress={search} variant={"ghost"} size="icon"><Icon name={"magnify"} size={24} /></Button>} startAdornment={query ? <Button accessibilityLabel={t('project:files.clearSearch')} onPress={() => { setQuery(''); void browser.search(''); }} variant={"ghost"} size="icon"><Icon name={"close"} size={24} /></Button> : undefined}></TextField>
+      {browser.path ? <View className={cn("flex-row flex-wrap items-center")}>
+        <Button onPress={() => { setQuery(''); void openDirectory(''); }} variant={"ghost"}><Icon name={"folder-outline"} size={20} /><Text>{projectLabel}</Text></Button>
+        {crumbs.map((crumb, index) => <View key={index} className={cn("flex-row items-center")}>
+          <Text className={cn("text-muted-foreground")}>›</Text>
+          <Button onPress={() => { setQuery(''); void openDirectory(crumbs.slice(0, index + 1).join('/')); }} variant={"ghost"}><Text>{crumb}</Text></Button>
+        </View>)}
+      </View> : null}
+      {actions?.clipboard ? <FileClipboardStrip entry={actions.clipboard} busy={actions.busy} available={actions.available} onPaste={() => void paste(browser.path)} onClear={actions.clear} /> : null}
+      {actions?.error ? <Text accessibilityRole="alert" className={cn("text-destructive")}>{actions.error}</Text> : null}
+      {busy ? <Spinner accessibilityLabel={t('project:files.loading')} /> : null}
+      <Text accessibilityLiveRegion="polite" style={{ color: browser.error ? palette.danger : palette.muted }}>{browser.error || (browser.searching ? t('project:files.searching') : browser.query ? entries.length ? t('project:files.resultsFor', { query: browser.query }) : t('project:files.noMatches', { query: browser.query }) : !browser.loading && initialized && !entries.length ? t('project:files.emptyFolder') : '')}</Text>
+      {browser.error ? <Button onPress={() => { if (browser.query) void browser.search(browser.query); else void openDirectory(browser.path); }} variant={"ghost"}><Text>{t('common:actions.retry')}</Text></Button> : null}
+    </> : null}
   </View>;
-  const rows = useMemo(() => [
-    ...(!busy && !browser.error ? entries.map((entry) => ({ kind: 'entry' as const, entry })) : []),
-    ...(statuses.length ? [{ kind: 'heading' as const }] : []),
-    ...statuses.map((file) => ({ kind: 'changed' as const, file })),
-  ], [browser.error, busy, entries, statuses]);
+  const rows = useMemo<FileRow[]>(() => activeView === 'changes'
+    ? statuses.map((file) => ({ kind: 'changed' as const, file }))
+    : !busy && !browser.error ? entries.map((entry) => ({ kind: 'entry' as const, entry })) : [],
+  [activeView, browser.error, busy, entries, statuses]);
   return <>{confirmation}{<><FlashList style={{ flex: 1, backgroundColor: palette.background }} contentContainerStyle={contentStyle}
     data={rows} extraData={actions} ListHeaderComponent={listHeader} keyboardDismissMode="on-drag" keyboardShouldPersistTaps="handled"
     maintainVisibleContentPosition={{ disabled: true }}
-    keyExtractor={(row) => row.kind === 'entry' ? `entry:${row.entry.path}` : row.kind === 'changed' ? `changed:${row.file.path}` : 'changed-heading'}
+    keyExtractor={(row) => row.kind === 'entry' ? `entry:${row.entry.path}` : `changed:${row.file.path}`}
     getItemType={(row) => row.kind} renderItem={({ item }) => {
-      if (item.kind === 'heading') return <Text style={{ marginVertical: 12 }} variant="description">{t('project:files.changedFiles', { value: statuses.length })}</Text>;
       if (item.kind === 'changed') {
         const file = item.file;
-        return <ListRow title={file.path} description={file.status === 'deleted' ? `${t('project:files.deleted')} · ${t('project:files.deletedUnavailable')}` : t(`project:files.${file.status}`)} accessibilityRole="button" accessibilityState={{ disabled: file.status === 'deleted' }} disabled={file.status === 'deleted'} onPress={file.status === 'deleted' ? undefined : () => onOpen(file.path)}></ListRow>;
+        const tone = file.status === 'deleted' ? palette.danger : file.status === 'added' ? palette.success : palette.warning;
+        const glyph = file.status === 'deleted' ? 'delete-outline' : file.status === 'added' ? 'plus-circle-outline' : 'pencil-outline';
+        return <View>
+          <ListRow testID={`project-changed-file-${file.path}`} title={file.path} description={file.status === 'deleted' ? `${t('project:files.deleted')} · ${t('project:files.deletedUnavailable')}` : t(`project:files.${file.status}`)} left={(props) => <Icon {...props} color={tone} name={glyph}></Icon>} accessibilityRole="button" accessibilityState={{ disabled: file.status === 'deleted' }} disabled={file.status === 'deleted'} onPress={file.status === 'deleted' ? undefined : () => onOpen(file.path)}></ListRow>
+          <Separator></Separator>
+        </View>;
       }
       const entry = item.entry;
       return <View>

@@ -22,7 +22,6 @@
     "searching": "Buscando…",
     "noMatches": "Nenhum arquivo corresponde a “{{query}}”.",
     "resultsFor": "Resultados para “{{query}}”",
-    "searchScope": "Pesquisar em {{project}}",
     "clearSearch": "Limpar pesquisa",
     "loading": "Carregando arquivos…",
     "emptyFolder": "Esta pasta está vazia.",

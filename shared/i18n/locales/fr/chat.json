@@ -419,7 +419,6 @@
       "tokens": "jetons utilisés",
       "cost": "coût enregistré"
     },
-    "usageCoverage": "Utilisation sur {{checked}} serveurs sur {{total}}",
     "activityUnavailable": "Les données d’activité sont indisponibles.",
     "recordedCostNote": "Certains usages peuvent être sans prix enregistré dans OpenCode.",
     "chartPoint": "Du {{from}} au {{to}} : {{value}}",
@@ -451,6 +450,7 @@
     "empty": "Aucune conversation ne correspond à ces filtres.",
     "widgetLastKnown": "Dernier état connu · {{time}}",
     "widgetChecked": "Dernière vérification · {{time}}",
-    "widgetEmpty": "Ouvrez le contrôle des missions pour consulter l’activité."
+    "widgetEmpty": "Ouvrez le contrôle des missions pour consulter l’activité.",
+    "activityPartial": "L’activité de certains serveurs n’a pas pu être incluse."
   }
 }

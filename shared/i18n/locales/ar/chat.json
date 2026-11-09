@@ -431,7 +431,6 @@
       "tokens": "رموز مستخدمة",
       "cost": "التكلفة المسجّلة"
     },
-    "usageCoverage": "الاستخدام من {{checked}} من أصل {{total}} خوادم",
     "activityUnavailable": "بيانات النشاط غير متاحة.",
     "recordedCostNote": "قد لا يكون لبعض الاستخدام سعر مسجّل في OpenCode.",
     "chartPoint": "من {{from}} إلى {{to}}: {{value}}",
@@ -463,6 +462,7 @@
     "empty": "لا توجد محادثات مطابقة لهذه الفلاتر.",
     "widgetLastKnown": "آخر حالة معروفة · {{time}}",
     "widgetChecked": "آخر تحقق · {{time}}",
-    "widgetEmpty": "افتح مركز التحكم بالمهام للتحقق من النشاط."
+    "widgetEmpty": "افتح مركز التحكم بالمهام للتحقق من النشاط.",
+    "activityPartial": "تعذّر تضمين نشاط بعض الخوادم."
   }
 }

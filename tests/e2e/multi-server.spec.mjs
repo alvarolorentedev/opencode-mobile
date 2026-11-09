@@ -212,7 +212,7 @@ test('V2 replies to colliding approvals only on the Settings server', async ({ p
   });
   await choose(page, 'mission-project-filter', /^demo-project/);
   await projectStats;
-  await expect(mission.getByText('Usage from 1 of 1 servers', { exact: true })).toBeVisible();
+  await expect(mission.getByTestId('mission-activity-total')).toBeVisible();
   await expect(mission.getByRole('button', { name: '1 Needs attention' })).toBeVisible();
   await expect(missionTab).toHaveAccessibleName('Mission. Conversations needing attention: 2');
   await mission.getByRole('button', { name: '1 Needs attention' }).click();

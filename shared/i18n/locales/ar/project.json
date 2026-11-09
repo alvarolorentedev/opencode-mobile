@@ -22,7 +22,6 @@
     "searching": "البحث…",
     "noMatches": "لا توجد ملفات تطابق \"{{query}}\".",
     "resultsFor": "نتائج ل “{{query}}”",
-    "searchScope": "البحث في {{project}}",
     "clearSearch": "مسح البحث",
     "loading": "جارٍ تحميل الملفات...",
     "emptyFolder": "هذا المجلد فارغ.",

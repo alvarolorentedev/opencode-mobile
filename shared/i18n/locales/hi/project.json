@@ -22,7 +22,6 @@
     "searching": "खोज जारी है…",
     "noMatches": "“{{query}}” से कोई फ़ाइल मेल नहीं खाती।",
     "resultsFor": "“{{query}}” के परिणाम",
-    "searchScope": "{{project}} में खोजें",
     "clearSearch": "खोज साफ़ करें",
     "loading": "फ़ाइलें लोड हो रही हैं…",
     "emptyFolder": "यह फ़ोल्डर खाली है।",

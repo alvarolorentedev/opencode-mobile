@@ -22,7 +22,6 @@
     "searching": "מחפש...",
     "noMatches": "אין קבצים תואמים ל-\"{{query}}\".",
     "resultsFor": "תוצאות עבור \"{{query}}\"",
-    "searchScope": "חפש ב-{{project}}",
     "clearSearch": "נקה חיפוש",
     "loading": "טוען קבצים...",
     "emptyFolder": "התיקיה הזו ריקה.",

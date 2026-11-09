@@ -55,9 +55,12 @@ export function MissionControlScreen() {
   const scopedServer = selectedProject?.connectionId ?? selectedServer;
   const servers = mission.servers.filter(({ id }) => !scopedServer || scopedServer === id);
   const chart = useMissionStats(servers, selectedProject ? selectedProject.projectId ?? null : undefined, hours, visible, refreshedAt);
-  const checked = servers.filter(({ phase }) => phase === 'ready').length;
   const unavailable = servers.filter(({ phase }) => phase === 'offline' || phase === 'unsupported');
   const partial = servers.filter(({ phase }) => phase === 'partial');
+  const warnings = [
+    ...unavailable.map(({ name, phase }) => t(phase === 'unsupported' ? 'mission.unsupportedServer' : 'mission.offlineServer', { name })),
+    ...partial.map(({ name }) => t('mission.partialServer', { name })),
+  ];
   const checking = servers.some(({ phase }) => phase === 'checking');
   const serverRequests = status === 'attention' && !selectedProject ? servers.filter(({ requests }) => requests > 0) : [];
   const open = async (target: SessionTarget) => {
@@ -98,17 +101,13 @@ export function MissionControlScreen() {
       </View>
       <View className="gap-2">
         <Text variant="heading" accessibilityRole="header">{t('mission.currentJobs')}</Text>
-        <Text variant="description" className="text-muted-foreground">
-          {servers.length ? t('mission.coverage', { checked, total: servers.length }) : t('mission.noServers')}
-          {unavailable.map(({ name, phase }) => ` · ${t(phase === 'unsupported' ? 'mission.unsupportedServer' : 'mission.offlineServer', { name })}`).join('')}
-          {partial.map(({ name }) => ` · ${t('mission.partialServer', { name })}`).join('')}
-        </Text>
+        {!servers.length || warnings.length ? <Text variant="description" className="text-muted-foreground">
+          {servers.length ? warnings.join(' · ') : t('mission.noServers')}
+        </Text> : null}
         <MissionSummary counts={counts} onOpen={setStatus} />
       </View>
       <MissionActivityChart hours={hours} onRangeChange={(value) => {
-        if (value === hours) return;
-        setHours(value);
-        setRefreshedAt(Date.now());
+        if (value !== hours) setHours(value);
       }} {...chart} />
     </ScrollView>
     <OverlaySheet visible={visible && Boolean(status)} title={status ? t(`mission.${status}`) : ''} testID="mission-status-overlay"

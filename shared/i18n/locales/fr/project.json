@@ -22,7 +22,6 @@
     "searching": "Recherche…",
     "noMatches": "Aucun fichier ne correspond à « {{query}} ».",
     "resultsFor": "Résultats pour « {{query}} »",
-    "searchScope": "Rechercher dans {{project}}",
     "clearSearch": "Effacer la recherche",
     "loading": "Chargement des fichiers…",
     "emptyFolder": "Ce dossier est vide.",

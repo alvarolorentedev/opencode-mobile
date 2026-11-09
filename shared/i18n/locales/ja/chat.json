@@ -419,7 +419,6 @@
       "tokens": "使用トークン数",
       "cost": "記録された費用"
     },
-    "usageCoverage": "{{total}} 台中 {{checked}} 台のサーバーの使用状況",
     "activityUnavailable": "アクティビティデータを取得できません。",
     "recordedCostNote": "一部の使用量には OpenCode に料金の記録がない場合があります。",
     "chartPoint": "{{from}} から {{to}} まで: {{value}}",
@@ -451,6 +450,7 @@
     "empty": "この条件に一致する会話はありません。",
     "widgetLastKnown": "最後に確認した状態 · {{time}}",
     "widgetChecked": "最終確認 · {{time}}",
-    "widgetEmpty": "ミッション管理を開いてアクティビティを確認してください。"
+    "widgetEmpty": "ミッション管理を開いてアクティビティを確認してください。",
+    "activityPartial": "一部のサーバーのアクティビティを含められませんでした。"
   }
 }

@@ -419,7 +419,6 @@
       "tokens": "verwendete Token",
       "cost": "erfasste Kosten"
     },
-    "usageCoverage": "Nutzung von {{checked}} von {{total}} Servern",
     "activityUnavailable": "Aktivitätsdaten sind nicht verfügbar.",
     "recordedCostNote": "Für einen Teil der Nutzung hat OpenCode möglicherweise keinen Preis erfasst.",
     "chartPoint": "{{from}} bis {{to}}: {{value}}",
@@ -451,6 +450,7 @@
     "empty": "Keine Unterhaltung entspricht diesen Filtern.",
     "widgetLastKnown": "Letzter bekannter Stand · {{time}}",
     "widgetChecked": "Zuletzt geprüft · {{time}}",
-    "widgetEmpty": "Öffne die Missionskontrolle, um die Aktivität zu prüfen."
+    "widgetEmpty": "Öffne die Missionskontrolle, um die Aktivität zu prüfen.",
+    "activityPartial": "Die Aktivität einiger Server konnte nicht einbezogen werden."
   }
 }
