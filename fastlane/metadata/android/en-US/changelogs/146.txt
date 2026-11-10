@@ -1,0 +1,2 @@
+- The chat send button no longer sits where you tap to place the cursor.
+- Reading older messages during a streaming reply stays put instead of jumping to the newest one.
