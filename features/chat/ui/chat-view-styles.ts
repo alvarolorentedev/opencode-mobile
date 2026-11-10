@@ -47,7 +47,7 @@ export const stylesClasses = {
   "voiceStatusRow": "px-0.5",
   "voiceStatusChip": "self-start",
   "composerCard": "rounded-[28px] px-2 pt-2 pb-1",
-  "composerToolbar": "flex-row items-center gap-0",
+  "composerToolbar": "flex-row items-center gap-0 mt-3",
   "composerActionButton": "m-0",
   "composerModelSummary": "flex-1 min-w-0",
   "composerPrimaryButton": "m-0 w-11 h-11 rounded-full self-center",

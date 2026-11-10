@@ -150,6 +150,8 @@ declared once, at the leaves.
   because iOS can otherwise keep the last tall frame after the draft is cleared
   (send or delete-all). The native slim input retains its 40-point minimum.
   Android and web retain content-size events and the explicit measured height.
+- keep a 12-point gap between the prompt input and the bottom action row so a
+  cursor-placement tap near the end of the last line cannot trigger send
 
 #### Prop contract
 
