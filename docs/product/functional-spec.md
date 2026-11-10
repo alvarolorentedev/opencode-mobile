@@ -327,7 +327,7 @@ Overlay sheets also dismiss on a downward drag of their header (the grabber/titl
 - opening a session loads one newest window of up to 200 records
 - scrolling to the top loads one older 200-record batch through the server cursor; loaded history is not capped
 - tail reconcile fetches at most the newest 20 records and never scans or refreshes the whole transcript
-- automatic scroll-to-end happens for new content unless the view is currently paginating older items
+- automatic scroll-to-end happens for new content unless the view is currently paginating older items or the user is dragging; a drag detaches immediately so a streaming update cannot cancel it
 - when the user is away from the tail, a floating `Jump to latest` control appears and changes to `New messages` when rows arrive; tapping it restores tail-follow mode
 - long-pressing a message copies its text/error content
 - `@` references and line-start `/` commands render bold in the accent color;

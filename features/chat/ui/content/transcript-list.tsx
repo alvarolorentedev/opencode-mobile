@@ -44,10 +44,11 @@ const ACTIVITY_STATUS_GROUP: ActivityGroup = {
 
 // Stable reference so FlashList does not treat every parent render as a prop
 // change. Combined with the memoized TranscriptMessage rows this keeps
-// streaming refreshes from re-rendering untouched rows.
+// streaming refreshes from re-rendering untouched rows. FlashList's own
+// autoscroll is deliberately not enabled: it fires on content-size changes
+// without knowing whether a finger is dragging, which pulls readers back to
+// the tail. The transcript follows the tail itself so a drag always wins.
 const MAINTAIN_VISIBLE_CONTENT_POSITION = {
-  autoscrollToBottomThreshold: 0,
-  animateAutoScrollToBottom: false,
   startRenderingFromBottom: true,
 } as const;
 
@@ -129,6 +130,7 @@ export function TranscriptList({
   ), [activityStatusLabel, transcriptRows]);
   const transcriptRef = useRef<FlashListRef<TranscriptListItem>>(null);
   const followTailRef = useRef(true);
+  const draggingRef = useRef(false);
   const lastOffsetRef = useRef(0);
   const settleFramesRef = useRef(0);
   const settleFrameRef = useRef<number | undefined>(undefined);
@@ -234,9 +236,9 @@ export function TranscriptList({
   // maintainVisibleContentPosition keeps the visible position otherwise. Group
   // content grows without adding rows, so include the detail count.
   useEffect(() => {
-    if (rows.length === 0) return;
+    if (rows.length === 0 || isLoadingOlderMessages) return;
     if (followTailRef.current) settleToTail();
-  }, [identity, rows, settleToTail]);
+  }, [identity, isLoadingOlderMessages, rows, settleToTail]);
 
   useEffect(() => {
     const grew = rows.length > previousRowCountRef.current;
@@ -277,16 +279,31 @@ export function TranscriptList({
     return () => subscription.remove();
   }, [restorePosition]);
 
-  const handleScroll = useCallback((event: NativeSyntheticEvent<NativeScrollEvent>) => {
+  const applyScrollPosition = useCallback((event: NativeSyntheticEvent<NativeScrollEvent>) => {
     const { contentOffset, contentSize, layoutMeasurement } = event.nativeEvent;
     lastOffsetRef.current = contentOffset.y;
-    const followsTail = contentSize.height - (contentOffset.y + layoutMeasurement.height) <= TAIL_FOLLOW_THRESHOLD;
+    // While a finger is down, a drag always wins even if it is still inside the
+    // tail strip; otherwise a streaming update re-arms follow and cancels it.
+    const followsTail = !draggingRef.current
+      && contentSize.height - (contentOffset.y + layoutMeasurement.height) <= TAIL_FOLLOW_THRESHOLD;
     followTailRef.current = followsTail;
     setDetached(!followsTail);
     if (followsTail) setUnseen(false);
     positions?.set(identity, { offset: lastOffsetRef.current, follow: followsTail });
     updatePinnedActivity();
   }, [identity, positions, updatePinnedActivity]);
+
+  const handleScrollBeginDrag = useCallback(() => {
+    draggingRef.current = true;
+    followTailRef.current = false;
+    settleFramesRef.current = 0;
+    positions?.set(identity, { offset: lastOffsetRef.current, follow: false });
+  }, [identity, positions]);
+
+  const handleScrollSettled = useCallback((event: NativeSyntheticEvent<NativeScrollEvent>) => {
+    draggingRef.current = false;
+    applyScrollPosition(event);
+  }, [applyScrollPosition]);
 
   const jumpToLatest = useCallback(() => {
     followTailRef.current = true;
@@ -322,7 +339,11 @@ export function TranscriptList({
       keyExtractor={(row) => row.key}
       maintainVisibleContentPosition={MAINTAIN_VISIBLE_CONTENT_POSITION}
       onLoad={restorePosition}
-      onScroll={handleScroll}
+      onMomentumScrollBegin={handleScrollBeginDrag}
+      onMomentumScrollEnd={handleScrollSettled}
+      onScroll={applyScrollPosition}
+      onScrollBeginDrag={handleScrollBeginDrag}
+      onScrollEndDrag={handleScrollSettled}
       scrollEventThrottle={16}
       onStartReached={hasOlderMessages ? onLoadOlderMessages : undefined}
       onStartReachedThreshold={0.5}

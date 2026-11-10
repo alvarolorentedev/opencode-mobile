@@ -37,6 +37,15 @@ function listProps(overrides: Record<string, unknown> = {}) {
 async function mountTranscriptList(overrides: Overrides = {}) {
   const runtime = hookRuntime();
   const element = (type: unknown, props: unknown) => ({ type, props });
+  const frames = new Map<number, () => void>();
+  let nextFrame = 0;
+  const flushFrames = () => {
+    while (frames.size > 0) {
+      const pending = [...frames.values()];
+      frames.clear();
+      for (const frame of pending) frame();
+    }
+  };
   const { TranscriptList } = await loadTs('features/chat/ui/content/transcript-list.tsx', {
     ...uiImports,
     react: runtime.react,
@@ -52,13 +61,18 @@ async function mountTranscriptList(overrides: Overrides = {}) {
     "@/features/chat/ui/chat-view-utils": { getCurrentTurnActivityKey, getEntryModelLabel, STARTER_PROMPT_KEYS: [] },
     "@/features/chat/ui/content/transcript-skeleton": { TranscriptSkeleton: 'TranscriptSkeleton' },
     "@/shared/ui/theme/theme": { Colors: { light: {} } }
-  }, { ...runtime.globals, requestAnimationFrame: () => 1, cancelAnimationFrame: () => undefined });
+  }, {
+    ...runtime.globals,
+    requestAnimationFrame: (callback: () => void) => { const id = ++nextFrame; frames.set(id, callback); return id; },
+    cancelAnimationFrame: (id: number) => { frames.delete(id); },
+  });
   const root = runtime.mount(TranscriptList, listProps(overrides));
   const list = root.type === 'FlashList' ? root : root.props.children[0];
   return {
     list,
     root,
     runtime,
+    flushFrames,
     update: (patch: Overrides) => {
       const next = runtime.update(patch as Record<string, unknown>);
       return next.type === 'FlashList' ? next : next.props.children[0];
@@ -116,13 +130,40 @@ describe('transcript empty state', () => {
   });
 
   it('dismisses the jump-to-latest control when tapped', async () => {
-    const { list, runtime } = await mountTranscriptList({ hasMessages: true, transcriptRows: [{ key: 'a' }] });
+    const { list, runtime, flushFrames } = await mountTranscriptList({ hasMessages: true, transcriptRows: [{ key: 'a' }] });
+    const scrollToEnd = vi.fn();
+    list.props.ref.current = { scrollToEnd };
     list.props.onScroll({ nativeEvent: { contentOffset: { y: 0 }, contentSize: { height: 1200 }, layoutMeasurement: { height: 600 } } });
     runtime.flush();
     const control = runtime.value.props.children[1];
     control.props.children.props.onPress();
     runtime.flush();
+    flushFrames();
     expect(runtime.value.props.children[1]).toBeNull();
+    expect(scrollToEnd).toHaveBeenCalled();
+  });
+
+  it('leaves tail following to the transcript instead of FlashList autoscroll', async () => {
+    const { list } = await mountTranscriptList();
+    expect(list.props.maintainVisibleContentPosition).toEqual({ startRenderingFromBottom: true });
+  });
+
+  it('does not chase the tail when new rows arrive during a drag, then resumes at the bottom', async () => {
+    const { list, update, flushFrames } = await mountTranscriptList({ hasMessages: true, transcriptRows: [{ key: 'a' }] });
+    const scrollToEnd = vi.fn();
+    list.props.ref.current = { scrollToEnd };
+    const nearTail = { nativeEvent: { contentOffset: { y: 596 }, contentSize: { height: 1200 }, layoutMeasurement: { height: 600 } } };
+
+    list.props.onScrollBeginDrag(nearTail);
+    list.props.onScroll(nearTail);
+    update({ transcriptRows: [{ key: 'a' }, { key: 'b' }] });
+    flushFrames();
+    expect(scrollToEnd).not.toHaveBeenCalled();
+
+    list.props.onScrollEndDrag(nearTail);
+    update({ transcriptRows: [{ key: 'a' }, { key: 'b' }, { key: 'c' }] });
+    flushFrames();
+    expect(scrollToEnd).toHaveBeenCalled();
   });
 
   it('does not reserve a running-status footer', async () => {
