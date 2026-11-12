@@ -14,6 +14,7 @@ import { Pressable, View } from 'react-native';
 import { ConnectionProfileDialog, type ConnectionProfileFormValues } from '@/features/connections/ui/connection-profile-dialog';
 import { ConnectionMethodChooser } from '@/features/connections/ui/connection-method-chooser';
 import { ConnectionScanFlow } from '@/features/connections/ui/connection-scan-flow';
+import { ConnectionRelayDiscovery } from '@/features/connections/ui/connection-relay-discovery';
 import { OverlaySheet } from '@/shared/ui/overlay-sheet';
 import { Colors } from '@/shared/ui/theme/theme';
 import { findMatchingProfile, type ConnectionProfile } from '@/shared/contracts/connection-profiles';
@@ -52,6 +53,7 @@ export function ConnectionProfiles({ palette, onManageConnect, onPair }: { palet
   const addedProfileId = useRef<string | undefined>(undefined);
   const [choosing, setChoosing] = useState(false);
   const [scanning, setScanning] = useState(false);
+  const [relayDiscovery, setRelayDiscovery] = useState(false);
   const [dialog, setDialog] = useState<DialogState>();
 
   useFocusEffect(useCallback(() => {
@@ -134,6 +136,7 @@ export function ConnectionProfiles({ palette, onManageConnect, onPair }: { palet
       if (result.status !== 'connected') throw new Error(result.message);
       setDialog(undefined);
       setScanning(false);
+      setRelayDiscovery(false);
       addedProfileId.current = undefined;
       setExpandedKey(profile.id);
     } finally {
@@ -295,12 +298,18 @@ export function ConnectionProfiles({ palette, onManageConnect, onPair }: { palet
         <Text className={cn("text-muted-foreground")} variant="label">{t('settings:connection.addDescription')}</Text>
       ) : null}
       <OverlaySheet visible={choosing} title={t('settings:connection.addConnection')} onClose={() => setChoosing(false)} fitContent testID="connection-method-sheet">
-        <ConnectionMethodChooser onScan={() => { setChoosing(false); setScanning(true); }} onManual={() => { setChoosing(false); setDialog({ mode: 'add' }); }} onPair={() => { setChoosing(false); onPair?.(); }} />
+        <ConnectionMethodChooser onScan={() => { setChoosing(false); setScanning(true); }} onManual={() => { setChoosing(false); setDialog({ mode: 'add' }); }} onPair={() => { setChoosing(false); onPair?.(); }} onRelay={() => { setChoosing(false); setRelayDiscovery(true); }} />
       </OverlaySheet>
       {scanning ? (
         <ConnectionScanFlow
           onSubmit={addAndConnect}
           onDismiss={() => { addedProfileId.current = undefined; setScanning(false); }}
+        />
+      ) : null}
+      {relayDiscovery ? (
+        <ConnectionRelayDiscovery
+          onSubmit={addAndConnect}
+          onDismiss={() => { addedProfileId.current = undefined; setRelayDiscovery(false); }}
         />
       ) : null}
       {dialog ? (

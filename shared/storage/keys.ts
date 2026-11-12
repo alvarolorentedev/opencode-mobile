@@ -2,6 +2,10 @@ export const SETTINGS_STORAGE_KEY = 'opencode-mobile.settings';
 export const APP_UPDATES_STORAGE_KEY = 'opencode-mobile.app-updates';
 export const CONNECT_CONTROL_PLANE_STORAGE_KEY = 'opencode-mobile.connect-control-plane';
 export const CONNECTION_PROFILES_STORAGE_KEY = 'opencode-mobile.connection-profiles';
+// Relay account the user signed in with (URL, username, session token). The
+// password is kept in the Keychain/Keystore, not here. See
+// shared/storage/relay-session.ts.
+export const RELAY_SESSION_STORAGE_KEY = 'opencode-mobile.relay-session';
 export const CHAT_PREFERENCES_STORAGE_KEY = 'opencode-mobile.chat-preferences';
 export const ACTIVE_PROJECT_STORAGE_KEY = 'opencode-mobile.active-project';
 // Completion-only first-run setup marker. It never stores connection,
