@@ -1,0 +1,2 @@
+- Maintenance release with build and dependency updates.
+- Android releases build against the current React Native version again.
