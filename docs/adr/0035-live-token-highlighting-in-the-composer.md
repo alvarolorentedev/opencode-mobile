@@ -58,6 +58,11 @@ flat and assistant bubbles use the active tint.
   custom schemes, and copy/TTS still use the raw transcript text.
 - Dependency review follows ADR 0017: exact version, SDK-compatible package,
   FOSS/license check, and native rebuild.
+- `patches/@expensify+react-native-live-markdown+0.1.371.patch` adapts the
+  package's Android `latest` mounting patch to RN 0.88: `TextLayoutManager.measureText`
+  now takes the `Context`, which 0.1.371 does not pass, so a clean Android build
+  failed to compile. Drop the patch when a published release supports RN 0.88;
+  `tests/vitest/live-markdown-patch.test.ts` guards the installed source.
 
 ## Alternatives considered
 
