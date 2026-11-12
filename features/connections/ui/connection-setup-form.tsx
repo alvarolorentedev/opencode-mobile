@@ -4,13 +4,12 @@ import { useTranslation } from 'react-i18next';
 import { ConnectionMethodChooser } from '@/features/connections/ui/connection-method-chooser';
 import { ConnectionProfileDialog, type ConnectionProfileFormValues } from '@/features/connections/ui/connection-profile-dialog';
 import { ConnectionScanFlow } from '@/features/connections/ui/connection-scan-flow';
-import { ConnectionRelayDiscovery } from '@/features/connections/ui/connection-relay-discovery';
 import { useConnection } from '@/features/connections/context';
 
 export function ConnectionSetupForm({ onPair, onConnected, onBusyChange }: { onPair: () => void; onConnected: () => void; onBusyChange: (busy: boolean) => void }) {
   const { t } = useTranslation();
   const { settings, connectionProfiles } = useConnection();
-  const [mode, setMode] = useState<'manual' | 'scan' | 'relay'>();
+  const [mode, setMode] = useState<'manual' | 'scan'>();
   const profileId = useRef<string | undefined>(undefined);
   async function submit(values: ConnectionProfileFormValues) {
     onBusyChange(true);
@@ -25,9 +24,8 @@ export function ConnectionSetupForm({ onPair, onConnected, onBusyChange }: { onP
   }
   function dismiss() { profileId.current = undefined; setMode(undefined); }
   return <>
-    <ConnectionMethodChooser onScan={() => setMode('scan')} onManual={() => setMode('manual')} onPair={onPair} onRelay={() => setMode('relay')} />
+    <ConnectionMethodChooser onScan={() => setMode('scan')} onManual={() => setMode('manual')} onPair={onPair} />
     {mode === 'manual' ? <ConnectionProfileDialog title={t('settings:connection.addConnection')} submitLabel={t('settings:connection.saveAndConnect')} initial={{ serverUrl: settings.serverUrl }} onBusyChange={onBusyChange} onSubmit={submit} onDismiss={dismiss} /> : null}
     {mode === 'scan' ? <ConnectionScanFlow onBusyChange={onBusyChange} onSubmit={submit} onDismiss={dismiss} /> : null}
-    {mode === 'relay' ? <ConnectionRelayDiscovery onBusyChange={onBusyChange} onSubmit={submit} onDismiss={dismiss} /> : null}
   </>;
 }

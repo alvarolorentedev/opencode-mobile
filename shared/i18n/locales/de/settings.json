@@ -66,6 +66,24 @@
     "openSupport": "Support-Seite öffnen"
   },
   "connection": {
+    "relay": {
+      "title": "Maschinen auf deinem Relay finden",
+      "description": "Gib die URL deines Relay-Servers und deine Zugangsdaten ein, um registrierte Umgebungen aufzulisten.",
+      "url": "Relay-URL",
+      "urlPlaceholder": "https://relay.example.com:9999",
+      "username": "Benutzername",
+      "usernamePlaceholder": "Relay-Benutzername",
+      "password": "Passwort",
+      "discover": "Suchen",
+      "environments": "Maschinen",
+      "noEnvironments": "Auf diesem Relay wurden keine Maschinen gefunden.",
+      "invalidUrl": "Gib eine gültige Relay-URL ein, zum Beispiel https://relay.example.com:9999.",
+      "loginFailed": "Anmeldung am Relay fehlgeschlagen. Prüfe Benutzername und Passwort.",
+      "loadFailed": "Die Maschinenliste konnte nicht vom Relay geladen werden.",
+      "offline": "offline",
+      "online": "online",
+      "signOut": "Vom Relay-Konto abmelden"
+    },
     "currentConnection": "Aktuelle Verbindung",
     "noServerUrl": "Keine Server-URL festgelegt",
     "notSavedYet": "Noch nicht gespeichert. Füge eine Verbindung hinzu, um sie für später zu behalten.",

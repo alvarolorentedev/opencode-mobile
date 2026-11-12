@@ -66,6 +66,24 @@
     "openSupport": "サポートページを開く"
   },
   "connection": {
+    "relay": {
+      "title": "リレー上のマシンを検索",
+      "description": "登録済みの環境を表示するには、リレーサーバーの URL と認証情報を入力してください。",
+      "url": "リレー URL",
+      "urlPlaceholder": "https://relay.example.com:9999",
+      "username": "ユーザー名",
+      "usernamePlaceholder": "リレーのユーザー名",
+      "password": "パスワード",
+      "discover": "検索",
+      "environments": "マシン",
+      "noEnvironments": "このリレーに登録されたマシンはありません。",
+      "invalidUrl": "有効なリレー URL を入力してください。例: https://relay.example.com:9999",
+      "loginFailed": "リレーにサインインできません。ユーザー名とパスワードを確認してください。",
+      "loadFailed": "リレーからマシン一覧を読み込めませんでした。",
+      "offline": "オフライン",
+      "online": "オンライン",
+      "signOut": "リレーアカウントからサインアウト"
+    },
     "currentConnection": "現在の接続",
     "noServerUrl": "サーバー URL が設定されていません",
     "notSavedYet": "まだ保存されていません。接続を追加すると後で利用できます。",

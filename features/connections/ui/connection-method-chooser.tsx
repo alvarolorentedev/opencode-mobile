@@ -12,7 +12,7 @@ import { CONNECT_LEARN_MORE_URL } from '@/shared/contracts/cloud-link';
 import { useConnection } from '@/features/connections/context';
 import { usePalette } from '@/shared/ui/theme/use-palette';
 
-export function ConnectionMethodChooser({ onScan, onManual, onPair, onRelay }: { onScan: () => void; onManual: () => void; onPair: () => void; onRelay: () => void }) {
+export function ConnectionMethodChooser({ onScan, onManual, onPair }: { onScan: () => void; onManual: () => void; onPair: () => void }) {
   const { t } = useTranslation();
   const palette = usePalette();
   const choiceStyle = { minHeight: 96, borderRadius: 16, borderWidth: 1, borderColor: palette.border, backgroundColor: palette.surface };
@@ -23,7 +23,6 @@ export function ConnectionMethodChooser({ onScan, onManual, onPair, onRelay }: {
   return <View testID="connection-method-chooser" className={cn("gap-3")}>
     <ListRow accessibilityRole="button" style={choiceStyle} titleStyle={titleStyle} descriptionStyle={descriptionStyle} testID="connection-method-scan" title={t('settings:connect.scanLocal')} description={t('settings:connect.scanLocalHint')} left={(props) => <Icon {...props} color={palette.tint} name={"qrcode-scan"}></Icon>} right={(props) => <Icon {...props} color={palette.muted} name={"chevron-right"}></Icon>} onPress={onScan} disabled={!scanAvailable} accessibilityState={{ disabled: !scanAvailable }}></ListRow>
     <ListRow accessibilityRole="button" style={choiceStyle} titleStyle={titleStyle} descriptionStyle={descriptionStyle} testID="connection-method-manual" title={t('settings:connect.manual')} description={t('settings:connect.manualHint')} left={(props) => <Icon {...props} color={palette.tint} name={"server"}></Icon>} right={(props) => <Icon {...props} color={palette.muted} name={"chevron-right"}></Icon>} onPress={onManual}></ListRow>
-    <ListRow accessibilityRole="button" style={choiceStyle} titleStyle={titleStyle} descriptionStyle={descriptionStyle} testID="connection-method-relay" title={t('settings:connection.relay.entry')} description={t('settings:connection.relay.hint')} left={(props) => <Icon {...props} color={palette.tint} name={"tower-monitor"}></Icon>} right={(props) => <Icon {...props} color={palette.muted} name={"chevron-right"}></Icon>} onPress={onRelay}></ListRow>
     <ListRow accessibilityRole="button" style={choiceStyle} titleStyle={titleStyle} descriptionStyle={descriptionStyle} testID="connection-method-connect" title={t('settings:connect.entry')} description={t('settings:connect.scanHint')} left={(props) => <Icon {...props} color={palette.tint} name={"cloud-outline"}></Icon>} right={(props) => <Icon {...props} color={palette.muted} name={"chevron-right"}></Icon>} onPress={onPair} disabled={!connectSetup.enabled} accessibilityState={{ disabled: !connectSetup.enabled }}></ListRow>
     {!connectSetup.enabled ? <Text className={cn("text-muted-foreground")} variant="label">{t('settings:connect.nativeOnly')}</Text> : null}
     <Button testID="connect-learn-more" onPress={() => void Linking.openURL(CONNECT_LEARN_MORE_URL).catch(() => undefined)} variant={"ghost"} className={cn("self-start")} style={[undefined, undefined]}><Icon name={"open-in-new"} size={20} /><Text>{t('settings:connect.learnMore')}</Text></Button>
