@@ -274,6 +274,9 @@ run('./gradlew', [
   // ARM64-only is a product decision. There is no per-build ABI override:
   // Play, FOSS and local release builds all produce the same ABI.
   '-PreactNativeArchitectures=arm64-v8a',
+  // Parallelize module builds and pin the worker count to the host CPU count.
+  '--parallel',
+  '--max-workers=12',
 ], {
   cwd: androidDir,
   env: buildEnv,
