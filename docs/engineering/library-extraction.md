@@ -100,9 +100,9 @@ and redirect-safe Expo fetch remain app-owned. See
 | Sharing | 58.0.21 | Text streams/accompanying text, unique bounded copies, unreadable items | Stable SDK-compatible upstream contains every fix; release/device sharing passes |
 | Llama binding | 0.12.9 | Upstream iOS bridge type access for current RN headers; retain prebuilt engines | Compatible upstream release supplies this fix and matching engine prebuilts; device classifier checks pass |
 | Sherpa | 1.3.1 | Android Kotlin/JNI config ABI and iOS TTS key aliases | Stable wrapper contains both fixes; Android/iOS local TTS passes |
-| React Native WebSocket | 0.88.1 | Forward per-socket `redirect: 'error'` and disable Android redirect follow-up for OIDC upgrades only; accept the renamed Hermes source archive root during source builds | Upstream provides per-socket redirect rejection; verify no token reaches redirect destinations |
+| React Native | 0.88.1 | Forward per-socket `redirect: 'error'` for OIDC WebSockets; use the rendering TextView's default typeface for unstyled Android Fabric text measurement and refresh it on configuration changes ([upstream fix](https://github.com/facebook/react-native/pull/58036)) | Upstream includes both fixes; verify redirect safety and Android text rendering on affected hardware |
 
-These patches apply through patch-package. Android React Native builds from source through Expo BuildProperties so the Kotlin WebSocket patch is included; prebuilt AARs cannot include source patches. Sharing must remain built from source. The updater uses its unmodified upstream implementation.
+These patches apply through patch-package. Android React Native builds from source through Expo BuildProperties so the Android source patches are included; prebuilt AARs cannot include them. Sharing must remain built from source. The updater uses its unmodified upstream implementation.
 Upstream Sherpa's beta fixes Android ABI but not the iOS alias handling; do not adopt
 a prerelease only to delete part of a patch. Native source references:
 [Expo Sharing](https://github.com/expo/expo/tree/main/packages/expo-sharing),
