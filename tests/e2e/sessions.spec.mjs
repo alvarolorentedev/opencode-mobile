@@ -282,8 +282,7 @@ test('saved connections keep sessions, caches, and model preferences separate', 
   await page.getByPlaceholder('Paste your API key').fill('sk-test-openrouter');
   await page.getByTestId('settings-provider-save-button').click();
   await expect(page.getByText('Configure OpenRouter')).not.toBeVisible({ timeout: 15_000 });
-  await page.getByRole('button', { name: 'OpenRouter 0 of 1 selected' }).click();
-  await page.getByText('Auto', { exact: true }).click();
+  await expect(page.getByRole('button', { name: 'OpenRouter 1 of 1 selected' })).toBeVisible();
   await goToTab(page, 'Chat');
   await page.getByTestId('chat-model-picker-trigger').click();
   await page.getByTestId('chat-model-picker').getByRole('button', { name: /^Auto / }).click();

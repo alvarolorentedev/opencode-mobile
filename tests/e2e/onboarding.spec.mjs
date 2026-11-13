@@ -313,8 +313,7 @@ async function addOpenRouter(page) {
   await page.getByPlaceholder('Paste your API key').fill('sk-test-onboarding');
   await page.getByTestId('settings-provider-save-button').click();
   await expect(page.getByText('Configure OpenRouter')).toHaveCount(0);
-  await page.getByRole('button', { name: /OpenRouter [0-9]+ of/ }).click();
-  await page.getByText('Auto', { exact: true }).click();
+  await expect(page.getByRole('button', { name: 'OpenRouter 1 of 1 selected' })).toBeVisible();
 }
 
 test('onboarding embeds provider setup and persists the reviewed preferences', async ({ page }) => {
