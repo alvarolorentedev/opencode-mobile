@@ -66,6 +66,24 @@
     "openSupport": "Ouvrir la page d'assistance"
   },
   "connection": {
+    "relay": {
+      "title": "Trouver des machines sur votre relais",
+      "description": "Saisissez l’URL de votre serveur relais et vos identifiants pour afficher les environnements enregistrés.",
+      "url": "URL du relais",
+      "urlPlaceholder": "https://relay.example.com:9999",
+      "username": "Nom d’utilisateur",
+      "usernamePlaceholder": "Nom d’utilisateur du relais",
+      "password": "Mot de passe",
+      "discover": "Rechercher",
+      "environments": "Machines",
+      "noEnvironments": "Aucune machine trouvée sur ce relais.",
+      "invalidUrl": "Saisissez une URL de relais valide, par exemple https://relay.example.com:9999.",
+      "loginFailed": "Connexion au relais impossible. Vérifiez votre nom d’utilisateur et votre mot de passe.",
+      "loadFailed": "Impossible de charger la liste des machines depuis le relais.",
+      "offline": "hors ligne",
+      "online": "en ligne",
+      "signOut": "Se déconnecter du compte relais"
+    },
     "currentConnection": "Connexion actuelle",
     "noServerUrl": "Aucune URL de serveur définie",
     "notSavedYet": "Pas encore enregistrée. Ajoutez une connexion pour la conserver.",

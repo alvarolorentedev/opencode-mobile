@@ -66,6 +66,24 @@
     "openSupport": "सहायता पृष्ठ खोलें"
   },
   "connection": {
+    "relay": {
+      "title": "अपने रिले पर मशीनें खोजें",
+      "description": "पंजीकृत वातावरण देखने के लिए अपने रिले सर्वर का URL और लॉगिन जानकारी दर्ज करें।",
+      "url": "रिले URL",
+      "urlPlaceholder": "https://relay.example.com:9999",
+      "username": "उपयोगकर्ता नाम",
+      "usernamePlaceholder": "रिले उपयोगकर्ता नाम",
+      "password": "पासवर्ड",
+      "discover": "खोजें",
+      "environments": "मशीनें",
+      "noEnvironments": "इस रिले पर कोई मशीन नहीं मिली।",
+      "invalidUrl": "मान्य रिले URL दर्ज करें, जैसे https://relay.example.com:9999।",
+      "loginFailed": "रिले में साइन इन नहीं हो सका। उपयोगकर्ता नाम और पासवर्ड जाँचें।",
+      "loadFailed": "रिले से मशीनों की सूची लोड नहीं हो सकी।",
+      "offline": "ऑफ़लाइन",
+      "online": "ऑनलाइन",
+      "signOut": "रिले खाते से साइन आउट करें"
+    },
     "currentConnection": "वर्तमान कनेक्शन",
     "noServerUrl": "कोई सर्वर URL सेट नहीं",
     "notSavedYet": "अभी तक सहेजा नहीं गया। बाद के लिए इसे रखने हेतु एक कनेक्शन जोड़ें।",

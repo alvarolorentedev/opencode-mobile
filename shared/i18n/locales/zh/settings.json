@@ -203,6 +203,24 @@
         "signed-out": "登录以授权此服务器。",
         "signing-in": "正在等待浏览器…"
       }
+    },
+    "relay": {
+      "title": "在中继服务器上查找设备",
+      "description": "输入中继服务器地址和账号密码，即可列出已注册的设备。",
+      "url": "中继服务器地址",
+      "urlPlaceholder": "https://relay.example.com:9999",
+      "username": "用户名",
+      "usernamePlaceholder": "中继服务器用户名",
+      "password": "密码",
+      "discover": "发现设备",
+      "environments": "我的设备",
+      "noEnvironments": "该中继服务器上还没有已注册的设备。",
+      "invalidUrl": "请输入有效的中继服务器地址，例如 https://relay.example.com:9999。",
+      "loginFailed": "无法登录中继服务器，请检查用户名和密码。",
+      "loadFailed": "无法从中继服务器获取设备列表。",
+      "offline": "离线",
+      "online": "在线",
+      "signOut": "退出中继服务器账户"
     }
   },
   "providers": {

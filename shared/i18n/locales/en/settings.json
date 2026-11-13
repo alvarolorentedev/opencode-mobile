@@ -156,6 +156,24 @@
       "showValues": "Show values",
       "hideValues": "Hide values"
     },
+    "relay": {
+      "title": "Find machines on your relay",
+      "description": "Enter your relay server URL and credentials to list registered environments.",
+      "url": "Relay URL",
+      "urlPlaceholder": "https://relay.example.com:9999",
+      "username": "Username",
+      "usernamePlaceholder": "relay username",
+      "password": "Password",
+      "discover": "Discover",
+      "environments": "Machines",
+      "noEnvironments": "No machines found on this relay.",
+      "invalidUrl": "Enter a valid relay URL, such as https://relay.example.com:9999.",
+      "loginFailed": "Could not sign in to the relay. Check your username and password.",
+      "loadFailed": "Could not load the machine list from the relay.",
+      "offline": "offline",
+      "online": "online",
+      "signOut": "Sign out of relay account"
+    },
     "reconnectSuccess": "Connected to {{url}}.",
     "certificate": {
       "title": "Private CA certificate",
