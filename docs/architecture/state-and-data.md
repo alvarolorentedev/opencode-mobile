@@ -220,6 +220,7 @@ Current fields:
 - `providerId`
 - `modelId`
 - `enabledModelIds`
+- `knownModelIds` and `autoEnableNewModels` (whether newly discovered models are enabled by default; true by default)
 - `providerModelSelections`
 - `agentModelSelections` (latest explicit model per agent; switching agents restores it)
 - `modelVariantSelections` (server variant ID per model; `null` means the synthetic Default choice)
@@ -944,8 +945,15 @@ providers that are temporarily missing stay stored without being rendered. The
 catalog is only reconciled once models are present. A partial catalog keeps
 unavailable enabled IDs alongside available ones, while a catalog in which none
 of the stored IDs resolve falls back to enabling the full catalog so the picker
-is never left empty. Empty capability refreshes are also not written over the
-last-known-good capabilities cache.
+is never left empty. Newly discovered IDs are enabled when `autoEnableNewModels`
+is true, then recorded in `knownModelIds` so later refreshes preserve deliberate
+model opt-outs. Legacy profiles with an existing enabled selection treat their
+first resolvable catalog as history, preserving earlier opt-outs; later additions
+are enabled when this preference is on. Profiles without an existing selection
+seed their first nonempty catalog only when this preference is on. Without a
+cached catalog, models added while the app was away may be treated as known on
+that first legacy refresh. Empty capability refreshes are also not written over
+the last-known-good capabilities cache.
 
 ## Notification Tracking Data
 

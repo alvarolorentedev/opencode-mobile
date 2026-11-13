@@ -213,6 +213,10 @@
     "apiKey": "Clave de API",
     "pasteApiKey": "Pega tu clave de API",
     "chooseModels": "Elige qué modelos configurados aparecen en el chat. El último modelo que elijas en el chat se mantiene seleccionado para los nuevos chats.",
+    "enableNewModels": {
+      "title": "Activar los modelos nuevos de forma predeterminada",
+      "description": "Activa automáticamente los modelos cuando aparezcan. Puedes desactivar modelos individuales más abajo."
+    },
     "configuredProviders": "Proveedores configurados",
     "addProvider": "Añadir proveedor",
     "connectFirst": "Conéctate primero para cargar los proveedores.",

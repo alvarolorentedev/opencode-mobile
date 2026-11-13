@@ -213,6 +213,10 @@
     "apiKey": "API key",
     "pasteApiKey": "Paste your API key",
     "chooseModels": "Choose which configured models appear in chat. The last model you pick in chat stays selected for new chats.",
+    "enableNewModels": {
+      "title": "Enable new models by default",
+      "description": "Automatically enable models when they first appear. You can still turn individual models off below."
+    },
     "configuredProviders": "Configured providers",
     "addProvider": "Add provider",
     "connectFirst": "Connect first to load providers.",

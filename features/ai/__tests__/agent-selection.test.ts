@@ -1,6 +1,8 @@
 import { describe, expect, it, vi } from 'vitest';
 import { hookRuntime, loadTs } from '../../../tests/helpers/runtime.mjs';
 import { hydrateCapabilitiesSnapshot, persistCapabilitiesSnapshot } from '@/features/ai/services/capabilities-snapshot';
+import { reconcileEnabledModelIds } from '@/features/ai/model/opencode-model-selection';
+import type { ModelOption } from '@/shared/contracts/model-options';
 
 vi.mock('@react-native-async-storage/async-storage', () => ({ default: {} }));
 
@@ -16,7 +18,7 @@ async function capabilitiesHarness() {
     '@/features/ai/model/opencode-auto-model': { getClassifierModelId: () => undefined },
     '@/features/ai/services/model-routing-service': {},
   });
-  let preferences = { mode: 'summary', enabledModelIds: [], providerModelSelections: {}, autoModel: { enabled: false } };
+  let preferences = { mode: 'summary', enabledModelIds: [], knownModelIds: [], autoEnableNewModels: true, providerModelSelections: {}, autoModel: { enabled: false } };
   const write = vi.fn((update: (value: typeof preferences) => typeof preferences) => { preferences = update(preferences); });
   const client = { __opencode: { contract: 'v2' } };
   runtime.mount(useCapabilitiesActions, {
@@ -79,7 +81,7 @@ describe('agent preference reconciliation', () => {  it('waits for hydration, re
     const provider = { id: 'openai', label: 'OpenAI', configured: true };
     const modelA = { id: 'openai/a', providerID: 'openai', modelID: 'a', label: 'A', providerLabel: 'OpenAI', variants: [], supportsReasoning: false, supportsAttachments: true, inputModalities: ['text'], supportsToolCalls: true };
     const modelB = { ...modelA, id: 'openai/b', modelID: 'b', label: 'B' };
-    let preferences: any = { mode: 'build', enabledModelIds: [], providerModelSelections: {}, agentModelSelections: {}, modelVariantSelections: {}, recentModelIds: [], autoModel: { enabled: false } };
+    let preferences: any = { mode: 'build', enabledModelIds: [], knownModelIds: [], autoEnableNewModels: true, providerModelSelections: {}, agentModelSelections: {}, modelVariantSelections: {}, recentModelIds: [], autoModel: { enabled: false } };
     const write = vi.fn((update: (value: any) => any) => { preferences = update(preferences); });
     const client = { __opencode: { contract: 'v2' } };
     runtime.mount(useCapabilitiesActions, {
@@ -117,5 +119,92 @@ describe('agent capability snapshots', () => {
     const stale = vi.fn();
     await hydrateCapabilitiesSnapshot('scope', '/a', stale, () => false, storage);
     expect(stale).not.toHaveBeenCalled();
+  });
+});
+
+describe('new model preference reconciliation', () => {
+  const model = (id: string): ModelOption => ({
+    id,
+    label: id,
+    providerID: 'google',
+    providerLabel: 'Google',
+    modelID: id.slice('google/'.length),
+    variants: [],
+    supportsReasoning: false,
+    supportsAttachments: true,
+    inputModalities: ['text'],
+    supportsToolCalls: true,
+  });
+  const oldModels = [model('google/gemini-3'), model('google/gemini-3-flash')];
+
+  it('enables newly discovered models by default without re-enabling a known opt-out', () => {
+    const initial = reconcileEnabledModelIds(oldModels, [], [], true);
+    expect(initial).toEqual({
+      enabledModelIds: ['google/gemini-3', 'google/gemini-3-flash'],
+      knownModelIds: ['google/gemini-3', 'google/gemini-3-flash'],
+    });
+
+    const refreshed = reconcileEnabledModelIds(
+      [...oldModels, model('google/gemini-4-carbon')],
+      ['google/gemini-3'],
+      initial.knownModelIds,
+      true,
+    );
+    expect(refreshed).toEqual({
+      enabledModelIds: ['google/gemini-3', 'google/gemini-4-carbon'],
+      knownModelIds: ['google/gemini-3', 'google/gemini-3-flash', 'google/gemini-4-carbon'],
+    });
+  });
+
+  it('preserves legacy opt-outs while recording the first catalog as history', () => {
+    const legacy = reconcileEnabledModelIds(
+      [...oldModels, model('google/gemini-4-carbon')],
+      ['google/gemini-3'],
+      [],
+      true,
+    );
+    expect(legacy).toEqual({
+      enabledModelIds: ['google/gemini-3'],
+      knownModelIds: ['google/gemini-3', 'google/gemini-3-flash', 'google/gemini-4-carbon'],
+    });
+
+    const refreshed = reconcileEnabledModelIds(
+      [...oldModels, model('google/gemini-4-carbon'), model('google/gemini-5')],
+      legacy.enabledModelIds,
+      legacy.knownModelIds,
+      true,
+    );
+    expect(refreshed.enabledModelIds).toEqual(['google/gemini-3', 'google/gemini-5']);
+  });
+
+  it('records new models without enabling them when the preference is off', () => {
+    const known = oldModels.map(({ id }) => id);
+    const discovered = reconcileEnabledModelIds(
+      [...oldModels, model('google/gemini-4-hydrogen')],
+      ['google/gemini-3'],
+      known,
+      false,
+    );
+    expect(discovered.enabledModelIds).toEqual(['google/gemini-3']);
+    expect(discovered.knownModelIds).toContain('google/gemini-4-hydrogen');
+  });
+
+  it('keeps the first catalog disabled when auto-enable is off', () => {
+    expect(reconcileEnabledModelIds(oldModels, [], [], false)).toEqual({
+      enabledModelIds: [],
+      knownModelIds: ['google/gemini-3', 'google/gemini-3-flash'],
+    });
+  });
+
+  it('preserves an intentional empty selection after every model is manually disabled', () => {
+    const known = oldModels.map(({ id }) => id);
+    expect(reconcileEnabledModelIds(oldModels, [], known, true)).toEqual({ enabledModelIds: [], knownModelIds: known });
+  });
+
+  it('preserves enabled and known IDs through empty and partial catalogs', () => {
+    const known = oldModels.map(({ id }) => id);
+    const enabled = ['google/gemini-3', 'google/gemini-3-flash'];
+    expect(reconcileEnabledModelIds([], enabled, known, true)).toEqual({ enabledModelIds: enabled, knownModelIds: known });
+    expect(reconcileEnabledModelIds([oldModels[0]], enabled, known, true)).toEqual({ enabledModelIds: enabled, knownModelIds: known });
   });
 });

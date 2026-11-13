@@ -182,6 +182,8 @@ describe('connection profiles', () => {
           providerId: 'openai',
           modelId: 'gpt-5',
           enabledModelIds: ['openai/gpt-5'],
+          knownModelIds: ['openai/gpt-5', 'openai/gpt-4.1'],
+          autoEnableNewModels: false,
           providerModelSelections: { openai: 'gpt-5' },
           modelVariantSelections: { 'openai/gpt-5': 'high', 'openai/other': null },
           recentModelIds: ['openai/gpt-5'],
@@ -199,6 +201,8 @@ describe('connection profiles', () => {
           providerId: 'openai',
           modelId: 'gpt-5',
           enabledModelIds: ['openai/gpt-5'],
+          knownModelIds: ['openai/gpt-5', 'openai/gpt-4.1'],
+          autoEnableNewModels: false,
           providerModelSelections: { openai: 'gpt-5' },
           modelVariantSelections: { 'openai/gpt-5': 'high', 'openai/other': null },
           recentModelIds: ['openai/gpt-5'],
@@ -214,6 +218,8 @@ describe('connection profiles', () => {
         providerId: 'openai',
         modelId: 'gpt-5',
         enabledModelIds: ['openai/gpt-5'],
+        knownModelIds: ['openai/gpt-5', 'openai/gpt-4.1'],
+        autoEnableNewModels: false,
         providerModelSelections: { openai: 'gpt-5' },
         agentModelSelections: { plan: 'openai/gpt-5' },
         modelVariantSelections: { 'openai/gpt-5': 'high' },
@@ -225,6 +231,8 @@ describe('connection profiles', () => {
         providerId: 'openai',
         modelId: 'gpt-5',
         enabledModelIds: ['openai/gpt-5'],
+        knownModelIds: ['openai/gpt-5', 'openai/gpt-4.1'],
+        autoEnableNewModels: false,
         providerModelSelections: { openai: 'gpt-5' },
         agentModelSelections: { plan: 'openai/gpt-5' },
         modelVariantSelections: { 'openai/gpt-5': 'high' },
@@ -250,6 +258,8 @@ describe('connection profiles', () => {
       assert.equal(toConnectionProfile({ ...base, modelPreferences: { providerId: 5 } }), undefined);
       assert.equal(toConnectionProfile({ ...base, modelPreferences: { modelId: {} } }), undefined);
       assert.equal(toConnectionProfile({ ...base, modelPreferences: { enabledModelIds: [1] } }), undefined);
+      assert.equal(toConnectionProfile({ ...base, modelPreferences: { knownModelIds: [1] } }), undefined);
+      assert.equal(toConnectionProfile({ ...base, modelPreferences: { autoEnableNewModels: 'yes' } }), undefined);
       assert.equal(toConnectionProfile({ ...base, modelPreferences: { providerModelSelections: { a: 1 } } }), undefined);
       assert.equal(toConnectionProfile({ ...base, modelPreferences: { modelVariantSelections: { a: 1 } } }), undefined);
       assert.equal(toConnectionProfile({ ...base, modelPreferences: { recentModelIds: 'x' } }), undefined);

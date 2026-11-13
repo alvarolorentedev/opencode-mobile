@@ -121,25 +121,40 @@ export function getModelIdForProvider(models: ModelOption[], providerId?: string
   return undefined;
 }
 
-export function getEnabledModelIds(models: ModelOption[], storedModelIds?: string[]) {
-  const stored = storedModelIds ?? [];
+export function reconcileEnabledModelIds(
+  models: ModelOption[],
+  storedEnabledModelIds: string[] = [],
+  storedKnownModelIds: string[] = [],
+  autoEnableNewModels = true,
+) {
   // A reconnect can briefly expose no models. Do not interpret that as "the
   // user enabled nothing" or erase choices for providers that are still loading.
   if (!models.length) {
-    return [...stored];
+    return { enabledModelIds: [...storedEnabledModelIds], knownModelIds: [...storedKnownModelIds] };
   }
 
   const available = models.map((model) => model.id);
-  if (!stored.length) {
-    return available;
-  }
-  // Keep stored IDs that are currently unavailable alongside the ones that
-  // resolved. The picker only renders available models, so a provider that is
-  // still loading can return without losing its enabled selection. If none of
-  // the stored IDs exist at all, fall back to the full catalog so the user is
-  // not left with an empty picker.
   const availableModelIds = new Set(available);
-  return stored.some((modelId) => availableModelIds.has(modelId)) ? [...new Set(stored)] : available;
+  const known = new Set(storedKnownModelIds);
+  const enabled = new Set(storedEnabledModelIds);
+  const hasAvailableSelection = storedEnabledModelIds.some((id) => availableModelIds.has(id));
+
+  // Seed new profiles, preserve explicit opt-outs, and keep the old fallback
+  // when a previously enabled catalog no longer resolves at all.
+  if ((!storedKnownModelIds.length && !storedEnabledModelIds.length && autoEnableNewModels)
+    || (storedEnabledModelIds.length > 0 && !hasAvailableSelection)) {
+    enabled.clear();
+    available.forEach((id) => enabled.add(id));
+  // shortcut: first legacy catalog may miss additions from downtime; migrate cached catalog IDs if this matters.
+  } else if (autoEnableNewModels && storedKnownModelIds.length > 0) {
+    available.filter((id) => !known.has(id)).forEach((id) => enabled.add(id));
+  }
+
+  // shortcut: retain known IDs for temporarily absent providers so returning models keep their opt-outs; prune only if catalog history becomes a storage concern.
+  return {
+    enabledModelIds: [...enabled],
+    knownModelIds: [...new Set([...storedKnownModelIds, ...available])],
+  };
 }
 
 export function recordRecentModelId(recentModelIds: string[], modelId?: string) {

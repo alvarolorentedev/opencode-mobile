@@ -70,6 +70,8 @@ const ChatPreferencesSchema = z.object({
   hideSubagentChats: optionalBoolean,
   showWidgetPreviews: optionalBoolean,
   enabledModelIds: z.array(z.string()).optional().catch(undefined),
+  knownModelIds: z.array(z.string()).optional().catch(undefined),
+  autoEnableNewModels: optionalBoolean,
   recentModelIds: z.array(z.string()).optional().catch(undefined),
   providerModelSelections: z.record(z.string(), z.string()).optional().catch(undefined),
   agentModelSelections: z.record(z.string(), z.string()).optional().catch(undefined),

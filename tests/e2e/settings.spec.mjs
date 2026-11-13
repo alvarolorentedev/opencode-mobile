@@ -40,6 +40,12 @@ test('settings can configure an additional provider against the fake server @smo
 
   await goToTab(page, 'Settings');
   await ensureAiSection(page);
+  const autoEnableNewModels = page.getByRole('switch', { name: 'Enable new models by default', exact: true });
+  await expect(autoEnableNewModels).toHaveAttribute('aria-checked', 'true');
+  await autoEnableNewModels.click();
+  await expect(autoEnableNewModels).toHaveAttribute('aria-checked', 'false');
+  await autoEnableNewModels.click();
+  await expect(autoEnableNewModels).toHaveAttribute('aria-checked', 'true');
   await expect(page.getByText('Configured providers')).toBeVisible();
   await page.getByTestId('settings-add-provider-button').click();
   await expect(page.getByRole('radio', { name: 'OpenRouter', exact: true }).or(page.getByRole('button', { name: 'OpenRouter', exact: true }))).toBeVisible();
@@ -83,8 +89,7 @@ test('chat model picker searches and groups models by provider', async ({ page, 
   await page.getByPlaceholder('Paste your API key').fill('sk-test-openrouter');
   await page.getByTestId('settings-provider-save-button').click();
   await expect(page.getByText('Configure OpenRouter')).not.toBeVisible({ timeout: 15_000 });
-  await page.getByRole('button', { name: 'OpenRouter 0 of 1 selected' }).click();
-  await page.getByText('Auto', { exact: true }).click();
+  await expect(page.getByRole('button', { name: 'OpenRouter 1 of 1 selected' })).toBeVisible();
 
   await goToTab(page, 'Chat');
   await page.getByTestId('chat-model-picker-trigger').click();

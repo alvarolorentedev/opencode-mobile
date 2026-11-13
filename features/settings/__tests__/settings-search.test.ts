@@ -46,6 +46,9 @@ describe('settings search', () => {
     expect(labels('support')).not.toContain(t('settings:autoUpdate.enable.title'));
     expect(labels('ai')).not.toContain(t('settings:modelRouting.enable.title'));
     expect(labels('ai', { autoModel: true })).toContain(t('settings:modelRouting.enable.title'));
+    expect(labels('ai')).toContain(t('settings:providers.enableNewModels.title'));
+    expect(searchSettings([{ id: 'ai', title: 'AI & providers', targets: settingsTargets(t, 'ai', options) }], 'new models')[0].target?.label)
+      .toBe(t('settings:providers.enableNewModels.title'));
     expect(labels('notifications')).not.toContain(t('settings:notifications.batterySaver'));
     expect(labels('notifications', { android: true })).toContain(t('settings:notifications.batterySaver'));
     expect(labels('voice', { localInput: true })).not.toContain(t('settings:voice.wakePhrase.label'));

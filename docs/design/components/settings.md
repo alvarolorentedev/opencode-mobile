@@ -174,6 +174,7 @@ Responsibility:
 - allow removing configured provider credentials
 - expanding a provider reveals its OpenCode 2 labeled accounts (active account marked, switch or remove) and its models
 - several providers can stay expanded together
+- choose whether newly discovered models are enabled by default
 - allow toggling enabled model IDs
 
 #### `AutoModelSection`

@@ -213,6 +213,10 @@
     "apiKey": "API 密钥",
     "pasteApiKey": "粘贴你的 API 密钥",
     "chooseModels": "选择在聊天中显示哪些已配置的模型。你在聊天中最后选择的模型会保留用于新聊天。",
+    "enableNewModels": {
+      "title": "默认启用新模型",
+      "description": "新模型出现时自动启用。你仍可在下方单独关闭模型。"
+    },
     "configuredProviders": "已配置的提供商",
     "addProvider": "添加提供商",
     "connectFirst": "请先连接以加载提供商。",

@@ -213,6 +213,10 @@
     "apiKey": "API キー",
     "pasteApiKey": "API キーを貼り付け",
     "chooseModels": "チャットに表示する設定済みモデルを選択します。チャットで最後に選んだモデルが新しいチャットでも選択されたままになります。",
+    "enableNewModels": {
+      "title": "新しいモデルをデフォルトで有効にする",
+      "description": "新しいモデルが追加されたときに自動的に有効にします。下で個別に無効にできます。"
+    },
     "configuredProviders": "設定済みプロバイダー",
     "addProvider": "プロバイダーを追加",
     "connectFirst": "まず接続してプロバイダーを読み込んでください。",

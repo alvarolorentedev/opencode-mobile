@@ -8,7 +8,7 @@ import type { Config , ProviderAuthValues } from '@/shared/protocol/opencode/typ
 import type { CachedCapabilities } from '@/features/ai/services/capabilities-snapshot';
 import { getClassifierModelId } from '@/features/ai/model/opencode-auto-model';
 import type { ModelOption } from '@/shared/contracts/model-options';
-import { getConfiguredProviderIds, getEnabledModelIds, getInitialMode, getInitialModelId, getInitialProviderId, getModelIdForProvider, getVisibleModels, recordRecentModelId } from '@/features/ai/model/opencode-model-selection';
+import { getConfiguredProviderIds, getInitialMode, getInitialModelId, getInitialProviderId, getModelIdForProvider, getVisibleModels, reconcileEnabledModelIds, recordRecentModelId } from '@/features/ai/model/opencode-model-selection';
 import type { ChatPreferences } from '@/shared/preferences/opencode-preferences';
 import type { ProviderOption } from '@/features/ai/model/types';
 import { useQueryClient } from '@tanstack/react-query';
@@ -138,7 +138,12 @@ export function useCapabilitiesActions({
       if (!isCurrentClient(client)) return current;
       const configuredProviderIds = getConfiguredProviderIds(result.config, result.connected, result.models);
       const configuredModels = result.models.filter((model) => configuredProviderIds.has(model.providerID));
-      const enabledModelIds = getEnabledModelIds(configuredModels, current.enabledModelIds);
+      const { enabledModelIds, knownModelIds } = reconcileEnabledModelIds(
+        configuredModels,
+        current.enabledModelIds,
+        current.knownModelIds,
+        current.autoEnableNewModels,
+      );
       const enabledModels = configuredModels.filter((model) => enabledModelIds.includes(model.id));
       const mode = getInitialMode(result.agents, result.config, current.mode) ?? current.mode;
       // Existing installs stored one global model. Seed it to the current agent
@@ -166,6 +171,7 @@ export function useCapabilitiesActions({
         ),
         agentModelSelections,
         enabledModelIds,
+        knownModelIds,
         autoApprove: client.__opencode.contract === 'v2' ? current.autoApprove : false,
       };
     });
@@ -272,7 +278,15 @@ export function useCapabilitiesActions({
     setChatPreferences((current) => {
       const configuredProviderIds = new Set(availableProviders.filter((provider) => provider.configured).map((provider) => provider.id));
       const configuredModels = availableModels.filter((model) => configuredProviderIds.has(model.providerID));
-      const enabledModelIds = getEnabledModelIds(configuredModels, patch.enabledModelIds ?? current.enabledModelIds);
+      const updateKnownModelIds = patch.enabledModelIds !== undefined && !current.knownModelIds.length
+        ? configuredModels.map((model) => model.id)
+        : current.knownModelIds;
+      const { enabledModelIds, knownModelIds } = reconcileEnabledModelIds(
+        configuredModels,
+        patch.enabledModelIds ?? current.enabledModelIds,
+        updateKnownModelIds,
+        current.autoEnableNewModels,
+      );
       const enabledModels = configuredModels.filter((model) => enabledModelIds.includes(model.id));
       const nextMode = patch.mode ?? current.mode;
       const switchingMode = patch.mode !== undefined && patch.mode !== current.mode;
@@ -310,6 +324,7 @@ export function useCapabilitiesActions({
         modelId: nextModelId,
         agentModelSelections: nextAgentModelSelections,
         enabledModelIds,
+        knownModelIds,
         recentModelIds: recordRecentModelId(current.recentModelIds, patch.modelId),
         providerModelSelections:
           safeProviderId && nextModelId

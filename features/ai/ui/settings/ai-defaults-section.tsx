@@ -12,13 +12,13 @@ import { Pressable, StyleSheet, Text as NativeText, View } from 'react-native';
 import { CatalogSelect } from '@/shared/ui/catalog-select';
 import { renderProviderIcon } from '@/features/ai/ui/provider-icon';
 import { SettingTarget } from '@/shared/ui/settings/settings-panel';
+import { Palette, SettingSwitchRow } from '@/shared/ui/settings/setting-rows';
 import { Fonts } from '@/shared/ui/theme/theme';
 import { getAddableProviders, getProviderCopy } from '@/features/ai/model/settings-utils';
 import type { ServerContract } from '@/shared/protocol/opencode/client';
 import type { ModelOption } from '@/shared/contracts/model-options';
 import type { ProviderAuthMethod } from '@/shared/protocol/opencode/types';
 import type { ProviderOption } from '@/features/ai/model/types';
-import { Palette } from '@/shared/ui/settings/setting-rows';
 
 type AiDefaultsSectionProps = {
   availableModels: ModelOption[];
@@ -26,10 +26,12 @@ type AiDefaultsSectionProps = {
   configuredProviders: ProviderOption[];
   contract: ServerContract;
   enabledModelIds: Set<string>;
+  autoEnableNewModels: boolean;
   expandedProviderIds: ReadonlySet<string>;
   onActivateProviderAccount: (credentialId: string) => void;
   onToggleProvider: (providerId: string) => void;
   onModelToggle: (modelId: string, checked: boolean) => void;
+  onAutoEnableNewModelsChange: (enabled: boolean) => void;
   onRemoveProvider: (providerId: string) => void;
   onRemoveProviderAccount: (credentialId: string) => void;
   onStartProviderConfiguration: (providerId: string) => void;
@@ -43,10 +45,12 @@ export function AiDefaultsSection({
   configuredProviders,
   contract,
   enabledModelIds,
+  autoEnableNewModels,
   expandedProviderIds,
   onActivateProviderAccount,
   onToggleProvider,
   onModelToggle,
+  onAutoEnableNewModelsChange,
   onRemoveProvider,
   onRemoveProviderAccount,
   onStartProviderConfiguration,
@@ -66,6 +70,13 @@ export function AiDefaultsSection({
   return (
     <View className={cn(stylesClasses.section)}>
         <Text className={cn("text-muted-foreground")} variant="description">{t('settings:providers.chooseModels')}</Text>
+      <SettingSwitchRow
+        title={t('settings:providers.enableNewModels.title')}
+        description={t('settings:providers.enableNewModels.description')}
+        value={autoEnableNewModels}
+        onValueChange={onAutoEnableNewModelsChange}
+        palette={palette}
+      />
         <SettingTarget label={t('settings:providers.configuredProviders')}><View className={cn(stylesClasses.providerHeader)}>
           <Text className={cn("text-foreground")} variant="description">{t('settings:providers.configuredProviders')}</Text>
           {addableProviders.length > 0 ? (

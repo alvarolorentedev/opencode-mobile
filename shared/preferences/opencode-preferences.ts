@@ -57,6 +57,8 @@ export type ChatPreferences = {
   providerId?: string;
   modelId?: string;
   enabledModelIds: string[];
+  knownModelIds: string[];
+  autoEnableNewModels: boolean;
   providerModelSelections: Record<string, string>;
   // Latest model chosen for each agent. Switching agents restores this entry;
   // an agent without one lets the server/agent default apply.
@@ -118,6 +120,8 @@ export const defaultChatPreferences: ChatPreferences = {
   slimInterface: false,
   openingScreen: 'chat',
   enabledModelIds: [],
+  knownModelIds: [],
+  autoEnableNewModels: true,
   providerModelSelections: {},
   agentModelSelections: {},
   modelVariantSelections: {},

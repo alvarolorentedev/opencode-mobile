@@ -41,7 +41,7 @@ export function settingsTargets(t: TFunction, section: string, options: {
         ...(options.speakerAvailable ? [field('voice.localTts.speaker')] : [])] : [])] : []),
       ...(!options.localInput ? [field('voice.check.title', 'voice-more')] : []),
     ];
-    case 'ai': return [field('providers.configuredProviders'),
+    case 'ai': return [field('providers.configuredProviders'), field('providers.enableNewModels.title', undefined, 'providers.enableNewModels.description'),
       ...(options.autoModel ? [field('modelRouting.enable.title', 'auto-model', 'modelRouting.enable.description'), field('modelRouting.classifier.label', 'auto-model'),
         ...(options.classifier === 'server' ? [field('modelRouting.server.modelLabel', 'auto-model')] : []),
         ...['simple', 'standard', 'complex'].map((tier) => field(`modelRouting.tiers.${tier}.label`, 'auto-model')),

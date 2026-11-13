@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'vitest';
-import { getConfiguredProviderIds, getEnabledModelIds, getInitialMode, getInitialModelId, getInitialProviderId, getModelIdForProvider, getSelectedModelVariant, recordRecentModelId, resolveConfigModelId } from '@/features/ai/model/opencode-model-selection';
+import { getConfiguredProviderIds, getInitialMode, getInitialModelId, getInitialProviderId, getModelIdForProvider, getSelectedModelVariant, reconcileEnabledModelIds, recordRecentModelId, resolveConfigModelId } from '@/features/ai/model/opencode-model-selection';
 import { areSessionListsEqual, areSessionStatusMapsEqual, collectDescendantSessionIds, mergeSessionStatuses, RETRY_STATUS_STALE_MS } from '@/features/sessions/model/session-utils';
 import { buildOpencodeProjects, resolveActiveProject } from '@/features/projects/model/project-utils';
 import type { ModelOption } from '@/shared/contracts/model-options';
@@ -120,17 +120,25 @@ describe('provider model selection utilities', () => {
     assert.equal(getInitialMode(agents, undefined, 'general'), 'build');
     assert.equal(getInitialProviderId([], { model: 'openai/gpt' }, 'opencode', 'opencode/deepseek'), 'opencode');
     assert.equal(getInitialModelId([], { model: 'openai/gpt' }, 'opencode/deepseek'), 'opencode/deepseek');
-    assert.deepEqual(getEnabledModelIds([], ['opencode/deepseek']), ['opencode/deepseek']);
-    assert.deepEqual(getEnabledModelIds([], undefined), []);
+    assert.deepEqual(reconcileEnabledModelIds([], ['opencode/deepseek']), { enabledModelIds: ['opencode/deepseek'], knownModelIds: [] });
+    assert.deepEqual(reconcileEnabledModelIds([], undefined), { enabledModelIds: [], knownModelIds: [] });
 
-    // A partial catalog keeps an unavailable stored ID so a provider that is
-    // still loading can return with its previous selection intact. When none of
-    // the stored IDs resolve, the full catalog is enabled instead of leaving the
-    // picker empty.
-    assert.deepEqual(getEnabledModelIds(models, []), ['openai/gpt', 'opencode/deepseek']);
-    assert.deepEqual(getEnabledModelIds(models, ['opencode/deepseek']), ['opencode/deepseek']);
-    assert.deepEqual(getEnabledModelIds([models[0]], ['openai/gpt', 'opencode/deepseek']), ['openai/gpt', 'opencode/deepseek']);
-    assert.deepEqual(getEnabledModelIds([models[0]], ['opencode/deepseek']), ['openai/gpt']);
-    assert.deepEqual(getEnabledModelIds(models, ['opencode/deepseek', 'opencode/deepseek']), ['opencode/deepseek']);
+    // Legacy selections treat their first resolvable catalog as known, while
+    // a catalog with no matching stored IDs keeps the existing full-catalog fallback.
+    assert.deepEqual(reconcileEnabledModelIds(models, []), {
+      enabledModelIds: ['openai/gpt', 'opencode/deepseek'], knownModelIds: ['openai/gpt', 'opencode/deepseek'],
+    });
+    assert.deepEqual(reconcileEnabledModelIds(models, ['opencode/deepseek']), {
+      enabledModelIds: ['opencode/deepseek'], knownModelIds: ['openai/gpt', 'opencode/deepseek'],
+    });
+    assert.deepEqual(reconcileEnabledModelIds([models[0]], ['openai/gpt', 'opencode/deepseek'], models.map(({ id }) => id)), {
+      enabledModelIds: ['openai/gpt', 'opencode/deepseek'], knownModelIds: ['openai/gpt', 'opencode/deepseek'],
+    });
+    assert.deepEqual(reconcileEnabledModelIds([models[0]], ['opencode/deepseek'], models.map(({ id }) => id)), {
+      enabledModelIds: ['openai/gpt'], knownModelIds: ['openai/gpt', 'opencode/deepseek'],
+    });
+    assert.deepEqual(reconcileEnabledModelIds(models, ['opencode/deepseek', 'opencode/deepseek'], models.map(({ id }) => id)), {
+      enabledModelIds: ['opencode/deepseek'], knownModelIds: ['openai/gpt', 'opencode/deepseek'],
+    });
   });
 });

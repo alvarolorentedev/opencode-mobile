@@ -64,10 +64,12 @@ export function AiSettingsPanel() {
         configuredProviders={configuredProviders}
         contract={serverCapabilities.contract}
         enabledModelIds={enabledModelIds}
+        autoEnableNewModels={chatPreferences.autoEnableNewModels}
         expandedProviderIds={expandedProviderIds}
         onActivateProviderAccount={(credentialId) => void providerAccounts.activate(credentialId)}
         onToggleProvider={toggleProvider}
         onModelToggle={handleModelToggle}
+        onAutoEnableNewModelsChange={(autoEnableNewModels) => updateChatPreferences({ autoEnableNewModels })}
         onRemoveProvider={handleRemoveProvider}
         onRemoveProviderAccount={(credentialId) => void providerAccounts.remove(credentialId)}
         onStartProviderConfiguration={providerConfig.startProviderConfiguration}
