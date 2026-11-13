@@ -22,6 +22,7 @@
     "couldNotRevert": "Не удалось откатить сессию.",
     "couldNotRestore": "Не удалось восстановить сессию.",
     "couldNotCancelPending": "Не удалось отменить отложенное сообщение.",
+    "couldNotOpenSubagent": "Не удалось открыть чат субагента.",
     "couldNotUpdateAutoApprove": "Не удалось изменить автоодобрение.",
     "sendError": {
       "title": "Не удалось отправить в OpenCode",
@@ -70,6 +71,13 @@
     "collapseActivity": "Свернуть активность",
     "expandItem": "Развернуть {{item}}",
     "collapseItem": "Свернуть {{item}}"
+  },
+  "subagent": {
+    "open": "Открыть чат субагента",
+    "running": "Работает",
+    "completed": "Завершено",
+    "failed": "Ошибка",
+    "cancelled": "Отменено"
   },
   "cards": {
     "respondToContinue": "Требуется одобрение",
@@ -382,6 +390,7 @@
     "grep": "Grep",
     "plan": "План",
     "task": "Задача",
+    "subagent": "Субагент",
     "skill": "Навык",
     "write": "Запись",
     "thought": "Размышление",

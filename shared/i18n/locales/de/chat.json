@@ -23,6 +23,7 @@
     "couldNotRevert": "Die Sitzung konnte nicht zurückgesetzt werden.",
     "couldNotRestore": "Die Sitzung konnte nicht wiederhergestellt werden.",
     "couldNotCancelPending": "Diese ausstehende Nachricht konnte nicht verworfen werden.",
+    "couldNotOpenSubagent": "Der Subagent-Chat konnte nicht geöffnet werden.",
     "couldNotUpdateAutoApprove": "Die automatische Genehmigung konnte nicht aktualisiert werden.",
     "sendError": {
       "title": "Senden in OpenCode fehlgeschlagen",
@@ -70,6 +71,13 @@
     "collapseActivity": "Aktivität reduzieren",
     "expandItem": "{{item}} erweitern",
     "collapseItem": "{{item}} reduzieren"
+  },
+  "subagent": {
+    "open": "Subagent-Chat öffnen",
+    "running": "Arbeitet",
+    "completed": "Abgeschlossen",
+    "failed": "Fehlgeschlagen",
+    "cancelled": "Abgebrochen"
   },
   "cards": {
     "respondToContinue": "Freigabe erforderlich",
@@ -382,6 +390,7 @@
     "grep": "Grep",
     "plan": "Plan",
     "task": "Aufgabe",
+    "subagent": "Subagent",
     "skill": "Skill",
     "write": "Schreiben",
     "thought": "Gedanke",

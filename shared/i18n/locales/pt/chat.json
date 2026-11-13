@@ -23,6 +23,7 @@
     "couldNotRevert": "Não foi possível reverter a sessão.",
     "couldNotRestore": "Não foi possível restaurar a sessão.",
     "couldNotCancelPending": "Não foi possível descartar essa mensagem pendente.",
+    "couldNotOpenSubagent": "Não foi possível abrir a conversa do subagente.",
     "couldNotUpdateAutoApprove": "Não foi possível atualizar a aprovação automática.",
     "sendError": {
       "title": "Falha no envio do OpenCode",
@@ -70,6 +71,13 @@
     "collapseActivity": "Recolher atividade",
     "expandItem": "Expandir {{item}}",
     "collapseItem": "Recolher {{item}}"
+  },
+  "subagent": {
+    "open": "Abrir conversa do subagente",
+    "running": "Trabalhando",
+    "completed": "Concluído",
+    "failed": "Falhou",
+    "cancelled": "Cancelado"
   },
   "cards": {
     "respondToContinue": "Aprovação necessária",
@@ -382,6 +390,7 @@
     "grep": "Grep",
     "plan": "Plano",
     "task": "Tarefa",
+    "subagent": "Subagente",
     "skill": "Habilidade",
     "write": "Escrever",
     "thought": "Pensamento",

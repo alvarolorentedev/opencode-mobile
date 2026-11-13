@@ -98,6 +98,86 @@ export function isServerNoticeMetadata(metadata?: Record<string, unknown>) {
   return Boolean(metadata && Object.keys(metadata).length > 0 && !('displayText' in metadata));
 }
 
+type NoticeSource = 'shell' | 'subagent';
+
+// Background shell and subagent completions are model-facing notices. Their text
+// is a server-owned wrapper around the content; the transcript uses the
+// structured metadata instead of rendering the markup.
+function syntheticNoticeSource(text: string, metadata?: Record<string, unknown>): NoticeSource | undefined {
+  const source = stringField(metadata?.source);
+  if (source === 'shell' || source === 'subagent') return source;
+  const markup = text.trimStart();
+  if (markup.startsWith('<shell')) return 'shell';
+  if (markup.startsWith('<subagent')) return 'subagent';
+  return undefined;
+}
+
+function noticeBody(text: string, tag: NoticeSource) {
+  const open = text.indexOf(`<${tag}`);
+  const close = text.lastIndexOf(`</${tag}>`);
+  if (open === -1 || close <= open) return '';
+  const end = text.indexOf('>', open);
+  return end === -1 ? '' : text.slice(end + 1, close).trim();
+}
+
+function noticeAttribute(text: string, name: string) {
+  return text.match(new RegExp(`\\b${name}="([^"]*)"`))?.[1];
+}
+
+function shellNoticePart(message: V2Message, sessionID: string, text: string, metadata: Record<string, unknown> | undefined, description: string): ToolPart {
+  const rawState = stringField(metadata?.state, noticeAttribute(text, 'state') ?? 'completed');
+  const command = description.trim() || noticeAttribute(text, 'command')?.trim() || 'Shell';
+  const body = noticeBody(text, 'shell');
+  const exit = typeof metadata?.exit === 'number' ? metadata.exit : undefined;
+  const failed = (rawState !== 'completed' && rawState !== 'running')
+    || metadata?.timeout === true
+    || metadata?.killed === true
+    || (exit !== undefined && exit !== 0);
+  const stateMetadata = { ...(metadata ?? {}), notice: true };
+  return {
+    id: `${message.id}-shell-notice`,
+    sessionID,
+    messageID: message.id,
+    type: 'tool',
+    callID: message.id,
+    tool: 'shell',
+    state: rawState === 'running'
+      ? { status: 'running', input: { command }, title: command, metadata: stateMetadata }
+      : failed
+        ? { status: 'error', input: { command }, error: body || 'Shell failed', metadata: stateMetadata }
+        : { status: 'completed', input: { command }, output: body, title: command, metadata: stateMetadata },
+  };
+}
+
+function subagentNoticePart(message: V2Message, sessionID: string, text: string, metadata: Record<string, unknown> | undefined, description: string): ToolPart {
+  const rawState = stringField(metadata?.state, noticeAttribute(text, 'state') ?? 'completed');
+  const childID = stringField(metadata?.childID, noticeAttribute(text, 'sessionID') ?? '');
+  const agent = stringField(metadata?.agent);
+  const task = description.trim() || noticeAttribute(text, 'description')?.trim() || '';
+  const status = rawState === 'error'
+    ? 'failed'
+    : rawState === 'cancelled'
+      ? 'cancelled'
+      : rawState === 'running'
+        ? 'running'
+        : 'completed';
+  return {
+    id: `${message.id}-subagent-notice`,
+    sessionID,
+    messageID: message.id,
+    type: 'tool',
+    callID: message.id,
+    tool: 'subagent',
+    state: {
+      status: 'completed',
+      input: { ...(agent ? { agent } : {}), ...(task ? { description: task } : {}) },
+      output: noticeBody(text, 'subagent'),
+      title: task || agent || 'subagent',
+      metadata: { ...(childID ? { sessionID: childID } : {}), status, ...(agent ? { agent } : {}), ...(task ? { description: task } : {}), notice: true },
+    },
+  };
+}
+
 export function toMessageRecord(message: V2Message, sessionID: string): SessionMessageRecord | undefined {
   const type = stringField(message.type);
   const created = numberField((message.time as Record<string, unknown> | undefined)?.created);
@@ -204,10 +284,21 @@ export function toMessageRecord(message: V2Message, sessionID: string): SessionM
   if (type === 'synthetic') {
     const record = message as Record<string, unknown>;
     const text = stringField(record.text);
-    if (isInternalSyntheticNotice({ metadata: record.metadata as Record<string, unknown> | undefined, text })) {
+    const metadata = record.metadata as Record<string, unknown> | undefined;
+    if (isInternalSyntheticNotice({ metadata, text })) {
       // Keep the record in the paginated window so inbox notices still resolve
       // as delivered, but render nothing.
       return { info: { ...baseInfo, role: 'assistant', providerID: '', modelID: '' }, parts: [] };
+    }
+    const source = syntheticNoticeSource(text, metadata);
+    if (source) {
+      const description = stringField(record.description);
+      return {
+        info: { ...baseInfo, role: 'assistant', providerID: '', modelID: '', synthetic: true },
+        parts: [source === 'shell'
+          ? shellNoticePart(message, sessionID, text, metadata, description)
+          : subagentNoticePart(message, sessionID, text, metadata, description)],
+      };
     }
     return {
       info: { ...baseInfo, role: 'assistant', providerID: '', modelID: '', synthetic: true },
@@ -219,6 +310,7 @@ export function toMessageRecord(message: V2Message, sessionID: string): SessionM
     const record = message as Record<string, unknown>;
     const status = stringField(record.status, 'running');
     const command = stringField(record.command);
+    const shellID = stringField(record.shellID);
     const output = record.output && typeof record.output === 'object' ? record.output as Record<string, unknown> : {};
     const outputText = stringField(output.output);
     const exit = numberField(record.exit);
@@ -229,9 +321,9 @@ export function toMessageRecord(message: V2Message, sessionID: string): SessionM
       sessionID,
       messageID: message.id,
       type: 'tool' as const,
-      callID: message.id,
+      callID: shellID || message.id,
       tool: 'shell',
-      state: { input: { command }, title: 'Shell' },
+      state: { input: { command }, title: 'Shell', metadata: { ...(shellID ? { shellID } : {}), shellRecord: true } },
     };
     const part: ToolPart = status === 'running'
       ? { ...base, state: { ...base.state, status: 'running', time: { start: started } } }

@@ -23,6 +23,7 @@
     "couldNotRevert": "Could not revert session.",
     "couldNotRestore": "Could not restore the session.",
     "couldNotCancelPending": "Could not discard that pending message.",
+    "couldNotOpenSubagent": "Could not open the subagent chat.",
     "couldNotUpdateAutoApprove": "Could not update auto-approve.",
     "sendError": {
       "title": "OpenCode send failed",
@@ -70,6 +71,13 @@
     "collapseActivity": "Collapse activity",
     "expandItem": "Expand {{item}}",
     "collapseItem": "Collapse {{item}}"
+  },
+  "subagent": {
+    "open": "Open subagent chat",
+    "running": "Working",
+    "completed": "Completed",
+    "failed": "Failed",
+    "cancelled": "Cancelled"
   },
   "cards": {
     "respondToContinue": "Approval needed",
@@ -382,6 +390,7 @@
     "grep": "Grep",
     "plan": "Plan",
     "task": "Task",
+    "subagent": "Subagent",
     "skill": "Skill",
     "write": "Write",
     "thought": "Thought",

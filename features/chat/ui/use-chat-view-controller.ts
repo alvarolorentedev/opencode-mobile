@@ -37,7 +37,7 @@ export function useChatViewController() {
   const { t } = useTranslation();
   const { block } = useUpdates();
   const { activeProject } = useProjects();
-  const { activeSession, currentSessionId, ensureActiveSession } = useCurrentSession();
+  const { activeSession, currentSessionId, ensureActiveSession, openSession } = useCurrentSession();
   const { forkSession, revertSession, sessionStatuses, sessions, unrevertSession } = useSessionLibrary();
   const { availableAgents, availableModels, configuredProviders, currentConfig, modelRouting } = useCapabilities();
   const { chatPreferences, updateChatPreferences } = usePreferences();
@@ -388,6 +388,11 @@ export function useChatViewController() {
     copyHaptic();
   }
 
+  const handleOpenSubagent = useCallback((sessionId: string) => {
+    if (sessionId === currentSessionId) return;
+    void openSession(sessionId).catch(() => setSendFeedback(t('chat:view.couldNotOpenSubagent')));
+  }, [currentSessionId, openSession, t]);
+
   return {
     header: {
       activeProject, connection, contextModel, contextTokens, conversation,
@@ -400,7 +405,7 @@ export function useChatViewController() {
       currentPendingPermissions, currentPendingQuestions, currentSessionId, currentTodos,
       diffAdditions, diffCount, diffDeletions, diffDetails, diffTurns, transcriptRows,
       expandedDiffId, hasTranscriptMessages, isBootstrappingChat, isCancelingRevert, isRefreshingDiffs, isRefreshingMessages,
-      modelLabels, pendingInteractions, pendingPrompts, progressIcon, progressVisible,
+      modelLabels, openSubagent: handleOpenSubagent, pendingInteractions, pendingPrompts, progressIcon, progressVisible,
       retryTranscript, selectedDiffMessageId, speakingMessageId, transcriptPaging, transcriptReadError,
     },
     composer: {

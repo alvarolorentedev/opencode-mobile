@@ -39,6 +39,34 @@ const compactionEntry = (id: string, detailId: string): TranscriptEntry => ({
   details: [{ id: detailId, kind: 'compaction', status: 'completed', inputTokens: 97_300, outputTokens: 858 }],
 });
 
+const subagentEntry = (
+  id: string,
+  detailId: string,
+  sessionID: string,
+  status: 'running' | 'completed' | 'failed' | 'cancelled',
+  notice = false,
+): TranscriptEntry => ({
+  id,
+  role: 'assistant',
+  createdAt: 1,
+  text: '',
+  details: [{ id: detailId, kind: 'subagent', sessionID, agent: 'explore', description: 'Audit chat rendering', status, ...(notice ? { notice: true } : {}) }],
+});
+
+const shellEntry = (
+  id: string,
+  detailId: string,
+  body: string,
+  status: string,
+  extra: { shellID: string; notice?: boolean; shellRecord?: boolean },
+): TranscriptEntry => ({
+  id,
+  role: 'assistant',
+  createdAt: 1,
+  text: '',
+  details: [{ id: detailId, kind: 'tool', tool: 'shell', command: 'pnpm build', label: 'pnpm build', body, status, ...extra }],
+});
+
 const group = (row: ReturnType<typeof buildTranscriptRows>[number]): ActivityGroup => (row as Extract<typeof row, { type: 'activity' }>).group;
 
 describe('transcript rows', () => {
@@ -201,5 +229,50 @@ describe('transcript rows', () => {
     const rows = buildTranscriptRows([entry, toolEntry('m2', 'bash', 'd2')]);
     expect(rows.map((row) => row.type)).toEqual(['message', 'activity']);
     expect(group(rows[1]).items).toHaveLength(2);
+  });
+
+  it('renders subagents as top-level chips and completes the launch in place', () => {
+    const rows = buildTranscriptRows([
+      reasoningEntry('m1', 'r1'),
+      subagentEntry('m2', 's1', 'ses_child', 'running'),
+      subagentEntry('m3', 's2', 'ses_child', 'completed', true),
+    ]);
+    expect(rows.map((row) => row.type)).toEqual(['activity', 'subagent']);
+    expect(group(rows[0]).callCount).toBe(0);
+    expect(rows[1]).toMatchObject({ type: 'subagent', detail: { sessionID: 'ses_child', status: 'completed' } });
+  });
+
+  it('keeps one chip per subagent launch and hides chips at reduced detail', () => {
+    const rows = buildTranscriptRows([
+      subagentEntry('m1', 's1', 'ses_child', 'running'),
+      message('u1', 'next'),
+      subagentEntry('m2', 's2', 'ses_child', 'running'),
+    ]);
+    expect(rows.filter((row) => row.type === 'subagent')).toHaveLength(2);
+    const hydrated = buildTranscriptRows([
+      subagentEntry('m1', 's1', 'ses_child', 'completed'),
+      subagentEntry('m2', 's2', 'ses_child', 'completed', true),
+    ]);
+    expect(hydrated.filter((row) => row.type === 'subagent')).toHaveLength(1);
+    expect(buildTranscriptRows([subagentEntry('m1', 's1', 'ses_child', 'running')], 'messages')).toEqual([]);
+    expect(buildTranscriptRows([subagentEntry('m1', 's1', 'ses_child', 'running')], 'reasoning')).toEqual([]);
+  });
+
+  it('folds shell completions into their call and drops user-shell echoes', () => {
+    const call = shellEntry('m1', 'd1', 'running', 'running', { shellID: 'sh_1' });
+    const notice = shellEntry('m2', 'd2', 'Build failed', 'error', { shellID: 'sh_1', notice: true });
+    const rows = buildTranscriptRows([call, notice]);
+    expect(rows).toHaveLength(1);
+    expect(group(rows[0]).items).toHaveLength(1);
+    expect(group(rows[0]).items[0]).toMatchObject({ id: 'd1', status: 'error', body: 'Build failed' });
+    expect(group(rows[0]).status).toBe('error');
+
+    const record = shellEntry('m3', 'd3', 'clean', 'completed', { shellID: 'sh_2', shellRecord: true });
+    const echo = shellEntry('m4', 'd4', 'clean', 'completed', { shellID: 'sh_2', notice: true });
+    const userRows = buildTranscriptRows([record, echo]);
+    expect(group(userRows[0]).items.map((item) => item.id)).toEqual(['d3']);
+
+    const orphan = shellEntry('m5', 'd5', 'only notice', 'completed', { shellID: 'sh_3', notice: true });
+    expect(group(buildTranscriptRows([orphan])[0]).items.map((item) => item.id)).toEqual(['d5']);
   });
 });

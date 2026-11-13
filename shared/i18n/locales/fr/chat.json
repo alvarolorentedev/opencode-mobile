@@ -23,6 +23,7 @@
     "couldNotRevert": "Impossible de revenir en arrière sur la session.",
     "couldNotRestore": "Impossible de restaurer la session.",
     "couldNotCancelPending": "Impossible d'abandonner ce message en attente.",
+    "couldNotOpenSubagent": "Impossible d’ouvrir la conversation du sous-agent.",
     "couldNotUpdateAutoApprove": "Impossible de mettre à jour l'approbation automatique.",
     "sendError": {
       "title": "Échec de l'envoi par OpenCode",
@@ -70,6 +71,13 @@
     "collapseActivity": "Réduire l’activité",
     "expandItem": "Développer {{item}}",
     "collapseItem": "Réduire {{item}}"
+  },
+  "subagent": {
+    "open": "Ouvrir la conversation du sous-agent",
+    "running": "En cours",
+    "completed": "Terminé",
+    "failed": "Échec",
+    "cancelled": "Annulé"
   },
   "cards": {
     "respondToContinue": "Autorisation nécessaire",
@@ -382,6 +390,7 @@
     "grep": "Grep",
     "plan": "Plan",
     "task": "Tâche",
+    "subagent": "Sous-agent",
     "skill": "Compétence",
     "write": "Écrire",
     "thought": "Réflexion",

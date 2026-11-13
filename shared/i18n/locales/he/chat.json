@@ -23,6 +23,7 @@
     "couldNotRevert": "לא ניתן היה להחזיר את ההפעלה.",
     "couldNotRestore": "לא ניתן לשחזר את ההפעלה.",
     "couldNotCancelPending": "לא ניתן היה למחוק את ההודעה הממתינה.",
+    "couldNotOpenSubagent": "לא ניתן היה לפתוח את שיחת סוכן המשנה.",
     "couldNotUpdateAutoApprove": "לא ניתן היה לעדכן את האישור האוטומטי.",
     "sendError": {
       "title": "שליחת OpenCode נכשלה",
@@ -71,6 +72,13 @@
     "expandItem": "הרחב את {{item}}",
     "collapseItem": "כווץ {{item}}",
     "matches_two": "· ({{count}} התאמות)"
+  },
+  "subagent": {
+    "open": "פתח שיחת סוכן משנה",
+    "running": "עובד",
+    "completed": "הושלם",
+    "failed": "נכשל",
+    "cancelled": "בוטל"
   },
   "cards": {
     "respondToContinue": "דרוש אישור",
@@ -388,6 +396,7 @@
     "grep": "גרפ",
     "plan": "תכנן",
     "task": "משימה",
+    "subagent": "סוכן משנה",
     "skill": "מיומנות",
     "write": "כתוב",
     "thought": "מחשבה",

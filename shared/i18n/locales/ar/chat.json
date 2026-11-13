@@ -23,6 +23,7 @@
     "couldNotRevert": "تعذر إرجاع الجلسة.",
     "couldNotRestore": "لا يمكن استعادة الجلسة.",
     "couldNotCancelPending": "تعذر تجاهل تلك الرسالة المعلقة.",
+    "couldNotOpenSubagent": "تعذّر فتح محادثة الوكيل الفرعي.",
     "couldNotUpdateAutoApprove": "تعذر تحديث الموافقة التلقائية.",
     "sendError": {
       "title": "فشل إرسال OpenCode",
@@ -72,6 +73,13 @@
     "collapseItem": "طي {{item}}",
     "matches_zero": "· ({{count}} نتائج)",
     "matches_two": "· ({{count}} تطابقان)"
+  },
+  "subagent": {
+    "open": "فتح محادثة الوكيل الفرعي",
+    "running": "يعمل",
+    "completed": "مكتمل",
+    "failed": "فشل",
+    "cancelled": "أُلغي"
   },
   "cards": {
     "respondToContinue": "الموافقة مطلوبة",
@@ -394,6 +402,7 @@
     "grep": "جريب",
     "plan": "خطة",
     "task": "المهمة",
+    "subagent": "وكيل فرعي",
     "skill": "مهارة",
     "write": "اكتب",
     "thought": "الفكر",

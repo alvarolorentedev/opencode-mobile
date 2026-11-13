@@ -23,6 +23,7 @@
     "couldNotRevert": "セッションを取り消せませんでした。",
     "couldNotRestore": "セッションを復元できませんでした。",
     "couldNotCancelPending": "保留中のメッセージを破棄できませんでした。",
+    "couldNotOpenSubagent": "サブエージェントのチャットを開けませんでした。",
     "couldNotUpdateAutoApprove": "自動承認を更新できませんでした。",
     "sendError": {
       "title": "OpenCode の送信に失敗しました",
@@ -70,6 +71,13 @@
     "collapseActivity": "アクティビティを折りたたむ",
     "expandItem": "{{item}} を展開",
     "collapseItem": "{{item}} を折りたたむ"
+  },
+  "subagent": {
+    "open": "サブエージェントのチャットを開く",
+    "running": "実行中",
+    "completed": "完了",
+    "failed": "失敗",
+    "cancelled": "キャンセル済み"
   },
   "cards": {
     "respondToContinue": "承認が必要",
@@ -382,6 +390,7 @@
     "grep": "Grep",
     "plan": "プラン",
     "task": "タスク",
+    "subagent": "サブエージェント",
     "skill": "スキル",
     "write": "書き込み",
     "thought": "思考",

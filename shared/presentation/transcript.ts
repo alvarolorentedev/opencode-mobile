@@ -49,6 +49,7 @@ export type ToolDetail = Extract<TranscriptDetail, { kind: 'tool' }>;
 export type ReasoningDetail = Extract<TranscriptDetail, { kind: 'reasoning' }>;
 export type PatchDetail = Extract<TranscriptDetail, { kind: 'patch' }>;
 export type CompactionDetail = Extract<TranscriptDetail, { kind: 'compaction' }>;
+export type SubagentDetail = Extract<TranscriptDetail, { kind: 'subagent' }>;
 export type ActivityItem = ToolDetail | ReasoningDetail | PatchDetail;
 export type ActivityTool = { name: string; count: number };
 export type ActivityStatus = 'idle' | 'running' | 'error';
@@ -65,6 +66,7 @@ export type ActivityGroup = {
 export type TranscriptRow =
   | { key: string; type: 'message'; entry: TranscriptEntry }
   | { key: string; type: 'activity'; group: ActivityGroup }
+  | { key: string; type: 'subagent'; detail: SubagentDetail }
   | { key: string; type: 'compaction'; detail: CompactionDetail };
 
 // Rows rendered inside an activity run. Consecutive reads become one plain
@@ -133,12 +135,54 @@ export function buildTranscriptRows(entries: TranscriptEntry[], timelineDetail: 
   const rows: TranscriptRow[] = [];
   let pending: ActivityGroup | undefined;
 
+  // A background shell reports completion after its call. Fold that report into
+  // the existing shell row. A user shell also has a native record plus a
+  // model-facing echo; the record already carries the command and output.
+  const shellRecords = new Set<string>();
+  const shellTargets = new Set<string>();
+  const shellNotices = new Map<string, ToolDetail>();
+  for (const entry of entries) {
+    for (const detail of entry.details) {
+      if (detail.kind !== 'tool' || detail.tool !== 'shell' || !detail.shellID) continue;
+      if (detail.shellRecord) shellRecords.add(detail.shellID);
+      else if (detail.notice) shellNotices.set(detail.shellID, detail);
+      else shellTargets.add(detail.shellID);
+    }
+  }
+
   const flush = () => {
     if (!pending) return;
     if (pending.items.length > 0) {
       rows.push({ key: `activity:${pending.key}`, type: 'activity', group: pending });
     }
     pending = undefined;
+  };
+
+  // Subagents are top-level chips, never part of the collapsible activity run.
+  // A launch creates a chip; its completion updates that chip in place.
+  const subagentRowsByChild = new Map<string, number[]>();
+  const subagentRow = (detail: SubagentDetail) => {
+    if (detail.notice) {
+      const indexes = subagentRowsByChild.get(detail.sessionID) ?? [];
+      const running = indexes.filter((index) => {
+        const row = rows[index];
+        return row?.type === 'subagent' && row.detail.status === 'running';
+      });
+      const targets = running.length > 0 ? running : indexes.length > 0 ? [indexes[indexes.length - 1]] : [];
+      if (targets.length > 0) {
+        for (const index of targets) {
+          const row = rows[index];
+          if (row?.type === 'subagent') rows[index] = { ...row, detail: { ...row.detail, ...detail } };
+        }
+        return;
+      }
+    }
+    flush();
+    const index = rows.length;
+    rows.push({ key: `subagent:${detail.id}`, type: 'subagent', detail });
+    const indexes = subagentRowsByChild.get(detail.sessionID);
+    if (indexes) indexes.push(index);
+    else subagentRowsByChild.set(detail.sessionID, [index]);
   };
 
   const ensureGroup = (id: string) => {
@@ -194,7 +238,23 @@ export function buildTranscriptRows(entries: TranscriptEntry[], timelineDetail: 
       continue;
     }
 
-    for (const detail of entry.details) {
+    for (const rawDetail of entry.details) {
+      let detail = rawDetail;
+
+      if (detail.kind === 'subagent') {
+        subagentRow(detail);
+        continue;
+      }
+
+      if (detail.kind === 'tool' && detail.tool === 'shell' && detail.shellID) {
+        if (detail.notice) {
+          if (shellRecords.has(detail.shellID) || shellTargets.has(detail.shellID)) continue;
+        } else if (!detail.shellRecord) {
+          const notice = shellNotices.get(detail.shellID);
+          if (notice) detail = { ...detail, status: notice.status, body: notice.body };
+        }
+      }
+
       if (detail.kind === 'tool' && HIDDEN_TOOL_NAMES.has(detail.tool)) {
         const group = ensureGroup(detail.id);
         trackTool(group, detail);

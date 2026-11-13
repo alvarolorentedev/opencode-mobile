@@ -23,6 +23,7 @@
     "couldNotRevert": "सेशन वापस नहीं लाया जा सका।",
     "couldNotRestore": "सेशन पुनःस्थापित नहीं किया जा सका।",
     "couldNotCancelPending": "उस लंबित संदेश को खारिज नहीं किया जा सका।",
+    "couldNotOpenSubagent": "सबएजेंट चैट नहीं खोल सका।",
     "couldNotUpdateAutoApprove": "ऑटो-स्वीकृति अपडेट नहीं की जा सकी।",
     "sendError": {
       "title": "OpenCode भेजना विफल रहा",
@@ -70,6 +71,13 @@
     "collapseActivity": "गतिविधि संक्षिप्त करें",
     "expandItem": "{{item}} विस्तृत करें",
     "collapseItem": "{{item}} संक्षिप्त करें"
+  },
+  "subagent": {
+    "open": "सबएजेंट चैट खोलें",
+    "running": "काम कर रहा है",
+    "completed": "पूर्ण",
+    "failed": "विफल",
+    "cancelled": "रद्द किया गया"
   },
   "cards": {
     "respondToContinue": "अनुमोदन आवश्यक है",
@@ -382,6 +390,7 @@
     "grep": "Grep",
     "plan": "योजना",
     "task": "कार्य",
+    "subagent": "सबएजेंट",
     "skill": "कौशल",
     "write": "लिखें",
     "thought": "विचार",

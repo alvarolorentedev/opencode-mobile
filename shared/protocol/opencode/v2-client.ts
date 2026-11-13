@@ -18,6 +18,10 @@ export function toPendingNotice(item: SessionInboxInfo): PendingNotice | undefin
     return { id: item.id, sessionId: item.sessionID, createdAt: item.time.created, text: item.payload.text, kind: 'plugin' };
   }
   if (item.type !== 'synthetic') return undefined;
+  const source = item.payload.metadata?.source;
+  // Background shell/subagent completions reach the transcript as structured
+  // notices; their model-facing wrapper must never appear as a pending notice.
+  if (source === 'shell' || source === 'subagent') return undefined;
   if (isInternalSyntheticNotice({ text: item.payload.text, metadata: item.payload.metadata })) return undefined;
   return { id: item.id, sessionId: item.sessionID, createdAt: item.time.created, text: item.payload.text, ...(item.payload.description ? { description: item.payload.description } : {}) };
 }

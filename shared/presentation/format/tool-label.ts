@@ -22,6 +22,7 @@ const TOOL_KEYS: Record<string, string> = {
   grep: 'grep',
   todowrite: 'plan',
   task: 'task',
+  subagent: 'subagent',
   skill: 'skill',
   write: 'write',
 };

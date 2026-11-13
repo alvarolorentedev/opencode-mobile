@@ -121,6 +121,80 @@ describe('v2 response mappers', () => {
     });
   });
 
+  it('normalizes background shell and subagent notices without their model markup', () => {
+    const shell = toMessageRecord({
+      id: 'msg_shell_notice',
+      type: 'synthetic',
+      sessionID: 'ses_1',
+      time: { created: 1 },
+      description: 'pnpm build',
+      text: '<shell id="sh_1" state="error" command="pnpm build">Build failed</shell>',
+      metadata: { source: 'shell', shellID: 'sh_1', state: 'error', exit: 1 },
+    } as never, 'ses_1');
+    const shellEntry = toTranscriptEntry(shell!);
+    expect(shellEntry.text).toBe('');
+    expect(shellEntry.details[0]).toMatchObject({
+      kind: 'tool', tool: 'shell', command: 'pnpm build', body: 'Build failed', status: 'error',
+      shellID: 'sh_1', notice: true,
+    });
+
+    const subagent = toMessageRecord({
+      id: 'msg_subagent_notice',
+      type: 'synthetic',
+      sessionID: 'ses_1',
+      time: { created: 2 },
+      description: 'Audit chat rendering',
+      text: '<subagent sessionID="ses_child" state="completed" description="Audit chat rendering">All good</subagent>',
+      metadata: { source: 'subagent', childID: 'ses_child', agent: 'explore', state: 'completed' },
+    } as never, 'ses_1');
+    const subagentEntry = toTranscriptEntry(subagent!);
+    expect(subagentEntry.text).toBe('');
+    expect(subagentEntry.details[0]).toMatchObject({
+      kind: 'subagent', sessionID: 'ses_child', agent: 'explore',
+      description: 'Audit chat rendering', status: 'completed', notice: true,
+    });
+  });
+
+  it('maps a subagent call into a chip detail and a shell record with its shell id', () => {
+    const call = toMessageRecord({
+      id: 'msg_call',
+      type: 'assistant',
+      sessionID: 'ses_1',
+      time: { created: 1 },
+      model: { providerID: 'provider', id: 'model' },
+      content: [{
+        type: 'tool',
+        id: 'call_1',
+        name: 'subagent',
+        state: {
+          status: 'completed',
+          input: { agent: 'explore', description: 'Audit chat rendering' },
+          content: [{ type: 'text', text: 'running subagent' }],
+          metadata: { sessionID: 'ses_child', status: 'running' },
+        },
+        time: { created: 1, completed: 2 },
+      }],
+    } as never, 'ses_1');
+    expect(toTranscriptEntry(call!).details[0]).toMatchObject({
+      kind: 'subagent', sessionID: 'ses_child', agent: 'explore', description: 'Audit chat rendering', status: 'running',
+    });
+
+    const shell = toMessageRecord({
+      id: 'msg_shell',
+      type: 'shell',
+      sessionID: 'ses_1',
+      time: { created: 3, completed: 4 },
+      shellID: 'sh_1',
+      command: 'git status',
+      status: 'exited',
+      exit: 0,
+      output: { output: 'clean', cursor: 5, size: 5, truncated: false },
+    } as never, 'ses_1');
+    expect(toTranscriptEntry(shell!).details[0]).toMatchObject({
+      kind: 'tool', tool: 'shell', command: 'git status', shellID: 'sh_1', shellRecord: true,
+    });
+  });
+
   it('maps a plugin report posted as a user message to a distinct notice', () => {
     const mapped = toMessageRecord({
       id: 'msg_quota',
@@ -185,6 +259,7 @@ describe('v2 response mappers', () => {
       { id: 'plugin-1', type: 'user', sessionID: 'session-1', time: { created: 4 }, delivery: 'steer', payload: { text: '[OpenCode Quota report]', metadata: { opencodeQuota: { command: 'quota', at: 1 } } } },
       { id: 'reminder-1', type: 'synthetic', sessionID: 'session-1', time: { created: 5 }, delivery: 'steer', payload: { text: '<system-reminder>Plan mode.</system-reminder>' } },
       { id: 'instructions-1', type: 'synthetic', sessionID: 'session-1', time: { created: 6 }, delivery: 'steer', payload: { text: 'Instructions from: /repo/AGENTS.md', metadata: { instruction: { paths: ['/repo/AGENTS.md'] } } } },
+      { id: 'shell-notice-1', type: 'synthetic', sessionID: 'session-1', time: { created: 7 }, delivery: 'steer', payload: { text: '<shell id="sh_1" state="completed" command="ls">ok</shell>', metadata: { source: 'shell', shellID: 'sh_1', state: 'completed' } } },
     ]);
     h.api = { session: { inbox: { list } } };
     const client = buildV2Client({ serverUrl: 'http://test', directory: '/repo', username: '', password: '' } as never);

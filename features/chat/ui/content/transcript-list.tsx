@@ -8,7 +8,7 @@ import { Pressable } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { FlashList, type FlashListRef } from '@shopify/flash-list';
 import { useIsFocused } from 'expo-router';
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { AppState, View, type NativeScrollEvent, type NativeSyntheticEvent } from 'react-native';
 
@@ -16,6 +16,7 @@ import { getModelVariantLabel } from '@/features/ai/index';
 import { NoticeCard, TranscriptMessage } from '@/features/chat/ui/chat-cards';
 import { ActivityGroupRow } from '@/features/chat/ui/cards/activity-group';
 import { CompactionDivider } from '@/features/chat/ui/cards/compaction-divider';
+import { SubagentRow } from '@/features/chat/ui/cards/subagent-row';
 import { styles, slimStyles, stylesClasses } from '@/features/chat/ui/chat-view-styles';
 import { getCurrentTurnActivityKey, getEntryModelLabel, getPinnedActivityKey, STARTER_PROMPT_KEYS } from '@/features/chat/ui/chat-view-utils';
 import { TranscriptSkeleton } from '@/features/chat/ui/content/transcript-skeleton';
@@ -41,6 +42,10 @@ const ACTIVITY_STATUS_GROUP: ActivityGroup = {
   callCount: 0,
   status: 'running',
 };
+
+function TranscriptRowFrame({ children, flatTranscript, slim }: { children: ReactNode; flatTranscript: boolean; slim: boolean }) {
+  return <View style={[styles.transcriptItem, slim && slimStyles.transcriptItem, flatTranscript && (slim ? slimStyles.transcriptItemFlat : styles.transcriptItemFlat)]}>{children}</View>;
+}
 
 // Stable reference so FlashList does not treat every parent render as a prop
 // change. Combined with the memoized TranscriptMessage rows this keeps
@@ -80,6 +85,7 @@ type TranscriptListProps = {
   onCopyMessage: (entry: TranscriptEntry) => void;
   onForkMessage: (entry: TranscriptEntry) => void;
   onLoadOlderMessages: () => void;
+  onOpenSubagent: (sessionID: string) => void;
   onRetryTranscript: () => void;
   onRevertMessage: (entry: TranscriptEntry) => void;
   onSelectStarterPrompt: (prompt: string) => void;
@@ -110,6 +116,7 @@ export function TranscriptList({
   onCopyMessage,
   onForkMessage,
   onLoadOlderMessages,
+  onOpenSubagent,
   onRetryTranscript,
   onRevertMessage,
   onSelectStarterPrompt,
@@ -350,11 +357,7 @@ export function TranscriptList({
       renderItem={({ item: row }) => {
         if (row.type === 'activityStatus') {
           return (
-            <View style={[
-              styles.transcriptItem,
-              slim && slimStyles.transcriptItem,
-              flatTranscript && (slim ? slimStyles.transcriptItemFlat : styles.transcriptItemFlat),
-            ]}>
+            <TranscriptRowFrame flatTranscript={flatTranscript} slim={slim}>
               <ActivityGroupRow
                 expanded={false}
                 flat={flatTranscript}
@@ -364,17 +367,13 @@ export function TranscriptList({
                 palette={palette}
                 statusLabel={row.label}
               />
-            </View>
+            </TranscriptRowFrame>
           );
         }
 
         if (row.type === 'activity') {
           return (
-            <View style={[
-              styles.transcriptItem,
-              slim && slimStyles.transcriptItem,
-              flatTranscript && (slim ? slimStyles.transcriptItemFlat : styles.transcriptItemFlat),
-            ]}>
+            <TranscriptRowFrame flatTranscript={flatTranscript} slim={slim}>
               <ActivityGroupRow
                 expanded={expandedActivityKeys.has(row.group.key)}
                 flat={flatTranscript}
@@ -384,29 +383,29 @@ export function TranscriptList({
                 palette={palette}
                 sessionRunning={activityRunning && row.key === lastActivityKey}
               />
-            </View>
+            </TranscriptRowFrame>
+          );
+        }
+
+        if (row.type === 'subagent') {
+          return (
+            <TranscriptRowFrame flatTranscript={flatTranscript} slim={slim}>
+              <SubagentRow detail={row.detail} flat={flatTranscript} onPress={onOpenSubagent} palette={palette} />
+            </TranscriptRowFrame>
           );
         }
 
         if (row.type === 'compaction') {
           return (
-            <View style={[
-              styles.transcriptItem,
-              slim && slimStyles.transcriptItem,
-              flatTranscript && (slim ? slimStyles.transcriptItemFlat : styles.transcriptItemFlat),
-            ]}>
+            <TranscriptRowFrame flatTranscript={flatTranscript} slim={slim}>
               <CompactionDivider detail={row.detail} palette={palette} />
-            </View>
+            </TranscriptRowFrame>
           );
         }
 
         const entry = row.entry;
         return (
-          <View style={[
-            styles.transcriptItem,
-            slim && slimStyles.transcriptItem,
-            flatTranscript && (slim ? slimStyles.transcriptItemFlat : styles.transcriptItemFlat),
-          ]}>
+          <TranscriptRowFrame flatTranscript={flatTranscript} slim={slim}>
             {entry.noticeKind === 'plugin' ? (
               <NoticeCard
                 copied={copiedMessageId === entry.id}
@@ -436,7 +435,7 @@ export function TranscriptList({
                 speaking={speakingMessageId === entry.id}
               />
             )}
-          </View>
+          </TranscriptRowFrame>
         );
       }}
       ListHeaderComponent={(

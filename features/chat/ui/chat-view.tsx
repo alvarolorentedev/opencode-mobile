@@ -117,6 +117,7 @@ export function ChatView() {
               if (!content.currentSessionId || content.transcriptPaging.isLoadingOlder || !content.transcriptPaging.hasOlder) return;
               void content.transcriptPaging.loadOlder(content.currentSessionId);
             }}
+            onOpenSubagent={content.openSubagent}
             onRetryTranscript={() => { void content.retryTranscript(); }}
             onRevertMessage={handleRevertMessage}
             onSelectStarterPrompt={handleSelectStarterPrompt}

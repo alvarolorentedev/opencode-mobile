@@ -1,7 +1,54 @@
 import { getMessageError, getToolBody, getToolCommand, getToolPresentation, getToolTitle } from '@/shared/presentation/format/tool';
 import type { SessionMessageRecord, TranscriptDetail, TranscriptEntry } from '@/shared/presentation/format/types';
+import type { ToolPart } from '@/shared/protocol/opencode/types';
 
 const transcriptEntryCache = new WeakMap<SessionMessageRecord, TranscriptEntry>();
+
+function partMetadata(part: ToolPart) {
+  return {
+    ...(part.metadata ?? {}),
+    ...('metadata' in part.state && part.state.metadata ? part.state.metadata : {}),
+  };
+}
+
+// A subagent call carries the child session in its metadata; completion notices
+// reuse the same shape so both update one transcript chip.
+function getSubagentDetail(part: ToolPart, id: string): Extract<TranscriptDetail, { kind: 'subagent' }> | undefined {
+  const metadata = partMetadata(part);
+  const rawSessionID = typeof metadata.sessionID === 'string' ? metadata.sessionID : metadata.sessionId;
+  const sessionID = typeof rawSessionID === 'string' && rawSessionID.startsWith('ses') ? rawSessionID : undefined;
+  if (!sessionID) return undefined;
+  const input = part.state.input ?? {};
+  const agent = typeof input.agent === 'string' ? input.agent : typeof metadata.agent === 'string' ? metadata.agent : undefined;
+  const description = typeof input.description === 'string'
+    ? input.description
+    : typeof metadata.description === 'string'
+      ? metadata.description
+      : undefined;
+  const raw = typeof metadata.status === 'string' ? metadata.status : undefined;
+  const status: 'running' | 'completed' | 'failed' | 'cancelled' = raw === 'running'
+    ? 'running'
+    : raw === 'completed'
+      ? 'completed'
+      : raw === 'cancelled'
+        ? 'cancelled'
+        : raw === 'error' || raw === 'failed'
+          ? 'failed'
+          : part.state.status === 'error'
+            ? 'failed'
+            : part.state.status === 'running' || part.state.status === 'pending'
+              ? 'running'
+              : 'completed';
+  return {
+    id,
+    kind: 'subagent',
+    sessionID,
+    status,
+    ...(agent ? { agent } : {}),
+    ...(description ? { description } : {}),
+    ...(metadata.notice === true ? { notice: true } : {}),
+  };
+}
 
 export function toTranscriptEntry(record: SessionMessageRecord): TranscriptEntry {
   const cached = transcriptEntryCache.get(record);
@@ -42,7 +89,16 @@ export function toTranscriptEntry(record: SessionMessageRecord): TranscriptEntry
     }
 
     if (part.type === 'tool') {
+      if (part.tool === 'subagent') {
+        const subagent = getSubagentDetail(part, id);
+        if (subagent) {
+          details.push(subagent);
+          return;
+        }
+      }
       const presentation = getToolPresentation(part);
+      const metadata = partMetadata(part);
+      const shellID = typeof metadata.shellID === 'string' ? metadata.shellID : undefined;
       details.push({
         id,
         kind: 'tool',
@@ -52,6 +108,9 @@ export function toTranscriptEntry(record: SessionMessageRecord): TranscriptEntry
         body: getToolBody(part),
         status: part.state.status,
         ...presentation,
+        ...(shellID ? { shellID } : {}),
+        ...(metadata.notice === true ? { notice: true } : {}),
+        ...(metadata.shellRecord === true ? { shellRecord: true } : {}),
       });
       if (part.state.status === 'completed') {
         part.state.attachments?.forEach((attachment, attachmentIndex) => {

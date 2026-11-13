@@ -23,6 +23,7 @@
     "couldNotRevert": "无法回退会话。",
     "couldNotRestore": "无法恢复会话。",
     "couldNotCancelPending": "无法丢弃该待处理消息。",
+    "couldNotOpenSubagent": "无法打开子代理聊天。",
     "couldNotUpdateAutoApprove": "无法更新自动批准设置。",
     "sendError": {
       "title": "OpenCode 发送失败",
@@ -70,6 +71,13 @@
     "collapseActivity": "收起活动",
     "expandItem": "展开 {{item}}",
     "collapseItem": "收起 {{item}}"
+  },
+  "subagent": {
+    "open": "打开子代理聊天",
+    "running": "正在运行",
+    "completed": "已完成",
+    "failed": "失败",
+    "cancelled": "已取消"
   },
   "cards": {
     "respondToContinue": "需要批准",
@@ -382,6 +390,7 @@
     "grep": "Grep",
     "plan": "计划",
     "task": "任务",
+    "subagent": "子代理",
     "skill": "技能",
     "write": "写入",
     "thought": "思考",

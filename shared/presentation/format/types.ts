@@ -30,7 +30,12 @@ export type TranscriptDetail =
       limit?: number;
       matchCount?: number;
       files?: TranscriptFileDiff[];
+      // Native timeline record and synthetic background notices.
+      shellID?: string;
+      notice?: boolean;
+      shellRecord?: boolean;
     }
+  | { id: string; kind: 'subagent'; sessionID: string; agent?: string; description?: string; status: 'running' | 'completed' | 'failed' | 'cancelled'; notice?: boolean }
   | { id: string; kind: 'patch'; label: string; body: string }
   | { id: string; kind: 'file'; label: string; body: string; uri?: string; mime?: string; filename?: string }
   | { id: string; kind: 'retry'; label: string; body: string }
