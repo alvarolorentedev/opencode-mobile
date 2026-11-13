@@ -1,0 +1,3 @@
+- Newly discovered models are enabled automatically; turn this off in AI settings.
+- Subagent messages now show which agent is running.
+- Background task notices are clearer.
