@@ -122,6 +122,7 @@
       "addressTitle": "服务器地址",
       "detailsTitle": "连接详情",
       "addressHint": "连接到你的 OpenCode 服务器。",
+      "httpWarning": "HTTP 流量未加密。它可用于可信的本地网络；连接远程服务器时请使用 HTTPS。",
       "continue": "继续",
       "change": "更改",
       "detected": "已检测到 OpenCode {{version}}",

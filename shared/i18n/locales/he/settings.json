@@ -122,6 +122,7 @@
       "addressTitle": "כתובת שרת",
       "detailsTitle": "פרטי חיבור",
       "addressHint": "התחבר לשרת OpenCode שלך.",
+      "httpWarning": "תעבורת HTTP אינה מוצפנת. היא יכולה להתאים לרשת מקומית מהימנה; השתמשו ב-HTTPS עבור שרתים מרוחקים.",
       "continue": "המשך",
       "change": "שנה",
       "detected": "זוהה OpenCode {{version}}",

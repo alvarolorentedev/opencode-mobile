@@ -119,6 +119,7 @@ export default function ShareScreen() {
           {pending.skipped.length > 0 ? (
             <Text className={cn("text-warning")} variant="label">{t('share:skipped', { items: pending.skipped.join(', ') })}</Text>
           ) : null}
+          {pending.truncated ? <Text className={cn("text-warning")} variant="label">{t('share:truncated')}</Text> : null}
           {sharedInput.error ? <Text className={cn("text-destructive")}>{sharedInput.error}</Text> : null}
 
           <View className={cn(stylesClasses.footer)}>

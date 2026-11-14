@@ -59,29 +59,10 @@ jobs:
           node-version: 22
           cache: npm
 
-      - name: Resolve and verify release metadata
-        id: release
+      - name: Verify release tag
+        id: tag
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          GH_REPO: ${{ github.repository }}
           INPUT_TAG: ${{ inputs.tag }}
-          ANDROID_CERT_SHA256: ${{ vars.ANDROID_CERT_SHA256 }}
-          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
-          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
-          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
-          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
-          GOOGLE_PLAY_SERVICE_ACCOUNT_JSON: ${{ secrets.GOOGLE_PLAY_SERVICE_ACCOUNT_JSON }}
-          APPLE_CERTIFICATE_BASE64: ${{ secrets.APPLE_CERTIFICATE_BASE64 }}
-          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
-          APPLE_PROVISIONING_PROFILE_BASE64: ${{ secrets.APPLE_PROVISIONING_PROFILE_BASE64 }}
-          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
-          APPSTORE_API_KEY_ID: ${{ secrets.APPSTORE_API_KEY_ID }}
-          APPSTORE_API_ISSUER_ID: ${{ secrets.APPSTORE_API_ISSUER_ID }}
-          APPSTORE_API_PRIVATE_KEY: ${{ secrets.APPSTORE_API_PRIVATE_KEY }}
-          GRAFANA_OTLP_ENDPOINT: ${{ vars.GRAFANA_OTLP_ENDPOINT }}
-          GRAFANA_OTLP_INSTANCE_ID: ${{ vars.GRAFANA_OTLP_INSTANCE_ID }}
-          GRAFANA_OTLP_TOKEN: ${{ secrets.GRAFANA_OTLP_TOKEN }}
-          OBSERVABILITY_ENVIRONMENT: ${{ vars.OBSERVABILITY_ENVIRONMENT || 'production' }}
         run: |
           set -euo pipefail
 
@@ -103,8 +84,47 @@ jobs:
             exit 1
           fi
 
-          npm ci
-          npx expo config --type public --json > "$RUNNER_TEMP/expo-config.json"
+          {
+            echo "tag=$TAG"
+            echo "sha=$SHA"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Resolve public Expo config
+        run: npx expo config --type public --json > "$RUNNER_TEMP/expo-config.json"
+
+      - name: Resolve and verify release metadata
+        id: release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+          RELEASE_TAG: ${{ steps.tag.outputs.tag }}
+          RELEASE_SHA: ${{ steps.tag.outputs.sha }}
+          ANDROID_CERT_SHA256: ${{ vars.ANDROID_CERT_SHA256 }}
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+          GOOGLE_PLAY_SERVICE_ACCOUNT_JSON: ${{ secrets.GOOGLE_PLAY_SERVICE_ACCOUNT_JSON }}
+          APPLE_CERTIFICATE_BASE64: ${{ secrets.APPLE_CERTIFICATE_BASE64 }}
+          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+          APPLE_PROVISIONING_PROFILE_BASE64: ${{ secrets.APPLE_PROVISIONING_PROFILE_BASE64 }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          APPSTORE_API_KEY_ID: ${{ secrets.APPSTORE_API_KEY_ID }}
+          APPSTORE_API_ISSUER_ID: ${{ secrets.APPSTORE_API_ISSUER_ID }}
+          APPSTORE_API_PRIVATE_KEY: ${{ secrets.APPSTORE_API_PRIVATE_KEY }}
+          GRAFANA_OTLP_ENDPOINT: ${{ vars.GRAFANA_OTLP_ENDPOINT }}
+          GRAFANA_OTLP_INSTANCE_ID: ${{ vars.GRAFANA_OTLP_INSTANCE_ID }}
+          GRAFANA_OTLP_TOKEN: ${{ secrets.GRAFANA_OTLP_TOKEN }}
+          OBSERVABILITY_ENVIRONMENT: ${{ vars.OBSERVABILITY_ENVIRONMENT || 'production' }}
+        run: |
+          set -euo pipefail
+
+          TAG="$RELEASE_TAG"
+          SHA="$RELEASE_SHA"
+
           VERSION=$(jq -r '.version' "$RUNNER_TEMP/expo-config.json")
           VERSION_CODE=$(jq -r '.android.versionCode // empty' "$RUNNER_TEMP/expo-config.json")
           BUILD_NUMBER=$(jq -r '.ios.buildNumber // empty' "$RUNNER_TEMP/expo-config.json")

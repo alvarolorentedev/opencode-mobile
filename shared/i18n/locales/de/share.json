@@ -8,6 +8,7 @@
   "link": "Link",
   "attachments": "Anhänge",
   "skipped": "Übersprungen: {{items}}",
+  "truncated": "Ein Teil des geteilten Inhalts wurde ausgelassen, weil er die Freigabelimits überschritt.",
   "addToChat": "Zum Chat hinzufügen",
   "discard": "Verwerfen",
   "empty": "Es gab nichts zu teilen.",

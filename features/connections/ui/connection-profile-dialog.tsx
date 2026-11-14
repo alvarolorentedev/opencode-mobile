@@ -24,7 +24,7 @@ import { MAX_CONNECTION_HEADERS, parseConnectionHeaders } from '@/shared/contrac
 import type { CertificateFailureReason, ConnectionCertificate } from '@/shared/contracts/connection-certificate';
 import { OIDC_DEFAULT_SCOPES, OIDC_DEFAULT_TOKEN_HEADER, OIDC_DEFAULT_REDIRECT_URI, toConnectionOidc, type ConnectionOidc } from '@/shared/contracts/connection-oidc';
 import type { ConnectionProbeResult } from '@/shared/protocol/opencode/client';
-import { getServerHostname } from '@/shared/contracts/server-url';
+import { getServerHostname, normalizeServerUrl } from '@/shared/contracts/server-url';
 import { connectionOrigin, isTlsTrustSupported } from '@/shared/platform/tls-trust';
 import { isOidcAuthError, oidcErrorMessageKey } from '@/shared/auth/oidc/errors';
 import { useConnection } from '@/features/connections/context';
@@ -109,6 +109,8 @@ export function ConnectionProfileDialog({ title, submitLabel, showName = true, i
   const locked = busy === 'save';
   const v1 = probe?.status === 'detected' && probe.contract === 'v1';
   const v2 = probe?.status === 'detected' && probe.contract === 'v2';
+  const normalizedServerUrl = normalizeServerUrl(serverUrl);
+  const usesHttp = Boolean(serverUrl.trim()) && normalizedServerUrl.valid && normalizedServerUrl.origin.startsWith('http://');
   // Custom CA trust is a V2 feature. V1 connections keep their existing
   // system-trust behavior and never persist an imported certificate.
   const certificateSupported = isTlsTrustSupported() && !v1 && /^https:\/\//i.test(serverUrl.trim());
@@ -259,12 +261,14 @@ export function ConnectionProfileDialog({ title, submitLabel, showName = true, i
               }
               setServerUrl(value); setProbe(undefined); setError(undefined);
             }} disabled={Boolean(busy)} autoFocus autoCapitalize="none" autoCorrect={false} keyboardType="url" placeholder="http://192.168.1.10:49374"></SettingField>
+            {usesHttp ? <Text className={cn("text-warning")} variant="description">{t('settings:connection.setup.httpWarning')}</Text> : null}
             {certificateSupported ? <ConnectionCertificateField certificate={certificate} disabled={Boolean(busy)} error={certificateError} onChange={setCertificate} onError={setCertificateError} /> : null}
           </> : <>
             <View className={cn(stylesClasses.addressRow)}>
               <Text className={cn(stylesClasses.address)} numberOfLines={2}>{serverUrl}</Text>
               <Button testID="connection-profile-change" disabled={Boolean(busy)} onPress={back} variant="ghost"><Text>{t('settings:connection.setup.change')}</Text></Button>
             </View>
+            {usesHttp ? <Text className={cn("text-warning")} variant="description">{t('settings:connection.setup.httpWarning')}</Text> : null}
             <Text testID="connection-profile-detection" accessibilityLiveRegion="polite" style={{ color: v1 || v2 ? palette.tint : palette.muted }}>{v1 || v2 ? t('settings:connection.setup.detected', { version: v2 ? '2' : '1' }) : t('settings:connection.setup.identify')}</Text>
             {!v2 && !v1 ? <Button testID="connection-profile-custom-username" disabled={Boolean(busy)} onPress={() => setCustomUsername((value) => !value)} variant="ghost" className={cn(stylesClasses.left)} ><Text>{t('settings:connection.setup.customUsername')}</Text></Button> : null}
             {!v2 && (v1 || customUsername) ? <SettingField label={t('settings:connection.fields.username')} testID="connection-profile-username-input" ref={usernameRef} onBlur={usernameBlur} value={username} onChangeText={setUsername} disabled={Boolean(busy)} autoCapitalize="none" autoCorrect={false} placeholder="opencode"></SettingField> : null}

@@ -122,6 +122,7 @@
       "addressTitle": "Serveradresse",
       "detailsTitle": "Verbindungsdetails",
       "addressHint": "Verbinde dich mit deinem OpenCode-Server.",
+      "httpWarning": "HTTP-Datenverkehr ist unverschlüsselt. Er kann in einem vertrauenswürdigen lokalen Netzwerk sinnvoll sein; für entfernte Server sollte HTTPS verwendet werden.",
       "continue": "Weiter",
       "change": "Ändern",
       "detected": "OpenCode {{version}} erkannt",

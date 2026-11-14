@@ -83,11 +83,13 @@ Remaining gaps:
 ## 3b. Offline outbox and native 4G validation
 
 The queued-prompt path introduced on 2026-10-23 is intentionally
-process-lifetime. It covers a drop during an active turn and prevents duplicate
-admission after a lost response. It does not send after the app is killed, and
-it does not persist prepared attachment data URLs (the composer draft remains
-the durable copy). A true persistent outbox would need an attachment spool,
-encryption/at-rest policy, and an explicit send-on-reconnect setting.
+process-lifetime and scoped to its connection/project workspace. It covers a
+drop during an active turn, survives client rebuilds for the same workspace,
+and prevents duplicate admission after a lost response. It does not send after
+the app is killed, and it does not persist prepared attachment data URLs (the
+composer draft remains the durable copy). A true persistent outbox would need
+an attachment spool, encryption/at-rest policy, and an explicit send-on-reconnect
+setting.
 
 Web E2E covers injected 4G latency, offline→online queue recovery, and the
 deterministic SSE/polling paths. Native behavior still needs physical-device

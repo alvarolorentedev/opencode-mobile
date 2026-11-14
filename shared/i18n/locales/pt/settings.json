@@ -122,6 +122,7 @@
       "addressTitle": "Endereço do servidor",
       "detailsTitle": "Detalhes da conexão",
       "addressHint": "Conecte-se ao seu servidor OpenCode.",
+      "httpWarning": "O tráfego HTTP não é criptografado. Ele pode ser útil em uma rede local confiável; use HTTPS para servidores remotos.",
       "continue": "Continuar",
       "change": "Alterar",
       "detected": "OpenCode {{version}} detectado",

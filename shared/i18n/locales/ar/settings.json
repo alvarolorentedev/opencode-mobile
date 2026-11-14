@@ -122,6 +122,7 @@
       "addressTitle": "عنوان الخادم",
       "detailsTitle": "تفاصيل الاتصال",
       "addressHint": "اتصل بخادم OpenCode الخاص بك.",
+      "httpWarning": "اتصال HTTP غير مشفّر. يمكن استخدامه على شبكة محلية موثوقة؛ استخدم HTTPS للخوادم البعيدة.",
       "continue": "متابعة",
       "change": "التغيير",
       "detected": "تم اكتشاف OpenCode {{version}}",

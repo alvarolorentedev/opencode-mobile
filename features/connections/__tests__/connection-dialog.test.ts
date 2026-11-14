@@ -54,7 +54,7 @@ async function form(onSubmit = vi.fn()) {
     "@/runtime/presentation/use-update-blocker": { useUpdateBlocker: () => {} },
     "@/shared/ui/theme/use-color-scheme": { useColorScheme: () => 'light' },
     "@/shared/ui/theme/use-palette": { usePalette: () => ({}) },
-    "@/shared/contracts/server-url": { isValidServerUrl: () => true, getServerHostname: () => '192.168.1.10' },
+    "@/shared/contracts/server-url": { isValidServerUrl: () => true, getServerHostname: () => '192.168.1.10', normalizeServerUrl },
     "@/shared/platform/linking": { createURL: (path: string) => `opencodemobile://${path}` },
     "@/shared/platform/tls-trust": { isTlsTrustSupported: () => false, connectionOrigin: () => undefined },
     "@/features/connections/state/use-connection-certificate": { useConnectionCertificate: () => ({ supported: false, busy: false, error: undefined, pick: async () => undefined, clearError: () => {} }) },

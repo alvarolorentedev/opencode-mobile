@@ -21,6 +21,7 @@ export type SharedPayload = {
   text?: string;
   url?: string;
   attachments: PromptAttachment[];
+  truncated?: boolean;
   // Display names of items that were dropped (oversize or unreadable), so the
   // preview can explain what was ignored instead of silently losing it.
   skipped: string[];
@@ -49,6 +50,7 @@ export function parseIncomingShare(items: IncomingShareItem[]): SharedPayload | 
   const urls: string[] = [];
   const attachments: PromptAttachment[] = [];
   const skipped: string[] = [];
+  const truncatedItems = items.length > MAX_SHARE_ITEMS;
 
   for (const item of items.slice(0, MAX_SHARE_ITEMS)) {
     // Java File.toURI() emits file:/…; keep percent-encoded paths intact.
@@ -88,9 +90,11 @@ export function parseIncomingShare(items: IncomingShareItem[]): SharedPayload | 
     });
   }
 
-  const text = texts.join('\n\n').slice(0, MAX_SHARE_TEXT).trim();
+  const combinedText = texts.join('\n\n');
+  const truncated = truncatedItems || combinedText.length > MAX_SHARE_TEXT;
+  const text = combinedText.slice(0, MAX_SHARE_TEXT).trim();
   const url = urls[0];
-  if (!text && !url && attachments.length === 0 && skipped.length === 0) {
+  if (!text && !url && attachments.length === 0 && skipped.length === 0 && !truncated) {
     return null;
   }
 
@@ -99,6 +103,7 @@ export function parseIncomingShare(items: IncomingShareItem[]): SharedPayload | 
     ...(url ? { url } : {}),
     attachments,
     skipped,
+    ...(truncated ? { truncated: true } : {}),
   };
 }
 

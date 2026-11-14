@@ -122,6 +122,7 @@
       "addressTitle": "サーバーアドレス",
       "detailsTitle": "接続の詳細",
       "addressHint": "OpenCode サーバーに接続します。",
+      "httpWarning": "HTTP通信は暗号化されません。信頼できるローカルネットワークでは利用できますが、リモートサーバーにはHTTPSを使用してください。",
       "continue": "続ける",
       "change": "変更",
       "detected": "OpenCode {{version}} を検出",

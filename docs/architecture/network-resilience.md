@@ -180,6 +180,9 @@ the workspace is visible and online:
 
 - A submission that fails with an offline/transport-level error stays visible
   with `Queued — will send when connected`.
+- Queued inputs and their visible rows are scoped to the connection and project,
+  so rebuilding a client for the same workspace preserves them while another
+  workspace can never flush them to its server.
 - A timeout with an unknown server outcome is marked `Delivery uncertain`.
   It is never auto-replayed.
 - Flush first reads the server inbox and newest transcript. If either already

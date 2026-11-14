@@ -11,7 +11,9 @@ import { getSessionInbox, getSessionNotices, submitLegacyPrompt } from '@/shared
 const EMPTY_PROMPTS: Record<string, PendingPrompt[]> = {};
 const EMPTY_NOTICES: Record<string, PendingNotice[]> = {};
 
-type QueuedInput = { input: PromptInput; delivery: PromptDelivery; text: string; createdAt: number };
+type QueuedInput = { input: PromptInput; delivery: PromptDelivery; text: string; createdAt: number; scope: string };
+type PromptSnapshot = { prompts: Record<string, PendingPrompt[]>; notices: Record<string, PendingNotice[]> };
+const EMPTY_SNAPSHOT: PromptSnapshot = { prompts: EMPTY_PROMPTS, notices: EMPTY_NOTICES };
 
 function promptText(input: PromptInput) {
   return (input.parts ?? []).filter((part) => part.type === 'text').map((part) => part.text).join('\n\n');
@@ -51,55 +53,64 @@ function messageHasPrompt(records: SessionMessageRecord[], text: string) {
 
 export function usePromptInbox({
   client,
+  queueScope,
   isCurrentClient,
   refreshMessages: readMessages,
   connected = true,
   online = true,
 }: {
   client: ScopedOpencodeClient;
+  queueScope: string;
   isCurrentClient: (candidate: object) => boolean;
   refreshMessages: (sessionId: string, silent?: boolean, options?: { mode?: TranscriptRefreshMode }) => Promise<SessionMessageRecord[]>;
   connected?: boolean;
   online?: boolean;
 }) {
-  const [snapshot, setSnapshot] = useState<{ client: object; prompts: Record<string, PendingPrompt[]>; notices: Record<string, PendingNotice[]> }>({ client, prompts: {}, notices: {} });
+  const scope = queueScope;
+  const [snapshots, setSnapshots] = useState<Map<string, PromptSnapshot>>(() => new Map());
+  const snapshot = snapshots.get(scope) ?? EMPTY_SNAPSHOT;
   const [queueSize, setQueueSize] = useState(0);
   const snapshotRef = useRef(snapshot);
+  const activeQueueScope = useRef(scope);
   const revisions = useRef<Record<string, number>>({});
   const counter = useRef(0);
   const queuedInputs = useRef(new Map<string, QueuedInput>());
   const flushing = useRef(false);
-  const pendingPromptsBySession = snapshot.client === client ? snapshot.prompts : EMPTY_PROMPTS;
-  const pendingNoticesBySession = snapshot.client === client ? snapshot.notices : EMPTY_NOTICES;
+  const pendingPromptsBySession = snapshot.prompts;
+  const pendingNoticesBySession = snapshot.notices;
 
-  useLayoutEffect(() => { snapshotRef.current = snapshot; });
-  const syncQueueSize = useCallback(() => setQueueSize(queuedInputs.current.size), []);
+  useLayoutEffect(() => {
+    snapshotRef.current = snapshot;
+    activeQueueScope.current = scope;
+  });
+  const syncQueueSize = useCallback(() => {
+    setQueueSize([...queuedInputs.current.values()].filter((item) => item.scope === activeQueueScope.current).length);
+  }, []);
   useEffect(() => {
-    // A connection/client switch is a different server identity. Never replay a
-    // prompt prepared for the previous connection.
-    queuedInputs.current.clear();
-    const reset = setTimeout(() => setQueueSize(0), 0);
-    return () => clearTimeout(reset);
-  }, [client]);
+    syncQueueSize();
+  }, [scope, syncQueueSize]);
 
   const update = useCallback((sessionId: string, change: (previous: PendingPrompt[]) => PendingPrompt[]) => {
     if (!isCurrentClient(client)) return;
-    setSnapshot((current) => {
-      const prompts = current.client === client ? current.prompts : {};
-      return { client, notices: current.client === client ? current.notices : {}, prompts: { ...prompts, [sessionId]: change(prompts[sessionId] ?? []) } };
+    setSnapshots((current) => {
+      const branch = current.get(scope) ?? EMPTY_SNAPSHOT;
+      const next = new Map(current);
+      next.set(scope, { ...branch, prompts: { ...branch.prompts, [sessionId]: change(branch.prompts[sessionId] ?? []) } });
+      return next;
     });
-  }, [client, isCurrentClient]);
+  }, [client, isCurrentClient, scope]);
 
   const updateNotices = useCallback((sessionId: string, notices: PendingNotice[]) => {
     if (!isCurrentClient(client)) return;
-    setSnapshot((current) => {
-      const currentNotices = current.client === client ? current.notices : {};
-      const previous = currentNotices[sessionId] ?? [];
+    setSnapshots((current) => {
+      const branch = current.get(scope) ?? EMPTY_SNAPSHOT;
+      const previous = branch.notices[sessionId] ?? [];
       if (previous.length === notices.length && previous.every((notice, index) => notice.id === notices[index].id)) return current;
-      const prompts = current.client === client ? current.prompts : {};
-      return { client, prompts, notices: { ...currentNotices, [sessionId]: notices } };
+      const next = new Map(current);
+      next.set(scope, { ...branch, notices: { ...branch.notices, [sessionId]: notices } });
+      return next;
     });
-  }, [client, isCurrentClient]);
+  }, [client, isCurrentClient, scope]);
 
   const reconcileLocal = useCallback((sessionId: string, pending: PendingPrompt[] | undefined, records: SessionMessageRecord[]) => {
     update(sessionId, (previous) => previous.flatMap((prompt) => {
@@ -164,7 +175,7 @@ export function usePromptInbox({
         // reach the server is not replayed as a duplicate.
         const queued = isOfflineLikeFailure(error, online);
         if (queued) {
-          queuedInputs.current.set(id, { input, delivery, text, createdAt: prompt.createdAt });
+          queuedInputs.current.set(id, { input, delivery, text, createdAt: prompt.createdAt, scope });
           syncQueueSize();
         }
         update(sessionId, (previous) => previous.map((item) => item.id === id
@@ -181,11 +192,11 @@ export function usePromptInbox({
       update(sessionId, (previous) => previous.filter((item) => item.id !== id));
       throw error;
     }
-  }, [client, online, syncQueueSize, update]);
+  }, [client, online, scope, syncQueueSize, update]);
 
   const flushQueued = useCallback(async () => {
     if (flushing.current || !client.promptInbox || !connected || !online) return;
-    const entries = [...queuedInputs.current.entries()].filter(([, item]) => item);
+    const entries = [...queuedInputs.current.entries()].filter(([, item]) => item.scope === scope);
     if (entries.length === 0) return;
     flushing.current = true;
     try {
@@ -232,7 +243,7 @@ export function usePromptInbox({
     } finally {
       flushing.current = false;
     }
-  }, [client, connected, isCurrentClient, online, readMessages, syncQueueSize, update]);
+  }, [client, connected, isCurrentClient, online, scope, readMessages, syncQueueSize, update]);
 
   useEffect(() => {
     if (!connected || !online || queueSize === 0) return;

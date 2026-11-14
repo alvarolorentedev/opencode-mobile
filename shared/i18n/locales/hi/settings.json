@@ -122,6 +122,7 @@
       "addressTitle": "सर्वर का पता",
       "detailsTitle": "कनेक्शन का विवरण",
       "addressHint": "अपने OpenCode सर्वर से जुड़ें।",
+      "httpWarning": "HTTP ट्रैफ़िक एन्क्रिप्टेड नहीं होता। भरोसेमंद स्थानीय नेटवर्क पर यह उपयोगी हो सकता है; दूरस्थ सर्वर के लिए HTTPS इस्तेमाल करें।",
       "continue": "जारी रखें",
       "change": "बदलें",
       "detected": "OpenCode {{version}} मिला",

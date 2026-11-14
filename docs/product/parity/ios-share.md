@@ -71,6 +71,7 @@ docs it references.
   (`features/chat/state/use-prompt-lifecycle.ts`).
 - The 10 MB per-file limit and URI allow-list still apply (shared via
   `features/sharing/model/parse.ts`).
+- Shares beyond ten items or 100,000 text characters show a truncation warning.
 - Nothing auto-submits; the composer is the only send path.
 - A cold start with an incomplete onboarding shows the "finish setup" state and
   retains the staged payload to the 10-minute TTL; Discard clears it.

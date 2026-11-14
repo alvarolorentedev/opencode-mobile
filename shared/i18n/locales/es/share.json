@@ -8,6 +8,7 @@
   "link": "Enlace",
   "attachments": "Adjuntos",
   "skipped": "Omitido: {{items}}",
+  "truncated": "Se omitió parte del contenido compartido porque superaba los límites para compartir.",
   "addToChat": "Añadir al chat",
   "discard": "Descartar",
   "empty": "No había nada que compartir.",

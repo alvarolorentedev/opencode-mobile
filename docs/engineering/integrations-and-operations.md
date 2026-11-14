@@ -433,8 +433,10 @@ requires the commit to belong to `main`, runs full validation once, builds
 Android Play, FOSS and signed iOS in parallel, statically verifies the artifacts,
 uploads to Google Play internal testing and TestFlight, and publishes the GitHub Release
 after all mandatory jobs pass. Nothing is automatically promoted to a production
-store track. TestFlight uploads validate implicitly, so the pipeline does not
-run a separate `altool --validate-app` round-trip.
+store track. Dependency installation and public Expo config resolution finish
+before the verification step receives release secrets. TestFlight uploads
+validate implicitly, so the pipeline does not run a separate
+`altool --validate-app` round-trip.
 
 GitHub Actions scopes caches per ref, so a release tag can only restore caches
 written for `main`, never those of an earlier tag. `config/plugins/android.cjs`

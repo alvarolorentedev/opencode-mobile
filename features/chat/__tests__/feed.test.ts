@@ -140,6 +140,7 @@ describe('provider-owned prompt inbox', () => {
   });
     runtime.mount(usePromptInbox, {
       client,
+      queueScope: 'test-workspace',
       isCurrentClient: (candidate: any) => candidate === client,
       refreshMessages: readMessages,
       connected: options.connected ?? true,
@@ -185,7 +186,7 @@ describe('provider-owned prompt inbox', () => {
     await runtime.value.refreshMessages('s'); runtime.flush();
     expect(runtime.value.pendingPromptsBySession.s).toHaveLength(0);
     const other = { promptInbox: { list: async () => [pending()] } };
-    runtime.update({ client: other, isCurrentClient: (candidate: any) => candidate === other });
+    runtime.update({ client: other, queueScope: 'other-workspace', isCurrentClient: (candidate: any) => candidate === other });
     expect(runtime.value.pendingPromptsBySession).toEqual({});
   });
 

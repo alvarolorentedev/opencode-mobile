@@ -8,6 +8,7 @@
   "link": "链接",
   "attachments": "附件",
   "skipped": "已跳过：{{items}}",
+  "truncated": "部分共享内容因超出分享限制而被省略。",
   "addToChat": "添加到聊天",
   "discard": "丢弃",
   "empty": "没有可分享的内容。",

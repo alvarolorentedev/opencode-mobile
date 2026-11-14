@@ -1,5 +1,6 @@
 // Per-workspace domain composition. See docs/architecture/overview.md#top-level-runtime-composition.
 import type { OpencodeEvent } from '@/shared/protocol/opencode/events';
+import { workspaceKey } from '@/shared/contracts/workspace';
 import { emptySharedInput } from '@/features/sharing/runtime';
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef } from 'react';
 
@@ -100,6 +101,7 @@ export function useOpencodeProviderComposition(input: WorkspaceRuntimeInput) {
   });
   const inbox = usePromptInbox({
     client,
+    queueScope: workspaceKey({ connectionId: input.connection.id, projectPath: state.activeProjectPath || '' }),
     isCurrentClient,
     refreshMessages: transcriptRead.readMessages,
     connected: state.connection.status === 'connected',

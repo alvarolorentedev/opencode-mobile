@@ -122,6 +122,7 @@
       "addressTitle": "Server address",
       "detailsTitle": "Connection details",
       "addressHint": "Connect to your OpenCode server.",
+      "httpWarning": "HTTP traffic is unencrypted. It can be useful on a trusted local network; use HTTPS for remote servers.",
       "continue": "Continue",
       "change": "Change",
       "detected": "OpenCode {{version}} detected",

@@ -8,6 +8,7 @@
   "link": "リンク",
   "attachments": "添付ファイル",
   "skipped": "スキップ: {{items}}",
+  "truncated": "共有できる上限を超えたため、一部の共有コンテンツを省略しました。",
   "addToChat": "チャットに追加",
   "discard": "破棄",
   "empty": "共有する内容がありませんでした。",
