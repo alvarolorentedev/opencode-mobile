@@ -129,6 +129,11 @@ Patch versions, required behavior and upstream removal conditions live in the
 [patch inventory](library-extraction.md#remaining-dependency-patches). Native
 acceptance is defined by the [production matrix](validation/strategy.md#coordinated-native-dependency-acceptance).
 
+iOS TLS module registration can run on React Native's JavaScript thread. Its
+Expo fetch-provider setter is main-actor isolated, so installation synchronously
+hops to the main thread before registration returns. Network configuration
+callbacks and scoped certificate validation remain nonisolated.
+
 ### Expo Router
 
 Used for app navigation and typed route structure.
@@ -170,6 +175,11 @@ Important current rule:
 - iOS background delivery is best effort only: a suspended app can only be woken
   opportunistically, so completion notifications arrive when the app next runs or
   the system schedules the background task, never on a fixed schedule
+- Experimental local iOS Live Activities reuse `modules/opencode-activity` when
+  `EXPO_IOS_LIVE_ACTIVITIES=1`. A CNG plugin generates the ActivityKit extension
+  without an App Group. Only generic localized status/counts reach the Lock
+  Screen; backgrounding marks it paused/stale and does not extend network life.
+  Completion notifications remain independent. See [ADR 0024](../adr/0024-opt-in-local-ios-live-activities.md).
 
 ### Quick Actions
 
@@ -526,7 +536,7 @@ Android has the richest current support for:
 
 ### iOS
 
-iOS is supported by Expo/React Native setup, but some operational tooling in the repo is Android-focused. Voice and TTS behavior are still explicitly supported. Launcher quick actions are supported; home/Lock Screen widgets and Live Activities are deferred (see [iOS widget parity](../product/parity/ios-widget.md)).
+iOS is supported by Expo/React Native setup, but some operational tooling in the repo is Android-focused. Voice and TTS behavior are explicitly supported. Launcher quick actions are supported; home/Lock Screen widgets remain deferred, while local Live Activities are experimental and opt-in (see [iOS widget parity](../product/parity/ios-widget.md)).
 
 ### Session Deep Links
 

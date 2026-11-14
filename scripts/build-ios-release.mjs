@@ -13,16 +13,18 @@
  *   IOS_TEAM_ID                   – Apple Developer Team ID
  *
  * Optional env vars:
- *   IOS_BUILD_NUMBER              – override auto-derived build number
+ *   IOS_BUILD_NUMBER              – override build number (unsigned defaults to generated Expo values)
  *   IOS_SCHEME                    – override auto-detected Xcode scheme
  *   IOS_EXPORT_METHOD             – distribution method (default: app-store)
  *   EXPO_APP_VARIANT              – app variant (default: production)
+ *   IOS_UNSIGNED_TEST_BUILD=1     – CI-only unsigned device test container; no export/signing
  */
 
 import fs from 'node:fs';
 import path from 'node:path';
 import { execSync, spawnSync } from 'node:child_process';
 import os from 'node:os';
+import { archiveBuildNumberArguments, archiveSigningArguments, isUnsignedTestBuild, packageUnsignedTestIpa } from './ci/ios-unsigned-test-build.mjs';
 
 function fail(message) {
   console.error(message);
@@ -42,6 +44,7 @@ function run(command, args, options = {}) {
 
 const repoRoot = process.cwd();
 const iosDir = path.join(repoRoot, 'ios');
+const unsignedTestBuild = isUnsignedTestBuild();
 
 if (fs.existsSync(iosDir)) {
   fs.rmSync(iosDir, { recursive: true, force: true });
@@ -77,11 +80,18 @@ if (!scheme) {
 console.log(`Using scheme: ${scheme}`);
 
 // 3. Derive build number
-const buildNumber = process.env.IOS_BUILD_NUMBER || String(Date.now());
-console.log(`Build number: ${buildNumber}`);
+const buildNumber = unsignedTestBuild
+  ? process.env.IOS_BUILD_NUMBER
+  : process.env.IOS_BUILD_NUMBER || String(Date.now());
+const buildNumberArguments = archiveBuildNumberArguments(unsignedTestBuild, buildNumber);
+console.log(`Build number: ${buildNumber || 'generated Expo values (no override)'}`);
 
 // 4. Create archive
-const archivePath = path.join(os.tmpdir(), 'build.xcarchive');
+const ipaDir = path.join(repoRoot, 'ios-build');
+const archivePath = unsignedTestBuild
+  ? path.join(ipaDir, 'unsigned-test.xcarchive')
+  : path.join(os.tmpdir(), 'build.xcarchive');
+if (unsignedTestBuild) fs.mkdirSync(ipaDir, { recursive: true });
 const exportMethod = process.env.IOS_EXPORT_METHOD || 'app-store';
 
 run('xcodebuild', [
@@ -90,16 +100,27 @@ run('xcodebuild', [
   '-configuration', 'Release',
   '-archivePath', archivePath,
   '-destination', 'generic/platform=iOS',
-  '-allowProvisioningUpdates',
-  `DEVELOPMENT_TEAM=${requireEnv('IOS_TEAM_ID')}`,
-  `CURRENT_PROJECT_VERSION=${buildNumber}`,
+  ...archiveSigningArguments(unsignedTestBuild, unsignedTestBuild ? undefined : requireEnv('IOS_TEAM_ID')),
+  ...buildNumberArguments,
   'COMPILER_INDEX_STORE_ENABLE=NO',
+  ...(unsignedTestBuild ? ['-resultBundlePath', path.join(ipaDir, 'unsigned-test.xcresult')] : []),
   'archive',
 ], { cwd: iosDir });
 
 if (!fs.existsSync(archivePath)) fail('Archive not found at expected path.');
 
-// 5. Export IPA
+if (unsignedTestBuild) {
+  const ipaPath = packageUnsignedTestIpa({
+    archivePath,
+    outputDir: ipaDir,
+    bundleIdentifier: requireEnv('EXPO_IOS_BUNDLE_ID'),
+    requireLiveActivity: process.env.EXPO_IOS_LIVE_ACTIVITIES === '1',
+  });
+  console.log(`Unsigned iOS test container complete (requires signing to install): ${ipaPath}`);
+  process.exit(0);
+}
+
+// 5. Export signed IPA (ordinary release behavior is unchanged)
 const exportOptionsPlist = path.join(os.tmpdir(), 'ExportOptions.plist');
 const exportOptionsContent = `<?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
@@ -119,7 +140,6 @@ const exportOptionsContent = `<?xml version="1.0" encoding="UTF-8"?>
 </plist>`;
 fs.writeFileSync(exportOptionsPlist, exportOptionsContent);
 
-const ipaDir = path.join(repoRoot, 'ios-build');
 run('xcodebuild', [
   '-exportArchive',
   '-archivePath', archivePath,

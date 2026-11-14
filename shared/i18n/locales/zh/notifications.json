@@ -6,6 +6,18 @@
     "failedBodyFallback": "任务以错误结束"
   },
   "activity": {
+    "reading": "正在读取文件",
+    "editing": "正在编辑文件",
+    "searching": "正在搜索",
+    "executing": "正在运行命令",
+    "delegating": "正在分派工作",
+    "progressLabel": "任务：已完成 {{completed}} 项，共 {{total}} 项",
+    "agentsLabel": "活跃智能体：{{count}}",
+    "toolsLabel": "运行中的工具：{{count}}",
+    "filesLabel": "已更改的文件：{{count}}",
+    "updatedLabel": "上次更新",
+    "elapsedLabel": "已用时间",
+    "updatesPaused": "更新已暂停",
     "working": "处理中",
     "thinking": "思考中",
     "needsInput": "需要你的输入",

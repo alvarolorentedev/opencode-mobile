@@ -1,0 +1,199 @@
+name: iOS unsigned test build
+
+# Experimental feature-scope build, not a release or store upload (ADR 0024).
+on:
+  workflow_dispatch:
+    inputs:
+      build_ipa:
+        description: 'Also build the unsigned device IPA (last cold archive took about 24 minutes)'
+        type: boolean
+        required: false
+        default: false
+  push:
+    branches:
+      - feat/ios-live-activities
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ios-unsigned-test-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  validate:
+    # Automatic feature-branch builds are for forks, never upstream/community PRs.
+    if: github.event_name == 'workflow_dispatch' || github.repository != 'alvarolorentedev/opencode-mobile'
+    uses: ./.github/workflows/ci.yml
+    with:
+      mode: smoke
+      ref: ${{ github.sha }}
+
+  ios-test:
+    needs: validate
+    runs-on: macos-26
+    timeout-minutes: 90
+    env:
+      CI: 'true'
+      EXPO_NO_TELEMETRY: '1'
+      EXPO_APP_VARIANT: production
+      EXPO_IOS_LIVE_ACTIVITIES: '1'
+      EXPO_IOS_DISABLE_PUSH_ENTITLEMENT: '1'
+      EXPO_IOS_BUNDLE_ID: app.yuv41.opencodemobile.liveactivitytest
+      IOS_UNSIGNED_TEST_BUILD: '1'
+      DEVELOPER_DIR: /Applications/Xcode_26.6.app/Contents/Developer
+      BUILD_IPA: ${{ (github.event_name == 'workflow_dispatch' && inputs.build_ipa) || contains(github.event.head_commit.message, '[ios-ipa]') }}
+      USE_CCACHE: '1'
+      CCACHE_BASEDIR: ${{ github.workspace }}
+      CCACHE_MAXSIZE: 2G
+
+    steps:
+      - name: Checkout validated commit
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Record native toolchain
+        run: |
+          set -euo pipefail
+          mkdir -p ios-build/logs
+          { xcodebuild -version; xcodebuild -showsdks; node --version; npm --version; pod --version; } 2>&1 | tee ios-build/logs/toolchain.log
+
+      - name: Install locked dependencies for CNG and native preview
+        run: |
+          set -euo pipefail
+          # Preview does not link the RN app or need its large engine artifacts.
+          # The explicitly requested archive installs/checks pinned prebuilts below.
+          RNLLAMA_SKIP_POSTINSTALL=1 npm ci 2>&1 | tee ios-build/logs/npm-ci.log
+
+      - name: Generate production extension without installing Pods
+        run: |
+          set -euo pipefail
+          npx expo prebuild --platform ios --no-install 2>&1 | tee ios-build/logs/preview-prebuild.log
+
+      - name: SDK typecheck and render standalone SwiftUI preview
+        id: preview
+        run: |
+          set -euo pipefail
+          node scripts/ci/ios-live-activity-preview.mjs 2>&1 | tee ios-build/logs/preview.log
+
+      - name: Upload native preview evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ios-live-activity-native-preview
+          path: |
+            ios-build/preview/*.png
+            ios-build/preview/*.json
+            ios-build/preview/README.txt
+            ios-build/preview/logs/
+          if-no-files-found: warn
+          retention-days: 3
+
+      - name: Prepare compiler cache and fingerprint actual native toolchain
+        id: native-cache-key
+        if: env.BUILD_IPA == 'true'
+        env:
+          CCACHE_DIR: ${{ runner.temp }}/opencode-ios-ccache
+        run: |
+          set -euo pipefail
+          echo "CCACHE_DIR=$CCACHE_DIR" >> "$GITHUB_ENV"
+          # ccache is a build tool, not an app dependency; never reinstall if present.
+          if ! command -v ccache >/dev/null 2>&1; then
+            HOMEBREW_NO_AUTO_UPDATE=1 brew install ccache
+          fi
+          ccache --max-size "$CCACHE_MAXSIZE"
+          fingerprint="$({
+            sw_vers
+            uname -m
+            xcodebuild -version
+            xcrun --sdk iphoneos --show-sdk-version
+            pod --version
+            ccache --version
+            printf '%s\n' "$EXPO_APP_VARIANT" "$EXPO_IOS_LIVE_ACTIVITIES" "$EXPO_IOS_DISABLE_PUSH_ENTITLEMENT" "$EXPO_IOS_BUNDLE_ID" 'iphoneos-Release'
+          } | tee ios-build/logs/cache-toolchain.log | shasum -a 256 | awk '{print $1}')"
+          echo "fingerprint=$fingerprint" >> "$GITHUB_OUTPUT"
+
+      - name: Restore native compiler and download caches
+        if: env.BUILD_IPA == 'true'
+        uses: actions/cache@v4
+        with:
+          # build-ios-release deletes ios/; do not restore Pods or DerivedData there.
+          path: |
+            ${{ env.CCACHE_DIR }}
+            ~/Library/Caches/CocoaPods
+            ~/.cocoapods/repos
+            node_modules/llama.rn/ios/rnllama.xcframework
+            node_modules/llama.rn/android/src/main/jniLibs
+          key: ios-native-v1-${{ runner.os }}-${{ runner.arch }}-${{ steps.native-cache-key.outputs.fingerprint }}-${{ hashFiles('package-lock.json', 'app.config.ts', '.npmrc', 'patches/**', 'config/plugins/**', 'modules/**/*.podspec', 'modules/**/expo-module.config.json', 'shared/ui/theme/ui-tokens.json', 'node_modules/llama.rn/install/native-artifacts.json') }}-${{ github.sha }}-${{ github.run_attempt }}
+          restore-keys: |
+            ios-native-v1-${{ runner.os }}-${{ runner.arch }}-${{ steps.native-cache-key.outputs.fingerprint }}-${{ hashFiles('package-lock.json', 'app.config.ts', '.npmrc', 'patches/**', 'config/plugins/**', 'modules/**/*.podspec', 'modules/**/expo-module.config.json', 'shared/ui/theme/ui-tokens.json', 'node_modules/llama.rn/install/native-artifacts.json') }}-
+
+      - name: Verify pinned native prebuilts for the requested device archive
+        if: env.BUILD_IPA == 'true'
+        run: |
+          set -euo pipefail
+          # npm's dependency install-script policy can skip llama.rn's postinstall.
+          # Its pinned downloader verifies manifest checksums and reuses existing artifacts.
+          node node_modules/llama.rn/install/download-native-artifacts.js 2>&1 | tee ios-build/logs/llama-prebuilts.log
+          test -d node_modules/llama.rn/ios/rnllama.xcframework
+          ccache --zero-stats
+
+      - name: Prebuild and archive unsigned iPhoneOS Release test IPA
+        if: env.BUILD_IPA == 'true'
+        run: |
+          set -euo pipefail
+          node scripts/build-ios-release.mjs 2>&1 | tee ios-build/logs/build.log
+
+      - name: Upload unsigned test IPA
+        if: env.BUILD_IPA == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: ios-live-activity-unsigned-test
+          path: |
+            ios-build/*.ipa
+            ios-build/SHA256SUMS.txt
+            ios-build/UNSIGNED-TEST-BUILD.txt
+          if-no-files-found: error
+          retention-days: 3
+          compression-level: 0
+
+      - name: Record compiler cache statistics
+        if: always() && steps.native-cache-key.outcome == 'success'
+        run: |
+          set -euo pipefail
+          ccache --show-stats 2>&1 | tee ios-build/logs/ccache-stats.log
+          du -sh "$CCACHE_DIR" ~/Library/Caches/CocoaPods ~/.cocoapods/repos 2>/dev/null | tee ios-build/logs/cache-sizes.log || true
+
+      - name: Upload native build diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ios-live-activity-build-diagnostics
+          path: |
+            ios-build/logs/
+            ios-build/unsigned-test.xcresult/
+            ios-build/unsigned-test.xcarchive/dSYMs/OpenCodeMobile.app.dSYM/
+            ios-build/unsigned-test.xcarchive/dSYMs/OpencodeLiveActivity.appex.dSYM/
+            ios/Podfile.lock
+          if-no-files-found: warn
+          retention-days: 3
+
+      - name: Explain unsigned test artifact
+        if: env.BUILD_IPA == 'true'
+        run: |
+          echo 'Unsigned iPhoneOS Release test IPA with embedded JS and Live Activity extension. Requires signing/provisioning before installation; not a TestFlight/App Store release.' >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Explain preview scope and archive cost
+        if: always()
+        run: |
+          echo 'Native preview step outcome: ${{ steps.preview.outcome }}. Inspect the logs and native-preview artifact for this run.' >> "$GITHUB_STEP_SUMMARY"
+          echo 'Native preview compiles the production WidgetKit sources against the Apple Simulator SDK and renders ActivityDashboard in a standalone SwiftUI harness. It is not full React Native app startup, system Live Activity hosting, or physical-iPhone acceptance.' >> "$GITHUB_STEP_SUMMARY"
+          echo 'Device IPA builds run only with workflow_dispatch build_ipa=true or [ios-ipa] in the push head commit message. Last observed cold archive: 23m36s; warm cache savings are not yet measured.' >> "$GITHUB_STEP_SUMMARY"

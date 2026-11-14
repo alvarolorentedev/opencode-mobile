@@ -2,10 +2,10 @@ import { getEventSessionStatus } from '@/shared/protocol/opencode/events';
 import type { OpencodeEvent } from '@/shared/protocol/opencode/events';
 import { stringField } from '@/shared/protocol/opencode/v2/fields';
 import { useCallback, useEffect, useLayoutEffect, useRef } from 'react';
-import { AppState } from 'react-native';
+import { AppState, Platform } from 'react-native';
 import * as Notifications from 'expo-notifications';
 
-import { activityNotifications, stopActivityNotification, updateActivityNotification } from '@/shared/platform/activity-notifications';
+import { activityNotifications, markActivityNotificationScopeReady, registerActivityNotificationScope, stopActivityNotification, updateActivityNotification, type ActivityWork } from '@/shared/platform/activity-notifications';
 import { i18n } from '@/shared/i18n/index';
 import { clearPendingAttention, clearPendingTaskFinishedNotification, raisePendingAttention, trackPendingTaskFinishedNotification } from '@/features/notifications/services/notifications';
 import type { OpencodeConnectionSettings, ScopedOpencodeClient, ServerContract } from '@/shared/protocol/opencode/client';
@@ -64,9 +64,11 @@ export function useActivityNotifications(input: Input) {
   const eventRevision = useRef(0);
 
   useEffect(() => {
-    if (!activityNotifications || !input.connected) return;
+    const ios = Platform.OS === 'ios';
+    if (!activityNotifications || !input.connected || (ios && input.contract !== 'v2')) return;
     const scope = input.connectionScope;
     const catalogClient = input.catalogClient;
+    const releaseScope = ios ? registerActivityNotificationScope(scope) : undefined;
     let cancelled = false;
     let inFlight = false;
     let rerun = false;
@@ -76,6 +78,9 @@ export function useActivityNotifications(input: Input) {
     let previousIds = new Set<string>();
     let generation = 0;
     let monitoring = false;
+    let foregroundRevision = 0;
+    let work: ActivityWork[] = [];
+    let metrics: { agentCount?: number; toolCount?: number; progress?: { completed: number; total: number } } = {};
     const tracked = new Map<string, number>();
     const watched = new Set<string>();
     const runPrefix = `${scope}:${Date.now()}`;
@@ -84,22 +89,31 @@ export function useActivityNotifications(input: Input) {
     function action(activity: SessionActivity) {
       return activity.state === 'thinking' && activity.tool ? activity.tool : i18n.t(`notifications:activity.${activity.state}`);
     }
-    async function publish(activity: SessionActivity, count: number) {
-      if (cancelled) return false;
+    function currentObservation() {
+      const foreground = foregroundRevision;
+      return () => !cancelled && (!ios || (foreground === foregroundRevision && AppState.currentState === 'active'
+        && latest.current.connected && latest.current.catalogClient === catalogClient && latest.current.connectionScope === scope));
+    }
+    async function publish(activity: SessionActivity, count: number, isCurrent: () => boolean) {
+      if (!isCurrent()) return false;
       return updateActivityNotification({
         sessionId: activity.session.id, projectPath: activity.session.directory || '', connectionScope: scope,
         title: activity.session.title || i18n.t('notifications:activity.untitled'),
-        action: action(activity), count, key: `${runPrefix}:${generation}`, active: activity.active,
+        action: ios ? '' : action(activity), phase: ios && activity.state === 'thinking' ? activity.workPhase ?? activity.state : activity.state,
+        count, key: `${runPrefix}:${generation}`, active: activity.active,
+        ...(ios ? { work, isCurrent, ...(activity.active ? metrics : { agentCount: 0, toolCount: 0, progress: activity.progress }) } : {}),
       });
     }
     async function refresh() {
-      if (cancelled) return;
+      if (cancelled || (ios && AppState.currentState !== 'active')) return;
       if (inFlight) { rerun = true; return; }
       inFlight = true;
       clearTimeout(timer);
+      const isCurrent = currentObservation();
+      const stale = () => !isCurrent();
       try {
-        const permissionGranted = (await Notifications.getPermissionsAsync()).granted;
-        if (cancelled) return;
+        const permissionGranted = ios || (await Notifications.getPermissionsAsync()).granted;
+        if (stale()) return;
         if (!permissionGranted) {
           monitoring = false;
           await stopActivityNotification(scope);
@@ -112,9 +126,11 @@ export function useActivityNotifications(input: Input) {
         if (localSending && !displayed && AppState.currentState === 'active') {
           generation++;
           displayed = { session: localSending, active: true, state: 'thinking' };
+          if (ios) { work = [{ sessionId: localSending.id }]; metrics = {}; }
           previousIds.add(localSending.id);
           watched.add(localSending.id);
-          monitoring = await publish(displayed, 1);
+          monitoring = await publish(displayed, 1, isCurrent);
+          if (stale()) return;
         }
         const revision = eventRevision.current;
         const snapshot = await readActivitySnapshot(
@@ -124,7 +140,7 @@ export function useActivityNotifications(input: Input) {
           watched,
           !current.streamConnectedRef.current,
         );
-        if (cancelled) return;
+        if (stale()) return;
         if (revision !== eventRevision.current) { rerun = true; return; }
         snapshot.statuses = mergeSessionStatuses(eventStatuses.current, {
           ...Object.fromEntries(snapshot.sessions.map((session) => [session.id, { type: 'idle' as const }])),
@@ -136,10 +152,25 @@ export function useActivityNotifications(input: Input) {
         if (sendingState.active && sendingState.sessionId) {
           const sending = activities.find((item) => item.session.id === sendingState.sessionId);
           const sendingSession = latest.current.sessions.find((session) => session.id === sendingState.sessionId);
-          if (sending) { sending.active = true; sending.state = 'thinking'; }
+          if (sending) {
+            sending.active = true; sending.state = 'thinking';
+            // The bounded transcript can still describe the previous prompt
+            // while a local submission is in flight. Do not reuse its insights.
+            sending.progress = undefined; sending.workPhase = undefined; sending.toolCount = undefined; sending.agentCount = undefined;
+          }
           else if (sendingSession) activities.push({ session: sendingSession, active: true, state: 'thinking' });
         }
         const active = activities.filter((item) => item.active);
+        if (ios) {
+          work = active.map((item) => ({ sessionId: item.session.id, ...(item.runId ? { runId: item.runId } : {}) }));
+          metrics = {
+            agentCount: active.every((item) => item.agentCount !== undefined) ? active.reduce((sum, item) => sum + item.agentCount!, 0) : undefined,
+            toolCount: active.every((item) => item.toolCount !== undefined) ? active.reduce((sum, item) => sum + item.toolCount!, 0) : undefined,
+            progress: active.length && active.every((item) => item.progress) ? active.reduce((sum, item) => ({
+              completed: sum.completed + item.progress!.completed, total: sum.total + item.progress!.total,
+            }), { completed: 0, total: 0 }) : undefined,
+          };
+        }
         const ids = new Set(active.map((item) => item.session.id));
         if (active.some((item) => !previousIds.has(item.session.id))) generation++;
         previousIds = ids;
@@ -151,54 +182,71 @@ export function useActivityNotifications(input: Input) {
               sessionId: session.id, sessionTitle: session.title, projectPath: session.directory || '', connectionScope: scope,
               settings: { serverUrl: current.settings.serverUrl, username: current.settings.username }, requestedAt: Date.now(),
             }, true);
-            if (cancelled) return;
+            if (stale()) return;
             tracked.set(session.id, record.requestedAt);
           }
         }
         for (const [id, requestedAt] of tracked) {
           if (!ids.has(id)) {
-            await clearPendingTaskFinishedNotification(scope, id, requestedAt);
-            if (cancelled) return;
+            // iOS Live Activities never replace ordinary completion delivery.
+            if (!ios) await clearPendingTaskFinishedNotification(scope, id, requestedAt);
+            if (stale()) return;
             tracked.delete(id);
             watched.delete(id);
           }
         }
         const selected = selectDisplayedActivity(activities, latest.current.currentSessionId);
+        if (ios) markActivityNotificationScopeReady(scope, isCurrent);
         if (selected) {
           displayed = selected;
-          monitoring = await publish(selected, active.length);
+          monitoring = await publish(selected, active.length, isCurrent);
         } else if (displayed) {
           const finished = activities.find((item) => item.session.id === displayed!.session.id)
             ?? { ...displayed, active: false, state: 'stopped' as const };
           if (latest.current.promptError?.sessionId === finished.session.id) finished.state = 'failed';
-          await publish(finished, 0);
+          await publish(finished, 0, isCurrent);
           monitoring = false;
           displayed = undefined;
+        } else if (ios) {
+          await stopActivityNotification(scope, isCurrent);
         }
       } catch (error) {
-        if (!cancelled && displayed && monitoring) {
+        if (ios && !stale()) markActivityNotificationScopeReady(scope);
+        if (!stale() && displayed && monitoring) {
           await updateActivityNotification({
             sessionId: displayed.session.id, projectPath: displayed.session.directory || '', connectionScope: scope,
-            title: displayed.session.title, action: i18n.t('notifications:activity.reconnecting'),
+            title: displayed.session.title, action: ios ? '' : i18n.t('notifications:activity.reconnecting'), phase: 'reconnecting',
             count: previousIds.size, key: `${runPrefix}:${generation}`, active: true,
+            ...(ios ? { work, isCurrent } : {}),
           }).catch(() => undefined);
         }
         console.warn('Could not refresh activity notification.', error);
       } finally {
         inFlight = false;
-        if (!cancelled) {
+        if (!cancelled && (!ios || AppState.currentState === 'active')) {
           if (rerun) { rerun = false; void refresh(); }
           else if (AppState.currentState === 'active' || monitoring) timer = setTimeout(() => void refresh(), monitoring ? 5000 : 20000);
         }
       }
     }
     const scheduleRefresh = (immediate = false, delay = 250) => {
+      if (ios && AppState.currentState !== 'active') return;
       if (immediate) { generation++; void refresh(); return; }
       if (cancelled || eventTimer) return;
       eventTimer = setTimeout(() => { eventTimer = undefined; void refresh(); }, delay);
     };
     refreshRef.current = scheduleRefresh;
     const subscription = AppState.addEventListener('change', (state) => {
+      if (ios) {
+        foregroundRevision++;
+        if (state !== 'active') {
+          // Native scene lifecycle marks existing content paused; JS must not
+          // keep polling or let an old foreground snapshot claim it is live.
+          clearTimeout(timer); clearTimeout(eventTimer); eventTimer = undefined;
+          rerun = false;
+          return;
+        }
+      }
       if (state === 'active') void refresh();
       else if (!monitoring) clearTimeout(timer);
     });
@@ -209,9 +257,9 @@ export function useActivityNotifications(input: Input) {
       clearTimeout(timer);
       clearTimeout(eventTimer);
       subscription.remove();
-      void stopActivityNotification(scope).catch(() => undefined);
+      void (releaseScope ? releaseScope() : stopActivityNotification(scope)).catch(() => undefined);
     };
-  }, [input.catalogClient, input.connected, input.connectionScope]);
+  }, [input.catalogClient, input.connected, input.connectionScope, input.contract]);
 
   useEffect(() => {
     refreshRef.current(input.sendingState.active);
@@ -220,7 +268,7 @@ export function useActivityNotifications(input: Input) {
   useEffect(() => { refreshRef.current(); }, [input.currentSessionId, input.promptError]);
 
   return useCallback((event: OpencodeEvent) => {
-    if (!latest.current.connected) return;
+    if (!latest.current.connected || (Platform.OS === 'ios' && latest.current.contract !== 'v2')) return;
     const status = getEventSessionStatus(event);
     if (status) { eventStatuses.current[status.sessionID] = status.status; eventRevision.current++; }
     const type = event.type === 'compatibility' ? event.payload.type : event.type;
