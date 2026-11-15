@@ -1,9 +1,4 @@
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import { AESEncryptionKey, AESSealedData, aesDecryptAsync, aesEncryptAsync } from 'expo-crypto';
-import * as SecureStore from 'expo-secure-store';
-import { Platform } from 'react-native';
-
-import { getConnectTestSecret, setConnectTestSecret } from '@/shared/storage/cloud-link';
+import { createEncryptedStore } from '@/shared/storage/encrypted-store';
 
 // Refresh tokens outlive the browser session, so they are treated like a
 // password: encrypted at rest with AES-256-GCM and a key held in
@@ -23,6 +18,7 @@ export type OidcTokenSet = {
 };
 
 const OIDC_KEY_STORAGE_KEY = 'opencode-mobile.oidc-key';
+const oidc = createEncryptedStore(OIDC_KEY_STORAGE_KEY);
 
 const MAX_TOKEN_LENGTH = 32_768;
 
@@ -33,56 +29,7 @@ function tokenStorageKey(sessionKey: string) {
 }
 
 function tokenAad(sessionKey: string) {
-  return new TextEncoder().encode(`opencode-mobile:oidc:${sessionKey}`);
-}
-
-async function readKeyMaterial() {
-  if (Platform.OS === 'web') return getConnectTestSecret(OIDC_KEY_STORAGE_KEY);
-  return (await SecureStore.getItemAsync(OIDC_KEY_STORAGE_KEY)) ?? '';
-}
-
-async function writeKeyMaterial(value: string) {
-  if (Platform.OS === 'web') {
-    setConnectTestSecret(OIDC_KEY_STORAGE_KEY, value);
-    return;
-  }
-  await SecureStore.setItemAsync(OIDC_KEY_STORAGE_KEY, value, {
-    keychainAccessible: SecureStore.AFTER_FIRST_UNLOCK_THIS_DEVICE_ONLY,
-  });
-}
-
-let cachedKey: Promise<AESEncryptionKey> | undefined;
-
-async function createTokenKey() {
-  let encoded = await readKeyMaterial();
-  if (!encoded) {
-    const generated = await AESEncryptionKey.generate();
-    encoded = await generated.encoded('base64');
-    await writeKeyMaterial(encoded);
-  }
-  return AESEncryptionKey.import(encoded, 'base64');
-}
-
-function tokenKey() {
-  if (!cachedKey) cachedKey = createTokenKey().catch((error) => { cachedKey = undefined; throw error; });
-  return cachedKey;
-}
-
-async function readCiphertext(key: string) {
-  if (Platform.OS === 'web') return getConnectTestSecret(key);
-  return (await AsyncStorage.getItem(key)) ?? '';
-}
-
-async function writeCiphertext(key: string, value: string) {
-  if (Platform.OS === 'web') {
-    setConnectTestSecret(key, value);
-    return;
-  }
-  if (value) {
-    await AsyncStorage.setItem(key, value);
-    return;
-  }
-  await AsyncStorage.removeItem(key);
+  return `opencode-mobile:oidc:${sessionKey}`;
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -111,33 +58,26 @@ export function parseOidcTokenSet(value: unknown): OidcTokenSet | undefined {
 
 export async function readOidcTokens(sessionKey: string): Promise<OidcTokenSet | undefined> {
   const storageKey = tokenStorageKey(sessionKey);
-  const ciphertext = await readCiphertext(storageKey);
+  const ciphertext = await oidc.readCiphertext(storageKey);
   if (!ciphertext) return undefined;
-  const key = await tokenKey();
+  const encryptionKey = await oidc.key();
   try {
-    const sealed = AESSealedData.fromCombined(ciphertext, { ivLength: 12, tagLength: 16 });
-    const bytes = await aesDecryptAsync(sealed, key, { output: 'bytes', additionalData: tokenAad(sessionKey) });
-    const tokens = parseOidcTokenSet(JSON.parse(new TextDecoder().decode(bytes)));
+    const tokens = parseOidcTokenSet(JSON.parse(await oidc.decrypt(encryptionKey, tokenAad(sessionKey), ciphertext)));
     if (!tokens) throw new Error('invalid token payload');
     return tokens;
   } catch {
-    // A missing key, failed tag, or malformed payload must fail closed.
-    await writeCiphertext(storageKey, '').catch(() => undefined);
+    // A failed tag or malformed payload must fail closed.
+    await oidc.writeCiphertext(storageKey, '').catch(() => undefined);
     return undefined;
   }
 }
 
 export async function saveOidcTokens(sessionKey: string, tokens: OidcTokenSet) {
-  const key = await tokenKey();
-  const sealed = await aesEncryptAsync(
-    new TextEncoder().encode(JSON.stringify(tokens)),
-    key,
-    { additionalData: tokenAad(sessionKey) },
-  );
-  const ciphertext = await sealed.combined('base64');
-  await writeCiphertext(tokenStorageKey(sessionKey), ciphertext);
+  const encryptionKey = await oidc.key();
+  const ciphertext = await oidc.encrypt(encryptionKey, tokenAad(sessionKey), JSON.stringify(tokens));
+  await oidc.writeCiphertext(tokenStorageKey(sessionKey), ciphertext);
 }
 
 export async function deleteOidcTokens(sessionKey: string) {
-  await writeCiphertext(tokenStorageKey(sessionKey), '');
+  await oidc.writeCiphertext(tokenStorageKey(sessionKey), '');
 }

@@ -1,115 +1,50 @@
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import { AESEncryptionKey, AESSealedData, aesDecryptAsync, aesEncryptAsync } from 'expo-crypto';
-import * as SecureStore from 'expo-secure-store';
-import { Platform } from 'react-native';
-
-import { getConnectTestSecret, setConnectTestSecret } from '@/shared/storage/cloud-link';
 import { parseStoredConnectionCertificate, type ConnectionCertificate } from '@/shared/contracts/connection-certificate';
+import { createEncryptedStore } from '@/shared/storage/encrypted-store';
 
 const CERTIFICATE_KEY_STORAGE_KEY = 'opencode-mobile.connection-certificate-key';
 const CONNECTION_CERTIFICATE_STORAGE_KEY = 'opencode-mobile.connection-certificate';
+const certificates = createEncryptedStore(CERTIFICATE_KEY_STORAGE_KEY);
 
 function profileCertificateKey(profileId: string) {
   return `opencode-mobile.connection-profile-certificate.${profileId}`;
 }
 
 function certificateAad(id: string) {
-  return new TextEncoder().encode(`opencode-mobile:connection-certificate:${id}`);
+  return `opencode-mobile:connection-certificate:${id}`;
 }
 
-async function readKeyMaterial() {
-  try {
-    if (Platform.OS === 'web') return getConnectTestSecret(CERTIFICATE_KEY_STORAGE_KEY);
-    return (await SecureStore.getItemAsync(CERTIFICATE_KEY_STORAGE_KEY)) ?? '';
-  } catch {
-    return '';
-  }
-}
-
-async function writeKeyMaterial(value: string) {
-  if (Platform.OS === 'web') {
-    setConnectTestSecret(CERTIFICATE_KEY_STORAGE_KEY, value);
-    return;
-  }
-  await SecureStore.setItemAsync(CERTIFICATE_KEY_STORAGE_KEY, value, {
-    keychainAccessible: SecureStore.AFTER_FIRST_UNLOCK_THIS_DEVICE_ONLY,
-  });
-}
-
-let cachedKey: AESEncryptionKey | undefined;
-
-async function certificateKey() {
-  if (cachedKey) return cachedKey;
-  let encoded = await readKeyMaterial();
-  if (!encoded) {
-    const generated = await AESEncryptionKey.generate();
-    encoded = await generated.encoded('base64');
-    await writeKeyMaterial(encoded);
-  }
-  cachedKey = await AESEncryptionKey.import(encoded, 'base64');
-  return cachedKey;
-}
-
-async function readCiphertext(key: string) {
-  if (Platform.OS === 'web') return getConnectTestSecret(key);
-  return (await AsyncStorage.getItem(key)) ?? '';
-}
-
-async function writeCiphertext(key: string, value: string) {
-  if (Platform.OS === 'web') {
-    setConnectTestSecret(key, value);
-    return;
-  }
-  if (value) {
-    await AsyncStorage.setItem(key, value);
-    return;
-  }
-  await AsyncStorage.removeItem(key);
-}
-
-async function encryptCertificate(id: string, certificate: ConnectionCertificate) {
-  const key = await certificateKey();
-  const sealed = await aesEncryptAsync(
-    new TextEncoder().encode(JSON.stringify(certificate)),
-    key,
-    { additionalData: certificateAad(id) },
-  );
-  return sealed.combined('base64');
-}
-
-async function decryptCertificate(id: string, ciphertext: string): Promise<ConnectionCertificate | undefined> {
+async function readCertificate(id: string, storageKey: string) {
+  const ciphertext = await certificates.readCiphertext(storageKey).catch(() => '');
   if (!ciphertext) return undefined;
+
+  // A transient Keychain/Keystore failure is not a missing key: generating a
+  // replacement here would orphan this ciphertext.
+  const encryptionKey = await certificates.key().catch(() => undefined);
+  if (!encryptionKey) return undefined;
+
   try {
-    const key = await certificateKey();
-    const sealed = AESSealedData.fromCombined(ciphertext, { ivLength: 12, tagLength: 16 });
-    const bytes = await aesDecryptAsync(sealed, key, { output: 'bytes', additionalData: certificateAad(id) });
-    return parseStoredConnectionCertificate(JSON.parse(new TextDecoder().decode(bytes)));
+    const plaintext = await certificates.decrypt(encryptionKey, certificateAad(id), ciphertext);
+    const certificate = parseStoredConnectionCertificate(JSON.parse(plaintext));
+    if (!certificate) throw new Error('invalid stored certificate');
+    return certificate;
   } catch {
+    // The key was available and the payload still failed: fail closed.
+    await certificates.writeCiphertext(storageKey, '').catch(() => undefined);
     return undefined;
   }
 }
 
-async function readCertificate(id: string, storageKey: string) {
-  const ciphertext = await readCiphertext(storageKey).catch(() => '');
-  if (!ciphertext) return undefined;
-  const certificate = await decryptCertificate(id, ciphertext);
-  if (!certificate) {
-    // A missing key, failed tag, or malformed payload must fail closed.
-    await writeCiphertext(storageKey, '').catch(() => undefined);
-  }
-  return certificate;
-}
-
 async function saveCertificate(id: string, storageKey: string, certificate: ConnectionCertificate | undefined) {
   if (!certificate) {
-    await writeCiphertext(storageKey, '');
+    await certificates.writeCiphertext(storageKey, '');
     return;
   }
-  const ciphertext = await encryptCertificate(id, certificate);
+  const encryptionKey = await certificates.key();
+  const ciphertext = await certificates.encrypt(encryptionKey, certificateAad(id), JSON.stringify(certificate));
   try {
-    await writeCiphertext(storageKey, ciphertext);
+    await certificates.writeCiphertext(storageKey, ciphertext);
   } catch (error) {
-    await writeCiphertext(storageKey, '').catch(() => undefined);
+    await certificates.writeCiphertext(storageKey, '').catch(() => undefined);
     throw error;
   }
 }
@@ -131,5 +66,5 @@ export function saveProfileCertificate(profileId: string, certificate: Connectio
 }
 
 export function deleteProfileCertificate(profileId: string) {
-  return writeCiphertext(profileCertificateKey(profileId), '');
+  return certificates.writeCiphertext(profileCertificateKey(profileId), '');
 }

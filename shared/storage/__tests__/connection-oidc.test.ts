@@ -6,7 +6,12 @@ vi.mock('react-native', () => ({ Platform: { OS: 'android' } }));
 vi.mock('@react-native-async-storage/async-storage', () => ({ default: { setItem: mocks.ciphertext } }));
 vi.mock('expo-secure-store', () => ({ getItemAsync: async () => null, setItemAsync: mocks.saveKey, AFTER_FIRST_UNLOCK_THIS_DEVICE_ONLY: 'device' }));
 vi.mock('@/shared/storage/cloud-link', () => ({}));
-vi.mock('expo-crypto', () => ({ AESEncryptionKey: { generate: mocks.generate, import: mocks.import }, aesEncryptAsync: mocks.encrypt }));
+vi.mock('expo-crypto', () => ({
+  AESEncryptionKey: { generate: mocks.generate, import: mocks.import },
+  AESSealedData: { fromCombined: vi.fn() },
+  aesEncryptAsync: mocks.encrypt,
+  aesDecryptAsync: vi.fn(),
+}));
 
 describe('OIDC encryption key ownership', () => {
   it('single-flights key creation for concurrent first saves on different connections', async () => {
