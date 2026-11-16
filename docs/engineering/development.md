@@ -160,6 +160,55 @@ npm run build:ios:local
 - The signed IPA is attached to the GitHub Release. No manual iOS workflow dispatch is required
 - App Store production submission and phased release remain separate manual store-console actions
 
+### Experimental Live Activity test IPA
+
+The opt-in local Live Activity is described in [iOS parity](../product/parity/ios-widget.md)
+and [ADR 0024](../adr/0024-opt-in-local-ios-live-activities.md). The optional
+`.github/workflows/ios-test-build.yml` workflow reuses the ordinary smoke CI gate,
+then builds on a GitHub-hosted Mac. It enables the experimental feature and uses
+the existing Personal Team push-entitlement opt-out and a distinct test bundle
+identifier. No Apple signing secrets, release tag, version bump, or store upload
+are involved. Ordinary signed release builds are unchanged.
+
+Feature-branch pushes first run Apple-SDK checks and a lightweight Simulator
+presentation harness using the production activity dashboard. A device archive
+is explicitly requested with the `[ios-ipa]` marker in the pushed commit message
+or the manual workflow's `build_ipa` input. This separates native UI iteration
+from a full iPhone build. Manual dispatch requires the workflow to be available
+under GitHub's workflow-dispatch rules; a branch push does not require changing
+the repository's default branch.
+
+The harness checks native rendering, including stale/terminal states and larger
+text. Captures come from the Simulator app's successfully drawn UIKit window,
+saved before its readiness marker and copied from its data container. They are
+not system framebuffer screenshots, which can still show launch transitions.
+PNG integrity checks do not replace visual layout review.
+It is not a full React Native cold-launch test, actual system Lock Screen
+or Dynamic Island hosting, signing acceptance, or APNs delivery. Those remain
+separate device/integration checks. Compiler and CocoaPods download caches may
+reduce repeated work; a cache hit never skips validation or guarantees a short
+archive, and cold builds can still take tens of minutes.
+
+After a successful run, download the `ios-live-activity-unsigned-test` artifact
+and extract `opencode-mobile-unsigned-test.ipa`. This is a real device Release
+build with embedded JavaScript and the Live Activity extension, but it is
+**unsigned**, not directly installable through Safari/Files or TestFlight.
+
+For personal testing, a signing/install tool such as
+[Sideloadly](https://sideloadly.io/) on Windows or macOS can re-sign an IPA for
+your iPhone using your Apple account. Follow its current prerequisites, connect
+and trust the phone, retain the Live Activity app extension, and enable Developer
+Mode/trust the developer profile when iOS requests it. Never put your Apple ID
+password or 2FA codes in the repository, CI secrets, or chat. Free provisioning
+normally expires after seven days and has App ID/app-count limits. Actual
+extension provisioning and installation still require device validation.
+
+Paid Apple Developer membership allows properly provisioned Ad Hoc or TestFlight
+distribution through the existing release process once your own identifiers,
+certificates/profiles, and App Store Connect configuration are supplied. The
+unsigned test workflow is not a signing service. Adding a signed installation
+does not add the separate APNs sender needed for continuous background progress.
+
 ### Testing
 
 - `npm run test:ci:static` runs lint, app type-checking, the typed-test

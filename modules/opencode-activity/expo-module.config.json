@@ -1,4 +1,5 @@
 {
-  "platforms": ["android"],
-  "android": { "modules": ["app.getopencode.activity.OpencodeActivityModule"] }
+  "platforms": ["android", "apple"],
+  "android": { "modules": ["app.getopencode.activity.OpencodeActivityModule"] },
+  "apple": { "modules": ["OpencodeActivityModule"] }
 }

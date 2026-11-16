@@ -8,9 +8,10 @@ export type SessionLinkInput = {
   connectionScope: string;
 };
 
-export function buildSessionLink(input: SessionLinkInput) {
+export function buildSessionLink(input: SessionLinkInput, scheme = 'opencodemobile') {
+  if (!/^[a-z][a-z0-9+.-]*$/i.test(scheme)) throw new Error('Invalid app URL scheme.');
   const sessionId = encodeURIComponent(input.sessionId);
   const projectPath = encodeURIComponent(input.projectPath);
   const connectionScope = encodeURIComponent(input.connectionScope);
-  return `opencodemobile://session/${sessionId}?project=${projectPath}&connectionScope=${connectionScope}`;
+  return `${scheme}://session/${sessionId}?project=${projectPath}&connectionScope=${connectionScope}`;
 }

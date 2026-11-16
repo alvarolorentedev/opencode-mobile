@@ -6,6 +6,18 @@
     "failedBodyFallback": "タスクはエラーで終了しました"
   },
   "activity": {
+    "reading": "ファイルを読み取り中",
+    "editing": "ファイルを編集中",
+    "searching": "検索中",
+    "executing": "コマンドを実行中",
+    "delegating": "作業を委任中",
+    "progressLabel": "タスク：{{total}}件中{{completed}}件完了",
+    "agentsLabel": "稼働中のエージェント：{{count}}",
+    "toolsLabel": "実行中のツール：{{count}}",
+    "filesLabel": "変更されたファイル：{{count}}",
+    "updatedLabel": "最終更新",
+    "elapsedLabel": "経過時間",
+    "updatesPaused": "更新は一時停止中",
     "working": "作業中",
     "thinking": "思考中",
     "needsInput": "入力が必要です",

@@ -6,6 +6,18 @@
     "failedBodyFallback": "Die Aufgabe wurde mit einem Fehler beendet"
   },
   "activity": {
+    "reading": "Dateien lesen",
+    "editing": "Dateien bearbeiten",
+    "searching": "Suchen",
+    "executing": "Befehle ausführen",
+    "delegating": "Arbeit delegieren",
+    "progressLabel": "Aufgaben: {{completed}} von {{total}}",
+    "agentsLabel": "Aktive Agenten: {{count}}",
+    "toolsLabel": "Laufende Werkzeuge: {{count}}",
+    "filesLabel": "Geänderte Dateien: {{count}}",
+    "updatedLabel": "Zuletzt aktualisiert",
+    "elapsedLabel": "Vergangene Zeit",
+    "updatesPaused": "Aktualisierungen pausiert",
     "working": "In Arbeit",
     "thinking": "Denkt nach",
     "needsInput": "Eingabe erforderlich",

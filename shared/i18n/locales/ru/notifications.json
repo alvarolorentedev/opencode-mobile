@@ -6,6 +6,18 @@
     "failedBodyFallback": "Задача завершилась с ошибкой"
   },
   "activity": {
+    "reading": "Чтение файлов",
+    "editing": "Изменение файлов",
+    "searching": "Поиск",
+    "executing": "Выполнение команд",
+    "delegating": "Делегирование работы",
+    "progressLabel": "Задачи: {{completed}} из {{total}}",
+    "agentsLabel": "Активные агенты: {{count}}",
+    "toolsLabel": "Запущенные инструменты: {{count}}",
+    "filesLabel": "Изменённые файлы: {{count}}",
+    "updatedLabel": "Последнее обновление",
+    "elapsedLabel": "Прошедшее время",
+    "updatesPaused": "Обновления приостановлены",
     "working": "Работает",
     "thinking": "Думает",
     "needsInput": "Нужен ваш ответ",

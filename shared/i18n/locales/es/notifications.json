@@ -6,6 +6,18 @@
     "failedBodyFallback": "La tarea terminó con un error"
   },
   "activity": {
+    "reading": "Leyendo archivos",
+    "editing": "Editando archivos",
+    "searching": "Buscando",
+    "executing": "Ejecutando comandos",
+    "delegating": "Delegando trabajo",
+    "progressLabel": "Tareas: {{completed}} de {{total}}",
+    "agentsLabel": "Agentes activos: {{count}}",
+    "toolsLabel": "Herramientas en ejecución: {{count}}",
+    "filesLabel": "Archivos modificados: {{count}}",
+    "updatedLabel": "Última actualización",
+    "elapsedLabel": "Tiempo transcurrido",
+    "updatesPaused": "Actualizaciones en pausa",
     "working": "Trabajando",
     "thinking": "Pensando",
     "needsInput": "Necesita tu respuesta",

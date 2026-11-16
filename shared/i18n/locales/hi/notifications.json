@@ -6,6 +6,18 @@
     "failedBodyFallback": "कार्य एक त्रुटि के साथ समाप्त हुआ"
   },
   "activity": {
+    "reading": "फ़ाइलें पढ़ रहा है",
+    "editing": "फ़ाइलें संपादित कर रहा है",
+    "searching": "खोज रहा है",
+    "executing": "कमांड चला रहा है",
+    "delegating": "काम सौंप रहा है",
+    "progressLabel": "कार्य: {{total}} में से {{completed}}",
+    "agentsLabel": "सक्रिय एजेंट: {{count}}",
+    "toolsLabel": "चल रहे टूल: {{count}}",
+    "filesLabel": "बदली गई फ़ाइलें: {{count}}",
+    "updatedLabel": "अंतिम अपडेट",
+    "elapsedLabel": "बीता हुआ समय",
+    "updatesPaused": "अपडेट रुके हुए हैं",
     "working": "कार्यरत",
     "thinking": "सोच रहा है",
     "needsInput": "आपके उत्तर की आवश्यकता है",

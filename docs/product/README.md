@@ -17,7 +17,7 @@ checking whether a platform-specific gap is intentional.
 | [cloud-link.md](cloud-link.md) | Cloud Link setup, local V2 pairing, subscription/purchase flow, machines, and transport |
 | [app-updates.md](app-updates.md) | Android in-app updates, iOS prerequisites, and update acceptance |
 | [parity/ios-share.md](parity/ios-share.md) | Deferred iOS inbound-share parity requirements |
-| [parity/ios-widget.md](parity/ios-widget.md) | Deferred iOS widget and Live Activity parity requirements |
+| [parity/ios-widget.md](parity/ios-widget.md) | Deferred iOS widgets and experimental local Live Activity requirements |
 
 ## Feature ownership
 

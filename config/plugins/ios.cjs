@@ -1,4 +1,5 @@
 const { withEntitlementsPlist } = require('@expo/config-plugins');
+const { withIOSLiveActivities } = require('./ios-live-activities.cjs');
 
 const withoutPushEntitlement = (config) =>
   withEntitlementsPlist(config, (config) => {
@@ -6,4 +7,4 @@ const withoutPushEntitlement = (config) =>
     return config;
   });
 
-module.exports = { withoutPushEntitlement };
+module.exports = { withoutPushEntitlement, withIOSLiveActivities };

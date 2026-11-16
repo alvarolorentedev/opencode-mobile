@@ -10,8 +10,9 @@ const { withAndroidAppConfig } = require('./config/plugins/android.cjs') as {
   ) => ExpoConfig;
 };
 // eslint-disable-next-line @typescript-eslint/no-require-imports
-const { withoutPushEntitlement } = require('./config/plugins/ios.cjs') as {
+const { withoutPushEntitlement, withIOSLiveActivities } = require('./config/plugins/ios.cjs') as {
   withoutPushEntitlement: (config: ExpoConfig) => ExpoConfig;
+  withIOSLiveActivities: (config: ExpoConfig) => ExpoConfig;
 };
 
 function env(name: string) {
@@ -23,12 +24,22 @@ const appVariant = env('EXPO_APP_VARIANT') ?? 'production';
 const isDevelopmentVariant = appVariant === 'development';
 const isFossVariant = appVariant === 'foss' || env('EXPO_PUBLIC_FOSS') === '1';
 const isE2EMode = env('EXPO_PUBLIC_E2E_MODE') === '1';
+// Local-only experimental surface. Ordinary store builds keep the current
+// provisioning/targets until the opt-in implementation is device-validated.
+const enableIOSLiveActivities = env('EXPO_IOS_LIVE_ACTIVITIES') === '1' && !isE2EMode && !isFossVariant;
 const e2eServerUrl = env('EXPO_PUBLIC_E2E_SERVER_URL');
 // Free Apple "Personal Team" accounts cannot provision the Push Notifications
 // capability, so `expo-notifications`'s aps-environment entitlement blocks
 // on-device builds entirely for them. Strip it locally with this flag; CI and
 // paid-team builds must leave it unset so push notifications keep working.
 const disablePushEntitlement = env('EXPO_IOS_DISABLE_PUSH_ENTITLEMENT') === '1';
+// Public endpoint only. Per-installation credentials are delivered by MDM;
+// APNs signing material never enters the application configuration.
+const activityRelayURL = env('EXPO_IOS_ACTIVITY_RELAY_URL');
+if (activityRelayURL && (!enableIOSLiveActivities || disablePushEntitlement
+  || !/^https:\/\/[^/?#@:]+(?::\d+)?\/v1\/activity$/.test(activityRelayURL))) {
+  throw new Error('Activity relay requires opt-in Live Activities, push entitlement, and an HTTPS /v1/activity URL.');
+}
 // Apple bundle identifiers are unique across every developer account, not just
 // per team. The published "app.getopencode.mobile" (and its ".dev" variant)
 // are already registered to the paid team, so a free "Personal Team" account
@@ -92,7 +103,9 @@ const config: ExpoConfig = {
   version: '1.0.150',
   orientation: 'default',
   icon: './assets/images/icon.png',
-  scheme: 'opencodemobile',
+  // Give test Live Activity taps an unambiguous route when the official app is
+  // installed alongside this fork; retain the normal scheme for existing links.
+  scheme: enableIOSLiveActivities ? ['opencodemobile-activities', 'opencodemobile'] : 'opencodemobile',
   userInterfaceStyle: 'automatic',
   android: {
     package: androidPackage,
@@ -113,6 +126,7 @@ const config: ExpoConfig = {
     buildNumber: '150',
     infoPlist: {
       ITSAppUsesNonExemptEncryption: false,
+      ...(activityRelayURL ? { OpencodeActivityRelayURL: activityRelayURL } : {}),
       NSPhotoLibraryUsageDescription: 'Allow OpenCode Mobile to access photos you choose to attach to chat messages.',
       NSAppTransportSecurity: {
         NSAllowsArbitraryLoads: true,
@@ -127,6 +141,7 @@ const config: ExpoConfig = {
     // expo-notifications to run after it and strip the entitlement it sets.
     ...(disablePushEntitlement ? [withoutPushEntitlement as unknown as string] : []),
     'expo-notifications',
+    ...(enableIOSLiveActivities ? [withIOSLiveActivities as unknown as string] : []),
     'expo-background-task',
     'expo-web-browser',
     [
@@ -243,6 +258,7 @@ const config: ExpoConfig = {
     e2eMode: isE2EMode,
     e2eServerUrl,
     foss: isFossVariant,
+    iosLiveActivities: enableIOSLiveActivities,
     updates: {
       enabled: !isDevelopmentVariant && !isFossVariant && !isE2EMode,
       testing: isDevelopmentVariant && isE2EMode,
