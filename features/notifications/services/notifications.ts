@@ -203,38 +203,31 @@ if (Platform.OS !== 'web' && !TaskManager.isTaskDefined(CHAT_COMPLETION_TASK_NAM
         return BackgroundTask.BackgroundTaskResult.Success;
       }
 
+      const loadWorkspace = async (pending: PendingNotificationSession) => {
+        // Resolve credentials for this workspace, including when it is not the active one.
+        const credentials = await resolveConnectionCredentials(pending.settings).catch(() => undefined);
+        if (!credentials) return;
+        const settings: OpencodeConnectionSettings = { ...pending.settings, ...credentials, directory: pending.projectPath };
+        const contract = (await detectServerContract(settings).catch(() => ({ contract: 'v2' as const }))).contract;
+        const client = buildClient(settings, contract);
+        return { client, ...await listSessions(client) };
+      };
+      const workspaces = new Map<string, ReturnType<typeof loadWorkspace>>();
       for (const [key, pending] of pendingSessions) {
         if (!pending.projectPath) {
           await completePendingNotification(key, pending);
           continue;
         }
-
-        // Resolve the credentials of the connection that created the record.
-        // The currently active connection is only used when this record
-        // belongs to it; another server's task must never borrow its password.
-        const credentials = await resolveConnectionCredentials({
-          serverUrl: pending.settings.serverUrl,
-          username: pending.settings.username,
-        }).catch(() => undefined);
-        if (credentials === undefined) {
-          // The profile or active connection that owns this task is not
-          // resolvable right now (for example the user switched away from an
-          // unsaved connection). Keep the record and retry on a later run
-          // instead of discarding another server's task.
-          continue;
-        }
-
         try {
-          const settings: OpencodeConnectionSettings = {
-            serverUrl: pending.settings.serverUrl,
-            username: pending.settings.username,
-            ...credentials,
-            directory: pending.projectPath,
-          };
-          const contract = (await detectServerContract(settings).catch(() => ({ contract: 'v2' as const }))).contract;
-          const client = buildClient(settings, contract);
-          const { statuses, sessions } = await listSessions(client);
-
+          const workspaceKey = JSON.stringify([pending.settings.serverUrl, pending.settings.username, pending.projectPath]);
+          let read = workspaces.get(workspaceKey);
+          if (!read) {
+            read = loadWorkspace(pending);
+            workspaces.set(workspaceKey, read);
+          }
+          const workspace = await read;
+          if (!workspace) continue;
+          const { client, statuses, sessions } = workspace;
           const settlement = await readSessionSettlement(client, pending.sessionId, statuses[pending.sessionId], pending.requestedAt);
           if (settlement.state === 'running' || settlement.state === 'retrying' || settlement.state === 'unknown') continue;
           if (settlement.state === 'blocked') {

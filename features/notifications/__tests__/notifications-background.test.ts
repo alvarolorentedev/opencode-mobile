@@ -182,6 +182,10 @@ describe('background notification monitor', () => {
       g.__notificationsTestBuilds.length = 0;
       g.__notificationsTestResolutions.length = 0;
       seedPending();
+      const extra = { ...readPending()[pendingNotificationKey(scopeA, 'session-a')], sessionId: 'session-a2' };
+      storage.set(storageKeys.PENDING_NOTIFICATION_SESSIONS_STORAGE_KEY, JSON.stringify({
+        ...readPending(), [pendingNotificationKey(scopeA, extra.sessionId)]: extra,
+      }));
 
       // A resolves from its saved profile; B resolves from the active connection.
       const connect = { controlPlaneUrl: 'https://api.opencodecloud.link', machineId: 'machine-a', machineName: 'A', deviceId: 'alice', expiresAt: '2030-01-01T00:00:00Z' };
@@ -190,15 +194,17 @@ describe('background notification monitor', () => {
       );
       g.__notificationsTestClientFactory = (settings: any) => ({
         session: {
-          status: async () => ({ data: { 'session-a': { type: 'busy' }, 'session-b': { type: 'idle' } } }),
-          list: async () => ({ data: [{ id: 'session-a', title: 'A task' }, { id: 'session-b', title: 'B task' }] }),
+          status: async () => ({ data: { 'session-a': { type: 'busy' }, 'session-a2': { type: 'busy' }, 'session-b': { type: 'idle' } } }),
+          list: async () => ({ data: [{ id: 'session-a', title: 'A task' }, { id: 'session-a2', title: 'A second task' }, { id: 'session-b', title: 'B task' }] }),
         },
       });
 
       assert.equal(await runTask(), 1);
 
       const pending = readPending();
-      assert.equal(Object.keys(pending).length, 1);
+      assert.equal(Object.keys(pending).length, 2);
+      assert.equal(g.__notificationsTestBuilds.length, 2);
+      assert.equal(g.__notificationsTestResolutions.length, 2);
       assert.ok(pending[pendingNotificationKey(scopeA, 'session-a')], 'A stays pending while its task runs');
       assert.equal(Boolean(pending[pendingNotificationKey(scopeB, 'session-b')]), false, 'B clears after notifying');
 

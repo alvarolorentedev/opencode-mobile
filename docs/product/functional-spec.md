@@ -913,7 +913,7 @@ Behavior:
 - a record that belongs to another project is left in place instead of being cleared from the active project's session list, so switching projects cannot silently drop a completion. It is notified on return or by the background monitor.
 - completion and needs-input notifications carry a non-secret route payload (session, project, connection scope) so a tap reopens the owning connection, project, and session through the existing deep-link resolver
 - a locally observed needs-input alert fires once per block episode when a tracked task transitions to a permission or question prompt and the app is not foregrounded; resolving the prompt re-arms it
-- on supported native platforms outside Expo Go, a background task checks pending sessions periodically, resolves each record's own connection credentials, and emits task-complete notifications; a record whose credentials cannot be resolved yet or whose reads fail is kept for a later run rather than discarded
+- on supported native platforms outside Expo Go, a background task checks pending sessions periodically, reuses a credential and session-status read per connection and project, and emits task-complete notifications; a record whose credentials cannot be resolved yet or whose reads fail is kept for a later run rather than discarded
 
 Parity implication:
 
