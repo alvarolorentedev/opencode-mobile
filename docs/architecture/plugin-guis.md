@@ -61,6 +61,10 @@ Known limits of this first profile:
 
 ## Security boundary
 
+Plugin panels are available on Android and iOS. Web builds hide the launcher
+and show the unavailable state on the direct route. Expo renders DOM components
+in the app page on web, where the native WebView boundary is absent.
+
 - Plugin code runs in a WebView, never in the React Native realm.
 - The WebView receives no server credential. `ctx.client.rpc` and
   `session.get` call native callbacks; an RPC id is allowed only when every

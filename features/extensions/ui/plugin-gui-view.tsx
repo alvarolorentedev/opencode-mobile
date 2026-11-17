@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Linking, View } from 'react-native';
+import { Linking, Platform, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import Constants from 'expo-constants';
 import { useExtensions } from '@/features/extensions/context';
@@ -50,6 +50,7 @@ export function PluginGuiView({ pluginId, session, onClose, onOpenSession }: Pro
   }, [read]);
 
   useEffect(() => {
+    if (Platform.OS === 'web') return;
     let live = true;
     queueMicrotask(() => {
       if (!live) return;
@@ -105,6 +106,9 @@ export function PluginGuiView({ pluginId, session, onClose, onOpenSession }: Pro
 
   const selected = panels.find((panel) => panel.id === selectedPanel) ?? panels[0];
 
+  if (Platform.OS === 'web') {
+    return <FieldDescription>{t('settings:extensions.gui.unavailable')}</FieldDescription>;
+  }
   if (loading) {
     return (
       <View className="flex-1 items-center justify-center gap-3 p-6">

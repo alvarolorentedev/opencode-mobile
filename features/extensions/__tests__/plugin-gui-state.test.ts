@@ -84,3 +84,30 @@ describe('plugin GUI state', () => {
     driver.unmount();
   });
 });
+
+it('does not load or mount a plugin bundle in the browser app page', async () => {
+  const driver = hookRuntime();
+  const read = vi.fn(async () => ({ code: 'throw new Error("bundle ran")' }));
+  const element = (type: unknown, props: unknown) => ({ type, props });
+  const { PluginGuiView } = await loadTs('features/extensions/ui/plugin-gui-view.tsx', {
+    react: driver.react,
+    'react/jsx-runtime': { jsx: element, jsxs: element },
+    'react-native': { Platform: { OS: 'web' }, View: 'View' },
+    'react-i18next': { useTranslation: () => ({ t: (key: string) => key, i18n: { language: 'en' } }) },
+    '@/features/extensions/context': { useExtensions: () => ({ extensions: { pluginGui: { plugins: [{ id: 'flowgraph' }], read } } }) },
+    '@/features/connections/context': { useConnection: () => ({ settings }) },
+    '@/shared/ui/theme/appearance-context': { useAppearance: () => ({ scheme: 'light' }) },
+    '@/shared/ui/theme/use-palette': { usePalette: () => ({}) },
+    '@/shared/ui/select': {},
+    '@/shared/ui/button': {},
+    '@/shared/ui/spinner': {},
+    '@/shared/ui/text': {},
+    '@/shared/ui/text-field': { FieldDescription: 'FieldDescription' },
+    '@/features/extensions/ui/plugin-gui-dom': { default: 'PluginGuiDom' },
+  });
+  driver.mount(PluginGuiView, { pluginId: 'flowgraph', session: { id: 's' } });
+  await driver.settle();
+  expect(read).not.toHaveBeenCalled();
+  expect(driver.value).toMatchObject({ type: 'FieldDescription', props: { children: 'settings:extensions.gui.unavailable' } });
+  driver.unmount();
+});

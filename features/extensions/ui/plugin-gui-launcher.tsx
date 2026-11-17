@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { Platform } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { useExtensions } from '@/features/extensions/context';
 import { Button } from '@/shared/ui/button';
@@ -19,7 +20,7 @@ export function PluginGuiLauncher({ session }: { session?: Session }) {
   }, [load]);
 
   useEffect(() => {
-    void loadRef.current().catch(() => undefined);
+    if (Platform.OS !== 'web') void loadRef.current().catch(() => undefined);
   }, []);
 
   const plugins = extensions.pluginGui.plugins;
@@ -28,7 +29,7 @@ export function PluginGuiLauncher({ session }: { session?: Session }) {
   // the selected session: same-server, globally installed plugins must show
   // on every chat, including a brand-new empty one. The API has no finer
   // "has a Panel" flag without evaluating the bundle.
-  if (plugins.length === 0) return null;
+  if (Platform.OS === 'web' || plugins.length === 0) return null;
 
   return (
     <>
