@@ -81,16 +81,17 @@ export function useWorkspaceConnections(shell: WorkspaceShellState, hydrated: bo
     const previousCertificate = existing ? await getProfileCertificate(profile.id) : undefined;
     // Cloud Link credentials are device secrets with no custom headers or CA;
     // a manual connection keeps its gateway headers and certificate.
-    const headers = settings.connect ? {} : settings.headers;
+    const headers = settings.connect ? {} : settings.headers ?? {};
     const certificate = settings.connect ? undefined : settings.certificate;
     if (!settings.connect && (previousPassword !== settings.password || JSON.stringify(previousHeaders) !== JSON.stringify(settings.headers ?? {}) || JSON.stringify(previousCertificate) !== JSON.stringify(certificate) || JSON.stringify(existing?.oidc) !== JSON.stringify(settings.oidc))) await clearCapabilitiesSnapshots(getConnectionScope(settings));
     // Reconnects repeat the same credentials; only touch secure storage when a
     // value actually changed.
-    if (previousPassword !== settings.password) await saveProfilePassword(profile.id, settings.password, Boolean(settings.connect));
-    if (JSON.stringify(previousHeaders) !== JSON.stringify(headers)) await saveProfileHeaders(profile.id, headers);
-    if (JSON.stringify(previousCertificate) !== JSON.stringify(certificate)) await saveProfileCertificate(profile.id, certificate);
-    try { if (!existing) await save([...profiles, profile]); }
-    catch (error) {
+    try {
+      if (previousPassword !== settings.password) await saveProfilePassword(profile.id, settings.password, Boolean(settings.connect));
+      if (JSON.stringify(previousHeaders) !== JSON.stringify(headers)) await saveProfileHeaders(profile.id, headers);
+      if (JSON.stringify(previousCertificate) !== JSON.stringify(certificate)) await saveProfileCertificate(profile.id, certificate);
+      if (!existing) await save([...profiles, profile]);
+    } catch (error) {
       if (existing) {
         await saveProfilePassword(profile.id, previousPassword, Boolean(settings.connect)).catch(() => undefined);
         await saveProfileHeaders(profile.id, previousHeaders).catch(() => undefined);

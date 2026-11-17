@@ -5,15 +5,17 @@ async function profiles() {
   const driver = hookRuntime();
   const profile = { id: 'victim', name: 'OIDC', serverUrl: 'https://server.test', username: '', oidc: { issuer: 'https://idp.test', clientId: 'app', scopes: 'openid', tokenHeader: 'X-Token' } };
   let stored = [profile];
+  const passwords = new Map([[profile.id, 'previous-password']]);
+  const saveHeaders = vi.fn(async () => {});
   const signOut = vi.fn(async () => {}), deletePassword = vi.fn(async () => {});
   const { useConnectionProfiles } = await loadTs('features/connections/state/use-connection-profiles.ts', {
     react: driver.react,
     '@/shared/storage/connection-profiles': {
       loadConnectionProfiles: async () => stored, createProfileId: () => 'new',
       mutateConnectionProfiles: async (operation: any) => operation(stored, async (next: any) => { stored = next; }),
-      getProfilePassword: async () => '', saveProfilePassword: async () => {}, deleteProfilePassword: deletePassword,
+      getProfilePassword: async (id: string) => passwords.get(id) ?? '', saveProfilePassword: async (id: string, value: string) => { passwords.set(id, value); }, deleteProfilePassword: deletePassword,
     },
-    '@/shared/storage/connection-headers': { getProfileHeaders: async () => ({}), saveProfileHeaders: async () => {}, deleteProfileHeaders: async () => {} },
+    '@/shared/storage/connection-headers': { getProfileHeaders: async () => ({}), saveProfileHeaders: saveHeaders, deleteProfileHeaders: async () => {} },
     '@/shared/storage/connection-certificates': { getProfileCertificate: async () => undefined, saveProfileCertificate: async () => {}, deleteProfileCertificate: async () => {} },
     '@/shared/platform/tls-trust': { connectionOrigin: () => undefined, releaseHostTrust: async () => {} },
     '@/shared/contracts/connection-profiles': { findMatchingProfile: () => undefined },
@@ -24,7 +26,7 @@ async function profiles() {
   }, driver.globals);
   driver.mount(() => useConnectionProfiles({ settings: { serverUrl: 'https://active.test', username: '' }, profiles: stored, setProfiles: vi.fn(), clearCapabilitiesSnapshots: async () => {} }), {});
   await driver.settle();
-  return { driver, profile, signOut, deletePassword, stored: () => stored };
+  return { driver, profile, signOut, deletePassword, saveHeaders, passwords, stored: () => stored };
 }
 
 describe('OIDC profile retirement', () => {
@@ -45,4 +47,13 @@ describe('OIDC profile retirement', () => {
     await view.driver.value.save({ ...view.profile, serverUrl: 'https://replacement.test', password: '', headers: {} }, 'victim');
     expect(view.signOut).toHaveBeenCalledExactlyOnceWith({ serverUrl: view.profile.serverUrl, username: '' }, view.profile.oidc);
   });
+  it('keeps the previous profile and its credentials when a later write fails', async () => {
+    const view = await profiles();
+    view.saveHeaders.mockRejectedValueOnce(new Error('SecureStore unavailable'));
+    await expect(view.driver.value.save({ ...view.profile, serverUrl: 'https://replacement.test', password: 'new-password', headers: { 'X-Token': 'new' } }, 'victim')).rejects.toThrow('SecureStore unavailable');
+    expect(view.stored()).toEqual([view.profile]);
+    expect(view.passwords.get('victim')).toBe('previous-password');
+    expect(view.signOut).not.toHaveBeenCalled();
+  });
+
 });

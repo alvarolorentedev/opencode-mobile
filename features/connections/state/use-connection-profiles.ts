@@ -72,29 +72,34 @@ export function useConnectionProfiles({ settings, switchConnection, updateSettin
     if (!values.serverUrl.trim() || !base.valid) throw new Error('Invalid server URL.');
     const name = values.name.trim() || getServerHostname(values.serverUrl);
     const profile: ConnectionProfile = { ...previous, id: id ?? createProfileId(), name, serverUrl: values.serverUrl.trim(), username: values.username.trim() };
+    // Stage a new secret slot when the owner changes so a failed write cannot
+    // attach the new credentials to the old server.
+    const scopeChanged = previous && getConnectionScope(previous) !== getConnectionScope(profile);
+    if (scopeChanged) profile.id = createProfileId();
     if (values.oidc) profile.oidc = values.oidc;
     else delete profile.oidc;
-    const oldPassword = previous ? await getProfilePassword(profile.id) : '';
-    const oldHeaders = previous ? await getProfileHeaders(profile.id) : {};
-    const oldCertificate = previous ? await getProfileCertificate(profile.id) : undefined;
+    const oldPassword = previous ? await getProfilePassword(previous.id) : '';
+    const oldHeaders = previous ? await getProfileHeaders(previous.id) : {};
+    const oldCertificate = previous ? await getProfileCertificate(previous.id) : undefined;
     if (previous && (oldPassword !== values.password || JSON.stringify(oldHeaders) !== JSON.stringify(values.headers) || JSON.stringify(oldCertificate) !== JSON.stringify(values.certificate) || JSON.stringify(previous.oidc) !== JSON.stringify(values.oidc))) await clearCapabilitiesSnapshots(getConnectionScope(previous));
-    // A changed connection scope, issuer or client id is a different session; retire the old one
-    // instead of leaving an unusable refresh token behind.
-    if (previous?.oidc && (!values.oidc || previous.oidc.issuer !== values.oidc.issuer || previous.oidc.clientId !== values.oidc.clientId || getConnectionScope(previous) !== getConnectionScope(profile))) {
-      const { signOutOidc } = await import('@/shared/auth/oidc/session');
-      await signOutOidc({ serverUrl: previous.serverUrl, username: previous.username }, previous.oidc);
-    }
-    await saveProfilePassword(profile.id, values.password);
-    await saveProfileHeaders(profile.id, values.headers);
-    await saveProfileCertificate(profile.id, values.certificate);
-    const next = [...stored.filter((entry) => entry.id !== profile.id), profile];
+    const next = [...stored.filter((entry) => entry.id !== id), profile];
     try {
+      await saveProfilePassword(profile.id, values.password);
+      await saveProfileHeaders(profile.id, values.headers);
+      await saveProfileCertificate(profile.id, values.certificate);
       await saveMetadata(next);
     } catch (error) {
-      await saveProfilePassword(profile.id, oldPassword).catch(() => undefined);
-      await saveProfileHeaders(profile.id, oldHeaders).catch(() => undefined);
-      await saveProfileCertificate(profile.id, oldCertificate).catch(() => undefined);
+      await saveProfilePassword(profile.id, scopeChanged ? '' : oldPassword).catch(() => undefined);
+      await saveProfileHeaders(profile.id, scopeChanged ? {} : oldHeaders).catch(() => undefined);
+      await saveProfileCertificate(profile.id, scopeChanged ? undefined : oldCertificate).catch(() => undefined);
       throw error;
+    }
+    if (previous?.oidc && (!values.oidc || previous.oidc.issuer !== values.oidc.issuer || previous.oidc.clientId !== values.oidc.clientId || scopeChanged)) {
+      const { signOutOidc } = await import('@/shared/auth/oidc/session');
+      await signOutOidc({ serverUrl: previous.serverUrl, username: previous.username }, previous.oidc).catch((error) => console.warn('Could not clear the previous sign-in.', error));
+    }
+    if (scopeChanged) {
+      await Promise.allSettled([deleteProfilePassword(previous.id), deleteProfileHeaders(previous.id), deleteProfileCertificate(previous.id)]);
     }
     setProfiles(next);
     onSaved?.(profile, { password: values.password, headers: values.headers, certificate: values.certificate }, previous);

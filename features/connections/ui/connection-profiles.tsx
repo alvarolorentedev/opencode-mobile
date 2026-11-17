@@ -153,7 +153,8 @@ export function ConnectionProfiles({ palette, onManageConnect, onPair }: { palet
     }
 
     if (currentDialog.mode === 'edit-profile') {
-      await save(values, currentDialog.profile.id);
+      const profile = await save(values, currentDialog.profile.id);
+      setExpandedKey(profile.id);
       setDialog(undefined);
       return;
     }
