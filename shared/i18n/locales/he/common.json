@@ -24,6 +24,8 @@
     "disconnect": "ניתוק",
     "edit": "ערוך",
     "stop": "עצור",
+    "expandSheet": "הרחבת החלונית",
+    "collapseSheet": "צמצום החלונית",
     "closeWithName": "סגור את {{title}}",
     "openSettings": "פתח את ההגדרות"
   },

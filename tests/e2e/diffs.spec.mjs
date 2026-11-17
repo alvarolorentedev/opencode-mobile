@@ -7,6 +7,7 @@ test.beforeEach(async ({ page }, info) => {
 });
 
 test('files changed follows the latest user turn', async ({ page, request }) => {
+  await page.setViewportSize({ width: 393, height: 852 });
   await resetScenario(request, 'happy-path');
   await openReadyChat(page);
 
@@ -16,12 +17,53 @@ test('files changed follows the latest user turn', async ({ page, request }) => 
   await expect(page.getByText('app/(tabs)/index.tsx', { exact: true })).toBeVisible();
 
   await page.getByTestId('changes-overlay').getByRole('button', { name: 'Close', exact: true }).click();
+  const addedLines = Array.from({ length: 75 }, (_, index) => `+Added line ${index + 1}`);
+  await page.route(/\/api\/session\/[^/]+\/diff(?:\?|$)/, async (route) => {
+    const response = await route.fetch();
+    const body = await response.json();
+    const diff = body.data?.find(({ file }) => file === 'src/feature.ts');
+    if (diff) {
+      diff.patch = ['@@ -0,0 +1,75 @@', ...addedLines].join('\n');
+      diff.additions = addedLines.length;
+      diff.deletions = 0;
+      body.data.push({ file: 'src/following.ts', patch: '@@ -0,0 +1 @@\n+following', additions: 1, deletions: 0 });
+    }
+    await route.fulfill({ response, json: body });
+  });
   await sendPrompt(page, 'Create the second file diff');
   await expect(page.getByText(/Finished: Create the second file diff/).first()).toBeVisible({ timeout: 20_000 });
   await page.getByTestId('chat-changes-chip').click();
   // Diff reconciliation may follow completion text on the five-second fallback.
   await expect(page.getByText('src/feature.ts', { exact: true })).toBeVisible({ timeout: 20_000 });
   await expect(page.getByText('app/(tabs)/index.tsx', { exact: true })).not.toBeVisible();
+
+  const overlay = page.getByTestId('changes-overlay');
+  const sheet = overlay.getByTestId('changes-overlay-sheet');
+  const file = overlay.getByRole('button', { name: /src\/feature\.ts/ });
+  const firstLine = overlay.getByText('Added line 1', { exact: true });
+  const lastLine = overlay.getByText('Added line 75', { exact: true });
+  const followingFile = overlay.getByText('src/following.ts', { exact: true });
+  const compactHeight = (await sheet.boundingBox()).height;
+  await file.click();
+  await expect(lastLine).not.toBeInViewport();
+  await firstLine.hover();
+  await page.mouse.wheel(0, 2500);
+  await expect(lastLine).toBeInViewport();
+  await expect(followingFile).toBeInViewport();
+
+  const expand = overlay.getByRole('button', { name: 'Expand sheet' });
+  const collapse = overlay.getByRole('button', { name: 'Collapse sheet' });
+  await expand.click();
+  await expect.poll(async () => (await sheet.boundingBox()).height).toBeGreaterThan(compactHeight);
+  await expect(file).toHaveAttribute('aria-expanded', 'true');
+  await expect(lastLine).toBeInViewport();
+  await collapse.click();
+  await expect.poll(async () => (await sheet.boundingBox()).height).toBe(compactHeight);
+
+  await expand.click();
+  await overlay.getByRole('button', { name: 'Close', exact: true }).click();
+  await page.getByTestId('chat-changes-chip').click();
+  await expect(expand).toBeVisible();
 });
 
 test('files changed switches between turn, uncommitted, and branch diffs', async ({ page, request }) => {

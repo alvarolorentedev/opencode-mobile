@@ -24,6 +24,8 @@
     "disconnect": "Desconectar",
     "edit": "Editar",
     "stop": "Detener",
+    "expandSheet": "Ampliar panel",
+    "collapseSheet": "Reducir panel",
     "closeWithName": "Cerrar {{title}}",
     "openSettings": "Abrir ajustes"
   },

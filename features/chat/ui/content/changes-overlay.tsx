@@ -5,7 +5,8 @@ import { Icon } from '@/shared/ui/icon';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Pressable, ScrollView, View } from 'react-native';
+import { Platform, Pressable, ScrollView, View } from 'react-native';
+import { ScrollView as GestureScrollView } from 'react-native-gesture-handler';
 
 import { ChangedFilesCard, SessionDiffCard } from '@/features/chat/ui/chat-cards';
 import { styles, stylesClasses } from '@/features/chat/ui/chat-view-styles';
@@ -18,6 +19,8 @@ import type { DiffScope, DiffTurn } from '@/shared/contracts/domain';
 type Palette = typeof Colors.light;
 type Connection = { status: 'idle' | 'connecting' | 'connected' | 'error'; message: string };
 type DiffDetail = Extract<TranscriptEntry['details'][number], { kind: 'patch' }>;
+
+const ChangesScrollView = Platform.OS === 'android' ? GestureScrollView : ScrollView;
 
 const DIFF_SCOPE_OPTIONS: { value: DiffScope; labelKey: string }[] = [
   { value: 'turn', labelKey: 'chat:diff.turn' },
@@ -62,6 +65,7 @@ export function ChangesOverlay({
 }: ChangesOverlayProps) {
   const { t } = useTranslation();
   const [diffSourcesVisible, setDiffSourcesVisible] = useState(false);
+  const [expanded, setExpanded] = useState(false);
   const isTurnScope = currentDiffScope === 'turn';
   const isLatestTurn = diffTurns.length === 0 || selectedDiffMessageId === diffTurns[diffTurns.length - 1]?.id;
   const scopeTitle = currentDiffScope === 'uncommitted'
@@ -92,6 +96,8 @@ export function ChangesOverlay({
     }
   }, [changesVisible, currentSessionId]);
 
+  if (!changesVisible && expanded) setExpanded(false);
+
   return (
     <>
       <OverlaySheet
@@ -100,10 +106,12 @@ export function ChangesOverlay({
         title={t('chat:diff.filesChangedSimple', { files: diffCount, count: diffCount })}
         onClose={onCloseChanges}
         compact
+        expanded={expanded}
+        onToggleExpanded={() => setExpanded((value) => !value)}
         scrollable={false}
         headerAction={<Button accessibilityLabel={`${t('chat:diff.changeSourceLabel', { source: scopeLabel })}. ${scopeTitle}${isTurnScope ? ` · ${selectedTurnLabel}` : ''}`} onPress={() => setDiffSourcesVisible(true)} variant="ghost" size="icon"><Icon name={"dots-vertical"} size={24} color={palette.text} /></Button>}>
-        <ScrollView
-          className={cn(stylesClasses.scroll, "bg-background")}
+        <ChangesScrollView
+          style={[styles.scroll, { backgroundColor: palette.background }]}
           contentContainerStyle={styles.changesList}
           keyboardDismissMode="on-drag"
           keyboardShouldPersistTaps="handled">
@@ -121,7 +129,7 @@ export function ChangesOverlay({
             return <SessionDiffCard key={accordionId} diff={diff} expanded={expandedDiffId === accordionId} onPress={() => onExpandDiff(expandedDiffId === accordionId ? undefined : accordionId)} />;
           })}
           {showDiffDetails && changedFiles.length > 0 ? <ChangedFilesCard files={changedFiles} /> : null}
-        </ScrollView>
+        </ChangesScrollView>
       </OverlaySheet>
 
       <OverlaySheet visible={changesVisible && diffSourcesVisible} testID="diff-source-overlay" title={t('chat:diff.sourceTitle')} fitContent onClose={() => setDiffSourcesVisible(false)}>

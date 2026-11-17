@@ -69,7 +69,6 @@ export const stylesClasses = {
   "changesChipRow": "flex-row items-center gap-2 px-3 py-2",
   "progressSpacer": "w-12",
   "changesChipCenter": "flex-1 items-center min-w-0",
-  "scroll": "flex-1",
   "changesNotice": "p-4 gap-2",
   "sessionPickerItemRow": "flex-row items-center gap-3 min-h-field px-3.5 py-3",
   "todoHeader": "min-h-target flex-row justify-between items-center py-1",

@@ -24,6 +24,8 @@
     "disconnect": "डिस्कनेक्ट करें",
     "edit": "संपादित करें",
     "stop": "रोकें",
+    "expandSheet": "पैनल बड़ा करें",
+    "collapseSheet": "पैनल छोटा करें",
     "closeWithName": "{{title}} बंद करें",
     "openSettings": "सेटिंग्स खोलें"
   },

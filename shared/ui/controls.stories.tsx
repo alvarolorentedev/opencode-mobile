@@ -56,8 +56,21 @@ function Overlays() {
     <Feedback open={pair} onOpenChange={setPair} secondaryAction={{ label: 'Later', onPress: () => undefined }} action={{ label: 'Restart', onPress: () => undefined }}>Update downloaded</Feedback>
   </View>;
 }
+
+function ExpandableOverlay() {
+  const [open, setOpen] = useState(false);
+  const [expanded, setExpanded] = useState(false);
+  return <View className="p-4">
+    <Button onPress={() => { setExpanded(false); setOpen(true); }}><Text>Open sheet</Text></Button>
+    <OverlaySheet visible={open} title="Connection settings" onClose={() => setOpen(false)} compact expanded={expanded} onToggleExpanded={() => setExpanded((value) => !value)}>
+      <Controls />
+    </OverlaySheet>
+  </View>;
+}
+
 const meta = { title: 'Controls/Shared primitives', component: Controls, parameters: { layout: 'fullscreen' } } satisfies Meta<typeof Controls>;
 export default meta;
 type Story = StoryObj<typeof meta>;
 export const Default: Story = {};
 export const DialogsAndFeedback: Story = { render: () => <Overlays /> };
+export const ExpandableSheet: Story = { render: () => <ExpandableOverlay /> };

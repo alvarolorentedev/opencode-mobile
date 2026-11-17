@@ -24,6 +24,8 @@
     "disconnect": "Disconnect",
     "edit": "Edit",
     "stop": "Stop",
+    "expandSheet": "Expand sheet",
+    "collapseSheet": "Collapse sheet",
     "closeWithName": "Close {{title}}",
     "openSettings": "Open settings"
   },

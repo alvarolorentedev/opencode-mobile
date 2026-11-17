@@ -24,6 +24,8 @@
     "disconnect": "切断",
     "edit": "編集",
     "stop": "停止",
+    "expandSheet": "パネルを拡大",
+    "collapseSheet": "パネルを縮小",
     "closeWithName": "{{title}}を閉じる",
     "openSettings": "設定を開く"
   },

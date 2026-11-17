@@ -24,6 +24,8 @@
     "disconnect": "Trennen",
     "edit": "Bearbeiten",
     "stop": "Stopp",
+    "expandSheet": "Ansicht vergrößern",
+    "collapseSheet": "Ansicht verkleinern",
     "closeWithName": "{{title}} schließen",
     "openSettings": "Einstellungen öffnen"
   },

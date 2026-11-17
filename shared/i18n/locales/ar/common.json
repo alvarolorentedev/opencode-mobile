@@ -24,6 +24,8 @@
     "disconnect": "قطع الاتصال",
     "edit": "تحرير",
     "stop": "توقف",
+    "expandSheet": "توسيع اللوحة",
+    "collapseSheet": "طي اللوحة",
     "closeWithName": "إغلاق {{title}}",
     "openSettings": "افتح الإعدادات"
   },

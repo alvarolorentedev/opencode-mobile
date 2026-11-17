@@ -125,6 +125,19 @@ describe('keyboard sheet layout', () => {
     expect(flatten(sheet.props.style).flex).toBe(fitContent ? undefined : 1);
   });
 
+  it('keeps the safe-area insets when a compact sheet expands', () => {
+    const props = {
+      visible: true, title: 'Files changed', testID: 'files', compact: true, scrollable: false, onClose: () => {},
+      onToggleExpanded: () => {}, children: 'Content',
+    };
+    const compact = find(OverlaySheet(props), 'files')!;
+    const expanded = find(OverlaySheet({ ...props, expanded: true }), 'files')!;
+    expect(flatten(compact.props.style).paddingTop).toBeCloseTo(844 * 0.45);
+    expect(flatten(expanded.props.style).paddingTop).toBe(64 + 62);
+    const body = find(expanded, 'files-sheet')!.props.children[1];
+    expect(flatten(body.props.style).paddingBottom).toBe(34);
+  });
+
   it('dismisses the keyboard on open unless the sheet opts out', () => {
     OverlaySheet({ visible: true, title: 'Voice', onClose: () => {}, children: 'Content' });
     expect(dismissKeyboardCalls[dismissKeyboardCalls.length - 1]).toEqual([true, true]);

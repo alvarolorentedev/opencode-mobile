@@ -24,6 +24,8 @@
     "disconnect": "断开连接",
     "edit": "编辑",
     "stop": "停止",
+    "expandSheet": "展开面板",
+    "collapseSheet": "收起面板",
     "closeWithName": "关闭 {{title}}",
     "openSettings": "打开设置"
   },

@@ -24,6 +24,8 @@
     "disconnect": "Отключиться",
     "edit": "Изменить",
     "stop": "Остановить",
+    "expandSheet": "Развернуть панель",
+    "collapseSheet": "Свернуть панель",
     "closeWithName": "Закрыть {{title}}",
     "openSettings": "Открыть настройки"
   },

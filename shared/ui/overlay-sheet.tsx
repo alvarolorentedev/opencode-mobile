@@ -2,6 +2,7 @@ import { cn } from '@/shared/ui/cn';
 import * as DialogPrimitive from '@rn-primitives/dialog';
 import { DialogFrame } from '@/shared/ui/dialog-frame';
 import { PortalScope, usePortalHost, useOverlayDismiss } from '@/shared/ui/portal';
+import { Button } from '@/shared/ui/button';
 import { Icon } from '@/shared/ui/icon';
 import { Text } from '@/shared/ui/text';
 import { useContext, type ReactNode } from 'react';
@@ -18,7 +19,7 @@ import { getLanguageDirection } from '@/shared/i18n/languages';
 import { usePalette } from '@/shared/ui/theme/use-palette';
 import { useSwipeDismiss } from '@/shared/ui/use-swipe-dismiss';
 
-export function OverlaySheet({ visible, title, onClose, children, headerAction, testID, fitContent = false, scrollable = true, compact = false, blockUpdates = true, dismissible = true, dismissKeyboard = true }: {
+export function OverlaySheet({ visible, title, onClose, children, headerAction, testID, fitContent = false, scrollable = true, compact = false, expanded = false, onToggleExpanded, blockUpdates = true, dismissible = true, dismissKeyboard = true }: {
   visible: boolean;
   title: string;
   onClose: () => void;
@@ -28,6 +29,8 @@ export function OverlaySheet({ visible, title, onClose, children, headerAction, 
   fitContent?: boolean;
   scrollable?: boolean;
   compact?: boolean;
+  expanded?: boolean;
+  onToggleExpanded?: () => void;
   blockUpdates?: boolean;
   dismissible?: boolean;
   dismissKeyboard?: boolean;
@@ -54,8 +57,11 @@ export function OverlaySheet({ visible, title, onClose, children, headerAction, 
     return null;
   }
 
+  const topInset = 64 + insets.top;
+  const paddingTop = compact && !expanded ? Math.max(topInset, height * 0.45) : topInset;
+
   const content = (
-      <KeyboardAvoidingView behavior="padding" className={cn(stylesClasses.overlay)} style={[{ direction, paddingTop: compact ? Math.max(64 + insets.top, height * 0.45) : 64 + insets.top }]} testID={testID}>
+      <KeyboardAvoidingView behavior="padding" className={cn(stylesClasses.overlay)} style={[{ direction, paddingTop }]} testID={testID}>
         {dismissible ? <Pressable accessibilityLabel={t('common:actions.closeWithName', { title })} onPress={onClose} style={StyleSheet.absoluteFill}>
           <Animated.View style={[styles.backdrop, { backgroundColor: palette.backdrop }, backdropStyle]} />
         </Pressable> : null}
@@ -67,7 +73,17 @@ export function OverlaySheet({ visible, title, onClose, children, headerAction, 
           style={[styles.sheet, !fitContent && { flex: 1 }, { backgroundColor: palette.surface, borderColor: palette.border }, sheetStyle]}>
           <GestureDetector gesture={pan}>
             <Animated.View style={styles.dragZone}>
-              {compact ? <View className={cn(stylesClasses.grabberWrap)}><View className={cn(stylesClasses.grabber, "bg-muted-foreground")} /></View> : null}
+              {compact && (onToggleExpanded ? (
+                <Button
+                  accessibilityLabel={t(expanded ? 'common:actions.collapseSheet' : 'common:actions.expandSheet')}
+                  accessibilityState={{ expanded }}
+                  className="self-center"
+                  onPress={onToggleExpanded}
+                  size="icon"
+                  variant="ghost">
+                  <Icon name={expanded ? 'arrow-collapse-vertical' : 'arrow-expand-vertical'} size={22} color={palette.muted} />
+                </Button>
+              ) : <View className={cn(stylesClasses.grabberWrap)}><View className={cn(stylesClasses.grabber, "bg-muted-foreground")} /></View>)}
               <View className={cn(compact && stylesClasses.compactHeader)} style={[styles.header, { borderBottomColor: palette.border }]}>
                 {compact ? (
                   <>
