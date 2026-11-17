@@ -55,12 +55,12 @@ async function performFetch(
   return response;
 }
 
-export async function fetchConnection(input: RequestInfo | URL, init?: RequestInit, settings?: OpencodeConnectionSettings, lifetimeSignal?: AbortSignal) {
+export async function fetchConnection(input: RequestInfo | URL, init?: RequestInit, settings?: OpencodeConnectionSettings, lifetimeSignal?: AbortSignal, timeoutMs?: number) {
   const url = typeof input === 'string' ? input : input instanceof URL ? input.toString() : input.url;
   const method = init?.method ?? (typeof input === 'object' && 'method' in input ? input.method : 'GET');
   const operation = classifyHttpOperation(url, method);
   try {
-    return await fetchConnectionInner(input, init, settings, lifetimeSignal);
+    return await fetchConnectionInner(input, init, settings, lifetimeSignal, timeoutMs);
   } catch (error) {
     const cancelled = /cancel/i.test(error instanceof Error ? error.message : String(error));
     if (!cancelled) {
@@ -73,7 +73,7 @@ export async function fetchConnection(input: RequestInfo | URL, init?: RequestIn
   }
 }
 
-async function fetchConnectionInner(input: RequestInfo | URL, init?: RequestInit, settings?: OpencodeConnectionSettings, lifetimeSignal?: AbortSignal) {
+async function fetchConnectionInner(input: RequestInfo | URL, init?: RequestInit, settings?: OpencodeConnectionSettings, lifetimeSignal?: AbortSignal, timeoutOverride?: number) {
   const retryUrl = typeof input === 'string' ? input : input instanceof URL ? input.toString() : input.url;
   if (settings?.connect) {
     const error = getConnectCredentialError(settings.connect, settings.password);
@@ -89,7 +89,7 @@ async function fetchConnectionInner(input: RequestInfo | URL, init?: RequestInit
   const url = typeof input === 'string' ? input : input instanceof URL ? input.toString() : input.url;
   const method = init?.method ?? (typeof input === 'object' && 'method' in input ? input.method : 'GET');
   const signal = init?.signal ?? (typeof input === 'object' && 'signal' in input ? input.signal : undefined);
-  const timeoutMs = getRequestTimeout(url, method);
+  const timeoutMs = timeoutOverride ?? getRequestTimeout(url, method);
   const startedAt = Date.now();
   // Only a request without a body, or with a string body, can be replayed after
   // a token refresh. Streams and FormData have already been consumed; a Request
@@ -191,31 +191,5 @@ export function createScopedFetch(baseUrl: string, pathPrefix: string, directory
 }
 
 export function createPrefixFetch(origin: string, pathPrefix: string, settings?: OpencodeConnectionSettings, readSignal?: AbortSignal, lifetimeSignal?: AbortSignal) {
-  return async (input: RequestInfo | URL, init?: RequestInit) => {
-    const currentUrl =
-      typeof input === 'string'
-        ? input
-        : input instanceof URL
-          ? input.toString()
-          : input.url;
-    const parsed = new URL(currentUrl, origin);
-
-    if (parsed.origin === origin && pathPrefix && !parsed.pathname.startsWith(`${pathPrefix}/`) && parsed.pathname !== pathPrefix) {
-      parsed.pathname = joinUrlPath(pathPrefix, parsed.pathname);
-    }
-
-    if (typeof input === 'string' || input instanceof URL) {
-      return fetchConnection(parsed.toString(), readSignal ? { ...init, signal: readSignal } : init, settings, lifetimeSignal);
-    }
-
-    return fetchConnection(parsed.toString(), {
-      body: input.method === 'GET' || input.method === 'HEAD' ? undefined : await input.text(),
-      credentials: input.credentials,
-      headers: input.headers,
-      method: input.method,
-      signal: input.signal,
-      ...init,
-      ...(readSignal ? { signal: readSignal } : {}),
-    }, settings, lifetimeSignal);
-  };
+  return createScopedFetch(origin, pathPrefix, undefined, settings, readSignal, lifetimeSignal);
 }
