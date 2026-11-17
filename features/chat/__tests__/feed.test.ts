@@ -249,6 +249,22 @@ describe('provider-owned prompt inbox', () => {
     expect(runtime.value.pendingPromptsBySession.s[0]).toMatchObject({ id: 'm-offline', state: 'waiting' });
   });
 
+  it('skips a dismissed queue entry while a previous admission is in progress', async () => {
+    const first = deferred();
+    const client = { promptInbox: { submit: vi.fn(() => first.promise) } };
+    const runtime = await mount(client, undefined, { online: false });
+    const input = { sessionID: 's', parts: [{ type: 'text', text: 'queued' }] };
+    await runtime.value.submitPrompt(input, 'steer');
+    await runtime.value.submitPrompt(input, 'steer');
+    runtime.flush();
+    const [, second] = runtime.value.pendingPromptsBySession.s;
+    runtime.update({ online: true });
+    await runtime.value.cancelPrompt('s', second.id);
+    first.resolve(pending('admitted'));
+    await runtime.settle();
+    expect(client.promptInbox.submit).toHaveBeenCalledOnce();
+    expect(runtime.value.pendingPromptsBySession.s.map((prompt: { id: string }) => prompt.id)).toEqual(['admitted']);
+  });
 
   it('queues a prompt when a transport failure happens before admission', async () => {
     const submit = vi.fn()

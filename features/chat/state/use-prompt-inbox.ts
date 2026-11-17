@@ -169,6 +169,7 @@ export function usePromptInbox({
     try {
       for (const [id, item] of entries) {
         if (!reachability.current.connected || !reachability.current.online || activeQueueScope.current !== scope || !isCurrentClient(client)) return;
+        if (!queuedInputs.current.delete(id)) continue;
         const sessionId = item.input.sessionID;
         update(sessionId, (previous) => previous.map((entry) => entry.id === id ? { ...entry, state: 'sending' } : entry));
         try {
@@ -203,8 +204,9 @@ export function usePromptInbox({
 
   const cancelPrompt = useCallback(async (sessionId: string, promptId: string) => {
     const local = snapshotRef.current.prompts[sessionId]?.find((prompt) => prompt.id === promptId);
+    if (local?.state === 'sending') return;
     if (local?.state === 'queued' || local?.state === 'uncertain') {
-      queuedInputs.current.delete(promptId);
+      if (local.state === 'queued' && !queuedInputs.current.delete(promptId)) return;
       syncQueueSize();
       update(sessionId, (previous) => previous.filter((prompt) => prompt.id !== promptId));
       return;
