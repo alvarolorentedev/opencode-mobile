@@ -222,7 +222,7 @@ export function useWorkspaceConnections(shell: WorkspaceShellState, hydrated: bo
     const runtime = await ensure({ connectionId: id, projectPath: '' });
     return runtime.values.connectionValue.connect();
   }, [change, ensure]);
-  const connectedWorkspace = useCallback(async (target: WorkspaceTarget, options?: { signal?: AbortSignal }) => {
+  const connectedWorkspace = useCallback(async (target: WorkspaceTarget, options?: { signal?: AbortSignal; waitForProject?: boolean }) => {
     const entry = records.current.find((item) => item.id === target.connectionId);
     if (!entry?.enabled) throw new Error('Connect this server before opening its workspace.');
     const snapshot = await ensure(target, options);
@@ -238,7 +238,7 @@ export function useWorkspaceConnections(shell: WorkspaceShellState, hydrated: bo
       const current = readWorkspace(target);
       const connection = current?.values.connectionValue.connection;
       if (connection?.status === 'error') throw new Error(connection.message);
-      return connection?.status === 'connected' ? current : undefined;
+      if (connection?.status === 'connected' && (!options?.waitForProject || current?.values.projectsValue.activeProjectPath)) return current;
     }, options?.signal);
   }, [ensure, readWorkspace, retry, waiters]);
   const beginActivation = useCallback((externalSignal?: AbortSignal) => {
@@ -316,8 +316,17 @@ export function useWorkspaceConnections(shell: WorkspaceShellState, hydrated: bo
     const check = () => { if (signal.aborted || operation !== activation.current) throw new Error('This session link was cancelled.'); };
     check();
     await pauseConversation();
-    const next = await connectedWorkspace(target, { signal });
+    let next = await connectedWorkspace(target, { signal });
     check();
+    if (!target.projectPath && !next.values.projectsValue.activeProjectPath) {
+      // On cold start the connection can be ready before its default project is selected.
+      const catalog = await next.loadProjectCatalog(true);
+      check();
+      if (catalog.currentProjectPath || catalog.serverProjects[0]?.worktree) {
+        next = await connectedWorkspace(target, { signal, waitForProject: true });
+        check();
+      }
+    }
     if (target.connectionId !== selected.current?.connectionId) {
       await next.values.sessionLibraryValue.refreshSessions();
       check();

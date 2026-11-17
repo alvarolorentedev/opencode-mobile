@@ -95,6 +95,7 @@ coverage, and documentation links.
 | [0041](0041-connector-enforced-service-access.md) | Connector-enforced exposed-service access | Accepted |
 | [0042](0042-mission-server-aggregates.md) | Server aggregates for Mission Control history | Accepted |
 | [0043](0043-react-native-chart-kit.md) | ChartKit for the Mission Control usage chart | Accepted |
+| [0044](0044-shared-session-links.md) | Shared OpenCode session links | Accepted |
 
 ## Template
 

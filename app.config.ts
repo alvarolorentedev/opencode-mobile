@@ -97,6 +97,11 @@ const config: ExpoConfig = {
   android: {
     package: androidPackage,
     versionCode: 150,
+    intentFilters: [{
+      action: 'VIEW',
+      category: ['DEFAULT', 'BROWSABLE'],
+      data: { scheme: 'opencode', host: 'session', pathPrefix: '/' },
+    }],
     adaptiveIcon: {
       foregroundImage: './assets/images/adaptive-icon.png',
       backgroundColor: "#202020"
@@ -111,6 +116,7 @@ const config: ExpoConfig = {
   ios: {
     bundleIdentifier: iosBundleIdentifierOverride ?? (isDevelopmentVariant ? 'app.getopencode.mobile.dev' : 'app.getopencode.mobile'),
     buildNumber: '150',
+    scheme: 'opencode',
     infoPlist: {
       ITSAppUsesNonExemptEncryption: false,
       NSPhotoLibraryUsageDescription: 'Allow OpenCode Mobile to access photos you choose to attach to chat messages.',

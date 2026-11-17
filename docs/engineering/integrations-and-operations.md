@@ -532,7 +532,12 @@ iOS is supported by Expo/React Native setup, but some operational tooling in the
 
 ### Session Deep Links
 
-Session deep links (`opencodemobile://session/<id>?project=...`, web path `/session/<id>`) resolve through the configured custom scheme and Expo Router web paths. Universal/app links (HTTPS share URLs launching the app) and Android intent filters for the deep-link host are not configured; links are consumed only when the app scheme or web path is used directly.
+The app uses `opencodemobile://session/<id>?project=...` for its own session
+links and `/session/<id>` on web. On native builds Android accepts
+`opencode://session/<id>` through an intent filter scoped to the `session` host.
+iOS registers `opencode` as an additional scheme. Expo Router rewrites shared
+session links to the existing session route and drops other `opencode:` URLs.
+The native registration requires a rebuild. See [ADR 0044](../adr/0044-shared-session-links.md).
 
 ## Operational Risks And Important Assumptions
 

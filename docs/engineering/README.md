@@ -36,6 +36,7 @@ build, or understand an operational constraint.
 | Change a fake-server scenario | [validation/fake-server.md](validation/fake-server.md) and `tests/fake-opencode/` |
 | Change E2E behavior | [validation/e2e.md](validation/e2e.md) and `tests/e2e/` |
 | Ship Android/iOS | [development.md](development.md) + [integrations-and-operations.md](integrations-and-operations.md) |
+| Register native session links | [Session deep links](integrations-and-operations.md#session-deep-links) |
 | Ship F-Droid | [fdroid.md](fdroid.md) |
 | Diagnose offline/slow-network behavior | [network resilience](../architecture/network-resilience.md) |
 | Add or replace a dependency | [library-extraction.md](library-extraction.md) |

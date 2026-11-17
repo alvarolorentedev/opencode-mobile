@@ -366,12 +366,13 @@ export function useOpencodeProviderComposition(input: WorkspaceRuntimeInput) {
     Object.values(state.pendingQuestionsBySession).some((items) => items.length > 0) ||
     Object.values(inbox.pendingPromptsBySession).some((items) => items.length > 0) || terminal.terminalRuntime.instances.length > 0;
   return useMemo(() => ({ libraryVisible: state.activeSessionsVisible, revision: input.connection.revision, enabled: input.connection.enabled, values, busy, suspend, catalogClient, catalogSessions: catalog.sessions, catalogStatuses: catalog.statuses,
+    loadProjectCatalog: project.loadProjectCatalog,
     pendingPermissions: state.pendingPermissionsBySession, pendingQuestions: state.pendingQuestionsBySession,
     native: { settings: state.settings, catalogClient, contract: state.serverContract, isCurrentCatalogClient,
       connectionScope: state.connectionScope, currentSessionId: state.currentSessionId, sessions: state.sessions,
       activeSessions, todoRecordsBySession: transcript.todoRecordsBySession,
       todosBySession: state.todosBySession, streamConnectedRef },
-  }), [state.activeSessionsVisible, input.connection.revision, input.connection.enabled, values, busy, suspend, catalogClient, catalog.sessions, catalog.statuses, state.pendingPermissionsBySession,
+  }), [state.activeSessionsVisible, input.connection.revision, input.connection.enabled, values, busy, suspend, catalogClient, catalog.sessions, catalog.statuses, project.loadProjectCatalog, state.pendingPermissionsBySession,
     state.pendingQuestionsBySession, state.settings, state.serverContract, isCurrentCatalogClient, state.connectionScope,
     state.currentSessionId, state.sessions, activeSessions, transcript.todoRecordsBySession, state.todosBySession]);
 }

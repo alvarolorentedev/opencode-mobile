@@ -17,8 +17,8 @@ docs it references.
   `getSharedPayloads()` / `getResolvedSharedPayloadsAsync()` on mount and on
   `AppState` `active`, parses via `features/sharing/model/parse.ts`, and stages an in-memory
   `SharedPayload` (bounded 10-minute TTL, never persisted).
-- Routing: `features/sharing/model/native-intent.ts` redirects the `expo-sharing` host to
-  `/share`; every other deep link passes through.
+- Routing: `features/sharing/model/native-intent.ts` redirects share receipts
+  for the `expo-sharing` host to `/share`.
 - Preview: `features/sharing/ui/share-screen.tsx` shows text/link/attachment tiles, a current-chat destination, searchable conversation chooser
   with project labels/New chat, and Add to chat / Discard. Nothing is submitted here.
 - Composer handoff: `features/chat/ui/use-chat-view-controller.ts` consumes the

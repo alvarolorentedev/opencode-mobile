@@ -21,7 +21,34 @@ runInNewContext(code, {
   },
 });
 
-describe('native inbound share routing', () => {
+describe('native inbound routing', () => {
+  it.each([true, false])('opens a shared session with initial=%s', async (initial) => {
+    const { redirectSystemPath } = await loadTs('features/sharing/model/native-intent.ts', {}, { URL: native.URL });
+    const path = 'opencode://session/ses_ABC-123';
+    expect(await redirectSystemPath({ path, initial })).toBe('/session/ses_ABC-123');
+    expect(await redirectSystemPath({
+      path: `${path}?id=other&project=/other&connectionScope=saved&server=https://example.test&prompt=hello#fragment`,
+      initial,
+    })).toBe('/session/ses_ABC-123');
+  });
+
+  it('ignores malformed session links and app-specific actions on the shared scheme', async () => {
+    const { redirectSystemPath } = await loadTs('features/sharing/model/native-intent.ts', {}, { URL: native.URL });
+    for (const path of [
+      'opencode://session/',
+      'opencode://session/ses_123/other',
+      'opencode://session/ses_123%2Fother',
+      'opencode://session/..',
+      'opencode://user@session/ses_123',
+      'opencode://session:123/ses_123',
+      'opencode://pair',
+      'opencode://expo-sharing',
+      'opencode://oidc-callback',
+    ]) {
+      expect(await redirectSystemPath({ path, initial: false }), path).toBeNull();
+    }
+  });
+
   it('scrubs legacy URL credentials using the installed getter-only native URL', async () => {
     const urls = await loadTs('shared/contracts/server-url.ts', {
     "@/shared/protocol/opencode/client/types": { defaultConnectionSettings: { serverUrl: 'http://localhost' } }
@@ -57,7 +84,7 @@ describe('native inbound share routing', () => {
       expect(next).toMatch(/^\/share\?receipt=/);
       expect(next).not.toBe(first);
     }
-    for (const path of ['opencodemobile://session/one', 'opencodemobile://pair', 'opencodemobile://expo-sharing-other', 'opencodemobile://other/expo-sharing', '/share', 'invalid']) {
+    for (const path of ['opencodemobile://session/one?project=%2Frepo&connectionScope=saved', 'opencodemobile://pair', 'opencodemobile://expo-sharing-other', 'opencodemobile://other/expo-sharing', '/share', 'invalid']) {
       expect(await redirectSystemPath({ path, initial: true })).toBe(path);
     }
   });

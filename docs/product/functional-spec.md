@@ -94,6 +94,11 @@ The app supports deep links that open a specific session:
 
 `opencodemobile://session/<sessionId>?project=<url-encoded project path>`
 
+Android and iOS also accept `opencode://session/<sessionId>` from other
+OpenCode clients. The shared form resolves against the current connection and
+its default project. It discards the query and fragment, and opening it only
+navigates. See [native registration](../engineering/integrations-and-operations.md#session-deep-links).
+
 Behavior:
 
 - the link opens the session belonging to the given server project path

@@ -244,6 +244,7 @@ it('keeps lifecycle decisions current without resetting retained runtimes', asyn
   await driver.settle();
   expect(isEnabled('a')).toBe(true);
   const snapshot = (id: string, path: string) => ({ enabled: true, native: { settings: driver.value.connections.find((entry: any) => entry.id === id).settings },
+    loadProjectCatalog: vi.fn(async () => ({ currentProjectPath: '/repo', serverProjects: [] })),
     catalogSessions: [], suspend: vi.fn(), values: { sessionLibraryValue: { sessions: [], refreshSessions: vi.fn(async () => []) }, currentSessionValue: { openSession: vi.fn(async () => {}), openDeepLinkSession: vi.fn(async () => ({ ok: true })) }, projectsValue: { activeProjectPath: path }, conversationValue: { conversation: { active: true }, toggleConversationMode: vi.fn(async () => {}) }, connectionValue: { connection: { status: 'connected' } } } });
   const original = snapshot('a', '/repo'), other = snapshot('a', '/other'), b = snapshot('b', '/repo');
   driver.value.publish('["a","/repo"]', original); driver.value.publish('["a","/other"]', other); driver.value.publish('["b","/repo"]', b); driver.flush();
@@ -260,6 +261,17 @@ it('keeps lifecycle decisions current without resetting retained runtimes', asyn
   await driver.value.openExternalSession({ connectionId: 'b', projectPath: '/repo', sessionId: 'collision' });
   expect(b.values.currentSessionValue.openDeepLinkSession).toHaveBeenCalledWith({ sessionId: 'collision', projectPath: '/repo' }, expect.any(AbortSignal));
   expect(original.values.currentSessionValue.openDeepLinkSession).not.toHaveBeenCalled();
+  const unscoped = snapshot('b', '');
+  driver.value.forget('["b","/repo"]');
+  driver.value.publish('["b",""]', unscoped); driver.flush();
+  const opening = driver.value.openExternalSession({ connectionId: 'b', projectPath: '', sessionId: 'default-project' });
+  await driver.settle();
+  expect(unscoped.loadProjectCatalog).toHaveBeenCalledWith(true);
+  expect(unscoped.values.currentSessionValue.openDeepLinkSession).not.toHaveBeenCalled();
+  expect(driver.value.connections.find((entry: any) => entry.id === 'b').projects).toEqual(['']);
+  driver.value.publish('["b",""]', b); driver.flush();
+  await opening;
+  expect(b.values.currentSessionValue.openDeepLinkSession).toHaveBeenCalledWith({ sessionId: 'default-project', projectPath: undefined }, expect.any(AbortSignal));
   await driver.value.disconnect('a'); driver.flush();
   expect(isEnabled('a')).toBe(false); expect(isEnabled('b')).toBe(true);
   expect(original.suspend).toHaveBeenCalledOnce(); expect(other.suspend).toHaveBeenCalledOnce(); expect(b.suspend).not.toHaveBeenCalled();
