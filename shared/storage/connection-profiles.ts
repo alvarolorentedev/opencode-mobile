@@ -142,6 +142,13 @@ export async function resolveConnectionCredentials(identity: ConnectionIdentity)
   }
 }
 
+export async function readProfileConnection(profile: ConnectionProfile) {
+  const [password, headers, certificate] = await Promise.all([
+    getProfilePassword(profile.id), getProfileHeaders(profile.id), getProfileCertificate(profile.id),
+  ]);
+  return { serverUrl: profile.serverUrl, username: profile.username, directory: '', password, headers, certificate, oidc: profile.oidc, connect: profile.connect };
+}
+
 export async function getProfilePassword(profileId: string) {
   if (Platform.OS === 'web') return getConnectTestSecret(passwordKey(profileId));
   return (await SecureStore.getItemAsync(passwordKey(profileId))) ?? '';

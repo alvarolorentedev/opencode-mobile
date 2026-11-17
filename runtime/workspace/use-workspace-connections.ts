@@ -3,8 +3,8 @@ import { getProfileCertificate, saveProfileCertificate } from '@/shared/storage/
 import { connectionOrigin, releaseHostTrust } from '@/shared/platform/tls-trust';
 import type { ConnectionCertificate } from '@/shared/contracts/connection-certificate';
 import type { ConnectionHeaders } from '@/shared/contracts/connection-headers';
-import { createProfileId, deleteProfilePassword, getProfilePassword, loadConnectionProfiles, mutateConnectionProfiles, saveProfilePassword } from '@/shared/storage/connection-profiles';
-import { findMatchingProfile, pickModelPreferences } from '@/shared/contracts/connection-profiles';
+import { createProfileId, deleteProfilePassword, getProfilePassword, loadConnectionProfiles, mutateConnectionProfiles, readProfileConnection, saveProfilePassword } from '@/shared/storage/connection-profiles';
+import { findMatchingProfile, pickModelPreferences, type ConnectionProfile } from '@/shared/contracts/connection-profiles';
 import { getConnectionScope, getConnectionUiScope } from '@/shared/contracts/connection-scope';
 import { HIDDEN_PROJECTS_MAX } from '@/shared/contracts/domain';
 import { defaultConnectionSettings, type OpencodeConnectionSettings } from '@/shared/protocol/opencode/client/types';
@@ -338,9 +338,8 @@ export function useWorkspaceConnections(shell: WorkspaceShellState, hydrated: bo
     selectWorkspace(target, next);
     navigation.current?.abort();
   }, [beginActivation, connectedWorkspace, pauseConversation, selectWorkspace]);
-  const switchConnection = useCallback(async (settings: Pick<OpencodeConnectionSettings, 'serverUrl' | 'username' | 'password' | 'headers' | 'certificate' | 'oidc' | 'connect'>, preferences?: Partial<ChatPreferences>, selectWorkspace = true) => {
-    const full = { ...settings, directory: '' };
-    const profile = await saveProfile(full);
+  const registerConnection = useCallback(async (full: OpencodeConnectionSettings, profile: ConnectionProfile, preferences?: Partial<ChatPreferences>, selectWorkspace = true, signal?: AbortSignal) => {
+    if (signal?.aborted) throw new Error('This session link was cancelled.');
     const id = getConnectionUiScope(full);
     const found = records.current.find((entry) => entry.id === id);
     if (found) for (const [key, runtime] of Object.entries(live.current)) if ((JSON.parse(key) as string[])[0] === id) runtime.suspend();
@@ -352,7 +351,7 @@ export function useWorkspaceConnections(shell: WorkspaceShellState, hydrated: bo
       preferences: { ...serverPreferences(preferences ?? {}), ...entry.preferences }, events: createSharedEventStream() } : entry)
       : [...current, { id, name: profile.name, settings: full, enabled: true, preferences: { autoApprove: false, ...serverPreferences(preferences ?? profile.modelPreferences ?? {}) }, projects: [''], events: createSharedEventStream() }]);
     const target = { connectionId: id, projectPath: '' };
-    const runtime = await ensure(target);
+    const runtime = await ensure(target, { signal });
     if (selectWorkspace) {
       await pauseConversation(); select(target);
       // Retire the onboarding placeholder only after its replacement published,
@@ -360,7 +359,14 @@ export function useWorkspaceConnections(shell: WorkspaceShellState, hydrated: bo
       change((current) => current.filter((entry) => entry.id === id || entry.enabled || entry.id !== getConnectionUiScope(defaultConnectionSettings)));
     }
     return runtime.values.connectionValue.connect();
-  }, [change, ensure, pauseConversation, saveProfile, select]);
+  }, [change, ensure, pauseConversation, select]);
+  const switchConnection = useCallback(async (settings: Omit<OpencodeConnectionSettings, 'directory'>, preferences?: Partial<ChatPreferences>) => {
+    const full = { ...settings, directory: '' };
+    return registerConnection(full, await saveProfile(full), preferences);
+  }, [registerConnection, saveProfile]);
+  const connectSavedProfile = useCallback(async (profile: ConnectionProfile, signal?: AbortSignal) => {
+    return registerConnection(await readProfileConnection(profile), profile, undefined, false, signal);
+  }, [registerConnection]);
   const disconnect = useCallback(async (id: string) => {
     canPersist.current = true;
     navigation.current?.abort();
@@ -437,5 +443,5 @@ export function useWorkspaceConnections(shell: WorkspaceShellState, hydrated: bo
     change((current) => current.filter((entry) => entry.id !== id));
     for (const key of Object.keys(live.current)) if ((JSON.parse(key) as string[])[0] === id) forget(key);
   }, [change, disconnect, forget]);
-  return { isEnabled, hideProject, restoreProject, hiddenProjects: shell.hiddenProjects, connectedWorkspace, removeConnection, connections, focus, retainedFocus, snapshots, ready, change, select, publish, forget, ensure, resolveKey, activate, navigate, openExternalSession, switchConnection, disconnect, retry, updateSettings, updatePreferences };
+  return { isEnabled, hideProject, restoreProject, hiddenProjects: shell.hiddenProjects, connectedWorkspace, removeConnection, connections, focus, retainedFocus, snapshots, ready, change, select, publish, forget, ensure, resolveKey, activate, navigate, openExternalSession, switchConnection, connectSavedProfile, disconnect, retry, updateSettings, updatePreferences };
 }

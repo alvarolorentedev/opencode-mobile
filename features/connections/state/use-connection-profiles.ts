@@ -3,7 +3,7 @@ import { deleteProfileCertificate, getProfileCertificate, saveProfileCertificate
 import { connectionOrigin, releaseHostTrust } from '@/shared/platform/tls-trust';
 import type { ConnectionCertificate } from '@/shared/contracts/connection-certificate';
 import type { ConnectionHeaders } from '@/shared/contracts/connection-headers';
-import { createProfileId, deleteProfilePassword, getProfilePassword, loadConnectionProfiles, mutateConnectionProfiles, saveProfilePassword } from '@/shared/storage/connection-profiles';
+import { createProfileId, deleteProfilePassword, getProfilePassword, loadConnectionProfiles, mutateConnectionProfiles, readProfileConnection, saveProfilePassword } from '@/shared/storage/connection-profiles';
 import { findMatchingProfile, type ConnectionProfile } from '@/shared/contracts/connection-profiles';
 import { getConnectionScope } from '@/shared/contracts/connection-scope';
 import { probeConnection } from '@/shared/protocol/opencode/client/probe';
@@ -39,8 +39,8 @@ export function useConnectionProfiles({ settings, switchConnection, updateSettin
     void refresh().catch((reason) => console.warn('Could not refresh connection profiles.', reason));
   }, [refresh]);
   const connect = useCallback(async (profile: ConnectionProfile) => {
-    const [password, headers, certificate] = await Promise.all([getProfilePassword(profile.id), getProfileHeaders(profile.id), getProfileCertificate(profile.id)]);
-    return latest.current.switchConnection({ serverUrl: profile.serverUrl, username: profile.username, password, headers, certificate, oidc: profile.oidc, connect: profile.connect }, profile.modelPreferences);
+    const connection = await readProfileConnection(profile);
+    return latest.current.switchConnection(connection, profile.modelPreferences);
   }, []);
   const passwordForEditing = useCallback((id: string) => getProfilePassword(id), []);
   const headersForEditing = useCallback((id: string) => getProfileHeaders(id), []);

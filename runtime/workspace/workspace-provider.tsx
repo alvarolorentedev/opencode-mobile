@@ -1,8 +1,7 @@
 // App-wide workspace registry, connection focus, and persistence.
 // See docs/architecture/state-and-data.md#state-ownership-overview.
-import { getProfileHeaders } from '@/shared/storage/connection-headers';
 import { findProfileByConnectionScope, type ConnectionProfile } from '@/shared/contracts/connection-profiles';
-import { getProfilePassword, loadConnectionProfiles } from '@/shared/storage/connection-profiles';
+import { loadConnectionProfiles } from '@/shared/storage/connection-profiles';
 import { getConnectionScope, getConnectionUiScope } from '@/shared/contracts/connection-scope';
 import { HIDDEN_PROJECTS_MAX } from '@/shared/contracts/domain';
 import { defaultConnectionSettings } from '@/shared/protocol/opencode/client';
@@ -59,7 +58,7 @@ export function WorkspaceProvider({ children }: PropsWithChildren) {
   useWorkspaceAutoApprove(manager);
   const { updateSettings: updateWorkspaceSettings, retry, change, removeConnection: removeWorkspaceConnection, connectedWorkspace, isEnabled } = manager;
   const { setFavoriteSessions, setSettings, setChatPreferences, setHiddenProjects } = shell;
-  const { connections, focus, retainedFocus, snapshots, ensure, resolveKey, switchConnection, activate, navigate, openExternalSession, disconnect } = manager;
+  const { connections, focus, retainedFocus, snapshots, ensure, resolveKey, switchConnection, activate, navigate, openExternalSession, connectSavedProfile, disconnect } = manager;
   const mission = useMissionOverview(connections, catalogs);
   const missionWidgetScope = JSON.stringify(connections.filter((entry) => entry.enabled)
     .map(({ id, authRevision }) => [id, authRevision, mission.servers.find((server) => server.id === id)?.authorized === false]));
@@ -119,9 +118,7 @@ export function WorkspaceProvider({ children }: PropsWithChildren) {
       if (!entry && target.connectionScope) {
         const profile = findProfileByConnectionScope(await loadConnectionProfiles(), target.connectionScope);
         if (!profile) throw new Error('The saved connection for this session is not available.');
-        const [password, headers] = await Promise.all([getProfilePassword(profile.id), getProfileHeaders(profile.id)]);
-        if (signal?.aborted) throw new Error('This session link was cancelled.');
-        await switchConnection({ serverUrl: profile.serverUrl, username: profile.username, connect: profile.connect, password, headers }, profile.modelPreferences, false);
+        await connectSavedProfile(profile, signal);
         entry = { id: getConnectionUiScope(profile), projects: [''], enabled: true };
       }
       if (!entry) throw new Error('The saved connection for this session is not available.');
@@ -129,7 +126,7 @@ export function WorkspaceProvider({ children }: PropsWithChildren) {
       await openExternalSession({ connectionId: entry.id, projectPath: target.projectPath ?? entry.projects[0] ?? '', sessionId: target.sessionId }, signal);
       return { ok: true };
     } catch (reason) { return { ok: false, error: reason instanceof Error ? reason.message : 'Could not open this chat.' }; }
-  }, [connections, focus?.connectionId, openExternalSession, retry, switchConnection]);
+  }, [connections, focus?.connectionId, openExternalSession, retry, connectSavedProfile]);
   // In-app library navigation. The session id came from rendered data, so this
   // resolves the owning connection locally and never validates against a
   // server list. Cross-server favorites still switch and connect the target.

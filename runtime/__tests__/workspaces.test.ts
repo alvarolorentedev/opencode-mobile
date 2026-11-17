@@ -217,6 +217,10 @@ it('restarts a silent shared stream even when a widget consumer stays attached',
 it('keeps lifecycle decisions current without resetting retained runtimes', async () => {
   const driver = hookRuntime();
   const findSessionForNavigation = vi.fn();
+  const mutateConnectionProfiles = vi.fn();
+  const certificate = { fingerprint: 'saved-ca' };
+  const oidc = { issuer: 'https://issuer.test', clientId: 'mobile' };
+  const readProfileConnection = vi.fn(async (profile) => ({ ...profile, directory: '', certificate, oidc, password: 'saved-password' }));
   const entries = ['a', 'b'].map((id) => ({ id, name: id, settings: { serverUrl: `http://${id}`, username: '', password: '', directory: '' }, projects: ['/repo', '/other'], preferences: {}, enabled: true }));
   const paths = { 'http://a:': ['/repo', '/other'], 'http://b:': ['/repo'] };
   const shell: any = { settings: entries[0].settings, onboardingVersion: 1, chatPreferences: {}, projectPathsByConnection: paths,
@@ -228,7 +232,7 @@ it('keeps lifecycle decisions current without resetting retained runtimes', asyn
     '@react-native-async-storage/async-storage': { __esModule: true, default: { getItem: async () => 'stored', setItem: async () => {} } },
     '@/runtime/workspace/workspace-focus': workspaceFocus,
     "@/shared/contracts/connection-scope": { ...identity, getConnectionUiScope: (value: any) => value.serverUrl.slice(7) },
-    "@/shared/storage/connection-profiles": { createProfileId: () => 'new', getProfilePassword: async () => '', loadConnectionProfiles: async () => [], mutateConnectionProfiles: vi.fn(async () => {}), saveProfilePassword: vi.fn(), deleteProfilePassword: vi.fn() },
+    "@/shared/storage/connection-profiles": { createProfileId: () => 'new', getProfilePassword: async () => '', loadConnectionProfiles: async () => [], mutateConnectionProfiles, readProfileConnection, saveProfilePassword: vi.fn(), deleteProfilePassword: vi.fn() },
     "@/shared/contracts/connection-profiles": { findMatchingProfile: () => undefined, pickModelPreferences: () => ({}) },
     "@/shared/storage/connection-headers": { getProfileHeaders: async () => ({}), saveProfileHeaders: vi.fn(), deleteProfileHeaders: vi.fn() },
     "@/shared/protocol/opencode/client/types": { defaultConnectionSettings: { serverUrl: 'http://default', username: '' } },
@@ -245,7 +249,7 @@ it('keeps lifecycle decisions current without resetting retained runtimes', asyn
   expect(isEnabled('a')).toBe(true);
   const snapshot = (id: string, path: string) => ({ enabled: true, native: { settings: driver.value.connections.find((entry: any) => entry.id === id).settings },
     loadProjectCatalog: vi.fn(async () => ({ currentProjectPath: '/repo', serverProjects: [] })),
-    catalogSessions: [], suspend: vi.fn(), values: { sessionLibraryValue: { sessions: [], refreshSessions: vi.fn(async () => []) }, currentSessionValue: { openSession: vi.fn(async () => {}), openDeepLinkSession: vi.fn(async () => ({ ok: true })) }, projectsValue: { activeProjectPath: path }, conversationValue: { conversation: { active: true }, toggleConversationMode: vi.fn(async () => {}) }, connectionValue: { connection: { status: 'connected' } } } });
+    catalogSessions: [], suspend: vi.fn(), values: { sessionLibraryValue: { sessions: [], refreshSessions: vi.fn(async () => []) }, currentSessionValue: { openSession: vi.fn(async () => {}), openDeepLinkSession: vi.fn(async () => ({ ok: true })) }, projectsValue: { activeProjectPath: path }, conversationValue: { conversation: { active: true }, toggleConversationMode: vi.fn(async () => {}) }, connectionValue: { connection: { status: 'connected' }, connect: async () => ({ status: 'connected' }) } } });
   const original = snapshot('a', '/repo'), other = snapshot('a', '/other'), b = snapshot('b', '/repo');
   driver.value.publish('["a","/repo"]', original); driver.value.publish('["a","/other"]', other); driver.value.publish('["b","/repo"]', b); driver.flush();
   original.catalogSessions = [{ id: 'collision', directory: '/repo' }] as never[];
@@ -275,6 +279,14 @@ it('keeps lifecycle decisions current without resetting retained runtimes', asyn
   await driver.value.disconnect('a'); driver.flush();
   expect(isEnabled('a')).toBe(false); expect(isEnabled('b')).toBe(true);
   expect(original.suspend).toHaveBeenCalledOnce(); expect(other.suspend).toHaveBeenCalledOnce(); expect(b.suspend).not.toHaveBeenCalled();
+  const profile = { id: 'saved', name: 'Saved', serverUrl: 'http://c', username: 'carol' };
+  const activating = driver.value.connectSavedProfile(profile);
+  await driver.settle();
+  const c = snapshot('c', '');
+  driver.value.publish('["c",""]', c);
+  await activating;
+  expect(c.native.settings).toMatchObject({ certificate, oidc, password: 'saved-password' });
+  expect(mutateConnectionProfiles).not.toHaveBeenCalled();
   driver.unmount();
 });
 
