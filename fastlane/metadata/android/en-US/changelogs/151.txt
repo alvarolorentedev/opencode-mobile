@@ -1,0 +1,3 @@
+- Open shared OpenCode session links directly in the app.
+- Cancel queued prompts and see clearly when a message is still offline.
+- Chat keeps its place when the Android keyboard opens, and diffs scroll correctly again.
