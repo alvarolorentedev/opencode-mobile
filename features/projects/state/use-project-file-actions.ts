@@ -90,9 +90,9 @@ export function useProjectFileActions({
   const downloadProjectFile = useCallback(async (path: string, signal?: AbortSignal) => {
     path = projectPath(path, client.__opencode.directory || '');
     const source = await getProjectFileDownloadSource(client, path);
+    if (signal?.aborted) throw new Error('Download canceled.');
+    if (!isCurrentClient(client)) throw new Error('The project changed before downloading.');
     if (source.kind === 'content') {
-      if (signal?.aborted) throw new Error('Download canceled.');
-      if (!isCurrentClient(client)) throw new Error('The project changed before downloading.');
       if (source.content.type !== 'text' || source.content.encoding === 'base64') {
         throw new Error('Binary files cannot be downloaded from this server.');
       }
@@ -109,6 +109,7 @@ export function useProjectFileActions({
     await saveOrShareProjectFile({
       url: projectFileDownloadUrl({ origin: base.origin, pathPrefix: base.pathPrefix, directory: client.__opencode.directory || '', path }),
       headers: getRequestHeaders(settings),
+      oidcConnection: settings.oidc ? settings : undefined,
       filename: path.split('/').pop() || path,
       mime: projectFileMime(path),
       signal,
