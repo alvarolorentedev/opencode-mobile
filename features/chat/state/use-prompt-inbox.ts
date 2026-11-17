@@ -4,14 +4,14 @@ import { getErrorMessage } from '@/shared/utilities/error-message';
 import { classifyConnectionFailure } from '@/shared/protocol/opencode/client/errors';
 import type { ScopedOpencodeClient } from '@/shared/protocol/opencode/client';
 import type { SessionMessageRecord } from '@/shared/presentation/format';
-import type { PendingNotice, PendingPrompt, PromptDelivery, PromptInput } from '@/shared/protocol/opencode/prompt-inbox';
+import { PromptPreparationError, type PendingNotice, type PendingPrompt, type PromptDelivery, type PromptInput } from '@/shared/protocol/opencode/prompt-inbox';
 import type { TranscriptRefreshMode } from '@/shared/contracts/domain';
 import { getSessionInbox, getSessionNotices, submitLegacyPrompt } from '@/shared/protocol/services/session-service';
 
 const EMPTY_PROMPTS: Record<string, PendingPrompt[]> = {};
 const EMPTY_NOTICES: Record<string, PendingNotice[]> = {};
 
-type QueuedInput = { input: PromptInput; delivery: PromptDelivery; text: string; createdAt: number; scope: string };
+type QueuedInput = { input: PromptInput; delivery: PromptDelivery; scope: string };
 type PromptSnapshot = { prompts: Record<string, PendingPrompt[]>; notices: Record<string, PendingNotice[]> };
 const EMPTY_SNAPSHOT: PromptSnapshot = { prompts: EMPTY_PROMPTS, notices: EMPTY_NOTICES };
 
@@ -19,10 +19,7 @@ function promptText(input: PromptInput) {
   return (input.parts ?? []).filter((part) => part.type === 'text').map((part) => part.text).join('\n\n');
 }
 
-function isQueueableTransportFailure(error: unknown, online: boolean) {
-  if (!online) return true;
-  const kind = classifyConnectionFailure(error);
-  if (kind === 'offline' || kind === 'timeout' || kind === 'tunnel-startup') return true;
+function isUncertainDelivery(error: unknown) {
   // A validation/HTTP 4xx error is not a delivery uncertainty. Only a
   // transport-shaped failure can have reached the server without a response.
   const status = (error as { status?: number; cause?: { status?: number } } | undefined)?.status
@@ -31,24 +28,16 @@ function isQueueableTransportFailure(error: unknown, online: boolean) {
   // failure (restore the draft / surface the error), never as an uncertain
   // delivery that might be replayed.
   if (status !== undefined) return false;
+  const kind = classifyConnectionFailure(error);
+  if (kind === 'offline' || kind === 'timeout' || kind === 'tunnel-startup') return true;
   // Some native transports only report a generic fetch failure.
   return /fetch failed|failed to fetch|network request failed|network unavailable|timed? ?out|connection (?:closed|reset|failed)/i.test(
     getErrorMessage(error),
   );
 }
 
-function isOfflineLikeFailure(error: unknown, online: boolean) {
-  if (!online) return true;
-  if (classifyConnectionFailure(error) === 'offline') return true;
-  return /failed to fetch|fetch failed|network request failed|network unavailable|not connected to the internet|\boffline\b/i.test(
-    getErrorMessage(error),
-  );
-}
-
-function messageHasPrompt(records: SessionMessageRecord[], text: string) {
-  if (!text.trim()) return false;
-  return records.some((record) => record.info.role === 'user'
-    && record.parts.some((part) => part.type === 'text' && part.text.includes(text.trim())));
+function canQueueAfterFailure(error: unknown) {
+  return error instanceof PromptPreparationError && isUncertainDelivery(error.cause);
 }
 
 export function usePromptInbox({
@@ -72,6 +61,7 @@ export function usePromptInbox({
   const [queueSize, setQueueSize] = useState(0);
   const snapshotRef = useRef(snapshot);
   const activeQueueScope = useRef(scope);
+  const reachability = useRef({ connected, online });
   const revisions = useRef<Record<string, number>>({});
   const counter = useRef(0);
   const queuedInputs = useRef(new Map<string, QueuedInput>());
@@ -82,6 +72,7 @@ export function usePromptInbox({
   useLayoutEffect(() => {
     snapshotRef.current = snapshot;
     activeQueueScope.current = scope;
+    reachability.current = { connected, online };
   });
   const syncQueueSize = useCallback(() => {
     setQueueSize([...queuedInputs.current.values()].filter((item) => item.scope === activeQueueScope.current).length);
@@ -112,18 +103,6 @@ export function usePromptInbox({
     });
   }, [client, isCurrentClient, scope]);
 
-  const reconcileLocal = useCallback((sessionId: string, pending: PendingPrompt[] | undefined, records: SessionMessageRecord[]) => {
-    update(sessionId, (previous) => previous.flatMap((prompt) => {
-      if (prompt.state !== 'queued' && prompt.state !== 'uncertain') return [prompt];
-      const transcriptMatch = messageHasPrompt(records, prompt.text);
-      const inboxMatch = pending?.find((item) => item.text.trim() === prompt.text.trim());
-      if (!transcriptMatch && !inboxMatch) return [prompt];
-      queuedInputs.current.delete(prompt.id);
-      syncQueueSize();
-      return inboxMatch && !transcriptMatch ? [inboxMatch] : [];
-    }));
-  }, [syncQueueSize, update]);
-
   const refreshMessages = useCallback(async (sessionId: string, silent = false, options?: { mode?: TranscriptRefreshMode }) => {
     if (!client.promptInbox) return readMessages(sessionId, silent, options);
     const revision = (revisions.current[sessionId] ?? 0) + 1;
@@ -142,12 +121,11 @@ export function usePromptInbox({
           ...previous.filter((prompt) => prompt.state === 'sending' || prompt.state === 'queued' || prompt.state === 'uncertain'),
           ...pending.filter((prompt) => !delivered.has(prompt.id)),
         ].sort((a, b) => a.createdAt - b.createdAt));
-        reconcileLocal(sessionId, pending, records);
       }
       if (notices) updateNotices(sessionId, notices.filter((notice) => !delivered.has(notice.id)));
     }
     return records;
-  }, [client, readMessages, reconcileLocal, update, updateNotices]);
+  }, [client, readMessages, update, updateNotices]);
 
   const submitPrompt = useCallback(async (input: PromptInput, delivery: PromptDelivery) => {
     if (!client.promptInbox) {
@@ -161,38 +139,27 @@ export function usePromptInbox({
       id, sessionId, createdAt: Date.now(), delivery, state: 'sending', text,
       attachments: (input.parts ?? []).filter((part) => part.type === 'file').map((part) => ({ uri: part.url, mime: part.mime, filename: part.filename })),
     };
+    const enqueue = () => {
+      queuedInputs.current.set(id, { input, delivery, scope });
+      syncQueueSize();
+      update(sessionId, (previous) => [...previous.filter((item) => item.id !== id), { ...prompt, state: 'queued' }]);
+    };
+    if (!reachability.current.online) return enqueue();
     update(sessionId, (previous) => [...previous, prompt]);
     try {
       const admitted = await client.promptInbox.submit(input, delivery);
       revisions.current[sessionId] = (revisions.current[sessionId] ?? 0) + 1;
-      queuedInputs.current.delete(id);
-      syncQueueSize();
       update(sessionId, (previous) => [...previous.filter((item) => item.id !== id && item.id !== admitted.id), admitted]);
     } catch (error) {
-      if (isQueueableTransportFailure(error, online)) {
-        // Keep the prompt visible and retry it when connectivity returns. The
-        // flush reconciles the inbox/transcript first, so a request that did
-        // reach the server is not replayed as a duplicate.
-        const queued = isOfflineLikeFailure(error, online);
-        if (queued) {
-          queuedInputs.current.set(id, { input, delivery, text, createdAt: prompt.createdAt, scope });
-          syncQueueSize();
-        }
-        update(sessionId, (previous) => previous.map((item) => item.id === id
-          ? { ...item, state: queued ? 'queued' : 'uncertain' }
-          : item));
-        if (!queued) {
-          // A timeout is an uncertain mutation. Surface the condition but do
-          // not throw: the composer should clear while the prompt remains
-          // visible for reconciliation or explicit dismissal.
-          return;
-        }
+      if (canQueueAfterFailure(error)) return enqueue();
+      if (!(error instanceof PromptPreparationError) && isUncertainDelivery(error)) {
+        update(sessionId, (previous) => previous.map((item) => item.id === id ? { ...item, state: 'uncertain' } : item));
         return;
       }
       update(sessionId, (previous) => previous.filter((item) => item.id !== id));
       throw error;
     }
-  }, [client, online, scope, syncQueueSize, update]);
+  }, [client, scope, syncQueueSize, update]);
 
   const flushQueued = useCallback(async () => {
     if (flushing.current || !client.promptInbox || !connected || !online) return;
@@ -201,49 +168,28 @@ export function usePromptInbox({
     flushing.current = true;
     try {
       for (const [id, item] of entries) {
-        if (!isCurrentClient(client)) return;
+        if (!reachability.current.connected || !reachability.current.online || activeQueueScope.current !== scope || !isCurrentClient(client)) return;
         const sessionId = item.input.sessionID;
-        const pending = await getSessionInbox(client, sessionId).catch(() => undefined);
-        if (!pending) continue;
-        const records = await readMessages(sessionId, true).catch(() => undefined);
-        if (!records) continue;
-        const inboxMatch = pending.find((entry) => entry.text.trim() === item.text.trim());
-        if (inboxMatch) {
-          queuedInputs.current.delete(id);
-          syncQueueSize();
-          update(sessionId, (previous) => [...previous.filter((entry) => entry.id !== id && entry.id !== inboxMatch.id), inboxMatch]);
-          continue;
-        }
-        if (messageHasPrompt(records, item.text)) {
-          queuedInputs.current.delete(id);
-          syncQueueSize();
-          update(sessionId, (previous) => previous.filter((entry) => entry.id !== id));
-          continue;
-        }
+        update(sessionId, (previous) => previous.map((entry) => entry.id === id ? { ...entry, state: 'sending' } : entry));
         try {
           const admitted = await client.promptInbox.submit(item.input, item.delivery);
-          queuedInputs.current.delete(id);
-          syncQueueSize();
+          revisions.current[sessionId] = (revisions.current[sessionId] ?? 0) + 1;
           update(sessionId, (previous) => [...previous.filter((entry) => entry.id !== id && entry.id !== admitted.id), admitted]);
         } catch (error) {
-          if (isQueueableTransportFailure(error, online)) {
-            if (!isOfflineLikeFailure(error, online)) {
-              queuedInputs.current.delete(id);
-              syncQueueSize();
-              update(sessionId, (previous) => previous.map((entry) => entry.id === id ? { ...entry, state: 'uncertain' } : entry));
-            }
-            continue;
+          if (canQueueAfterFailure(error)) {
+            queuedInputs.current.set(id, item);
+            update(sessionId, (previous) => previous.map((entry) => entry.id === id ? { ...entry, state: 'queued' } : entry));
+            return;
           }
-          // A server-side rejection must not stay silently queued forever.
-          queuedInputs.current.delete(id);
-          syncQueueSize();
           update(sessionId, (previous) => previous.map((entry) => entry.id === id ? { ...entry, state: 'uncertain' } : entry));
+        } finally {
+          syncQueueSize();
         }
       }
     } finally {
       flushing.current = false;
     }
-  }, [client, connected, isCurrentClient, online, scope, readMessages, syncQueueSize, update]);
+  }, [client, connected, isCurrentClient, online, scope, syncQueueSize, update]);
 
   useEffect(() => {
     if (!connected || !online || queueSize === 0) return;

@@ -31,7 +31,7 @@ export type PendingPrompt = {
   text: string;
   attachments: PromptAttachment[];
   delivery: PromptDelivery;
-  // queued: left the device while offline; flush reconciles before admitting.
+  // queued: held before sending a prompt admission request.
   // uncertain: the request may have reached the server before the connection
   // failed; never retry automatically.
   state: 'sending' | 'waiting' | 'queued' | 'uncertain';
@@ -48,6 +48,12 @@ export type PendingNotice = {
   // the existing server-notice rendering.
   kind?: 'server' | 'plugin';
 };
+
+export class PromptPreparationError extends Error {
+  constructor(cause: unknown) {
+    super(cause instanceof Error ? cause.message : String(cause), { cause });
+  }
+}
 
 export type PromptInboxApi = {
   submit: (input: PromptInput, delivery: PromptDelivery) => Promise<PendingPrompt>;

@@ -96,6 +96,7 @@ coverage, and documentation links.
 | [0042](0042-mission-server-aggregates.md) | Server aggregates for Mission Control history | Accepted |
 | [0043](0043-react-native-chart-kit.md) | ChartKit for the Mission Control usage chart | Accepted |
 | [0044](0044-shared-session-links.md) | Shared OpenCode session links | Accepted |
+| [0045](0045-queue-only-unsent-prompts.md) | Queue only unsent prompts | Accepted |
 
 ## Template
 

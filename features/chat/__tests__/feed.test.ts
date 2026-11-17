@@ -6,6 +6,7 @@ import { attachmentKind, dataUrlBytes, pickedAttachment, prepareAttachmentFile, 
 import { defaultChatPreferences } from '@/shared/preferences/opencode-preferences';
 import { parseChatPreferences } from '@/shared/storage/persisted-preferences';
 import { toFileDetail, toMessageRecord } from '@/shared/protocol/opencode/v2/mappers';
+import { PromptPreparationError } from '@/shared/protocol/opencode/prompt-inbox';
 import { handleProviderEvent } from '@/shared/protocol/opencode/event-dispatch';
 import { toTranscriptEntry } from '@/shared/presentation/format';
 import { isTranscriptDisplayMessage } from '@/shared/presentation/transcript';
@@ -134,6 +135,7 @@ describe('provider-owned prompt inbox', () => {
     const runtime = hookRuntime();
     const { usePromptInbox } = await loadTs('features/chat/state/use-prompt-inbox.ts', {
     react: runtime.react,
+    "@/shared/protocol/opencode/prompt-inbox": { PromptPreparationError },
     "@/shared/protocol/services/session-service": { getSessionInbox: (candidate: any, id: string) => candidate.promptInbox.list(id), getSessionNotices: (candidate: any, id: string) => candidate.promptInbox.listNotices?.(id) ?? Promise.resolve([]), submitLegacyPrompt: (candidate: any, input: unknown) => candidate.compatibility.session.promptAsync(input) },
     "@/shared/protocol/opencode/client/errors": { classifyConnectionFailure: () => 'unknown' },
     "@/shared/utilities/error-message": { getErrorMessage: (error: unknown) => error instanceof Error ? error.message : String(error) }
@@ -228,21 +230,55 @@ describe('provider-owned prompt inbox', () => {
     const client = {
       promptInbox: {
         submit: vi.fn()
-          .mockRejectedValueOnce(new Error('Failed to fetch'))
           .mockResolvedValueOnce(pending('m-offline')),
         list: vi.fn(async () => []),
       },
     };
-    const runtime = await mount(client, vi.fn(async () => [] as any[]), { online: false });
+    const old = [{ info: { id: 'old', role: 'user' }, parts: [{ type: 'text', text: 'Old queued text in this chat' }] }];
+    const runtime = await mount(client, vi.fn(async () => old), { online: false });
     await runtime.value.submitPrompt({ sessionID: 's', parts: [{ type: 'text', text: 'queued text' }] }, 'steer');
+    expect(client.promptInbox.submit).not.toHaveBeenCalled();
     runtime.flush();
     expect(runtime.value.pendingPromptsBySession.s[0]).toMatchObject({ state: 'queued', text: 'queued text' });
 
     runtime.update({ online: true }); runtime.flush();
     await runtime.settle();
     runtime.flush();
-    expect(client.promptInbox.submit).toHaveBeenCalledTimes(2);
+    expect(client.promptInbox.submit).toHaveBeenCalledOnce();
     expect(runtime.value.pendingPromptsBySession.s).toHaveLength(1);
     expect(runtime.value.pendingPromptsBySession.s[0]).toMatchObject({ id: 'm-offline', state: 'waiting' });
   });
+
+
+  it('queues a prompt when a transport failure happens before admission', async () => {
+    const submit = vi.fn()
+      .mockRejectedValueOnce(new PromptPreparationError(new Error('Failed to fetch')))
+      .mockRejectedValueOnce(new PromptPreparationError(new Error('Failed to fetch')))
+      .mockResolvedValueOnce(pending('admitted'));
+    const runtime = await mount({ promptInbox: { submit } }, undefined, { connected: false });
+    await runtime.value.submitPrompt({ sessionID: 's', parts: [] }, 'steer');
+    runtime.flush();
+    expect(runtime.value.pendingPromptsBySession.s[0].state).toBe('queued');
+
+    runtime.update({ connected: true });
+    await runtime.settle();
+    expect(submit).toHaveBeenCalledTimes(2);
+    expect(runtime.value.pendingPromptsBySession.s[0].state).toBe('queued');
+    await runtime.value.flushQueuedPrompts();
+    runtime.flush();
+    expect(runtime.value.pendingPromptsBySession.s[0].id).toBe('admitted');
+  });
+
+  it('keeps an ambiguous send visible across reconnects without replaying it', async () => {
+    const client = { promptInbox: { submit: vi.fn().mockRejectedValue(new Error('Failed to fetch')), list: async () => [] } };
+    const runtime = await mount(client);
+    await runtime.value.submitPrompt({ sessionID: 's', parts: [] }, 'steer');
+    runtime.update({ online: false });
+    runtime.update({ online: true });
+    await runtime.value.refreshMessages('s');
+    await runtime.settle();
+    expect(client.promptInbox.submit).toHaveBeenCalledOnce();
+    expect(runtime.value.pendingPromptsBySession.s[0].state).toBe('uncertain');
+  });
+
 });

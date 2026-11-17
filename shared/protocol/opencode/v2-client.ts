@@ -5,7 +5,7 @@ import { buildV2Raw } from '@/shared/protocol/opencode/v2/raw';
 import { buildProviderAuth } from '@/shared/protocol/opencode/v2/capabilities';
 import { isInternalSyntheticNotice, isServerNoticeMetadata, toFileDetail } from '@/shared/protocol/opencode/v2/mappers';
 import { syncSessionInstructions } from '@/shared/protocol/opencode/v2/shared';
-import type { PendingNotice, PendingPrompt, PromptInput } from '@/shared/protocol/opencode/prompt-inbox';
+import { PromptPreparationError, type PendingNotice, type PendingPrompt, type PromptInput } from '@/shared/protocol/opencode/prompt-inbox';
 import type { SessionInboxInfo, SessionInboxUser } from '@opencode/client';
 
 export function toPendingPrompt(item: SessionInboxUser): PendingPrompt {
@@ -47,9 +47,13 @@ export function buildV2Client(settings: OpencodeConnectionSettings, signal?: Abo
       cancel: async (sessionID, inboxID) => { await api.session.inbox.cancel({ sessionID, inboxID }); },
       submit: async (input: PromptInput, delivery) => {
         const { sessionID, agent, model, variant } = input;
-        if (agent) await api.session.switchAgent({ sessionID, agent });
-        if (model) await api.session.switchModel({ sessionID, model: { id: model.modelID, providerID: model.providerID, ...(variant && variant !== 'default' ? { variant } : {}) } });
-        await syncSessionInstructions(api, sessionID, input.system);
+        try {
+          if (agent) await api.session.switchAgent({ sessionID, agent });
+          if (model) await api.session.switchModel({ sessionID, model: { id: model.modelID, providerID: model.providerID, ...(variant && variant !== 'default' ? { variant } : {}) } });
+          await syncSessionInstructions(api, sessionID, input.system);
+        } catch (error) {
+          throw new PromptPreparationError(error);
+        }
         const text = input.parts.filter((part) => part.type === 'text').map((part) => part.text).join('\n\n');
         const files = input.parts.filter((part) => part.type === 'file').map((part) => ({ uri: part.url, name: part.filename || 'Attachment' }));
         const context = resolvePromptContext(text, input.context);

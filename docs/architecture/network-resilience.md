@@ -176,27 +176,21 @@ the workspace is visible and online:
 
 ## Offline prompt queue
 
-`features/chat/state/use-prompt-inbox.ts` keeps a process-lifetime queue:
+`features/chat/state/use-prompt-inbox.ts` keeps a process-lifetime queue.
+See [ADR 0045](../adr/0045-queue-only-unsent-prompts.md).
 
-- A submission that fails with an offline/transport-level error stays visible
-  with `Queued — will send when connected`.
-- Queued inputs and their visible rows are scoped to the connection and project,
-  so rebuilding a client for the same workspace preserves them while another
-  workspace can never flush them to its server.
-- A timeout with an unknown server outcome is marked `Delivery uncertain`.
-  It is never auto-replayed.
-- Flush first reads the server inbox and newest transcript. If either already
-  contains the prompt, the local entry is cleared without sending. Otherwise it
-  admits once.
-- The queue retries every 3 s while connected and online, and immediately on an
-  online transition.
-- Dismissing a queued/uncertain entry never calls the server with a local ID.
-- Attachments are already prepared before admission; the queue is intentionally
-  not persisted because data URLs can be large and may reference temporary
-  files. The composer draft remains the durable copy across a relaunch.
-
-This covers drops during a turn. It is not a background outbox: the app does not
-send a queued prompt after being killed.
+- When the app detects that it is offline, it queues the input before making a
+  request and shows `Queued — will send when connected`. Transport failures
+  while preparing the agent, model, or instructions can also queue the prompt
+  because its admission request has yet to start.
+- Inputs stay scoped to their connection and project across client rebuilds.
+  Reconnect attempts admission once per entry and can retry preparation.
+  Dismissing an entry before its attempt starts removes it from the queue.
+- A transport failure during prompt admission is marked `Delivery uncertain`.
+  It stays visible until dismissed. An older message with the same text is
+  insufficient to confirm delivery.
+- The queue is in memory. Prepared attachments can be large or refer to
+  temporary files, and the app does not send queued prompts after it relaunches.
 
 ## Cached read path
 
