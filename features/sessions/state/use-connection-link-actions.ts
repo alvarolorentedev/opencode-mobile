@@ -1,6 +1,6 @@
 import { withReadSignal, type ScopedOpencodeClient } from '@/shared/protocol/opencode/client';
 import type { SessionDeepLinkTarget } from '@/shared/contracts/domain';
-import { listSessions } from '@/shared/protocol/services/session-service';
+import { findSessionForNavigation } from '@/shared/protocol/services/session-service';
 import { useCallback, useRef } from 'react';
 
 // The workspace manager resolves cross-server/project targets before invoking
@@ -27,8 +27,8 @@ export function useConnectionLinkActions({ client, isCurrentClient, connectionSc
       if (!activeProjectPath || target.projectPath && target.projectPath !== activeProjectPath) throw new Error('This session link does not name a project, and no project is open.');
       const result = connection.status === 'connected' ? connection : await connect(); current();
       if (result.status !== 'connected') throw new Error(result.message);
-      const { sessions } = await listSessions(signal ? withReadSignal(client, signal) : client); current();
-      if (!sessions.some((session) => session.id === id)) throw new Error(`Session ${id} was not found in the ${activeProjectPath} project.`);
+      const session = await findSessionForNavigation(signal ? withReadSignal(client, signal) : client, id, signal); current();
+      if (!session || session.id !== id || session.time.archived || (client.api && session.directory !== activeProjectPath)) throw new Error(`Session ${id} was not found in the ${activeProjectPath} project.`);
       await openSession(id); current();
       return { ok: true };
     } catch (error) { return { ok: false, error: error instanceof Error ? error.message : 'Could not open this session link.' }; }

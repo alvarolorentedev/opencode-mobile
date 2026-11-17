@@ -47,8 +47,16 @@ export async function getV2SessionSummary(client: ScopedOpencodeClient, sessionI
   return toSessionView(await client.api!.session.get({ sessionID }, { signal }));
 }
 
-export async function findSessionForNavigation(client: ScopedOpencodeClient, sessionID: string, signal: AbortSignal) {
-  if (client.api) return getV2SessionSummary(client, sessionID, signal);
+export async function findSessionForNavigation(client: ScopedOpencodeClient, sessionID: string, signal?: AbortSignal) {
+  if (client.api) {
+    try {
+      return await getV2SessionSummary(client, sessionID, signal);
+    } catch (error) {
+      const failure = error as { status?: number; cause?: { status?: number } } | undefined;
+      if ((failure?.status ?? failure?.cause?.status) === 404) return undefined;
+      throw error;
+    }
+  }
   return (await listSessions(client)).sessions.find((session) => session.id === sessionID);
 }
 

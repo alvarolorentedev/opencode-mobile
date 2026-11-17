@@ -53,14 +53,13 @@ export type SessionAdapter = {
   generate: (sessionId: string, prompt: string) => Promise<string>;
 };
 
-const MAX_SESSION_PAGES = 10;
-
 async function listV2Sessions(api: NativeOpencodeApi, directory?: string): Promise<SessionInfo[]> {
   const scope = directory ? { directory } : {};
   const records: SessionInfo[] = [];
   const seen = new Set<string>();
   let cursor: string | undefined;
-  for (let page = 0; page < MAX_SESSION_PAGES; page += 1) {
+  const cursors = new Set<string>();
+  for (;;) {
     const response = await api.session.list(cursor ? { ...scope, cursor } : scope);
     if (!Array.isArray(response?.data)) throw new Error('MalformedResponse: OpenCode did not return its session list.');
     // Pages can overlap at the cursor; a page that adds nothing also stops a
@@ -70,7 +69,8 @@ async function listV2Sessions(api: NativeOpencodeApi, directory?: string): Promi
     for (const session of fresh) seen.add(session.id);
     records.push(...fresh);
     const next = response.cursor?.next;
-    if (!next || next === cursor) break;
+    if (!next || cursors.has(next)) break;
+    cursors.add(next);
     cursor = next;
   }
   return records;

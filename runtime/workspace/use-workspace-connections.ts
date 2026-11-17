@@ -328,10 +328,6 @@ export function useWorkspaceConnections(shell: WorkspaceShellState, hydrated: bo
         check();
       }
     }
-    if (target.connectionId !== selected.current?.connectionId) {
-      await next.values.sessionLibraryValue.refreshSessions();
-      check();
-    }
     const opened = await next.values.currentSessionValue.openDeepLinkSession({ sessionId: target.sessionId, projectPath: target.projectPath || undefined }, signal);
     if (!opened.ok) throw new Error(opened.error);
     check();

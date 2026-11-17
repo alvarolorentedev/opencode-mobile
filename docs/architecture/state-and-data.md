@@ -123,7 +123,7 @@ Meaning:
 
 - `activeProjectPath` is the app-selected project context
 - `serverProjects` are raw projects returned by the server
-- `sessions` are the current project's sessions sorted newest-first; the native list is cursor-paged and every page is read, so a project never drops its older chats
+- `sessions` are the current project's sessions sorted newest-first. Native reads follow distinct cursors until the catalog ends. External OpenCode 2 links fetch the session by ID and verify its project before opening it.
 - `sessionStatuses` stores per-session runtime status from the server
 - `currentSessionId` is the selected/open session
 - an explicit selection stays selected while the project session list catches up with a catalog row; once the list includes it, normal reconciliation handles later removal

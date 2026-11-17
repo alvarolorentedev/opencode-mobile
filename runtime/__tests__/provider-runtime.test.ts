@@ -975,7 +975,7 @@ const sessionDeclarations = [
 ].join('\n');
 let createdSessions = 0, fetchedSessions = 0;
 const resolvableDirectories = new Set();
-const target = { id: 'target' };
+const target = { id: 'target', time: {} };
 const sessionContext: any = {
   exports: {}, operation: { current: 0 }, withReadSignal: (client: any) => client, useCallback: (fn: any) => fn, client: { directory: '/repo' },
   activeProjectPath: '/repo', activeProjectPathRef: { current: '/repo' }, settingsRef: { current: {} },
@@ -1002,7 +1002,7 @@ const sessionContext: any = {
   getProfilePassword: async () => 'secret',
   switchConnection: async () => { sessionContext.connectionScopeRef.current = 'other'; sessionContext.serverGenerationRef.current++; },
 };
-sessionContext.listSessions = async () => ({ sessions: await sessionContext.refreshSessions() });
+sessionContext.findSessionForNavigation = async (_client: unknown, id: string) => (await sessionContext.refreshSessions()).find((session: { id: string }) => session.id === id);
 sessionContext.openSession = async (id: string) => { sessionContext.currentSessionIdRef.current = id; };
 runInNewContext(ts.transpileModule(`${sessionDeclarations}\nexports.actions = { ${sessionNames.join(', ')} };`, { compilerOptions: { module: ts.ModuleKind.CommonJS } }).outputText, sessionContext);
 const sessionActions = sessionContext.exports.actions;
@@ -1023,27 +1023,33 @@ assert.match((await sessionActions.openDeepLinkSession({ sessionId: 'missing', p
 assert.equal(createdSessions, 0);
 const firstOpenGate = deferred<void>();
 let opens = 0;
-sessionContext.listSessions = async () => {
+sessionContext.findSessionForNavigation = async (_client: unknown, id: string) => {
   if (++opens === 1) await firstOpenGate.promise;
-  return { sessions: [{ id: 'first' }, { id: 'second' }] };
+  return { id, time: {} };
 };
 const firstOpen = sessionActions.openDeepLinkSession({ sessionId: 'first', projectPath: '/repo' });
 assert.equal((await sessionActions.openDeepLinkSession({ sessionId: 'second', projectPath: '/repo' })).ok, true);
 firstOpenGate.resolve(); assert.match((await firstOpen).error, /superseded/);
 assert.equal(sessionContext.currentSessionIdRef.current, 'second');
 const switchedOpenGate = deferred<void>();
-sessionContext.listSessions = async () => { await switchedOpenGate.promise; return { sessions: [target] }; };
+sessionContext.findSessionForNavigation = async () => { await switchedOpenGate.promise; return target; };
 const switchedOpen = sessionActions.openDeepLinkSession({ sessionId: 'target', projectPath: '/repo' });
 sessionContext.isCurrentClient = () => false; switchedOpenGate.resolve();
 assert.equal((await switchedOpen).ok, false, 'a server switch cannot complete an old session open');
 sessionContext.isCurrentClient = () => true;
 const canceledOpenGate = deferred<void>();
-sessionContext.listSessions = async () => { await canceledOpenGate.promise; return { sessions: [target] }; };
+sessionContext.findSessionForNavigation = async () => { await canceledOpenGate.promise; return target; };
 const openController = new AbortController();
 const canceledOpen = sessionActions.openDeepLinkSession({ sessionId: 'target', projectPath: '/repo' }, openController.signal);
 openController.abort(); canceledOpenGate.resolve();
 assert.equal((await canceledOpen).ok, false);
 assert.equal(sessionContext.currentSessionIdRef.current, 'second', 'cancelled links preserve the selected session');
+
+sessionContext.client.api = {};
+sessionContext.findSessionForNavigation = async () => ({ id: 'target', time: {}, directory: '/other' });
+assert.match((await sessionActions.openDeepLinkSession({ sessionId: 'target', projectPath: '/repo' })).error, /was not found/);
+sessionContext.findSessionForNavigation = async () => ({ id: 'target', time: {}, directory: '/repo' });
+assert.equal((await sessionActions.openDeepLinkSession({ sessionId: 'target', projectPath: '/repo' })).ok, true);
 
 // Exercise the actual library runner without loading the native rendering tree.
 const librarySource = await readFile(new URL('../../features/sessions/ui/chat-library.tsx', import.meta.url), 'utf8');

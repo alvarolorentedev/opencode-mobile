@@ -1,8 +1,10 @@
 import { describe, it, expect, vi } from 'vitest';
 
 import { buildV2Client } from '@/shared/protocol/opencode/v2-client';
+import { PromptPreparationError } from '@/shared/protocol/opencode/prompt-inbox';
 import { coalesceRead } from '@/shared/protocol/opencode/in-flight';
 import {
+  findSessionForNavigation,
   getActiveSessionStatuses,
   getSessionMessages,
   getSessionDiff,
@@ -53,6 +55,25 @@ h.api = api;
 const client = buildV2Client({ serverUrl: 'http://test', directory: '/repo', username: '', password: '' } as never);
 
 describe('session reads', () => {
+  it('treats a session lookup 404 as missing and propagates other failures', async () => {
+    const missing = Object.assign(new Error('Unknown session'), { status: 404 });
+    const get = vi.fn().mockRejectedValueOnce(new Error('Transport: Unknown session', { cause: missing }))
+      .mockRejectedValueOnce(Object.assign(new Error('Service unavailable'), { status: 503 }));
+    const scoped = { api: { session: { get } } } as never;
+    await expect(findSessionForNavigation(scoped, 'missing')).resolves.toBeUndefined();
+    await expect(findSessionForNavigation(scoped, 'missing')).rejects.toThrow('Service unavailable');
+  });
+
+  it('identifies transport failure before the prompt admission request', async () => {
+    const prompt = vi.fn();
+    const previous = h.api;
+    h.api = { session: { switchAgent: async () => { throw new Error('Failed to fetch'); }, prompt } };
+    const scoped = buildV2Client({ serverUrl: 'http://test', directory: '/repo', username: '', password: '' });
+    h.api = previous;
+    await expect(scoped.promptInbox!.submit({ sessionID: 's', agent: 'build', parts: [] }, 'steer')).rejects.toBeInstanceOf(PromptPreparationError);
+    expect(prompt).not.toHaveBeenCalled();
+  });
+
   it('executes exact plugin names with arguments, files and mentions after selections, and propagates failures', async () => {
     const calls: string[] = [];
     const command = vi.fn(async () => { calls.push('command'); });
@@ -186,7 +207,8 @@ describe('session reads', () => {
       session: {
         list: async ({ cursor }: { cursor?: string }) => {
           cursors.push(cursor);
-          return cursor === undefined ? page('newest', 3, 'page-2') : page('older', 2, null);
+          const index = cursor ? Number(cursor) : 1;
+          return page(`session-${index}`, 12 - index, index < 11 ? String(index + 1) : null);
         },
         active: async () => ({}),
       },
@@ -194,9 +216,9 @@ describe('session reads', () => {
     const pagedClient = buildV2Client({ serverUrl: 'http://test', directory: '/repo', username: '', password: '' } as never);
     const result = await listSessions(pagedClient);
     h.api = previous;
-    expect(cursors).toEqual([undefined, 'page-2']);
-    expect(Array.from(result.sessions, (session: any) => session.id)).toEqual(['newest', 'older']);
-    expect(result.statuses).toEqual({ newest: { type: 'idle' }, older: { type: 'idle' } });
+    expect(cursors).toHaveLength(11);
+    expect(result.sessions.map((session) => session.id)).toEqual(Array.from({ length: 11 }, (_, index) => `session-${index + 1}`));
+    expect(result.statuses['session-11']).toEqual({ type: 'idle' });
   });
 
   it('stops V2 paging when a page repeats its own cursor or adds nothing', async () => {
