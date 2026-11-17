@@ -20,6 +20,7 @@ import { SubagentRow } from '@/features/chat/ui/cards/subagent-row';
 import { styles, slimStyles, stylesClasses } from '@/features/chat/ui/chat-view-styles';
 import { getCurrentTurnActivityKey, getEntryModelLabel, getPinnedActivityKey, STARTER_PROMPT_KEYS } from '@/features/chat/ui/chat-view-utils';
 import { TranscriptSkeleton } from '@/features/chat/ui/content/transcript-skeleton';
+import { useTranscriptTailSettle } from '@/features/chat/ui/content/use-transcript-tail-settle';
 import { Colors } from '@/shared/ui/theme/theme';
 import type { TranscriptEntry } from '@/shared/presentation/format';
 import type { ActivityGroup, TranscriptRow } from '@/shared/presentation/transcript';
@@ -61,10 +62,6 @@ const MAINTAIN_VISIBLE_CONTENT_POSITION = {
 // than this many pixels from the content end; new content must not pull the
 // user back to the newest message.
 const TAIL_FOLLOW_THRESHOLD = 48;
-// FlashList renders and measures progressively, so a single scrollToEnd can run
-// against a partially measured list and settle at the top. Re-assert the tail
-// across a few frames after a session switch or data change.
-const TAIL_SETTLE_FRAMES = 4;
 
 type TranscriptListProps = {
   positionKey?: string;
@@ -139,9 +136,10 @@ export function TranscriptList({
   const followTailRef = useRef(true);
   const draggingRef = useRef(false);
   const lastOffsetRef = useRef(0);
-  const settleFramesRef = useRef(0);
-  const settleFrameRef = useRef<number | undefined>(undefined);
   const transcriptRowsRef = useRef<TranscriptListItem[]>(rows);
+  const { cancelTailSettle, onViewportLayout, preserveFollowOnScroll, settleToTail } = useTranscriptTailSettle({
+    focused, transcriptRef, transcriptRowsRef, followTailRef, draggingRef,
+  });
   const previousRowCountRef = useRef(rows.length);
   const [detached, setDetached] = useState(false);
   const [unseen, setUnseen] = useState(false);
@@ -154,6 +152,8 @@ export function TranscriptList({
   const identity = positionKey ?? currentSessionId ?? 'no-session';
   // Retained workspaces restore history; first visits start at the newest message.
   useLayoutEffect(() => {
+    cancelTailSettle();
+    draggingRef.current = false;
     const saved = positions?.get(identity) as { follow: boolean; offset: number } | undefined;
     const followsTail = saved?.follow ?? true;
     followTailRef.current = followsTail;
@@ -166,27 +166,7 @@ export function TranscriptList({
     setExpandedActivityKeys((current) => (current.size > 0 ? new Set() : current));
     // The pinned copy belongs to the previous session's scroll position.
     setPinnedActivityKey(undefined);
-  }, [identity, positions]);
-
-  const settleToTail = useCallback(() => {
-    settleFramesRef.current = TAIL_SETTLE_FRAMES;
-    if (settleFrameRef.current !== undefined) return;
-    const run = () => {
-      settleFrameRef.current = undefined;
-      if (!followTailRef.current || transcriptRowsRef.current.length === 0) {
-        settleFramesRef.current = 0;
-        return;
-      }
-      transcriptRef.current?.scrollToEnd({ animated: false });
-      settleFramesRef.current -= 1;
-      if (settleFramesRef.current > 0) settleFrameRef.current = requestAnimationFrame(run);
-    };
-    settleFrameRef.current = requestAnimationFrame(run);
-  }, []);
-
-  useEffect(() => () => {
-    if (settleFrameRef.current !== undefined) cancelAnimationFrame(settleFrameRef.current);
-  }, []);
+  }, [cancelTailSettle, identity, positions]);
 
   const setActivityExpanded = useCallback((key: string, expanded: boolean) => {
     setExpandedActivityKeys((current) => {
@@ -286,30 +266,31 @@ export function TranscriptList({
     return () => subscription.remove();
   }, [restorePosition]);
 
-  const applyScrollPosition = useCallback((event: NativeSyntheticEvent<NativeScrollEvent>) => {
+  const applyScrollPosition = useCallback((event: NativeSyntheticEvent<NativeScrollEvent>, gestureSettled = false) => {
     const { contentOffset, contentSize, layoutMeasurement } = event.nativeEvent;
     lastOffsetRef.current = contentOffset.y;
+    const preserveFollow = preserveFollowOnScroll(layoutMeasurement.height) && !gestureSettled;
     // While a finger is down, a drag always wins even if it is still inside the
     // tail strip; otherwise a streaming update re-arms follow and cancels it.
-    const followsTail = !draggingRef.current
-      && contentSize.height - (contentOffset.y + layoutMeasurement.height) <= TAIL_FOLLOW_THRESHOLD;
+    const atTail = contentSize.height - (contentOffset.y + layoutMeasurement.height) <= TAIL_FOLLOW_THRESHOLD;
+    const followsTail = !draggingRef.current && (preserveFollow ? followTailRef.current : atTail);
     followTailRef.current = followsTail;
     setDetached(!followsTail);
     if (followsTail) setUnseen(false);
     positions?.set(identity, { offset: lastOffsetRef.current, follow: followsTail });
     updatePinnedActivity();
-  }, [identity, positions, updatePinnedActivity]);
+  }, [identity, positions, preserveFollowOnScroll, updatePinnedActivity]);
 
   const handleScrollBeginDrag = useCallback(() => {
     draggingRef.current = true;
     followTailRef.current = false;
-    settleFramesRef.current = 0;
+    cancelTailSettle();
     positions?.set(identity, { offset: lastOffsetRef.current, follow: false });
-  }, [identity, positions]);
+  }, [cancelTailSettle, identity, positions]);
 
   const handleScrollSettled = useCallback((event: NativeSyntheticEvent<NativeScrollEvent>) => {
     draggingRef.current = false;
-    applyScrollPosition(event);
+    applyScrollPosition(event, true);
   }, [applyScrollPosition]);
 
   const jumpToLatest = useCallback(() => {
@@ -329,7 +310,7 @@ export function TranscriptList({
     : undefined;
 
   return (
-    <View className={cn(stylesClasses.transcriptContainer)}>
+    <View className={cn(stylesClasses.transcriptContainer)} onLayout={onViewportLayout}>
       <FlashList
       key={identity}
       ref={transcriptRef}

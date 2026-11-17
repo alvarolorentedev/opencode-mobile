@@ -35,7 +35,7 @@ function listProps(overrides: Record<string, unknown> = {}) {
   };
 }
 
-async function mountTranscriptList(overrides: Overrides = {}) {
+async function mountTranscriptList(overrides: Overrides = {}, platform = 'web') {
   const runtime = hookRuntime();
   const element = (type: unknown, props: unknown) => ({ type, props });
   const frames = new Map<number, () => void>();
@@ -55,7 +55,7 @@ async function mountTranscriptList(overrides: Overrides = {}) {
     '@expo/vector-icons': { MaterialCommunityIcons: 'Icon' },
     'expo-router': { useIsFocused: () => true },
     'react-i18next': { useTranslation: () => ({ t: (key: string) => key === 'chat:reasoning.high' ? 'High' : key }) },
-    'react-native': { AppState: { addEventListener: () => ({ remove: () => undefined }) }, View: 'View' },
+    'react-native': { AppState: { addEventListener: () => ({ remove: () => undefined }) }, Platform: { OS: platform }, View: 'View' },
     "@/features/chat/ui/chat-cards": { TranscriptMessage: 'TranscriptMessage', NoticeCard: 'NoticeCard' },
     "@/features/chat/ui/cards/activity-group": { ActivityGroupRow: 'ActivityGroupRow' },
     "@/features/chat/ui/cards/subagent-row": { SubagentRow: 'SubagentRow' },
@@ -81,6 +81,65 @@ async function mountTranscriptList(overrides: Overrides = {}) {
     },
   };
 }
+
+describe('Android transcript viewport', () => {
+  const layout = (height: number) => ({ nativeEvent: { layout: { height } } });
+  const scroll = (height: number, y: number) => ({
+    nativeEvent: { contentOffset: { y }, contentSize: { height: 1200 }, layoutMeasurement: { height } },
+  });
+
+  async function mountAndroidTranscript() {
+    const mounted = await mountTranscriptList({ hasMessages: true, transcriptRows: [{ key: 'a' }] }, 'android');
+    const scrollToEnd = vi.fn();
+    mounted.list.props.ref.current = { scrollToEnd };
+    mounted.flushFrames();
+    scrollToEnd.mockClear();
+    mounted.root.props.onLayout(layout(600));
+    mounted.flushFrames();
+    expect(scrollToEnd).not.toHaveBeenCalled();
+    return { ...mounted, scrollToEnd };
+  }
+
+  it('keeps the transcript at the end when the viewport shrinks without a scroll event or new rows', async () => {
+    const { root, flushFrames, scrollToEnd } = await mountAndroidTranscript();
+    root.props.onLayout(layout(340));
+    flushFrames();
+    expect(scrollToEnd).toHaveBeenCalledWith({ animated: false });
+  });
+
+  it('keeps following when scroll events report the smaller viewport before layout', async () => {
+    const { list, root, runtime, flushFrames, scrollToEnd } = await mountAndroidTranscript();
+    list.props.onScroll(scroll(600, 600));
+    list.props.onScroll(scroll(340, 600));
+    list.props.onScroll(scroll(340, 600));
+    root.props.onLayout(layout(340));
+    runtime.flush();
+    flushFrames();
+    expect(scrollToEnd).toHaveBeenCalledWith({ animated: false });
+    expect(runtime.value.props.children[1]).toBeNull();
+  });
+
+  it('keeps the history position on a resize and still offers Jump to latest', async () => {
+    const { list, root, runtime, flushFrames, scrollToEnd } = await mountAndroidTranscript();
+    list.props.onScroll(scroll(600, 240));
+    root.props.onLayout(layout(340));
+    list.props.onScroll(scroll(340, 240));
+    runtime.flush();
+    flushFrames();
+    expect(scrollToEnd).not.toHaveBeenCalled();
+    expect(JSON.stringify(runtime.value.props.children[1])).toContain('chat:content.jumpToLatest');
+  });
+
+  it('cancels a pending resize scroll when a gesture starts', async () => {
+    const { list, root, flushFrames, scrollToEnd } = await mountAndroidTranscript();
+    root.props.onLayout(layout(340));
+    list.props.onScrollBeginDrag();
+    root.props.onLayout(layout(600));
+    list.props.onScrollEndDrag(scroll(600, 600));
+    flushFrames();
+    expect(scrollToEnd).not.toHaveBeenCalled();
+  });
+});
 
 describe('transcript empty state', () => {
   it('only offers starter prompts for a session that has no transcript content', async () => {
