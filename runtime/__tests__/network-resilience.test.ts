@@ -58,6 +58,7 @@ describe('transcript cache', () => {
   it('round-trips a bounded tail and rejects malformed entries', async () => {
     const values = new Map();
     const storage = {
+      getAllKeys: async () => [...values.keys()],
       getItem: async (key: string) => values.get(key) ?? null,
       setItem: async (key: string, value: string) => { values.set(key, value); },
       removeItem: async (key: string) => { values.delete(key); },
@@ -65,19 +66,31 @@ describe('transcript cache', () => {
     const cache = await loadTs('features/chat/services/transcript-cache.ts', {
     '@react-native-async-storage/async-storage': { __esModule: true, default: storage },
     zod: { z },
-    "@/shared/storage/keys": { transcriptCacheKey: (scope: string, project: string, session: string) => `${scope}:${project}:${session}` },
+    "@/shared/storage/keys": { transcriptCacheKey: (scope: string, project: string, session: string) => `opencode-mobile.transcript.${scope}:${project}:${session}` },
     "@/shared/storage/persistence-hydration": { loadPersistedValue }
   });
     const record = {
       info: { id: 'm1', role: 'assistant', time: { created: 1, completed: 2 }, sessionID: 's' },
       parts: [{ id: 'p1', sessionID: 's', messageID: 'm1', type: 'text', text: 'hello' }],
     };
+    const existingPrefix = 'opencode-mobile.transcript.previous.';
+    const now = Date.now();
+    values.set('settings', 'keep');
+    values.set(`${existingPrefix}expired`, JSON.stringify({ cachedAt: now - 8 * 24 * 60 * 60_000, records: [record] }));
+    for (let index = 0; index < 64; index += 1) {
+      values.set(`${existingPrefix}${index}`, JSON.stringify({ cachedAt: now - 100 + index, records: [record] }));
+    }
     await cache.persistTranscriptCache('scope', '/repo', 's', [record], storage);
     let loaded;
     await cache.hydrateTranscriptCache('scope', '/repo', 's', (records: unknown[]) => { loaded = records; }, () => true, storage);
     expect(loaded).toEqual([record]);
 
-    const key = [...values.keys()][0];
+    expect(values.size).toBe(65);
+    expect(values.get('settings')).toBe('keep');
+    expect(values.has(`${existingPrefix}expired`)).toBe(false);
+    expect(values.has(`${existingPrefix}0`)).toBe(false);
+    expect(values.has(`${existingPrefix}1`)).toBe(true);
+    const key = 'opencode-mobile.transcript.scope:/repo:s';
     values.set(key, JSON.stringify({ cachedAt: Date.now(), records: [{ bad: true }] }));
     let rejected = false;
     await cache.hydrateTranscriptCache('scope', '/repo', 's', () => { rejected = true; }, () => true, storage);

@@ -198,7 +198,9 @@ Bounded AsyncStorage snapshots are keyed by connection scope + project (and
 session for transcripts):
 
 - `features/chat/services/transcript-cache.ts`: newest 24 records, 200k-character cap, 7-day
-  TTL. Hydrates when a session opens before the live read, so a chat paints on a
+  TTL. The cache keeps at most 64 session snapshots across connections, evicting
+  expired entries and then the oldest entries before writing. Hydrates when a
+  session opens before the live read, so a chat paints on a
   cold 3G start. Writes are debounced and capped so streaming bursts do not
   cause a storage write per page.
 - `features/ai/services/capabilities-snapshot.ts`: last-known config, providers, models,

@@ -476,7 +476,7 @@ Persisted values:
 - `opencode-mobile.pending-notification-sessions` (non-secret connection references, keyed by connection scope + session ID)
 - `opencode-mobile.widget-snapshot` (bounded Android replies, awaiting-action and plan snapshot: connection scope, language/privacy preference, per-surface observation times, three rows/steps, counts, validated links and optional 160-character previews; no authentication credentials, raw request metadata or tool output)
 - `opencode-mobile.sessions.<connectionScope>.<projectPath>` / `opencode-mobile.session-statuses.<connectionScope>.<projectPath>` (per connection + project cache)
-- `opencode-mobile.transcript.<connectionScope>.<projectPath>.<sessionId>` (bounded newest transcript tail: 24 records, 200k-character cap, 7-day TTL)
+- `opencode-mobile.transcript.<connectionScope>.<projectPath>.<sessionId>` (bounded newest transcript tail: 24 records, 200k-character cap, 7-day TTL, 64 snapshots across connections)
 - `opencode-mobile.capabilities.<connectionScope>.<projectPath>` (last-known config/runtime/models/agents/auth methods, 300k-character cap, 7-day TTL)
 - `opencode-mobile.favorite-sessions` (cross-project favorites, each carrying its connection scope)
 - `opencode-mobile.hidden-projects` (device-local archived project paths per connection scope; only hides matching server catalog rows and never archives on the server)
