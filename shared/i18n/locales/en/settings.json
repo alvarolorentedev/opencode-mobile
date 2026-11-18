@@ -471,7 +471,7 @@
       "enable": "Enable voice input",
       "test": "Test playback",
       "testPhrase": "Voice playback is working.",
-      "testFailed": "Speech playback failed. Check the selected voice and the device volume.",
+      "testFailed": "Speech playback failed. Check the selected voice, the device volume, and that a text-to-speech engine is enabled.",
       "allowed": "Allowed",
       "available": "Available"
     },

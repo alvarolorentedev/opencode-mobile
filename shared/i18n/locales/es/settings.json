@@ -471,7 +471,7 @@
       "enable": "Activar entrada de voz",
       "test": "Probar reproducción",
       "testPhrase": "La reproducción de voz funciona.",
-      "testFailed": "Falló la reproducción de voz. Comprueba la voz seleccionada y el volumen del dispositivo.",
+      "testFailed": "Falló la reproducción de voz. Comprueba la voz seleccionada, el volumen del dispositivo y que haya un motor de texto a voz activado.",
       "allowed": "Permitido",
       "available": "Disponible"
     },

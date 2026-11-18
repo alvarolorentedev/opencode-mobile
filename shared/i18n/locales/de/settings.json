@@ -471,7 +471,7 @@
       "enable": "Spracheingabe aktivieren",
       "test": "Wiedergabe testen",
       "testPhrase": "Die Sprachwiedergabe funktioniert.",
-      "testFailed": "Sprachwiedergabe fehlgeschlagen. Prüfe die gewählte Stimme und die Gerätelautstärke.",
+      "testFailed": "Sprachwiedergabe fehlgeschlagen. Prüfe die gewählte Stimme, die Gerätelautstärke und ob eine Text-to-Speech-Engine aktiviert ist.",
       "allowed": "Erlaubt",
       "available": "Verfügbar"
     },

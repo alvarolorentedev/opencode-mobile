@@ -471,7 +471,7 @@
       "enable": "Activer la saisie vocale",
       "test": "Tester la lecture",
       "testPhrase": "La lecture vocale fonctionne.",
-      "testFailed": "La lecture vocale a échoué. Vérifiez la voix sélectionnée et le volume de l'appareil.",
+      "testFailed": "La lecture vocale a échoué. Vérifiez la voix sélectionnée, le volume de l'appareil et qu'un moteur de synthèse vocale est activé.",
       "allowed": "Autorisé",
       "available": "Disponible"
     },
