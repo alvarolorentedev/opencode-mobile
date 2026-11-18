@@ -1,0 +1,4 @@
+- F-Droid builds now show only manual server setup; unavailable Cloud Link and QR options are hidden.
+- Support no longer points F-Droid users to Google Play for ratings.
+- Removed an unused overlay permission from release builds.
+- Clarified the speech playback error when no system text-to-speech engine is enabled.
