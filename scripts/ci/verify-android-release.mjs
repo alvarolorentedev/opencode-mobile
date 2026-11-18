@@ -227,6 +227,13 @@ function checkAab(aab, expected) {
 }
 
 function checkFoss(apk) {
+  const apkanalyzer = findAndroidTool('apkanalyzer');
+  if (!apkanalyzer) fail('apkanalyzer not found in the Android SDK');
+  const permissions = run(apkanalyzer, ['manifest', 'permissions', apk]);
+  if (permissions.includes('android.permission.SYSTEM_ALERT_WINDOW')) {
+    fail(`${apk}: FOSS APK must not declare SYSTEM_ALERT_WINDOW`);
+  }
+
   const dexEntries = entries(apk).filter((entry) => /^classes\d*\.dex$/.test(entry));
   if (dexEntries.length === 0) fail(`${apk}: no classes.dex entries found`);
   const needles = [

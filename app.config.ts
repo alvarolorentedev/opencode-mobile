@@ -97,6 +97,7 @@ const config: ExpoConfig = {
   android: {
     package: androidPackage,
     versionCode: 151,
+    ...(isDevelopmentVariant ? {} : { blockedPermissions: ['android.permission.SYSTEM_ALERT_WINDOW'] }),
     intentFilters: [{
       action: 'VIEW',
       category: ['DEFAULT', 'BROWSABLE'],
