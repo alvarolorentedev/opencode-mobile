@@ -320,6 +320,8 @@ assert.equal(foss.extra.foss, true);
 assert.equal(foss.android.package, 'app.getopencode.fdroid');
 assert.ok(!foss.plugins.some((plugin: any) => Array.isArray(plugin) && plugin[0] === 'expo-camera'), 'FOSS build must not configure the camera/ML Kit plugin.');
 assert.ok(!foss.plugins.includes('expo-iap'), 'FOSS build must not configure the Play Billing plugin.');
+assert.ok(!foss.plugins.includes('@siteed/sherpa-onnx.rn'), 'FOSS build must not configure Sherpa native libraries.');
+assert.ok(production.plugins.includes('@siteed/sherpa-onnx.rn'), 'Production keeps local Sherpa voice features.');
 {
   const savedConfig = (globalThis as any).__connectConfig;
   const savedPlatform = (globalThis as any).__connectPlatform;

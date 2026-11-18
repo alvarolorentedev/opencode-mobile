@@ -9,6 +9,7 @@ import { useEffect, useState } from 'react';
 import { useIsFocused } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { Platform, StyleSheet, View } from 'react-native';
+import Constants from 'expo-constants';
 
 import type { VoiceCapabilities } from '@/shared/platform/voice/capabilities';
 import type { SpeechVoiceOption } from '@/shared/platform/voice/speech-output';
@@ -56,8 +57,9 @@ export function VoiceSection(props: VoiceSectionProps) {
   const [inputTab, setInputTab] = useState<'system' | 'local'>();
   const [playbackTab, setPlaybackTab] = useState<'system' | 'local'>();
   const [downloadPack, setDownloadPack] = useState<LocalTtsPackId>();
-  const localInput = (inputTab ?? (prefs.voiceWakeMode === 'local' ? 'local' : 'system')) === 'local';
-  const localPlayback = (playbackTab ?? prefs.ttsEngine) === 'local';
+  const foss = Constants.expoConfig?.extra?.foss === true;
+  const localInput = !foss && (inputTab ?? (prefs.voiceWakeMode === 'local' ? 'local' : 'system')) === 'local';
+  const localPlayback = !foss && (playbackTab ?? prefs.ttsEngine) === 'local';
   const activePack = ttsSetup.activePack;
   const packReady = Boolean(activePack && ttsSetup.statuses[activePack.id] === 'ready');
   const localReady = localVoice.status === 'ready' && localVoice.microphone?.granted && (!prefs.localSpeakerVerification || localVoice.enrollment.hasProfile);
@@ -77,12 +79,12 @@ export function VoiceSection(props: VoiceSectionProps) {
   return <View className={cn(stylesClasses.section)}>
     <SettingTarget label={t('settings:voice.mode.label')}>
       <Text className={cn("text-foreground")} variant="title">{t('settings:voice.mode.label')}</Text>
-      {modes(localInput ? 'local' : 'system', (value) => {
+      {!foss ? modes(localInput ? 'local' : 'system', (value) => {
         localVoice.clearError(); localVoice.refresh();
         if (value === 'system') { setInputTab(undefined); updateChatPreferences({ voiceWakeMode: 'phrase' }); }
         else if (localReady) { setInputTab(undefined); updateChatPreferences({ voiceWakeMode: 'local' }); }
         else setInputTab('local');
-      })}
+      }) : null}
     </SettingTarget>
     <Text className={cn("text-muted-foreground")} variant="label">{t(localInput ? 'settings:voice.mode.localDescription' : 'settings:voice.mode.systemDescription')}</Text>
     <SettingSwitchRow
@@ -117,7 +119,7 @@ export function VoiceSection(props: VoiceSectionProps) {
     <View className={cn("bg-border")} style={[styles.divider]} />
     <SettingTarget label={t('settings:voice.playbackEngine.label')}>
       <Text className={cn("text-foreground")} variant="title">{t('onboarding:voice.playback')}</Text>
-      {Platform.OS !== 'web' ? modes(localPlayback ? 'local' : 'system', (value) => {
+      {Platform.OS !== 'web' && !foss ? modes(localPlayback ? 'local' : 'system', (value) => {
         if (value === 'system') { setPlaybackTab(undefined); void ttsSetup.setEngine('system'); }
         else if (packReady) { setPlaybackTab(undefined); void ttsSetup.setEngine('local'); }
         else setPlaybackTab('local');

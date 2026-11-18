@@ -22,6 +22,9 @@ upstream to provide a build flavour without them. The FOSS variant:
   `expo-in-app-updates` from autolinking, keeps the proprietary plugins out of
   the FOSS config, and redirects their JS imports to stubs in
   `shared/platform/foss/` via `metro.config.js`
+- excludes the prebuilt `@siteed/sherpa-onnx.rn` native runtime and hides its
+  local wake-word, speaker-verification, and TTS options; system voice remains
+  available
 - hides the Cloud Link and QR-pairing entries from onboarding and Add
   connection, leaving Manual setup only; the Settings section also requires the
   store-install check in `shared/platform/install-identity.ts`, which FOSS can
@@ -34,7 +37,8 @@ upstream to provide a build flavour without them. The FOSS variant:
   if it reappears
 
 The self-hosted OpenCode experience (connections, sessions, project, terminal,
-files, voice) is unchanged. Only the optional paid Cloud Link path and the
+and system voice) remains available. FOSS omits local on-device wake-word,
+speaker verification, and Sherpa TTS. The optional paid Cloud Link path and the
 Google Play review action are absent.
 
 ## Building locally
@@ -52,9 +56,9 @@ It then applies `scripts/foss-prepare.mjs` and builds with the FOSS variant:
 
 1. `scripts/foss-prepare.mjs` (shared with the fdroiddata recipe, so both builds
    get byte-identical dependency patches):
-   - injects `expo.autolinking.exclude: ["expo-iap", "expo-camera",
-     "expo-store-review", "expo-in-app-updates"]` into `package.json` for the
-     duration of the build (the build script restores it)
+   - injects `expo.autolinking.exclude` entries for the Play-only modules and
+     `@siteed/sherpa-onnx.rn` into `package.json` for the duration of the build
+     (the build script restores it)
    - swaps `expo-notifications`' `firebase-messaging` dependency for free stub
      sources supplied through `FIREBASE_STUB_SRC_DIR`; F-Droid supplies its
      pinned `firebase-stub` srclib at the same revision
@@ -111,13 +115,11 @@ Anti-features: voice input relies on the device's system speech recognizer,
 which on many devices is supplied by Google. If F-Droid reviewers apply
 `NonFreeNet`, declare it rather than dropping voice.
 
-The optional on-device wake word uses the `@siteed/sherpa-onnx.rn` native
-runtime and downloads pretrained models on explicit user action. The wrapper
-ships prebuilt sherpa-onnx/ONNX Runtime libraries and may include LGPL
-components (FFmpeg/Shine). Review this before the next F-Droid submission; if
-the prebuilt native artifacts or optional model downloads are not acceptable,
-gate the local wake-word setting out of the FOSS variant or build sherpa-onnx
-from source for that flavor.
+Production builds retain the optional on-device wake word, speaker
+verification, and local TTS through `@siteed/sherpa-onnx.rn`. FOSS omits the
+wrapper because it ships prebuilt sherpa-onnx/ONNX Runtime libraries that
+F-Droid removes during scanning; the FOSS UX therefore exposes system voice
+only. Local model files already on a device are left untouched.
 
 ## Keeping the variant working
 

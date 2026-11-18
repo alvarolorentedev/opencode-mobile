@@ -204,6 +204,7 @@ Responsibility:
 #### `VoiceSection`
 
 - Two independent input/playback mode selectors, placed before their dependent controls.
+- FOSS hides the local input/playback choices and their setup/download controls; system voice remains available.
 - Confirm voice commands and Require wake phrase are shared by System and local
   input; no-wake mode shows the system-recognition privacy warning.
 - System input shows speech language; local input shows one setup/manage row.

@@ -6,6 +6,7 @@ import type { ComponentProps, ReactNode } from 'react';
 import type { TFunction } from 'i18next';
 import { useRouter } from 'expo-router';
 import { Platform, View } from 'react-native';
+import Constants from 'expo-constants';
 
 import type { MaterialCommunityIcons } from '@expo/vector-icons';
 
@@ -123,7 +124,9 @@ export function buildSettingsSections({
   setOpenSection,
   openServiceEditor,
 }: RegistryInput): SettingsSection[] {
-  const voicePhrase = chatPreferences.voiceWakeMode === 'local'
+  const foss = Constants.expoConfig?.extra?.foss === true;
+  const localVoiceEnabled = !foss && chatPreferences.voiceWakeMode === 'local';
+  const voicePhrase = localVoiceEnabled
     ? LOCAL_WAKE_PHRASES[chatPreferences.localWakePhrase].label
     : chatPreferences.conversationWakePhrase || DEFAULT_WAKE_PHRASE;
   const localVoiceSummary = voiceSetup.localVoice.status === 'ready'
@@ -137,7 +140,7 @@ export function buildSettingsSections({
         : voiceSetup.localVoice.status === 'unsupported'
           ? t('settings:voice.localWake.statusUnsupported')
           : t('settings:voice.localWake.statusMissing');
-  const voiceSummary = chatPreferences.voiceWakeMode === 'local'
+  const voiceSummary = localVoiceEnabled
     ? t('settings:screen.summaries.voiceLocal', { phrase: localVoiceSummary })
     : t('settings:screen.summaries.voiceSystem', { phrase: voicePhrase });
 
@@ -271,7 +274,7 @@ export function buildSettingsSections({
     keywords: t(`settings:screen.keywords.${section.id}`),
     targets: settingsTargets(t, section.id, {
       native: Platform.OS !== 'web', android: Platform.OS === 'android',
-      localInput: chatPreferences.voiceWakeMode === 'local', localInputSupported: voiceSetup.localVoice.status !== 'unsupported',
+      foss, localInput: chatPreferences.voiceWakeMode === 'local', localInputSupported: voiceSetup.localVoice.status !== 'unsupported',
       enrolled: voiceSetup.localVoice.enrollment.hasProfile, localPlayback: chatPreferences.ttsEngine === 'local',
       speakerAvailable: (ttsSetup.activePack?.speakers.length ?? 0) > 1, workingSound: chatPreferences.workingSoundEnabled,
       delivery: serverCapabilities.promptDeliveryAvailable, updates: updates.supported, autoModel: autoModelAvailable,

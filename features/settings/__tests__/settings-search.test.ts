@@ -7,7 +7,7 @@ import en from '@/shared/i18n/locales/en/settings.json';
 const t = ((key: string) => key.startsWith('settings:')
   ? key.slice(9).split('.').reduce<any>((value, part) => value?.[part], en) ?? key
   : key) as TFunction;
-const options = { native: false, android: false, localInput: false, localInputSupported: false, enrolled: false, localPlayback: false, speakerAvailable: false, workingSound: false, delivery: false, updates: false, autoModel: false, classifier: 'server' as const };
+const options = { native: false, android: false, foss: false, localInput: false, localInputSupported: false, enrolled: false, localPlayback: false, speakerAvailable: false, workingSound: false, delivery: false, updates: false, autoModel: false, classifier: 'server' as const };
 
 describe('settings search', () => {
   it('matches every query word across localized labels and descriptions, ignoring accents and case', () => {
@@ -52,6 +52,15 @@ describe('settings search', () => {
     expect(labels('notifications')).not.toContain(t('settings:notifications.batterySaver'));
     expect(labels('notifications', { android: true })).toContain(t('settings:notifications.batterySaver'));
     expect(labels('voice', { localInput: true })).not.toContain(t('settings:voice.wakePhrase.label'));
+  });
+
+  it('does not index Sherpa-only controls in FOSS even when preferences selected them before upgrade', () => {
+    const targets = settingsTargets(t, 'voice', { ...options, native: true, foss: true, localInput: true, localPlayback: true });
+    const labels = targets.map((target) => target.label);
+    expect(labels).toContain(t('settings:voice.voiceSelect.label'));
+    expect(labels).not.toContain(t('settings:voice.localWake.title'));
+    expect(labels).not.toContain(t('settings:voice.localWake.speakerVerification'));
+    expect(labels).not.toContain(t('settings:voice.localTts.title'));
   });
 
   it('selects the correct extension tab without submitting a form', () => {

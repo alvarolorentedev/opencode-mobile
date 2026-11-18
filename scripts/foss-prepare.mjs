@@ -5,7 +5,7 @@
 //
 // Patches:
 //   1. package.json   -> exclude the native expo-iap / expo-camera /
-//      expo-store-review modules
+//      expo-store-review / expo-in-app-updates / Sherpa ONNX modules
 //   2. expo-notifications -> drop proprietary firebase-messaging, compile
 //      against F-Droid's firebase-stubs instead (local notifications only)
 //   3. expo-application -> drop the proprietary com.android.installreferrer
@@ -30,7 +30,7 @@ function patchAutolinking(repoRoot) {
   pkg.expo = { ...(pkg.expo ?? {}) };
   pkg.expo.autolinking = { ...(pkg.expo.autolinking ?? {}) };
   pkg.expo.autolinking.exclude = [
-    ...new Set([...(pkg.expo.autolinking.exclude ?? []), 'expo-iap', 'expo-camera', 'expo-store-review', 'expo-in-app-updates']),
+    ...new Set([...(pkg.expo.autolinking.exclude ?? []), 'expo-iap', 'expo-camera', 'expo-store-review', 'expo-in-app-updates', '@siteed/sherpa-onnx.rn']),
   ];
   pkg.expo.autolinking.android = { ...(pkg.expo.autolinking.android ?? {}) };
   pkg.expo.autolinking.android.buildFromSource = [...new Set([...(pkg.expo.autolinking.android.buildFromSource ?? []), 'expo-application', 'expo-notifications'])];

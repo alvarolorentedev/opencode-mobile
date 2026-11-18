@@ -3,11 +3,13 @@ import type { ChatPreferences } from '@/shared/preferences/opencode-preferences'
 import type { SettingsTarget } from '@/shared/ui/settings/target';
 
 export function settingsTargets(t: TFunction, section: string, options: {
-  native: boolean; android: boolean; localInput: boolean; localInputSupported: boolean;
+  native: boolean; android: boolean; foss: boolean; localInput: boolean; localInputSupported: boolean;
   enrolled: boolean; localPlayback: boolean; speakerAvailable: boolean;
   workingSound: boolean; delivery: boolean; updates: boolean; autoModel: boolean;
   classifier: ChatPreferences['autoModel']['classifier'];
 }): SettingsTarget[] {
+  const localInput = !options.foss && options.localInput;
+  const localPlayback = !options.foss && options.localPlayback;
   const field = (key: string, group?: string, description?: string): SettingsTarget => ({
     label: t(`settings:${key}`), group, path: group?.startsWith('extensions-') ? t(`settings:extensions.tabs.${group.split('-')[1]}`) : undefined, description: description ? t(`settings:${description}`) : undefined,
   });
@@ -30,16 +32,16 @@ export function settingsTargets(t: TFunction, section: string, options: {
     case 'voice': return [
       field('voice.autoPlay.title', undefined, 'voice.autoPlay.description'),
       field('voice.readInterim.title', 'voice-more', 'voice.readInterim.description'), field('voice.speechRate.label', 'voice-more'),
-      ...(!options.localPlayback ? [field('voice.voiceSelect.label')] : []),
+      ...(!localPlayback ? [field('voice.voiceSelect.label')] : []),
       field('voice.workingSound.title', 'voice-more', 'voice.workingSound.description'),
       ...(options.workingSound ? [field('voice.workingSoundVariant.label', 'voice-more'), field('voice.workingSoundVolume.label', 'voice-more')] : []),
-      field('voice.mode.label'), field('voice.speechLocale.label', options.localInput ? 'voice-setup-prepare' : undefined, 'voice.speechLocale.helper'),
-      ...(options.localInput ? [field('voice.localWake.title'), ...(options.localInputSupported ? [field('voice.localWake.phraseLabel', 'voice-setup-prepare'), field('voice.localWake.commandModelLabel', 'voice-setup-prepare'), field('voice.localWake.voiceProfile', 'voice-setup-profile'),
+      field('voice.mode.label'), field('voice.speechLocale.label', localInput ? 'voice-setup-prepare' : undefined, 'voice.speechLocale.helper'),
+      ...(localInput ? [field('voice.localWake.title'), ...(options.localInputSupported ? [field('voice.localWake.phraseLabel', 'voice-setup-prepare'), field('voice.localWake.commandModelLabel', 'voice-setup-prepare'), field('voice.localWake.voiceProfile', 'voice-setup-profile'),
         ...(options.enrolled ? [field('voice.localWake.speakerVerification', 'voice-setup-profile', 'voice.localWake.speakerVerificationDescription')] : [])] : [])]
         : [field('voice.wakePhrase.label', 'voice-more', 'voice.wakePhrase.helper'), field('voice.onDeviceInput.title', 'voice-more', 'voice.onDeviceInput.description')]),
-      ...(options.native ? [field('voice.playbackEngine.label'), ...(options.localPlayback ? [field('voice.localTts.title', 'voice-tts'),
+      ...(options.native ? [field('voice.playbackEngine.label'), ...(localPlayback ? [field('voice.localTts.title', 'voice-tts'),
         ...(options.speakerAvailable ? [field('voice.localTts.speaker')] : [])] : [])] : []),
-      ...(!options.localInput ? [field('voice.check.title', 'voice-more')] : []),
+      ...(!localInput ? [field('voice.check.title', 'voice-more')] : []),
     ];
     case 'ai': return [field('providers.configuredProviders'), field('providers.enableNewModels.title', undefined, 'providers.enableNewModels.description'),
       ...(options.autoModel ? [field('modelRouting.enable.title', 'auto-model', 'modelRouting.enable.description'), field('modelRouting.classifier.label', 'auto-model'),

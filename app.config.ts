@@ -89,14 +89,14 @@ const iapPlugin: PluginList = ['expo-iap'];
 const config: ExpoConfig = {
   name: isDevelopmentVariant ? 'OpenCode Mobile Dev' : 'OpenCode Mobile',
   slug: 'opencode-mobile',
-  version: '1.0.152',
+  version: '1.0.153',
   orientation: 'default',
   icon: './assets/images/icon.png',
   scheme: 'opencodemobile',
   userInterfaceStyle: 'automatic',
   android: {
     package: androidPackage,
-    versionCode: 152,
+    versionCode: 153,
     ...(isDevelopmentVariant ? {} : { blockedPermissions: ['android.permission.SYSTEM_ALERT_WINDOW'] }),
     intentFilters: [{
       action: 'VIEW',
@@ -116,7 +116,7 @@ const config: ExpoConfig = {
   },
   ios: {
     bundleIdentifier: iosBundleIdentifierOverride ?? (isDevelopmentVariant ? 'app.getopencode.mobile.dev' : 'app.getopencode.mobile'),
-    buildNumber: '152',
+    buildNumber: '153',
     scheme: 'opencode',
     infoPlist: {
       ITSAppUsesNonExemptEncryption: false,
@@ -174,9 +174,9 @@ const config: ExpoConfig = {
       },
     ],
     // Optional on-device wake word and speaker models (sherpa-onnx). The
-    // Android config plugin adds the ONNX Runtime packaging rule; iOS is
-    // autolinked. Models are downloaded from the user's explicit action.
-    '@siteed/sherpa-onnx.rn',
+    // wrapper ships prebuilt ONNX Runtime libraries, which F-Droid removes.
+    // FOSS hides the dependent controls and keeps system speech instead.
+    ...(isFossVariant ? [] : ['@siteed/sherpa-onnx.rn']),
     // On-device prompt classifier runtime. The model pack itself is downloaded
     // separately; only the llama.cpp native libraries ship in the app.
     ['llama.rn', { enableEntitlements: true, entitlementsProfile: 'production', forceCxx20: true, enableOpenCLAndHexagon: false }],

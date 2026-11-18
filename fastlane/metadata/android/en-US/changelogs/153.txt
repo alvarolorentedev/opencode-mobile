@@ -1,0 +1,1 @@
+- F-Droid builds no longer include local wake-word, speaker verification, or Sherpa TTS; system voice remains available.
