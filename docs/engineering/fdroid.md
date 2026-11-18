@@ -6,25 +6,32 @@ policy forbids.
 
 ## Why a variant exists
 
-The Play/iOS build uses four proprietary Android components:
+The Play/iOS build uses these proprietary Android components:
 
 - `expo-iap` → Google Play Billing (optional Cloud Link subscription)
 - `expo-camera` barcode scanning → Google ML Kit + `play-services-code-scanner` (Cloud Link QR pairing)
 - `expo-store-review` → Google Play Review (Settings rating action)
+- `expo-in-app-updates` → Google Play Core in-app updates
+- `expo-application` → Google Play Install Referrer
 - `expo-notifications` → `com.google.firebase:firebase-messaging` (pulled in even though the app only posts local notifications)
 
 F-Droid forbids Google Play Services and Firebase in all apps, and requires
 upstream to provide a build flavour without them. The FOSS variant:
 
-- excludes `expo-iap`, `expo-camera`, and `expo-store-review` from autolinking,
-  keeps the proprietary plugins out of the FOSS config, and redirects their JS
-  imports to stubs in `shared/platform/foss/` via `metro.config.js`
-- disables the Cloud Link paid-subscription and QR-pairing surfaces by returning
-  `false` from `isConnectEnabled()` when `extra.foss` is set; the Settings
-  section also requires the store-install check in `shared/platform/install-identity.ts`,
-  which FOSS can never pass
+- excludes `expo-iap`, `expo-camera`, `expo-store-review`, and
+  `expo-in-app-updates` from autolinking, keeps the proprietary plugins out of
+  the FOSS config, and redirects their JS imports to stubs in
+  `shared/platform/foss/` via `metro.config.js`
+- hides the Cloud Link and QR-pairing entries from onboarding and Add
+  connection, leaving Manual setup only; the Settings section also requires the
+  store-install check in `shared/platform/install-identity.ts`, which FOSS can
+  never pass
+- removes `expo-application`'s install-referrer dependency
 - keeps local task-completion notifications by compiling `expo-notifications`
   against F-Droid's free `firebase-stubs` classes instead of `firebase-messaging`
+- releases with `android.blockedPermissions` removing the unused
+  `SYSTEM_ALERT_WINDOW` declaration; `verify-android-release.mjs --foss` fails
+  if it reappears
 
 The self-hosted OpenCode experience (connections, sessions, project, terminal,
 files, voice) is unchanged. Only the optional paid Cloud Link path and the
@@ -46,8 +53,8 @@ It then applies `scripts/foss-prepare.mjs` and builds with the FOSS variant:
 1. `scripts/foss-prepare.mjs` (shared with the fdroiddata recipe, so both builds
    get byte-identical dependency patches):
    - injects `expo.autolinking.exclude: ["expo-iap", "expo-camera",
-     "expo-store-review"]` into `package.json` for the duration of the build
-     (the build script restores it)
+     "expo-store-review", "expo-in-app-updates"]` into `package.json` for the
+     duration of the build (the build script restores it)
    - swaps `expo-notifications`' `firebase-messaging` dependency for free stub
      sources supplied through `FIREBASE_STUB_SRC_DIR`; F-Droid supplies its
      pinned `firebase-stub` srclib at the same revision
@@ -86,7 +93,9 @@ There is no self-hosted F-Droid repo. The FOSS build is distributed two ways:
   `gradle assembleRelease`, with `output:` pointing at the unsigned APK.
   The recipe follows F-Droid's React Native template and uses its pinned
   `firebase-stub` srclib; upstream FOSS builds download the same revision only
-  when building the FOSS variant. Reproducible builds are **not enabled**:
+  when building the FOSS variant. It also excludes `expo-quick-actions` from
+  autolinking; the JS bridge degrades to no-ops when the native module is
+  absent. Reproducible builds are **not enabled**:
   upstream uses JDK 17 and Expo
   prebuilts, whereas the F-Droid recipe uses JDK 21 and builds Expo modules from
   source. No byte-identical APK comparison has passed. The recipe therefore has
