@@ -179,8 +179,9 @@ connection.
 
 Settings retains connection status and saved profiles. Add connection is the
 single creation entry and opens three stacked choices: Scan QR code (local
-network), Manual, then Cloud Link. Onboarding uses the same chooser and retains
-Skip. Scan QR code opens its own full-screen camera flow
+network), Manual, then Cloud Link. FOSS builds omit Scan QR code and Cloud Link,
+leaving Manual only. Onboarding uses the same chooser and retains Skip. Scan QR
+code opens its own full-screen camera flow
 (`connection-scan-flow.tsx`); Manual opens the separate full-screen
 Name/URL/Username/Password form. Cloud Link opens the guided assistant. Failed
 manual connections retain the form and reuse the saved profile on retry; the QR
