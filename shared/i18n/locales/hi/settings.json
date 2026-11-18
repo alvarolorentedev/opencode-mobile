@@ -20,7 +20,7 @@
       "configuredCount": "{{value}} कॉन्फ़िगर किए गए",
       "replyPlaybackOn": "उत्तर प्लेबैक चालू",
       "replyPlaybackOff": "उत्तर प्लेबैक बंद",
-      "support": "ऐप को रेट करें, फ़ीडबैक भेजें, सहायता पाएँ",
+      "support": "फ़ीडबैक भेजें, सहायता पाएँ",
       "permissions": "{{value}} सहेजे गए",
       "extensions": "MCP, प्लगइन, कौशल और कमांड",
       "responses": "प्रतिक्रिया सीमा और अगले कदम",
@@ -60,7 +60,7 @@
   },
   "support": {
     "title": "सहायता",
-    "description": "Google Play पर OpenCode Mobile को रेट करें, सुधार का फ़ीडबैक भेजें, या सहायता पृष्ठ से सहायता पाएँ।",
+    "description": "सुधार का फ़ीडबैक भेजें या सहायता पृष्ठ से सहायता पाएँ।",
     "rate": "Play Store पर रेट करें",
     "feedback": "हमें फ़ीडबैक दें",
     "openSupport": "सहायता पृष्ठ खोलें"

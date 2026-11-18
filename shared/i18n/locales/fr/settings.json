@@ -20,7 +20,7 @@
       "configuredCount": "{{value}} configurés",
       "replyPlaybackOn": "Lecture des réponses activée",
       "replyPlaybackOff": "Lecture des réponses désactivée",
-      "support": "Notez l'app, envoyez vos retours, obtenez de l'aide",
+      "support": "Envoyez vos retours, obtenez de l'aide",
       "permissions": "{{value}} enregistrées",
       "extensions": "MCPs, plugins, compétences et commandes",
       "responses": "Portée et prochaines étapes",
@@ -60,7 +60,7 @@
   },
   "support": {
     "title": "Assistance",
-    "description": "Notez OpenCode Mobile sur Google Play, envoyez des suggestions d'amélioration ou obtenez de l'aide sur la page d'assistance.",
+    "description": "Envoyez des suggestions d'amélioration ou obtenez de l'aide sur la page d'assistance.",
     "rate": "Noter sur Play Store",
     "feedback": "Donnez votre avis",
     "openSupport": "Ouvrir la page d'assistance"

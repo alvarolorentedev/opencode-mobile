@@ -20,7 +20,7 @@
       "configuredCount": "已配置 {{value}} 个",
       "replyPlaybackOn": "回复播放已开启",
       "replyPlaybackOff": "回复播放已关闭",
-      "support": "评价应用、发送反馈、获取帮助",
+      "support": "发送反馈、获取帮助",
       "permissions": "已保存 {{value}} 项",
       "extensions": "MCP、插件、技能和命令",
       "responses": "回复范围和下一步",
@@ -60,7 +60,7 @@
   },
   "support": {
     "title": "支持",
-    "description": "在 Google Play 上评价 OpenCode Mobile，发送改进反馈，或从支持页面获取帮助。",
+    "description": "发送改进反馈，或从支持页面获取帮助。",
     "rate": "在 Play 商店评价",
     "feedback": "提供反馈",
     "openSupport": "打开支持页面"

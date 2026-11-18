@@ -20,7 +20,7 @@
       "configuredCount": "{{value}} konfiguriert",
       "replyPlaybackOn": "Antwortwiedergabe an",
       "replyPlaybackOff": "Antwortwiedergabe aus",
-      "support": "App bewerten, Feedback senden, Hilfe erhalten",
+      "support": "Feedback senden, Hilfe erhalten",
       "permissions": "{{value}} gespeichert",
       "extensions": "MCPs, Plugins, Fähigkeiten und Befehle",
       "responses": "Antwortumfang und nächste Schritte",
@@ -60,7 +60,7 @@
   },
   "support": {
     "title": "Support",
-    "description": "Bewerte OpenCode Mobile bei Google Play, sende Verbesserungsvorschläge oder erhalte Hilfe auf der Support-Seite.",
+    "description": "Sende Verbesserungsvorschläge oder erhalte Hilfe auf der Support-Seite.",
     "rate": "Bei Play Store bewerten",
     "feedback": "Gib uns Feedback",
     "openSupport": "Support-Seite öffnen"

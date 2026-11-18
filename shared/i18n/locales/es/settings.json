@@ -20,7 +20,7 @@
       "configuredCount": "{{value}} configurados",
       "replyPlaybackOn": "Reproducción de respuestas activada",
       "replyPlaybackOff": "Reproducción de respuestas desactivada",
-      "support": "Valora la app, envía comentarios, obtén ayuda",
+      "support": "Envía comentarios, obtén ayuda",
       "permissions": "{{value}} guardados",
       "extensions": "MCPs, plugins, habilidades y comandos",
       "responses": "Alcance y próximos pasos",
@@ -60,7 +60,7 @@
   },
   "support": {
     "title": "Soporte",
-    "description": "Valora OpenCode Mobile en Google Play, envía comentarios de mejora u obtén ayuda en la página de soporte.",
+    "description": "Envía comentarios de mejora u obtén ayuda en la página de soporte.",
     "rate": "Valóranos en Play Store",
     "feedback": "Danos tu opinión",
     "openSupport": "Abrir página de soporte"

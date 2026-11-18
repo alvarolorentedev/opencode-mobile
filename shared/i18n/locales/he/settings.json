@@ -20,7 +20,7 @@
       "configuredCount": "{{value}} מוגדר",
       "replyPlaybackOn": "ניגון תשובה מופעל",
       "replyPlaybackOff": "ניגון התשובות כבוי",
-      "support": "דרג את האפליקציה, שלח משוב, קבל עזרה",
+      "support": "שלח משוב, קבל עזרה",
       "permissions": "{{value}} נשמר",
       "extensions": "MCPs, תוספים, סוכנים, כישורים ופקודות",
       "responses": "היקף התגובה והפעולות הבאות",
@@ -60,7 +60,7 @@
   },
   "support": {
     "title": "תמיכה",
-    "description": "דרג את OpenCode Mobile ב-Google Play, שלח משוב לשיפור או קבל עזרה מדף התמיכה.",
+    "description": "שלח משוב לשיפור או קבל עזרה מדף התמיכה.",
     "rate": "דרג אותנו בחנות Play",
     "feedback": "תן לנו משוב",
     "openSupport": "פתח את דף התמיכה"

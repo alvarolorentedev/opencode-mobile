@@ -20,7 +20,7 @@
       "configuredCount": "{{value}} configured",
       "replyPlaybackOn": "Reply playback on",
       "replyPlaybackOff": "Reply playback off",
-      "support": "Rate the app, send feedback, get help",
+      "support": "Send feedback, get help",
       "permissions": "{{value}} saved",
       "extensions": "MCPs, plugins, agents, skills and commands",
       "responses": "Response scope and next actions",
@@ -60,7 +60,7 @@
   },
   "support": {
     "title": "Support",
-    "description": "Rate OpenCode Mobile on Google Play, send improvement feedback, or get help from the support page.",
+    "description": "Send improvement feedback or get help from the support page.",
     "rate": "Rate us on Play Store",
     "feedback": "Give us feedback",
     "openSupport": "Open support page"
