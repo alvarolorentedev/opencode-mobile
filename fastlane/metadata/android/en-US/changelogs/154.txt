@@ -1,0 +1,2 @@
+- Fixed a crash in FOSS voice setup when the excluded Sherpa runtime was queried.
+- System speech remains available in FOSS builds.

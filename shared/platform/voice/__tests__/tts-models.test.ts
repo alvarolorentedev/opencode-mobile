@@ -71,3 +71,23 @@ describe('on-device voice pack paths', () => {
     assert.equal(chinese.lexiconFile, 'lexicon.txt');
   });
 });
+
+describe('native Sherpa availability', () => {
+  it('does not load the excluded native module in FOSS builds', async () => {
+    const sherpa = await loadTs('shared/platform/voice/local-wake-word/sherpa.native.ts', {
+      'expo-constants': { __esModule: true, default: { expoConfig: { extra: { foss: true } } } },
+    });
+
+    assert.equal(sherpa.loadSherpaRuntime(), undefined);
+  });
+
+  it('still loads the native module in non-FOSS builds', async () => {
+    const runtime = { TTS: {} };
+    const sherpa = await loadTs('shared/platform/voice/local-wake-word/sherpa.native.ts', {
+      'expo-constants': { __esModule: true, default: { expoConfig: { extra: { foss: false } } } },
+      '@siteed/sherpa-onnx.rn': { default: runtime },
+    });
+
+    assert.equal(sherpa.loadSherpaRuntime(), runtime);
+  });
+});
