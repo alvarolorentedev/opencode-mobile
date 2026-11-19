@@ -84,6 +84,11 @@ const cameraPlugin: PluginList = [['expo-camera', {
   cameraPermission: 'Allow $(PRODUCT_NAME) to scan an OpenCode pairing QR code.',
   recordAudioAndroid: false,
 }]];
+const imagePickerPlugin: PluginList = [['expo-image-picker', {
+  photosPermission: 'Allow OpenCode Mobile to access photos you choose to attach to chat messages.',
+  cameraPermission: isFossVariant ? false : 'Allow $(PRODUCT_NAME) to scan an OpenCode pairing QR code.',
+  microphonePermission: 'Allow $(PRODUCT_NAME) to access the microphone for voice input.',
+}]];
 const iapPlugin: PluginList = ['expo-iap'];
 
 const config: ExpoConfig = {
@@ -150,6 +155,7 @@ const config: ExpoConfig = {
         },
       },
     ],
+    ...imagePickerPlugin,
     ...(isFossVariant ? [] : cameraPlugin),
     [
       // Exposes the shipped app languages to the OS so iOS/Android surface the

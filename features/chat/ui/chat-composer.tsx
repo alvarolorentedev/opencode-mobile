@@ -7,7 +7,7 @@ import { Spinner } from '@/shared/ui/spinner';
 import { withAlpha } from '@/shared/ui/theme/color';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Keyboard, Platform, useWindowDimensions, View } from 'react-native';
+import { Keyboard, Platform, useWindowDimensions, View, type GestureResponderEvent } from 'react-native';
 
 import { Colors } from '@/shared/ui/theme/theme';
 
@@ -40,7 +40,7 @@ type ChatComposerProps = {
   isStoppingSession: boolean;
   isUpdatingAutoApprove: boolean;
   autoApproveAvailable?: boolean;
-  onAttach: () => void;
+  onAttach: (anchor?: number) => void;
   onDraftChange: (value: string) => void;
   onRemoveAttachment: (index: number) => void;
   onSend: () => void;
@@ -236,7 +236,7 @@ export function ChatComposer({
         />
         {fontScale > 1.3 ? <View>{modelPicker}</View> : null}
         <View className={cn(stylesClasses.composerToolbar)}>
-          <Button testID="chat-attach-button" accessibilityLabel={t('chat:composer.attachFiles')} onPress={onAttach} variant="ghost" size="icon" className={cn(stylesClasses.composerActionButton, "bg-transparent")} ><Icon name={"plus"} size={24} color={palette.text} /></Button>
+          <Button testID="chat-attach-button" accessibilityLabel={t('chat:composer.attachFiles')} onPress={(event: GestureResponderEvent) => { Keyboard.dismiss(); onAttach(event.nativeEvent.target); }} variant="ghost" size="icon" className={cn(stylesClasses.composerActionButton, "bg-transparent")} ><Icon name={"plus"} size={24} color={palette.text} /></Button>
           {autoApproveAvailable ? (
             <Button testID="chat-approve-button" accessibilityLabel={`${t('chat:composer.approvals')}: ${chatPreferences.autoApprove ? t('chat:composer.autoApproveEnabled') : t('chat:composer.askPermission')}`} accessibilityState={{ checked: chatPreferences.autoApprove }} disabled={isUpdatingAutoApprove} onPress={() => { void onToggleAutoApprove(); }} variant="ghost" size="icon" className={cn(stylesClasses.composerActionButton, "bg-transparent")} >{isUpdatingAutoApprove ? <Spinner size="small" /> : <Icon name={getAutoApproveIcon(chatPreferences.autoApprove)} size={22} color={chatPreferences.autoApprove ? palette.warning : palette.text} />}</Button>
           ) : null}

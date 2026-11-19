@@ -161,6 +161,8 @@
     "reasoning": "Рассуждение",
     "approvals": "Одобрения",
     "attachFiles": "Прикрепить файлы",
+    "photoLibrary": "Медиатека",
+    "chooseFiles": "Выбрать файлы",
     "startDictation": "Начать диктовку",
     "stopDictation": "Остановить диктовку",
     "sendTask": "Отправить задачу",

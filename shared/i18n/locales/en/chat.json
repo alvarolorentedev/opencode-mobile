@@ -161,6 +161,8 @@
     "reasoning": "Reasoning",
     "approvals": "Approvals",
     "attachFiles": "Attach files",
+    "photoLibrary": "Photo Library",
+    "chooseFiles": "Choose Files",
     "startDictation": "Start dictation",
     "stopDictation": "Stop dictation",
     "sendTask": "Send task",

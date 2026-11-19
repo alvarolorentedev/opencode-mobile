@@ -374,6 +374,7 @@ Secondary action rules:
 
 - with content present, the secondary button attaches files
 - without content, the secondary button toggles microphone dictation
+- on iOS, an attach action offers Photo Library for images or Choose Files; Android and web keep their existing picker flow
 
 Slash command behavior:
 

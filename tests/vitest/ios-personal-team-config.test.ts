@@ -17,8 +17,16 @@ describe('iOS Personal Team config', () => {
 
     const production = loadConfig();
     assert.equal(production.ios.bundleIdentifier, 'app.getopencode.mobile');
+    assert.equal(production.ios.infoPlist.NSPhotoLibraryUsageDescription, 'Allow OpenCode Mobile to access photos you choose to attach to chat messages.');
     assert.ok(production.plugins.includes('expo-notifications'));
     assert.equal(production.plugins.some((plugin: unknown) => (plugin as Function).name === 'withoutPushEntitlement'), false);
+    const imagePicker = production.plugins.find((plugin: unknown) => Array.isArray(plugin) && plugin[0] === 'expo-image-picker') as [string, Record<string, unknown>];
+    assert.equal(imagePicker[1].photosPermission, production.ios.infoPlist.NSPhotoLibraryUsageDescription);
+    assert.equal(imagePicker[1].cameraPermission, 'Allow $(PRODUCT_NAME) to scan an OpenCode pairing QR code.');
+    assert.equal(imagePicker[1].microphonePermission, 'Allow $(PRODUCT_NAME) to access the microphone for voice input.');
+    const fossImagePicker = loadConfig({ EXPO_APP_VARIANT: 'foss' }).plugins.find((plugin: unknown) => Array.isArray(plugin) && plugin[0] === 'expo-image-picker') as [string, Record<string, unknown>];
+    assert.equal(fossImagePicker[1].cameraPermission, false);
+    assert.equal(fossImagePicker[1].microphonePermission, imagePicker[1].microphonePermission);
 
     const personalTeam = loadConfig({
       EXPO_IOS_DISABLE_PUSH_ENTITLEMENT: '1',

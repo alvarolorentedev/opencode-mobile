@@ -1,5 +1,5 @@
 import { useConfirmation } from '@/shared/ui/use-confirmation';
-import { Platform } from 'react-native';
+import { ActionSheetIOS, Platform } from 'react-native';
 import type { Dispatch, SetStateAction } from 'react';
 
 import { useUpdates } from '@/features/updates/context';
@@ -10,6 +10,7 @@ import { getSpeechPlayback } from '@/shared/platform/voice/speech-config';
 import type { ChatPreferences } from '@/shared/preferences/opencode-preferences';
 
 type Attachment = { uri: string; mime?: string; filename?: string };
+type PickerAsset = { uri: string; base64?: string; mimeType?: string; name: string; size?: number };
 
 type ChatViewActionsInput = {
   t: (key: string) => string;
@@ -77,20 +78,43 @@ export function useChatViewActions({
     }
   }
 
-  async function handleAttach() {
+  async function handleAttach(anchor?: number) {
     const release = block();
     try {
-      const picker = await import('expo-document-picker');
-      const result = await picker.getDocumentAsync({
-        base64: Platform.OS === 'web',
-        multiple: true,
-        copyToCacheDirectory: true,
-      });
+      let assets: PickerAsset[];
+      if (Platform.OS === 'ios') {
+        const choice = await new Promise<number>((resolve) => {
+          ActionSheetIOS.showActionSheetWithOptions({
+            anchor,
+            cancelButtonIndex: 2,
+            options: [t('chat:composer.photoLibrary'), t('chat:composer.chooseFiles'), t('common:actions.cancel')],
+          }, resolve);
+        });
+        if (choice === 2) return;
 
-      if (result.canceled || !result.assets?.length) {
-        return;
+        if (choice === 0) {
+          const picker = await import('expo-image-picker');
+          const result = await picker.launchImageLibraryAsync({ mediaTypes: ['images'], allowsMultipleSelection: true });
+          if (result.canceled || !result.assets?.length) return;
+          assets = result.assets.map((asset) => ({ uri: asset.uri, name: asset.fileName ?? 'photo', mimeType: asset.mimeType ?? undefined, size: asset.fileSize ?? undefined }));
+        } else {
+          const picker = await import('expo-document-picker');
+          const result = await picker.getDocumentAsync({ base64: false, multiple: true, copyToCacheDirectory: true });
+          if (result.canceled || !result.assets?.length) return;
+          assets = result.assets;
+        }
+      } else {
+        const picker = await import('expo-document-picker');
+        const result = await picker.getDocumentAsync({
+          base64: Platform.OS === 'web',
+          multiple: true,
+          copyToCacheDirectory: true,
+        });
+        if (result.canceled || !result.assets?.length) return;
+        assets = result.assets;
       }
-      if (result.assets.some((asset) => typeof asset.size === 'number' && asset.size > 10 * 1024 * 1024)) {
+
+      if (assets.some((asset) => typeof asset.size === 'number' && asset.size > 10 * 1024 * 1024)) {
         setSendFeedback(t('chat:view.fileTooLarge'));
         return;
       }
@@ -99,7 +123,7 @@ export function useChatViewActions({
       setAttachments((current) => {
         const next = [...current];
 
-        result.assets.forEach((asset) => {
+        assets.forEach((asset) => {
           const attachment = pickedAttachment(asset);
           if (!next.some((current) => current.uri === attachment.uri)) {
             next.push(attachment);

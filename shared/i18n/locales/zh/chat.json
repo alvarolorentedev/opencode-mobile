@@ -161,6 +161,8 @@
     "reasoning": "推理",
     "approvals": "审批",
     "attachFiles": "附加文件",
+    "photoLibrary": "照片图库",
+    "chooseFiles": "选择文件",
     "startDictation": "开始语音输入",
     "stopDictation": "停止语音输入",
     "sendTask": "发送任务",

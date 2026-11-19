@@ -78,7 +78,7 @@ onboarding, which reopens the existing setup review without clearing settings.
 - filter transcript into display entries
 - coordinate copy-to-clipboard and TTS playback
 - coordinate draft speech recognition
-- attach files through document picker
+- attach files through the current platform picker; iOS offers Photo Library or Choose Files, while Android and web keep the document picker
 - route prompt send / abort actions
 - provide the complete filtered transcript to the virtualized chat list
 - open/create sessions and toggle conversation mode

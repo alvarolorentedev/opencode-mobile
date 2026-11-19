@@ -161,6 +161,8 @@
     "reasoning": "Raisonnement",
     "approvals": "Autorisations",
     "attachFiles": "Joindre des fichiers",
+    "photoLibrary": "Photothèque",
+    "chooseFiles": "Choisir des fichiers",
     "startDictation": "Démarrer la dictée",
     "stopDictation": "Arrêter la dictée",
     "sendTask": "Envoyer la tâche",

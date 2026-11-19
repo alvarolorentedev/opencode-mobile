@@ -246,17 +246,24 @@ Conversation mode also uses:
 The app never overrides screen brightness, so the system brightness setting
 always applies.
 
-### Document Picker
+### Chat Attachment Pickers
 
-`expo-document-picker` is used for chat attachments.
+On iOS, `ActionSheetIOS` offers Photo Library (`expo-image-picker`, images only,
+multiple selection) or Choose Files (`expo-document-picker`). Android and web
+continue using `expo-document-picker` directly.
+
+The photo library picker uses the system one-shot selection UI and does not
+request full photo-library access. `NSPhotoLibraryUsageDescription` remains
+configured in `app.config.ts`; picker plugin permission descriptions preserve
+the existing camera and microphone use for QR scanning and voice input.
 
 Current behavior:
 
-- multiple files supported
-- files copied to cache directory
+- multiple files supported in Files and multiple images supported in Photo Library
+- Files selections are copied to the cache directory
 - duplicate attachment URIs filtered out client-side
 - the selected model must advertise attachment support
-- local files larger than 10 MB are rejected before base64 conversion
+- local selections larger than 10 MB are rejected before base64 conversion
 
 ### Share Receive (Inbound)
 

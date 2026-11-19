@@ -253,7 +253,7 @@ export function ChatView() {
           isStoppingSession={composer.isStoppingSession}
           isUpdatingAutoApprove={composer.isUpdatingAutoApprove}
           onToggleConversationMode={() => void actions.toggleConversationMode()}
-          onAttach={() => void actions.handleAttach()}
+          onAttach={(anchor) => void actions.handleAttach(anchor)}
           onDraftChange={actions.handleDraftChange}
           isV2={composer.isV2}
           suggestions={composer.suggestions}
