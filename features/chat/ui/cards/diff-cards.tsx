@@ -9,57 +9,59 @@ import { getDiffPalette, buildPatchDiff, buildCollapsedDiffBlocks } from '@/feat
 import type { FileDiff } from '@/shared/protocol/opencode/types';
 import { usePalette } from '@/shared/ui/theme/use-palette';
 
-export function SessionDiffCard({ diff, expanded, onPress }: { diff: FileDiff; expanded: boolean; onPress: () => void }) {
+export function SessionDiffHeader({ diff, expanded, onPress }: { diff: FileDiff; expanded: boolean; onPress: () => void }) {
   const { t } = useTranslation();
   const palette = usePalette();
-  const diffLines = useMemo(() => (expanded ? buildPatchDiff(diff.patch || '') : []), [diff.patch, expanded]);
-  const diffBlocks = useMemo(() => (expanded ? buildCollapsedDiffBlocks(diffLines) : []), [diffLines, expanded]);
+
+  return (
+    <Pressable accessibilityRole="button" accessibilityState={{ expanded }} aria-expanded={expanded} onPress={onPress} className={cn(stylesClasses.diffFileRow, "bg-surface border-b border-border")}>
+      <Icon name={expanded ? 'chevron-down' : 'chevron-right'} size={18} color={palette.muted} />
+      <Text numberOfLines={1} ellipsizeMode="middle" className={cn(stylesClasses.diffFileName, "text-foreground")} variant="description">{diff.file || t('chat:cards.unknownFile')}</Text>
+      <Text className={cn("text-success")} variant="label">+{diff.additions}</Text>
+      <Text className={cn("text-destructive")} variant="label">−{diff.deletions}</Text>
+    </Pressable>
+  );
+}
+
+export function SessionDiffBody({ diff }: { diff: FileDiff }) {
+  const { t } = useTranslation();
+  const palette = usePalette();
+  const diffLines = useMemo(() => buildPatchDiff(diff.patch || ''), [diff.patch]);
+  const diffBlocks = useMemo(() => buildCollapsedDiffBlocks(diffLines), [diffLines]);
   // A patch that yields no lines is a genuinely empty hunk. No patch at all
   // means the server reported changes without content the viewer can render.
   const emptyPreviewKey = diff.patch ? 'chat:cards.noLineChanges' : 'chat:cards.previewUnavailable';
 
   return (
-    <View className={cn("border-border")} style={[styles.diffAccordion]}>
-      <Pressable accessibilityRole="button" accessibilityState={{ expanded }} aria-expanded={expanded} onPress={onPress} className={cn(stylesClasses.diffFileRow, "bg-surface")}>
-        <Icon name={expanded ? 'chevron-down' : 'chevron-right'} size={18} color={palette.muted} />
-        <Text numberOfLines={1} ellipsizeMode="middle" className={cn(stylesClasses.diffFileName, "text-foreground")} variant="description">{diff.file || t('chat:cards.unknownFile')}</Text>
-        <Text className={cn("text-success")} variant="label">+{diff.additions}</Text>
-        <Text className={cn("text-destructive")} variant="label">−{diff.deletions}</Text>
-      </Pressable>
-      <View className={cn(stylesClasses.diffAccordionBody)}>
-        {expanded ? (
-          <View className={cn(stylesClasses.diffViewer)}>
-            {diffBlocks.length === 0 ? <Text className={cn("text-muted-foreground")} variant="label">{t(emptyPreviewKey)}</Text> : diffBlocks.map((block, blockIndex) => {
-              if (block.type === 'collapsed') {
-                return (
-                  <View key={`${diff.file}-collapsed-${blockIndex}`} className={cn(stylesClasses.diffCollapsedRow, "bg-background border-border")}>
-                    <Text className={cn("text-muted-foreground")} style={[styles.code]} variant="label">{t('chat:cards.hiddenLines', { count: block.hiddenCount })}{block.startLine && block.endLine ? ` (${block.startLine}-${block.endLine})` : ''}</Text>
-                  </View>
-                );
-              }
+    <View className={cn(stylesClasses.diffViewer, "border-b border-border")}>
+      {diffBlocks.length === 0 ? <Text className={cn("text-muted-foreground")} variant="label">{t(emptyPreviewKey)}</Text> : diffBlocks.map((block, blockIndex) => {
+        if (block.type === 'collapsed') {
+          return (
+            <View key={`${diff.file}-collapsed-${blockIndex}`} className={cn(stylesClasses.diffCollapsedRow, "bg-background border-border")}>
+              <Text className={cn("text-muted-foreground")} style={[styles.code]} variant="label">{t('chat:cards.hiddenLines', { count: block.hiddenCount })}{block.startLine && block.endLine ? ` (${block.startLine}-${block.endLine})` : ''}</Text>
+            </View>
+          );
+        }
 
-              return block.lines.map((line, index) => {
-                const tone = getDiffPalette(line.kind, palette);
-                return (
-                  <View
-                    key={`${diff.file}-${blockIndex}-${index}-${line.leftNumber ?? 'x'}-${line.rightNumber ?? 'x'}`}
-                    style={[
-                      styles.diffLineRow,
-                      {
-                        backgroundColor: tone.backgroundColor,
-                        borderLeftColor: tone.accentColor,
-                      },
-                    ]}>
-                    <Text className={cn(stylesClasses.diffLineNumber, "text-muted-foreground")} variant="label">{line.rightNumber ?? line.leftNumber ?? ''}</Text>
-                    <Text style={[styles.diffMarker, { color: tone.accentColor || palette.muted }]}>{line.kind === 'added' ? '+' : line.kind === 'removed' ? '-' : ' '}</Text>
-                    <Text selectable className={cn(stylesClasses.diffLineText, "text-foreground")} style={[styles.code]} variant="label">{line.text || ' '}</Text>
-                  </View>
-                );
-              });
-            })}
-          </View>
-        ) : null}
-      </View>
+        return block.lines.map((line, index) => {
+          const tone = getDiffPalette(line.kind, palette);
+          return (
+            <View
+              key={`${diff.file}-${blockIndex}-${index}-${line.leftNumber ?? 'x'}-${line.rightNumber ?? 'x'}`}
+              style={[
+                styles.diffLineRow,
+                {
+                  backgroundColor: tone.backgroundColor,
+                  borderLeftColor: tone.accentColor,
+                },
+              ]}>
+              <Text className={cn(stylesClasses.diffLineNumber, "text-muted-foreground")} variant="label">{line.rightNumber ?? line.leftNumber ?? ''}</Text>
+              <Text style={[styles.diffMarker, { color: tone.accentColor || palette.muted }]}>{line.kind === 'added' ? '+' : line.kind === 'removed' ? '-' : ' '}</Text>
+              <Text selectable className={cn(stylesClasses.diffLineText, "text-foreground")} style={[styles.code]} variant="label">{line.text || ' '}</Text>
+            </View>
+          );
+        });
+      })}
     </View>
   );
 }
@@ -81,7 +83,6 @@ export function ChangedFilesCard({ files }: { files: string[] }) {
 }
 
 const styles = StyleSheet.create({
-  diffAccordion: { borderBottomWidth: 1 },
   changedFilesCard: { borderBottomWidth: 1, gap: 6, paddingHorizontal: 16, paddingVertical: 12 },
   diffLineRow: {
     direction: 'ltr',
@@ -99,7 +100,6 @@ const styles = StyleSheet.create({
 const stylesClasses = {
   "diffFileRow": "flex-row items-center gap-2 min-h-target px-3 py-2.5",
   "diffFileName": "flex-1 min-w-0 font-bold",
-  "diffAccordionBody": "pb-0",
   "diffViewer": "w-full py-1",
   "diffCollapsedRow": "rounded-[8px] mx-2 my-1 px-2.5 py-2",
   "diffLineNumber": "w-7.5 text-right",

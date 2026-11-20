@@ -198,7 +198,7 @@ The full-screen question flow shows one visible question at a time with Back and
 
 ### 7. Inspect File Changes
 
-The `Files Changed` chip above the Chat composer opens a compact sheet. Use the height button to expand or collapse that sheet and the source button to choose the scope and, when applicable, the turn.
+The `Files Changed` chip above the Chat composer opens a compact sheet. Use the height button in the sheet header to expand or collapse that sheet and the source button to choose the scope and, when applicable, the turn.
 
 Behavior:
 
@@ -206,7 +206,7 @@ Behavior:
 - `Turn` is the default and shows the latest user turn that recorded a change; display and fetch resolve through the same transcript selector, so a session whose newest turn made no edits still reviews the last turn that did; the source overlay lists earlier turns when more than one user turn has a recorded diff
 - `Uncommitted` and `Branch` call `vcs.diff` with modes `git`/`working` and `branch` respectively and are project-scoped, not session-scoped: V1 scopes with the `directory` query parameter, V2 with `location[directory]`
 - top card shows the active scope title, line totals, and current status
-- `{ file, patch, additions, deletions }` diff objects render as expandable line previews that scroll together with the file list. Changing the sheet height keeps the current file open. Reopening the sheet restores its compact height.
+- `{ file, patch, additions, deletions }` diff objects render as expandable line previews that scroll together with the file list. Each file header stays pinned at the top of the list while its diff scrolls and is replaced by the next file header. Changing the sheet height keeps the current file open. Reopening the sheet restores its compact height.
 - when the selected turn has no structured turn diff, that turn's transcript patch details render as a plain changed-files list with a note that diff lines are unavailable; the list is scoped to the selected turn and never aggregates other turns
 - per-scope empty states: `No file changes yet.`, `No uncommitted changes.`, `No changes against the default branch.`
 - VCS scopes have no SSE event and are refreshed on demand (a scope change or a project file save while a VCS scope is active)

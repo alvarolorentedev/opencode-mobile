@@ -3,12 +3,12 @@ import { Text } from '@/shared/ui/text';
 import { Button } from '@/shared/ui/button';
 import { Icon } from '@/shared/ui/icon';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, type ReactElement } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Platform, Pressable, ScrollView, View } from 'react-native';
 import { ScrollView as GestureScrollView } from 'react-native-gesture-handler';
 
-import { ChangedFilesCard, SessionDiffCard } from '@/features/chat/ui/chat-cards';
+import { ChangedFilesCard, SessionDiffBody, SessionDiffHeader } from '@/features/chat/ui/chat-cards';
 import { styles, stylesClasses } from '@/features/chat/ui/chat-view-styles';
 import { OverlaySheet } from '@/shared/ui/overlay-sheet';
 import { Colors } from '@/shared/ui/theme/theme';
@@ -98,6 +98,31 @@ export function ChangesOverlay({
 
   if (!changesVisible && expanded) setExpanded(false);
 
+  // File headers must be direct scroll children so each one pins while its
+  // diff scrolls and the next header pushes it away.
+  const rows: ReactElement[] = [];
+  if (connection.status === 'error') {
+    rows.push(
+      <View key="connection" className={cn(stylesClasses.changesNotice)}>
+        <Text className={cn("text-foreground")} variant="title">{t('chat:content.connectionIssue')}</Text>
+        <Text className={cn("text-muted-foreground")} variant="description">{connection.message}</Text>
+      </View>,
+    );
+  }
+  if (currentDiffs.length === 0 && !(showDiffDetails && changedFiles.length > 0)) {
+    rows.push(<Text key="empty" className={cn(stylesClasses.changesNotice, "text-muted-foreground")} variant="description">{scopeEmptyMessage}</Text>);
+  }
+  for (const diff of currentDiffs) {
+    const accordionId = `diff:${currentDiffScope}:${diff.file}`;
+    const isExpanded = expandedDiffId === accordionId;
+    rows.push(
+      <SessionDiffHeader key={`${accordionId}:header`} diff={diff} expanded={isExpanded} onPress={() => onExpandDiff(isExpanded ? undefined : accordionId)} />,
+    );
+    if (isExpanded) rows.push(<SessionDiffBody key={`${accordionId}:body`} diff={diff} />);
+  }
+  if (showDiffDetails && changedFiles.length > 0) rows.push(<ChangedFilesCard key="changed-files" files={changedFiles} />);
+  const stickyHeaderIndices = rows.flatMap((row, index) => row.type === SessionDiffHeader ? [index] : []);
+
   return (
     <>
       <OverlaySheet
@@ -113,22 +138,10 @@ export function ChangesOverlay({
         <ChangesScrollView
           style={[styles.scroll, { backgroundColor: palette.background }]}
           contentContainerStyle={styles.changesList}
+          stickyHeaderIndices={stickyHeaderIndices}
           keyboardDismissMode="on-drag"
           keyboardShouldPersistTaps="handled">
-          {connection.status === 'error' ? (
-            <View className={cn(stylesClasses.changesNotice)}>
-              <Text className={cn("text-foreground")} variant="title">{t('chat:content.connectionIssue')}</Text>
-              <Text className={cn("text-muted-foreground")} variant="description">{connection.message}</Text>
-            </View>
-          ) : null}
-          {currentDiffs.length === 0 && !(showDiffDetails && changedFiles.length > 0) ? (
-            <Text className={cn(stylesClasses.changesNotice, "text-muted-foreground")} variant="description">{scopeEmptyMessage}</Text>
-          ) : null}
-          {currentDiffs.map((diff) => {
-            const accordionId = `diff:${currentDiffScope}:${diff.file}`;
-            return <SessionDiffCard key={accordionId} diff={diff} expanded={expandedDiffId === accordionId} onPress={() => onExpandDiff(expandedDiffId === accordionId ? undefined : accordionId)} />;
-          })}
-          {showDiffDetails && changedFiles.length > 0 ? <ChangedFilesCard files={changedFiles} /> : null}
+          {rows}
         </ChangesScrollView>
       </OverlaySheet>
 

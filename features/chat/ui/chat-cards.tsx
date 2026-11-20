@@ -1,5 +1,5 @@
 export { PendingInteractionsCard } from '@/features/sessions/index';
 export { QuestionFlow } from '@/features/sessions/index';
-export { SessionDiffCard, ChangedFilesCard } from '@/features/chat/ui/cards/diff-cards';
+export { SessionDiffHeader, SessionDiffBody, ChangedFilesCard } from '@/features/chat/ui/cards/diff-cards';
 export { TranscriptMessage } from '@/features/chat/ui/cards/message-card';
 export { NoticeCard } from '@/features/chat/ui/cards/notice-card';

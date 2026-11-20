@@ -2,7 +2,6 @@ import { cn } from '@/shared/ui/cn';
 import * as DialogPrimitive from '@rn-primitives/dialog';
 import { DialogFrame } from '@/shared/ui/dialog-frame';
 import { PortalScope, usePortalHost, useOverlayDismiss } from '@/shared/ui/portal';
-import { Button } from '@/shared/ui/button';
 import { Icon } from '@/shared/ui/icon';
 import { Text } from '@/shared/ui/text';
 import { useContext, type ReactNode } from 'react';
@@ -59,6 +58,8 @@ export function OverlaySheet({ visible, title, onClose, children, headerAction, 
 
   const topInset = 64 + insets.top;
   const paddingTop = compact && !expanded ? Math.max(topInset, height * 0.45) : topInset;
+  // Compact headers keep the title centered; the trailing header-action slot is always rendered.
+  const compactBalanceSlots = onToggleExpanded ? 1 : 0;
 
   const content = (
       <KeyboardAvoidingView behavior="padding" className={cn(stylesClasses.overlay)} style={[{ direction, paddingTop }]} testID={testID}>
@@ -73,25 +74,23 @@ export function OverlaySheet({ visible, title, onClose, children, headerAction, 
           style={[styles.sheet, !fitContent && { flex: 1 }, { backgroundColor: palette.surface, borderColor: palette.border }, sheetStyle]}>
           <GestureDetector gesture={pan}>
             <Animated.View style={styles.dragZone}>
-              {compact && (onToggleExpanded ? (
-                <Button
-                  accessibilityLabel={t(expanded ? 'common:actions.collapseSheet' : 'common:actions.expandSheet')}
-                  accessibilityState={{ expanded }}
-                  className="self-center"
-                  onPress={onToggleExpanded}
-                  size="icon"
-                  variant="ghost">
-                  <Icon name={expanded ? 'arrow-collapse-vertical' : 'arrow-expand-vertical'} size={22} color={palette.muted} />
-                </Button>
-              ) : <View className={cn(stylesClasses.grabberWrap)}><View className={cn(stylesClasses.grabber, "bg-muted-foreground")} /></View>)}
+              {compact ? <View className={cn(stylesClasses.grabberWrap)}><View className={cn(stylesClasses.grabber, "bg-muted-foreground")} /></View> : null}
               <View className={cn(compact && stylesClasses.compactHeader)} style={[styles.header, { borderBottomColor: palette.border }]}>
                 {compact ? (
                   <>
-                    {dismissible ? <Pressable accessibilityRole="button" accessibilityLabel={t('common:actions.close')} onPress={onClose} className={cn(stylesClasses.compactAction)}>
-                      <Icon size={22} color={palette.muted} name={"close"}></Icon>
-                    </Pressable> : <View className={cn(stylesClasses.compactAction)} />}
+                    <View className={cn(stylesClasses.compactActions)}>
+                      {dismissible ? <Pressable accessibilityRole="button" accessibilityLabel={t('common:actions.close')} onPress={onClose} className={cn(stylesClasses.compactAction)}>
+                        <Icon size={22} color={palette.muted} name={"close"}></Icon>
+                      </Pressable> : <View className={cn(stylesClasses.compactAction)} />}
+                      {Array.from({ length: compactBalanceSlots }, (_, index) => <View key={`balance-${index}`} className={cn(stylesClasses.compactAction)} />)}
+                    </View>
                     <DialogPrimitive.Title asChild><Text className={cn(stylesClasses.compactTitle, "text-foreground")} variant="title">{title}</Text></DialogPrimitive.Title>
-                    <View className={cn(stylesClasses.compactAction)}>{headerAction}</View>
+                    <View className={cn(stylesClasses.compactActions)}>
+                      {onToggleExpanded ? <Pressable accessibilityRole="button" accessibilityLabel={t(expanded ? 'common:actions.collapseSheet' : 'common:actions.expandSheet')} accessibilityState={{ expanded }} onPress={onToggleExpanded} className={cn(stylesClasses.compactAction)}>
+                        <Icon name={expanded ? 'arrow-collapse-vertical' : 'arrow-expand-vertical'} size={22} color={palette.muted} />
+                      </Pressable> : null}
+                      <View className={cn(stylesClasses.compactAction)}>{headerAction}</View>
+                    </View>
                   </>
                 ) : (
                   <>
@@ -134,6 +133,7 @@ const stylesClasses = {
   "grabber": "w-9 h-1 rounded-[2px]",
   "compactHeader": "min-h-field px-2",
   "compactAction": "w-11 min-h-target items-center justify-center",
+  "compactActions": "flex-row items-center",
   "compactTitle": "flex-1 text-center font-bold",
   "headerActions": "flex-row items-center gap-1.5",
   "closeButton": "min-h-target justify-center px-2",

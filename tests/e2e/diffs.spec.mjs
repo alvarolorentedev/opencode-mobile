@@ -47,7 +47,9 @@ test('files changed follows the latest user turn', async ({ page, request }) => 
   await file.click();
   await expect(lastLine).not.toBeInViewport();
   await firstLine.hover();
-  await page.mouse.wheel(0, 2500);
+  await page.mouse.wheel(0, 500);
+  await expect(file).toBeInViewport();
+  await page.mouse.wheel(0, 2000);
   await expect(lastLine).toBeInViewport();
   await expect(followingFile).toBeInViewport();
 

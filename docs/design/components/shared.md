@@ -245,4 +245,4 @@ Task progress is a 48px shared icon button. When the changes chip is visible, th
 
 Changes review dismisses the keyboard without remounting the transcript or composer. Session changes and blocking permission/question requests close review and its source picker. Switching to an empty scope keeps an already open review available; closing it hides the chip until changes exist.
 
-The shared OverlaySheet compact option is opt-in for changes only; other overlays retain their existing height, header, and padding. Compact file rows expose expanded state to accessibility and retain filename-only patch fallback.
+The shared OverlaySheet compact option is opt-in for changes only; other overlays retain their existing height, header, and padding. Its height control sits in the header row. File headers are sticky scroll children, expose expanded state to accessibility, and retain the filename-only patch fallback.
