@@ -9,8 +9,8 @@ changes are made. They explain **why** the code is the way it is. The rest of
 Write one when a change:
 
 - selects a framework, transport, storage model, or protocol boundary
-- changes ownership between `app/`, `components/`, `providers/`, `lib/`, or
-  `providers/services/`
+- changes ownership between `app/`, `features/`, `runtime/`, `shared/`, or
+  `modules/`
 - adds or removes a compatibility path or a supported platform
 - establishes a design-system primitive, token family, or accessibility policy
 - rejects a viable alternative for a reason future maintainers need to know

@@ -7,7 +7,7 @@ import { type ReactNode, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ScrollView, View } from 'react-native';
 
-import { PendingInteractionsCard, QuestionFlow } from '@/features/chat/ui/chat-cards';
+import { PermissionActions, PermissionRequestDetails, QuestionFlow } from '@/features/sessions/index';
 import { styles, stylesClasses } from '@/features/chat/ui/chat-view-styles';
 import { OverlaySheet } from '@/shared/ui/overlay-sheet';
 import { Colors } from '@/shared/ui/theme/theme';
@@ -48,6 +48,7 @@ export function PendingInteractions({
   const { t } = useTranslation();
   const [dismissedQuestionId, setDismissedQuestionId] = useState<string>();
   const currentQuestion = currentPendingQuestions[0];
+  const currentPermission = currentPendingPermissions[0];
 
   return (
     <>
@@ -63,10 +64,23 @@ export function PendingInteractions({
         />
       ) : null}
 
-      {currentPendingPermissions.length > 0 && !currentQuestion ? (
-        <ScrollView keyboardShouldPersistTaps="handled" className={cn("max-h-[75%]")} style={[styles.todoOverlay]}>
-          <PendingInteractionsCard permissions={currentPendingPermissions} onPermissionReply={onReplyToPermission} />
-        </ScrollView>
+      {currentPermission && !currentQuestion ? (
+        <View className={cn("max-h-[90%] gap-3 border-border bg-surface px-4 py-3")} style={[styles.todoOverlay]}>
+          <View className={cn(stylesClasses.permissionHeader)}>
+            <Icon name="message-alert-outline" size={18} color={palette.warning} />
+            <Text className={cn("text-foreground")} variant="title">{t('chat:cards.respondToContinue')}</Text>
+            {currentPendingPermissions.length > 1 ? (
+              <Text className={cn("text-muted-foreground", stylesClasses.permissionCount)} variant="label">{t('chat:cards.stepOfTotal', { current: 1, total: currentPendingPermissions.length })}</Text>
+            ) : null}
+          </View>
+          <ScrollView key={`permission:${currentPermission.id}`} className={cn(stylesClasses.permissionScroll)} keyboardShouldPersistTaps="handled">
+            <View className={cn(stylesClasses.permissionDetails)}>
+              <Text className={cn("text-muted-foreground")} variant="label">{t('chat:cards.waitingForAnswer')}</Text>
+              <PermissionRequestDetails request={currentPermission} sourceTitle={currentPermission.sourceTitle} />
+            </View>
+          </ScrollView>
+          <PermissionActions key={currentPermission.id} onReply={(reply) => onReplyToPermission(currentPermission.id, reply)} />
+        </View>
       ) : null}
       {currentQuestion && dismissedQuestionId === currentQuestion.id ? (
         <Card className={cn("bg-surface border-border")} style={[styles.todoOverlay]}><CardContent className={cn(stylesClasses.todoHeader)}><View className={cn(stylesClasses.todoSummary)}>

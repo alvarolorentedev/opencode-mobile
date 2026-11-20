@@ -103,7 +103,7 @@ onboarding, which reopens the existing setup review without clearing settings.
 - `transcript-list.tsx`: render the transcript area, empty states, connection issues, and load older history on scroll-up; running progress lives on the newest activity header (including after its tools complete) and the active child row instead of a separate footer. When no activity row exists yet, it appends one transient non-interactive activity row in the same position; this is also the only activity visible at `Messages only` while a turn is working. Subagent calls render as top-level `SubagentRow` chips that open the child session. Plugin notices (`entry.noticeKind === 'plugin'`) render with `NoticeCard`; all other messages use `TranscriptMessage`. Revert status and cancellation live in the composer notice
 - `changes-overlay.tsx`: render the Files changed overlay with refresh, scope selection, and diff accordions
 - `side-question-overlay.tsx`: render a transient `/btw` answer without adding it to the transcript
-- `pending-interactions.tsx`: render server-owned tasks, permissions, and questions, including the compact progress view
+- `pending-interactions.tsx`: render server-owned tasks, permissions, and questions, including the compact progress view. The first pending permission fills a floating panel: its details scroll while `Allow once`, `Always allow`, and `Deny` stay pinned below them; the header shows `1 of N` when more requests are queued and the next request surfaces after the current one is resolved. The requesting session's title is shown as `Requested by {{name}}` when the permission came from a subagent/nested session. The shared card and action row live in `features/sessions/ui/approvals/permission-request-card.tsx` and are also used by Settings. Questions open a full-screen step-by-step flow; drafts survive dismissal, and V2 form fields, conditions, defaults, and retry errors are preserved
 
 `ChatView` renders these leaves directly and passes the values assembled by
 `useChatViewController`'s `content` / `composer` / `actions` namespaces. There is
@@ -336,26 +336,11 @@ that workspace.
 
 #### Exported components
 
-- `PendingInteractionsCard`
-- `QuestionFlow`
 - `SessionDiffHeader`
 - `SessionDiffBody`
-- `DiffCard`
+- `ChangedFilesCard`
 - `TranscriptMessage`
-
-#### `PendingInteractionsCard`
-
-Responsibility:
-
-- render session-scoped permission actions in the floating continuation area
-- show the requesting session's title as `Requested by {{name}}` when the
-  permission came from a subagent/nested session, so provenance is visible
-
-#### `QuestionFlow`
-
-- full-screen step-by-step questions; preserve local drafts across dismissal
-- collect single, multiple, or custom answers and submit on the last step
-- render V2 form field types, conditions, defaults, and retry errors
+- `NoticeCard`
 
 #### `SessionDiffHeader` / `SessionDiffBody`
 

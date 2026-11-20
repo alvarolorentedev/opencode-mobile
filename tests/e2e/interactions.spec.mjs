@@ -45,6 +45,19 @@ test('permission requests unblock the agent flow @smoke', async ({ page, request
   await expect(page.getByText(/permission resolved/).first()).toBeVisible({ timeout: 20_000 });
 });
 
+test('permission actions stay visible on a narrow viewport', async ({ page, request }) => {
+  await page.setViewportSize({ width: 360, height: 640 });
+  await resetScenario(request, 'permission');
+  await openReadyChat(page);
+
+  await sendPrompt(page, 'Trigger a permission request');
+
+  const allow = page.getByText('Allow once', { exact: true });
+  await expect(allow).toBeInViewport({ timeout: 15_000 });
+  await allow.click();
+  await expect(page.getByText(/permission resolved/).first()).toBeVisible({ timeout: 20_000 });
+});
+
 test('assistant questions unblock the agent flow @smoke', async ({ page, request }) => {
   await resetScenario(request, 'question');
   await openReadyChat(page);

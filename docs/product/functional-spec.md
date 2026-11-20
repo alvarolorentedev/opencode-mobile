@@ -164,7 +164,7 @@ The Chat screen shows:
 
 - transcript messages
 - a progress circle on the active activity header and active child row while OpenCode is active; when no activity row can show it yet (the first moments of a turn or `Messages only`), a live activity row carries the current state
-- floating permission actions or a full-screen question flow if OpenCode is blocked waiting for the user
+- a floating permission panel with pinned approval actions, or a full-screen question flow, if OpenCode is blocked waiting for the user
 - a changes tab with current file diffs
 - todos when provided by the server
 
@@ -176,7 +176,7 @@ Behavior details:
 - subagent calls render as top-level chips outside the activity run: the task description, the agent, and a running spinner or a settled check/error/cancel icon; tapping a chip opens the child chat, and a completion notice updates the chip in place. Chips are hidden at `Messages only` and `Reasoning` detail
 - background shell and subagent completion records are model-facing synthetic messages; the app parses their metadata and never renders the `<shell>`/`<subagent>` wrapper. A shell completion folds into the matching shell row by `shellID`, a native user-shell record suppresses its synthetic echo, and a subagent completion only updates its chip
 - no separate `OpenCode is ...` running footer is reserved; while the session runs, the newest activity header keeps the progress circle even after its own tools complete, and the active child row carries it only while that row is running. If the transcript has no activity row to carry it (including `Messages only`), a transient non-expandable activity row shows `Sending…`, `Waiting for OpenCode…`, `OpenCode is working…`, or `OpenCode is retrying…` in the same activity-row position; it coexists with the pending-prompt stack and disappears when the session settles or a real activity row takes over
-- a small floating progress view shows the current step and completed count; tapping it opens a content-sized overlay with the task list; pending permission actions replace it while blocked
+- a small floating progress view shows the current step and completed count; tapping it opens a content-sized overlay with the task list; pending permission actions replace it while blocked. Only the first pending permission is shown at a time; its details scroll while the approval buttons stay pinned, and resolving it surfaces the next request
 - a pending question opens a full-screen answer flow immediately; dismissal leaves an `Answer needed` card above the composer and does not reject the request
 
 ### 6. Resolve Pending Interactions
@@ -185,12 +185,15 @@ Each permission request shows:
 
 - a title derived from `permission`
 - optional pattern list
-- action buttons: `Allow once`, `Always allow`, `Deny`
+- action buttons: `Allow once`, `Always allow`, `Deny` pinned below the
+  scrollable request details, so a short screen or large text size cannot hide
+  the decision controls
 
 Permission behavior:
 
 - requests are received from the global event stream and list API, then stored under `sessionID`
 - only interactions for the current or sending session are displayed
+- only the first pending permission request is displayed; after it is resolved, the next request replaces it in the panel
 - replies use `/permission/{requestID}/reply`
 - the replied request is removed locally and that session's messages are refreshed
 
