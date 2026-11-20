@@ -1,5 +1,5 @@
 {
-  "tests": 183,
+  "tests": 184,
   "specs": 19,
-  "justification": "Added Cloud Link temporary-sharing coverage: public share copy/extend/revoke, password share without a readable password, and the pre-0.20.0 legacy connector path."
+  "justification": "Added session-owned model coverage: a fresh session prompt sends no app model override or model switch, and explicit model/variant choices persist per session across projects and reloads."
 }
