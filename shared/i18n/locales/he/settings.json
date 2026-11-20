@@ -66,6 +66,24 @@
     "openSupport": "פתח את דף התמיכה"
   },
   "connection": {
+    "relay": {
+      "title": "מציאת מכונות בשרת הממסר שלך",
+      "description": "הזן את כתובת שרת הממסר ואת פרטי ההתחברות כדי להציג סביבות רשומות.",
+      "url": "כתובת שרת ממסר",
+      "urlPlaceholder": "https://relay.example.com:9999",
+      "username": "שם משתמש",
+      "usernamePlaceholder": "שם משתמש בשרת הממסר",
+      "password": "סיסמה",
+      "discover": "גילוי",
+      "environments": "מכונות",
+      "noEnvironments": "לא נמצאו מכונות בשרת הממסר הזה.",
+      "invalidUrl": "הזן כתובת שרת ממסר תקינה, למשל https://relay.example.com:9999.",
+      "loginFailed": "הכניסה לשרת הממסר נכשלה. בדוק את שם המשתמש והסיסמה.",
+      "loadFailed": "לא ניתן לטעון את רשימת המכונות משרת הממסר.",
+      "offline": "לא מקוון",
+      "online": "מקוון",
+      "signOut": "יציאה מחשבון שרת הממסר"
+    },
     "currentConnection": "חיבור נוכחי",
     "noServerUrl": "לא הוגדרה כתובת URL של שרת",
     "notSavedYet": "עדיין לא נשמר. הוסף חיבור כדי לשמור אותו למועד מאוחר יותר.",
