@@ -118,7 +118,7 @@ describe('persistence hydration and write-back', () => {
       providerModelSelections: { p: false }, speechRate: 100, workingSoundVolume: -1, transcriptFontSize: 99, timelineDetail: 'reasoning',
       modelVariantSelections: { 'openai/model': 'max', 'openai/other': null },
       reasoning: 'invalid', hideSubagentChats: 'yes', language: 'es', unknown: 'ignored' }));
-    assert.deepEqual(JSON.parse(JSON.stringify(parsed)), { mode: 'build', knownModelIds: ['openai/gpt'], autoEnableNewModels: false, language: 'es', modelVariantSelections: { 'openai/model': 'max', 'openai/other': null }, transcriptFontSize: 24, speechRate: 1.5, workingSoundVolume: 0, timelineDetail: 'reasoning' });
+    assert.deepEqual(JSON.parse(JSON.stringify(parsed)), { mode: 'build', knownModelIds: ['openai/gpt'], autoEnableNewModels: false, language: 'es', transcriptFontSize: 24, speechRate: 1.5, workingSoundVolume: 0, timelineDetail: 'reasoning' });
     assert.equal(parseChatPreferences(JSON.stringify({ timelineDetail: 'chatty' })).timelineDetail, undefined);
     assert.deepEqual(JSON.parse(JSON.stringify(parseChatPreferences(JSON.stringify({ themeMode: 'dark', accentColor: 'blue' })))), { themeMode: 'dark', accentColor: 'blue' });
     assert.deepEqual(JSON.parse(JSON.stringify(parseChatPreferences(JSON.stringify({ themeMode: 'sepia', accentColor: 'orange' })))), {});
@@ -139,8 +139,8 @@ describe('persistence hydration and write-back', () => {
     assert.ok(Array.isArray(defaults.enabledModelIds)); assert.ok(Array.isArray(defaults.knownModelIds)); assert.ok(Array.isArray(defaults.recentModelIds));
     assert.equal(defaults.autoEnableNewModels, false);
     assert.equal(preferences.defaultChatPreferences.autoEnableNewModels, true);
-    assert.deepEqual(JSON.parse(JSON.stringify(parseChatPreferences('{"modelVariantSelections":{"openai/model":"max","openai/default":null}}').modelVariantSelections)), { 'openai/model': 'max', 'openai/default': null });
-    assert.equal(parseChatPreferences('{"modelVariantSelections":{"openai/model":false}}').modelVariantSelections, undefined);
+    const legacyModelPreferences = parseChatPreferences('{"providerId":"openai","modelId":"openai/model","providerModelSelections":{"openai":"openai/model"},"agentModelSelections":{"build":"openai/model"},"modelVariantSelections":{"openai/model":"max"}}');
+    assert.deepEqual(JSON.parse(JSON.stringify(legacyModelPreferences)), {});
     const autoModel = {
       enabled: true,
       classifier: 'server',

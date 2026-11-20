@@ -20,10 +20,10 @@ async function controller(contract = 'v2') {
     '@/shared/presentation/transcript': { buildTranscriptRows: () => [], getTurnPatchDetails: () => [] },
     '@/shared/presentation/usage': { getLatestContextTokens: () => 0 },
     '@/features/sharing/index': {},
-    '@/features/ai/index': { getInitialMode, getSelectedModelVariant: noop, getVisibleModels: () => [] },
+    '@/features/ai/index': { getEffectiveSessionModel: noop, getInitialMode, getSelectedModelVariant: noop, getVisibleModels: () => [] },
     '@/features/ai/context': { useCapabilities: () => ({ availableAgents: [], availableModels: [], modelRouting: {} }) },
     '@/features/chat/context': { useChat: () => ({
-      executeCommand, executeShell, sendPrompt, commands: [], pendingPrompts: [], currentDiffs: [], currentMessages: [],
+      sendPrompt, commands: { available: [], execute: executeCommand, executeShell }, pendingPrompts: [], currentDiffs: [], currentMessages: [],
       currentPendingPermissions: [], currentPendingQuestions: [], currentTodos: [], currentTranscript: [],
       sendingState: {}, sharedInput: {}, availableSkills: [], availableReferences: [],
     }) },

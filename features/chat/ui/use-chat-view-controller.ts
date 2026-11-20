@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Keyboard } from 'react-native';
 
-import { getInitialMode, getSelectedModelVariant, getVisibleModels } from '@/features/ai/index';
+import { getEffectiveSessionModel, getInitialMode, getSelectedModelVariant, getVisibleModels, recordRecentModelId } from '@/features/ai/index';
 import { useUpdateBlocker } from '@/runtime/ui';
 import { mergeSharedDraft } from '@/features/sharing/index';
 import { workspaceKey } from '@/shared/contracts/workspace';
@@ -12,6 +12,7 @@ import { getConnectionScope, getConnectionUiScope } from '@/shared/contracts/con
 import { copyHaptic } from '@/shared/platform/haptics';
 import { parseShellCommand, parseSlashCommand, replaceComposerTrigger } from '@/features/chat/model/composer';
 import type { TranscriptEntry } from '@/shared/presentation/format';
+import type { ModelOption } from '@/shared/contracts/model-options';
 import type { SideQuestionAnswer } from '@/shared/contracts/session-commands';
 import type { Command } from '@/shared/protocol/opencode/types';
 import type { PromptContextItem } from '@/shared/protocol/opencode/prompt-inbox';
@@ -48,14 +49,17 @@ export function useChatViewController() {
   const conversationContext = useConversation();
   const { conversation, clearConversationFeedback, toggleConversationMode } = conversationContext;
   const {
-    pendingPrompts, cancelPrompt, abortSession, clearPromptError, commands, currentDiffs, currentDiffScope, currentMessages,
+    pendingPrompts, cancelPrompt, abortSession, clearPromptError, commands: commandActions, currentDiffs, currentDiffScope, currentMessages,
     currentPendingPermissions, currentPendingQuestions, currentTodos, currentTranscript, currentUsage,
-    diffTurns, executeCommand, executeShell, isBootstrappingChat, isRefreshingDiffs, isRefreshingMessages,
+    diffTurns, isBootstrappingChat, isRefreshingDiffs, isRefreshingMessages,
     latestAssistantTurnUsage, promptError, refreshDiffs, rejectQuestion,
-    replyToPermission, replyToQuestion, retryTranscript, selectDiffMessage, selectedDiffMessageId, sendPrompt,
+    replyToPermission, replyToQuestion, retryTranscript, selectDiffMessage, selectedDiffMessageId, sendPrompt, switchSessionModel,
     sendingState, setAutoApprove, setDiffScope, transcriptPaging, transcriptReadError, sharedInput,
     availableSkills, availableReferences, searchProjectFiles,
   } = useChat();
+  const commands = commandActions.available;
+  const executeCommand = commandActions.execute;
+  const executeShell = commandActions.executeShell;
 
   const workspaceId = workspaceKey({ connectionId: getConnectionUiScope(settings), projectPath: activeProject?.path ?? '' });
   const { draft, attachments, context, setDraft, setAttachments, setContext, inputRef, capture, hasFailedInput, recoverFailedInput, dismissFailedInput } =
@@ -168,17 +172,42 @@ export function useChatViewController() {
     () => sessions.find((session) => session.id === currentSessionId) || activeSession,
     [activeSession, currentSessionId, sessions],
   );
-  const selectedModelVariant = getSelectedModelVariant(
-    chatPreferences.modelId,
-    chatPreferences.modelVariantSelections,
-    availableModels,
-    selectedSession?.model,
-  );
+  const effectiveSessionModel = getEffectiveSessionModel(availableModels, currentConfig, availableAgents, selectedSession, selectedAgent);
+  const selectedModelId = effectiveSessionModel ? `${effectiveSessionModel.providerID}/${effectiveSessionModel.id}` : undefined;
+  const selectedModelVariant = getSelectedModelVariant(effectiveSessionModel, availableModels);
   const contextTokens = useMemo(() => getLatestContextTokens(currentMessages) ?? 0, [currentMessages]);
-  const contextModel = useMemo(
-    () => availableModels.find((model) => model.providerID === selectedSession?.model?.providerID && model.modelID === selectedSession?.model?.id),
-    [availableModels, selectedSession?.model?.id, selectedSession?.model?.providerID],
-  );
+  const contextModel = effectiveSessionModel
+    ? availableModels.find((model) => model.providerID === effectiveSessionModel.providerID && model.modelID === effectiveSessionModel.id)
+    : undefined;
+  const selectedModelFallbackLabel = effectiveSessionModel
+    ? `${contextModel?.label ?? effectiveSessionModel.id} · ${contextModel?.providerLabel ?? effectiveSessionModel.providerID}`
+    : undefined;
+
+  const setSessionModel = useCallback(async (model: ModelOption, variant?: string) => {
+    const sessionId = currentSessionId || await ensureActiveSession();
+    if (!sessionId) return;
+    setSendFeedback(undefined);
+    try {
+      await switchSessionModel(sessionId, {
+        id: model.modelID,
+        providerID: model.providerID,
+        ...(variant && variant !== 'default' ? { variant } : {}),
+      });
+      updateChatPreferences({
+        recentModelIds: recordRecentModelId(chatPreferences.recentModelIds, model.id),
+        ...(chatPreferences.autoModel.enabled ? { autoModel: { ...chatPreferences.autoModel, enabled: false } } : {}),
+      });
+    } catch (error) {
+      setSendFeedback(error instanceof Error ? error.message : t('chat:view.couldNotSend'));
+    }
+  }, [chatPreferences.autoModel, chatPreferences.recentModelIds, currentSessionId, ensureActiveSession, setSendFeedback, switchSessionModel, t, updateChatPreferences]);
+  const handleModelSelect = useCallback((model: ModelOption) => {
+    void setSessionModel(model);
+  }, [setSessionModel]);
+  const handleModelVariantChange = useCallback((variant: string | undefined) => {
+    const model = availableModels.find((item) => item.id === selectedModelId);
+    if (model) void setSessionModel(model, variant);
+  }, [availableModels, selectedModelId, setSessionModel]);
   // The provider scopes promptError to the active session tree, so a failing
   // subagent is already surfaced here; no local session gate is needed.
   const visiblePromptError = promptError?.message;
@@ -194,10 +223,10 @@ export function useChatViewController() {
       t('chat:view.sendError.time', { time: new Date(promptError?.occurredAt || Date.now()).toISOString() }),
       t('chat:view.sendError.session', { session: currentSessionId || t('chat:view.sendError.unknown') }),
       t('chat:view.sendError.server', { server: settings.serverUrl }),
-      t('chat:view.sendError.model', { model: chatPreferences.modelId || t('chat:view.sendError.unknown') }),
+      t('chat:view.sendError.model', { model: selectedModelId || t('chat:view.sendError.unknown') }),
       t('chat:view.sendError.attachments', { attachments: lastSentAttachmentsRef.current.map((attachment) => attachment.filename || attachment.mime || t('chat:view.sendError.unnamed')).join(', ') || t('chat:view.sendError.none') }),
     ].join('\n');
-  }, [chatPreferences.modelId, currentSessionId, promptError?.occurredAt, sendErrorMessage, settings.serverUrl, t]);
+  }, [currentSessionId, promptError?.occurredAt, selectedModelId, sendErrorMessage, settings.serverUrl, t]);
 
   const pathname = usePathname();
   const sharedPending = sharedInput.pending;
@@ -414,6 +443,8 @@ export function useChatViewController() {
       isStoppingSession, isUpdatingAutoApprove, selectedAgent, selectedAgentLabel, serverCapabilities,
       agentsLoading: currentConfig === undefined,
       selectedVariant: selectedModelVariant,
+      selectedModelId,
+      selectedModelFallbackLabel,
       autoRoutingEnabled: chatPreferences.autoModel.enabled,
       autoRoutingAvailable: modelRouting.available,
       onAutoRoutingChange: (enabled: boolean) => updateChatPreferences({
@@ -422,6 +453,8 @@ export function useChatViewController() {
       showSendAction, visibleModels,
       isV2, suggestions, suggestionsActive, suggestionsSearching, suggestionsError,
       shellMode, focusRequest,
+      onModelSelect: handleModelSelect,
+      onModelVariantChange: handleModelVariantChange,
     },
     overlay: {
       approvals, hasFailedInput, sendErrorMessage,
@@ -433,7 +466,7 @@ export function useChatViewController() {
       forkSession, handleAbort, handleAttach, handleCancelPendingPrompt, handleCancelRevert,
       confirmation, handleConfirmStopConversation, handleCopyMessage,
       handleDraftChange, handleRevertMessage, handleSelectionChange: setSelection, handleSendPrompt,
-      handleSuggestionSelect, handleSpeakEntry, handleToggleRecording,
+      handleSuggestionSelect, handleSpeakEntry, handleToggleRecording, handleModelSelect, handleModelVariantChange,
       handleVoiceRecovery, recoverFailedInput, refreshDiffs, rejectQuestion, replyToPermission,
       replyToQuestion, selectDiffMessage, setAttachments, setAutoApprove, setChangesVisible,
       setCopiedMessageId, setDiffScope, setDraft, setExpandedDiffId, setIsUpdatingAutoApprove,

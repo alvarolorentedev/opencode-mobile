@@ -1,12 +1,12 @@
 import { useCallback, useMemo } from 'react';
 
 import type { ScopedOpencodeClient } from '@/shared/protocol/opencode/client';
+import type { Config, Session, SessionStatus } from '@/shared/protocol/opencode/types';
 import type { SessionMessageRecord } from '@/shared/presentation/format';
-import type { Session, SessionStatus } from '@/shared/protocol/opencode/types';
 import { getLatestContextTokens } from '@/shared/presentation/usage';
 import { classifyPromptWithLocalModel } from '@/features/ai/model/auto-model/runtime';
 import { getLocalAutoModelStatus } from '@/features/ai/model/auto-model/models';
-import { getVisibleModels } from '@/features/ai/model/opencode-model-selection';
+import { getEffectiveSessionModel, getInitialMode, getVisibleModels } from '@/features/ai/model/opencode-model-selection';
 import type { ModelOption } from '@/shared/contracts/model-options';
 import { estimatePromptTokens, getAutoModelSuggestions, getClassifierModelId, resolveAutoModelSelection, type AutoModelSelection } from '@/features/ai/model/opencode-auto-model';
 import type { ProviderOption } from '@/features/ai/model/types';
@@ -18,6 +18,8 @@ type PromptRoutingInput = {
   isCurrentClient: (candidate: object) => boolean;
   availableModels: ModelOption[];
   availableProviders: ProviderOption[];
+  availableAgents: import('@/shared/contracts/model-options').AgentOption[];
+  currentConfig?: Config;
   chatPreferences: ChatPreferences;
   sessions: Session[];
   sessionStatuses: Record<string, SessionStatus>;
@@ -35,6 +37,8 @@ export function usePromptRouting({
   isCurrentClient,
   availableModels,
   availableProviders,
+  availableAgents,
+  currentConfig,
   chatPreferences,
   sessions,
   sessionStatuses,
@@ -56,7 +60,11 @@ export function usePromptRouting({
       return undefined;
     }
 
-    const suggestions = getAutoModelSuggestions(visibleModels, chatPreferences.modelId);
+    const currentSession = sessions.find((session) => session.id === sessionId);
+    const fallbackAgent = getInitialMode(availableAgents, currentConfig, chatPreferences.mode);
+    const effectiveModel = getEffectiveSessionModel(visibleModels, currentConfig, availableAgents, currentSession, fallbackAgent);
+    const defaultModelId = effectiveModel ? `${effectiveModel.providerID}/${effectiveModel.id}` : undefined;
+    const suggestions = getAutoModelSuggestions(visibleModels, defaultModelId);
     const tierModels = new Set((['simple', 'standard', 'complex'] as const)
       .map((tier) => preferences.tiers[tier] === 'auto' ? suggestions[tier] : preferences.tiers[tier])
       .filter((modelId): modelId is string => Boolean(modelId)));
@@ -64,7 +72,6 @@ export function usePromptRouting({
       return undefined;
     }
 
-    const currentSession = sessions.find((session) => session.id === sessionId);
     const contextTokens = getLatestContextTokens(messagesBySession[sessionId] ?? []);
 
     let tier;
@@ -108,13 +115,12 @@ export function usePromptRouting({
       tier,
       preferences,
       models: visibleModels,
-      defaultModelId: chatPreferences.modelId,
-      currentModel: currentSession?.model,
-      modelVariantSelections: chatPreferences.modelVariantSelections,
+      defaultModelId,
+      currentModel: effectiveModel,
       attachments,
       contextTokens,
       promptTokens: estimatePromptTokens(prompt),
     });
     return selection && isCurrentClient(client) ? selection : undefined;
-  }, [chatPreferences, client, isCurrentClient, messagesBySession, sessionStatuses, sessions, visibleModels]);
+  }, [availableAgents, chatPreferences, client, currentConfig, isCurrentClient, messagesBySession, sessionStatuses, sessions, visibleModels]);
 }

@@ -1,4 +1,4 @@
-import { interruptSession, readSessionSettlement } from '@/shared/protocol/services/session-service';
+import { interruptSession, readSessionSettlement, switchSessionModel as switchSessionModelService } from '@/shared/protocol/services/session-service';
 import { prepareAttachment } from '@/shared/protocol/opencode/attachment';
 import type { Config, FilePartInput, TextPartInput, Session, SessionStatus } from '@/shared/protocol/opencode/types';
 import { useCallback, useEffect, useRef, useState, type Dispatch, type SetStateAction } from 'react';
@@ -9,7 +9,7 @@ import type { PromptContextItem, PromptDelivery, PromptInput } from '@/shared/pr
 import { pendingNotificationKey , clearPendingTaskFinishedNotification, listPendingTaskFinishedNotifications, notifyTaskFinished, trackPendingTaskFinishedNotification } from '@/features/notifications/runtime';
 import { getConnectionScope, getConnectionUiScope } from '@/shared/contracts/connection-scope';
 import type { AgentOption, ModelOption } from '@/shared/contracts/model-options';
-import { getInitialMode, getSelectedModelParts, getSelectedModelVariant , usePromptRouting } from '@/features/ai/runtime';
+import { getEffectiveSessionModel, getInitialMode, getSelectedModelParts, usePromptRouting } from '@/features/ai/runtime';
 import type { ChatPreferences } from '@/shared/preferences/opencode-preferences';
 import { i18n } from '@/shared/i18n/index';
 import { buildSystemPrompt } from '@/features/chat/model/system-prompt';
@@ -72,6 +72,8 @@ export function usePromptLifecycle({
     isCurrentClient,
     availableModels,
     availableProviders,
+    availableAgents,
+    currentConfig,
     chatPreferences,
     sessions,
     sessionStatuses,
@@ -168,7 +170,14 @@ export function usePromptLifecycle({
         if (!ownsSubmission()) return canceled();
         const routed = await routingPromise;
         if (!ownsSubmission()) return canceled();
-        const effectiveModelId = routed?.model.id ?? chatPreferences.modelId;
+        const effectiveModel = getEffectiveSessionModel(
+          availableModels,
+          currentConfig,
+          availableAgents,
+          currentSession,
+          agent,
+        );
+        const effectiveModelId = routed?.model.id ?? (effectiveModel ? `${effectiveModel.providerID}/${effectiveModel.id}` : undefined);
         const selectedModel = availableModels.find((model) => model.id === effectiveModelId);
         if (attachments?.length && !selectedModel) {
           throw new Error('Select a model that supports attachments first.');
@@ -192,14 +201,7 @@ export function usePromptLifecycle({
         }
 
         const isV2 = client.__opencode?.contract === 'v2';
-        const variant = isV2 && !routed?.sameAsCurrent
-          ? routed?.variant ?? getSelectedModelVariant(
-              effectiveModelId,
-              chatPreferences.modelVariantSelections,
-              availableModels,
-              currentSession?.model,
-            )
-          : undefined;
+        const variant = isV2 && routed && !routed.sameAsCurrent ? routed.variant : undefined;
         const root = activeProjectPath?.replace(/\/+$/, '');
         const resolvedContext = context?.map((item) => item.kind === 'file' && root && !item.path.startsWith('/')
           ? { ...item, path: `${root}/${item.path}` }
@@ -207,7 +209,7 @@ export function usePromptLifecycle({
         await submitPrompt({
           sessionID: sessionId,
           agent,
-          model: routed?.sameAsCurrent ? undefined : getSelectedModelParts(effectiveModelId),
+          model: routed && !routed.sameAsCurrent ? getSelectedModelParts(routed.model.id) : undefined,
           system: buildSystemPrompt(chatPreferences),
           variant,
           parts,
@@ -383,8 +385,16 @@ export function usePromptLifecycle({
 
   const clearPromptError = useCallback(() => setPromptError(undefined), []);
 
+  const switchSessionModel = useCallback(async (sessionId: string, model: NonNullable<Session['model']>) => {
+    if (!isCurrentClient(client)) throw new Error('The connection changed before updating the session model.');
+    await switchSessionModelService(client, sessionId, model);
+    if (!isCurrentClient(client)) throw new Error('The connection changed before refreshing the session model.');
+    await refreshSessions().catch(() => undefined);
+  }, [client, isCurrentClient, refreshSessions]);
+
   return {
     sendPrompt,
+    switchSessionModel,
     abortSession,
     sendingState,
     setSendingState,

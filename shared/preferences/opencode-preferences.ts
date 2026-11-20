@@ -1,4 +1,4 @@
-// Chat preference model, defaults, and the system prompt derived from them.
+// Chat preference shape, defaults, and the system prompt derived from them.
 // Kept separate from provider orchestration so preference shape and prompt
 // wording are changed in one place.
 
@@ -54,16 +54,9 @@ export type ChatPreferences = {
   // alongside chat preferences because it is global and not connection-scoped.
   language?: string;
   openingScreen: OpeningScreen;
-  providerId?: string;
-  modelId?: string;
   enabledModelIds: string[];
   knownModelIds: string[];
   autoEnableNewModels: boolean;
-  providerModelSelections: Record<string, string>;
-  // Latest model chosen for each agent. Switching agents restores this entry;
-  // an agent without one lets the server/agent default apply.
-  agentModelSelections: Record<string, string>;
-  modelVariantSelections: Record<string, string | null>;
   recentModelIds: string[];
   // Per-connection model routing preferences. Model IDs are validated against
   // the active catalog at send time rather than erased when a catalog is slow.
@@ -122,9 +115,6 @@ export const defaultChatPreferences: ChatPreferences = {
   enabledModelIds: [],
   knownModelIds: [],
   autoEnableNewModels: true,
-  providerModelSelections: {},
-  agentModelSelections: {},
-  modelVariantSelections: {},
   recentModelIds: [],
   autoModel: defaultAutoModelPreferences,
   autoApprove: false,

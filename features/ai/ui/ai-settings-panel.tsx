@@ -22,7 +22,7 @@ export function AiSettingsPanel() {
   const focused = useIsFocused();
   const insets = useSafeAreaInsets();
   const palette = usePalette();
-  const { availableModels, availableProviders, configuredProviders, providerAccounts, providerAuthMethodsById, removeProvider, modelRouting } = useCapabilities();
+  const { currentConfig, availableModels, availableProviders, configuredProviders, providerAccounts, providerAuthMethodsById, removeProvider, modelRouting } = useCapabilities();
   const { serverCapabilities, settings, connectionProfiles } = useConnection();
   const { chatPreferences, updateChatPreferences } = usePreferences();
   const providerConfig = useProviderConfiguration();
@@ -78,6 +78,7 @@ export function AiSettingsPanel() {
       />
       <AutoModelSection
         availableModels={availableModels}
+        currentConfig={currentConfig}
         configuredProviders={configuredProviders}
         chatPreferences={chatPreferences}
         contract={serverCapabilities.contract}

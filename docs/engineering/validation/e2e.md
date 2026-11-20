@@ -255,8 +255,8 @@ the Vitest `record-preservation` suite is now part of the static CI gate.
 - settle rapid favorite taps on the last target
 - save two connections that point at separate fake servers exposing the same
   project paths, switch between them, and verify each connection shows only its
-  own sessions and restores its own model selection (the session cache,
-  remembered session, and model preferences can never leak across servers)
+  own sessions and restores its own auto-routing settings (the session cache,
+  remembered session, and connection preferences can never leak across servers)
 
 ### Cross-Project Active Sessions
 

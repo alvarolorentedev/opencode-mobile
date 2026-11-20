@@ -19,7 +19,8 @@ Two classifiers are supported. Neither one guesses a tier.
 - The runtime uses a 2,048-token context, four threads, CPU inference, and
   releases the model after five minutes idle or when the app backgrounds.
 - If the pack is missing, removed, or fails to load, on-device routing is
-  disabled. The send uses the user's normal default model.
+  unavailable. The send keeps the active session's model or OpenCode's effective
+  agent/config default.
 
 ### OpenCode
 
@@ -30,15 +31,17 @@ Two classifiers are supported. Neither one guesses a tier.
 - Probe results are cached per connection and classifier model. A `404`/`405`
   marks the endpoint unsupported; `401`/`403` marks auth required; transport and
   `503` failures remain retryable.
-- If a send-time classifier request fails or times out, that send uses the
-  default model. It does not switch to the other classifier or invent a tier.
+- If a send-time classifier request fails or times out, that send keeps the
+  active session's model or OpenCode's effective agent/config default. It does
+  not switch to the other classifier or invent a tier.
 
 ## Tier resolution
 
 Each tier stores either `auto` or an explicit model ID.
 
 - Simple → cheapest enabled tool-capable model.
-- Standard → the current default model, falling back to the simple suggestion.
+- Standard → the active session's model or effective agent/config default,
+  falling back to the simple suggestion when no baseline resolves.
 - Complex → the most capable enabled model: reasoning first, then context size,
   then price.
 
@@ -56,7 +59,7 @@ Routing is skipped when:
 - no visible models exist;
 - the selected classifier is unavailable;
 - attachments or the estimated context do not fit the selected model;
-- the selected model is already the session model;
+- the selected model and variant already match the session model;
 - the selected tier is unavailable;
 - prompt-cache protection rejects a long-chat downgrade.
 
@@ -81,9 +84,10 @@ Routing never switches models mid-turn for steer or queue submissions.
 ```
 
 Tier values are `auto` or a model ID. `tierVariants` stores an optional
-thinking level for each tier; `null` keeps the per-model composer variant or the
-model default. A configured variant wins only when the routed model exposes it;
-otherwise routing falls back without failing. The object is server-scoped
+thinking level for each tier; `null` keeps the active session variant when the
+routed model is unchanged, or the model's default otherwise. A configured
+variant wins only when the routed model exposes it; otherwise routing falls back
+to the current session variant for the same model, without failing. The object is server-scoped
 through the workspace registry and saved connection profiles. Unavailable model
 IDs are kept in preferences and treated as unavailable at send time rather than
 being rewritten during a slow or incomplete capability refresh.

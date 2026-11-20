@@ -375,8 +375,8 @@ before onboarding completion.
 
 `machine_id` is durable ownership identity. `/v1/machines/:id/access` must return
 that exact ID; a mismatch is rejected before credentials are saved or state is
-migrated. Existing machine hostnames and profile IDs/names/model preferences are
-preserved. Device credentials may rotate. The provider copies validated
+migrated. Existing machine hostnames and profile IDs/names/catalog and routing
+preferences are preserved. Device credentials may rotate. The provider copies validated
 connection-scoped caches and migrates remembered sessions, favorites and pending
 notification references to the new credential scope before switching. Old
 non-secret cache/remembered-session copies remain for interruption-safe recovery.

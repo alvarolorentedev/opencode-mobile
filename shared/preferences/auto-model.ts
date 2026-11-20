@@ -14,8 +14,8 @@ export type AutoModelPreferences = {
   classifier: AutoModelClassifier;
   classifierModelId?: string;
   tiers: Record<ModelComplexity, AutoModelTierPreference>;
-  // Thinking level used for each routed tier. `null` keeps the existing
-  // per-model selection (or the model default).
+  // Thinking level used for each routed tier. `null` keeps the active session
+  // variant when routing to its current model, otherwise the model default.
   tierVariants: Record<ModelComplexity, string | null>;
   protectLongChats: boolean;
 };

@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'vitest';
-import { getConfiguredProviderIds, getInitialMode, getInitialModelId, getInitialProviderId, getModelIdForProvider, getSelectedModelVariant, reconcileEnabledModelIds, recordRecentModelId, resolveConfigModelId } from '@/features/ai/model/opencode-model-selection';
+import { getConfiguredProviderIds, getEffectiveSessionModel, getInitialMode, getSelectedModelVariant, reconcileEnabledModelIds, recordRecentModelId, resolveConfigModelId } from '@/features/ai/model/opencode-model-selection';
 import { areSessionListsEqual, areSessionStatusMapsEqual, collectDescendantSessionIds, mergeSessionStatuses, RETRY_STATUS_STALE_MS } from '@/features/sessions/model/session-utils';
 import { buildOpencodeProjects, resolveActiveProject } from '@/features/projects/model/project-utils';
 import type { ModelOption } from '@/shared/contracts/model-options';
@@ -13,7 +13,7 @@ const model = (id: string, providerID: string, modelID: string, overrides: Parti
 
 // Migrated from the standalone tests/provider-utils.test.mjs Node script.
 describe('provider model selection utilities', () => {
-  it('selects initial models/providers and merges session status maps safely', async () => {
+  it('resolves server models and session variants and merges session status maps safely', async () => {
     const models = [model('openai/gpt', 'openai', 'gpt')];
 
     assert.deepEqual([...getConfiguredProviderIds({ enabled_providers: ['openai'] }, [], models)], ['openai']);
@@ -24,24 +24,27 @@ describe('provider model selection utilities', () => {
     assert.deepEqual(recordRecentModelId(['a', 'b', 'c', 'd'], 'e'), ['e', 'a', 'b', 'c']);
     assert.deepEqual(recordRecentModelId(['a/b']), ['a/b']);
 
-    // Default model follows the server config; with no stored or server match
-    // nothing is auto-picked so prompts fall through to the server default.
-    assert.equal(getInitialModelId(models, { model: 'openai/gpt' }, undefined), 'openai/gpt');
-    assert.equal(getInitialModelId(models, { model: 'openai/gpt' }, 'openai/gpt'), 'openai/gpt');
-    assert.equal(getInitialModelId(models, { model: 'openrouter/blocked' }, undefined), undefined);
-    assert.equal(getInitialModelId(models, undefined, undefined), undefined);
-    assert.equal(getInitialProviderId(models, { model: 'openai/gpt' }, undefined, undefined), 'openai');
-    assert.equal(getInitialProviderId(models, { model: 'openrouter/blocked' }, undefined, undefined), undefined);
-    assert.equal(getModelIdForProvider(models, 'openai', undefined, undefined), undefined);
-    assert.equal(getModelIdForProvider(models, 'openai', 'openai/gpt', undefined), 'openai/gpt');
+    assert.equal(resolveConfigModelId(models, 'openai/gpt'), 'openai/gpt');
+    assert.equal(resolveConfigModelId(models, 'openrouter/blocked'), undefined);
 
     const variantModel = model('opencode/deepseek', 'opencode', 'deepseek', { variants: [{ id: 'low' }, { id: 'max' }] });
     const sessionModel = { providerID: 'opencode', id: 'deepseek', variant: 'max' };
-    assert.equal(getSelectedModelVariant(variantModel.id, {}, [variantModel], sessionModel), 'max');
-    assert.equal(getSelectedModelVariant(variantModel.id, { [variantModel.id]: 'low' }, [variantModel], sessionModel), 'low');
-    assert.equal(getSelectedModelVariant(variantModel.id, { [variantModel.id]: null }, [variantModel], sessionModel), undefined);
-    assert.equal(getSelectedModelVariant(variantModel.id, { [variantModel.id]: 'removed' }, [variantModel], sessionModel), undefined);
-    assert.equal(getSelectedModelVariant(variantModel.id, {}, [variantModel], { ...sessionModel, providerID: 'openai' }), undefined);
+    assert.equal(getSelectedModelVariant(sessionModel, [variantModel]), 'max');
+    assert.equal(getSelectedModelVariant({ ...sessionModel, id: variantModel.id }, [variantModel]), 'max');
+    assert.equal(getSelectedModelVariant({ ...sessionModel, variant: 'removed' }, [variantModel]), undefined);
+    assert.equal(getSelectedModelVariant({ ...sessionModel, providerID: 'openai' }, [variantModel]), undefined);
+
+    const agents = [{ id: 'build', label: 'Build', mode: 'primary' as const, model: { providerID: 'openai', modelID: 'gpt', variant: 'low' } }];
+    assert.deepEqual(getEffectiveSessionModel(models, { model: 'opencode/deepseek' }, agents, { agent: 'build' }), {
+      providerID: 'openai', id: 'gpt', variant: 'low',
+    });
+    assert.deepEqual(getEffectiveSessionModel(models, { model: 'openai/gpt' }, agents, { agent: 'build', model: sessionModel }), sessionModel);
+    assert.deepEqual(getEffectiveSessionModel([variantModel], undefined, [], { model: { ...sessionModel, id: variantModel.id } }), sessionModel);
+    assert.deepEqual(getEffectiveSessionModel(models, { model: 'openai/gpt' }, [], undefined), { providerID: 'openai', id: 'gpt' });
+    assert.deepEqual(getEffectiveSessionModel(models, undefined, [
+      ...agents,
+      { id: 'plan', label: 'Plan', mode: 'primary' as const, model: { providerID: 'opencode', modelID: 'deepseek', variant: 'max' } },
+    ], { agent: 'build' }, 'plan'), { providerID: 'opencode', id: 'deepseek', variant: 'max' });
 
     // Variant-qualified server values (e.g. `openrouter/~group/model`) still
     // resolve to the catalog entry and mark its provider configured.
@@ -109,7 +112,7 @@ describe('provider model selection utilities', () => {
     assert.equal(areSessionStatusMapsEqual({ a: retry }, { a: { type: 'retry', attempt: 3, message: 'provider failed', next: retry.next } }), false);
   });
 
-  it('preserves stored server choices across empty or partial capability catalogs', () => {
+  it('keeps catalog choices through empty reads and leaves server model defaults unmodified', () => {
     const models = [model('openai/gpt', 'openai', 'gpt'), model('opencode/deepseek', 'opencode', 'deepseek')];
     const agents = [{ id: 'build', label: 'Build', mode: 'primary' as const }];
 
@@ -118,8 +121,6 @@ describe('provider model selection utilities', () => {
     assert.equal(getInitialMode([], undefined, 'general'), undefined);
     assert.equal(getInitialMode([], undefined, undefined), undefined);
     assert.equal(getInitialMode(agents, undefined, 'general'), 'build');
-    assert.equal(getInitialProviderId([], { model: 'openai/gpt' }, 'opencode', 'opencode/deepseek'), 'opencode');
-    assert.equal(getInitialModelId([], { model: 'openai/gpt' }, 'opencode/deepseek'), 'opencode/deepseek');
     assert.deepEqual(reconcileEnabledModelIds([], ['opencode/deepseek']), { enabledModelIds: ['opencode/deepseek'], knownModelIds: [] });
     assert.deepEqual(reconcileEnabledModelIds([], undefined), { enabledModelIds: [], knownModelIds: [] });
 

@@ -230,7 +230,13 @@ export async function findIntegration(api: V2Api, providerID: string, location: 
 }
 
 export function toAgentView(agent: V2Agent): Agent {
-  return { name: agent.id, description: agent.description, mode: agent.mode, hidden: agent.hidden };
+  return {
+    name: agent.id,
+    description: agent.description,
+    mode: agent.mode,
+    hidden: agent.hidden,
+    ...(agent.model ? { model: { providerID: agent.model.providerID, modelID: agent.model.id, variant: agent.model.variant } } : {}),
+  };
 }
 
 export function mcpConfigToV2(config: Record<string, unknown> | undefined) {

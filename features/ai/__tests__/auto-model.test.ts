@@ -182,7 +182,7 @@ describe('auto model resolution', () => {
       preferences: preferences({ tiers: { complex: 'openai/reasoning' }, tierVariants: { simple: null, standard: null, complex: 'missing' } }),
       models: [reasoning],
       defaultModelId: 'openai/reasoning',
-      modelVariantSelections: { 'openai/reasoning': 'low' },
+      currentModel: { providerID: 'openai', id: 'reasoning', variant: 'low' },
     });
     assert.equal(fallback?.variant, 'low');
   });

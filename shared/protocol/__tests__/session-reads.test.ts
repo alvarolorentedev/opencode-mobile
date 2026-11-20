@@ -10,6 +10,7 @@ import {
   getSessionDiff,
   listSessions,
   executeCommand,
+  switchSessionModel,
   compactSession,
   generateSessionText,
 } from '@/shared/protocol/services/session-service';
@@ -55,6 +56,16 @@ h.api = api;
 const client = buildV2Client({ serverUrl: 'http://test', directory: '/repo', username: '', password: '' } as never);
 
 describe('session reads', () => {
+  it('switches a session model through the SDK and rejects unsupported clients', async () => {
+    const switchModel = vi.fn(async () => undefined);
+    const client = { api: { session: { switchModel } } } as never;
+    const model = { id: 'deepseek', providerID: 'opencode', variant: 'max' };
+
+    await switchSessionModel(client, 's', model);
+    expect(switchModel).toHaveBeenCalledWith({ sessionID: 's', model });
+    expect(() => switchSessionModel({ api: undefined } as never, 's', model)).toThrow('OpenCode 2');
+  });
+
   it('treats a session lookup 404 as missing and propagates other failures', async () => {
     const missing = Object.assign(new Error('Unknown session'), { status: 404 });
     const get = vi.fn().mockRejectedValueOnce(new Error('Transport: Unknown session', { cause: missing }))
@@ -74,7 +85,7 @@ describe('session reads', () => {
     expect(prompt).not.toHaveBeenCalled();
   });
 
-  it('executes exact plugin names with arguments, files and mentions after selections, and propagates failures', async () => {
+  it('executes exact plugin names with arguments, files and mentions after agent selection, and propagates failures', async () => {
     const calls: string[] = [];
     const command = vi.fn(async () => { calls.push('command'); });
     const scoped = { __opencode: { contract: 'v2', directory: '/repo' }, api: { session: {
@@ -83,12 +94,12 @@ describe('session reads', () => {
     } } } as never;
     const args = ' "two words" @src/a.ts @general @skill\nnext  ';
     await executeCommand(scoped, 's', 'Plugin:Echo', args, {
-      agent: 'build', model: 'local/org/model', variant: 'max',
+      agent: 'build',
       attachments: [{ uri: 'data:text/plain;base64,YQ==', filename: 'a.txt' }],
       context: [{ kind: 'file', path: '/repo/src/a.ts', token: '@src/a.ts' },
         { kind: 'agent', name: 'general', token: '@general' }, { kind: 'skill', id: 'skill-id', name: 'skill', token: '@skill' }],
     });
-    expect(calls).toEqual(['agent', 'model', 'command']);
+    expect(calls).toEqual(['agent', 'command']);
     expect(command).toHaveBeenCalledWith({ sessionID: 's', name: 'Plugin:Echo', text: args,
       files: [{ uri: 'data:text/plain;base64,YQ==', name: 'a.txt' }, { uri: 'file:///repo/src/a.ts', name: 'src/a.ts', mention: { start: 13, end: 22, text: '@src/a.ts' } }],
       agents: [{ name: 'general', mention: { start: 23, end: 31, text: '@general' } }],
@@ -98,20 +109,13 @@ describe('session reads', () => {
     await expect(executeCommand(scoped, 's', 'Plugin:Echo', args)).rejects.toThrow('Plugin failed');
     expect(command).toHaveBeenCalledTimes(2);
   });
-  it('switches command sessions to the selected variant and omits Default', async () => {
-    const switchModel = vi.fn();
+  it('uses the session model for commands without switching it again', async () => {
     const client = {
-      api: { session: { switchModel, command: async () => undefined } },
+      api: { session: { command: async () => undefined } },
       __opencode: { contract: 'v2' },
     } as never;
 
-    await executeCommand(client, 's', 'review', '', { model: 'opencode/deepseek', variant: 'max' });
-    await executeCommand(client, 's', 'review', '', { model: 'opencode/deepseek', variant: 'default' });
-
-    expect(switchModel.mock.calls).toEqual([
-      [{ sessionID: 's', model: { providerID: 'opencode', id: 'deepseek', variant: 'max' } }],
-      [{ sessionID: 's', model: { providerID: 'opencode', id: 'deepseek' } }],
-    ]);
+    await expect(executeCommand(client, 's', 'review', '')).resolves.toBeUndefined();
   });
 
   it('compacts and generates transient text through the V2 session endpoints', async () => {

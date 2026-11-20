@@ -490,7 +490,7 @@ with large project catalogs if storage growth becomes visible.
 
 The app splits persisted connection data:
 
-- server URL and username (and saved connection profile metadata such as the profile name and model selection) live in AsyncStorage
+- server URL and username (and saved connection profile metadata such as the profile name and catalog/routing preferences) live in AsyncStorage
 - the active connection password and each saved profile password live in Keychain/Keystore-backed SecureStore via `shared/storage/connection-password.ts` and `shared/storage/connection-profiles.ts`, never in AsyncStorage
 - legacy plaintext `settings.password` is migrated to SecureStore and stripped during hydration
 - `opencode-mobile.widget-snapshot` stores bounded routing data, counts/status, timestamps and enabled reply/request/plan excerpts. Authentication credentials, raw request metadata and tool output are excluded; disable Show widget previews to remove excerpts.

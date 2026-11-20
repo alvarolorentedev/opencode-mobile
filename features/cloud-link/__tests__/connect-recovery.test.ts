@@ -140,7 +140,7 @@ async function fixture({ expired = false, missing = false, storedSession = true,
   const input: any = {
     isHydrated: true, settingsRef: ref(undefined), connectionRef: ref({ status: 'idle' }), activeProjectPathRef: ref('/fixture'),
     serverGenerationRef: ref(0), scopeGenerationRef: ref(0), catalogGenerationRef: ref(new WeakMap()),
-    initialConnectStartedRef: ref(false), serverContractRef: ref('v2'), serverProjectsRef: ref([]), chatPreferencesRef: ref({ enabledModelIds: [], recentModelIds: [], providerModelSelections: {} }),
+    initialConnectStartedRef: ref(false), serverContractRef: ref('v2'), serverProjectsRef: ref([]), chatPreferencesRef: ref({ enabledModelIds: [], recentModelIds: [] }),
     clearProjectState: () => { resets++; },
     softResetProjectState: () => { softResets++; },
     isCurrentCatalogClient: (client: any) => input.catalogGenerationRef.current.get(client) === input.serverGenerationRef.current,

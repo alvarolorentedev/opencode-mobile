@@ -49,8 +49,6 @@ const optionalNumber = (transform: (value: number) => number) => z.unknown().tra
 
 const ChatPreferencesSchema = z.object({
   mode: optionalString,
-  providerId: optionalString,
-  modelId: optionalString,
   language: optionalString,
   openingScreen: z.enum(OPENING_SCREENS).optional().catch(undefined),
   speechLocale: optionalString,
@@ -73,9 +71,6 @@ const ChatPreferencesSchema = z.object({
   knownModelIds: z.array(z.string()).optional().catch(undefined),
   autoEnableNewModels: optionalBoolean,
   recentModelIds: z.array(z.string()).optional().catch(undefined),
-  providerModelSelections: z.record(z.string(), z.string()).optional().catch(undefined),
-  agentModelSelections: z.record(z.string(), z.string()).optional().catch(undefined),
-  modelVariantSelections: z.record(z.string(), z.union([z.string(), z.null()])).optional().catch(undefined),
   autoModel: z.unknown().transform((value) => (
     value === undefined ? undefined : normalizeAutoModelPreferences(value)
   )).optional(),

@@ -107,6 +107,7 @@ export type Agent = {
     model?: {
         providerID: string;
         modelID: string;
+        variant?: string;
     };
     permission?: PermissionRuleset;
     options?: Record<string, unknown>;

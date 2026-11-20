@@ -8,5 +8,6 @@ export function toAgentOption(agent: Agent): AgentOption {
     description: agent.description,
     mode: agent.mode,
     hidden: agent.hidden,
+    model: agent.model,
   };
 }

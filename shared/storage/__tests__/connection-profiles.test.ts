@@ -179,13 +179,9 @@ describe('connection profiles', () => {
         username: ' alice ',
         ignored: 'nope',
         modelPreferences: {
-          providerId: 'openai',
-          modelId: 'gpt-5',
           enabledModelIds: ['openai/gpt-5'],
           knownModelIds: ['openai/gpt-5', 'openai/gpt-4.1'],
           autoEnableNewModels: false,
-          providerModelSelections: { openai: 'gpt-5' },
-          modelVariantSelections: { 'openai/gpt-5': 'high', 'openai/other': null },
           recentModelIds: ['openai/gpt-5'],
           mode: 'plan',
           autoApprove: true,
@@ -198,44 +194,29 @@ describe('connection profiles', () => {
         serverUrl: 'https://Example.com/OpenCode',
         username: 'alice',
         modelPreferences: {
-          providerId: 'openai',
-          modelId: 'gpt-5',
           enabledModelIds: ['openai/gpt-5'],
           knownModelIds: ['openai/gpt-5', 'openai/gpt-4.1'],
           autoEnableNewModels: false,
-          providerModelSelections: { openai: 'gpt-5' },
-          modelVariantSelections: { 'openai/gpt-5': 'high', 'openai/other': null },
           recentModelIds: ['openai/gpt-5'],
           mode: 'plan',
           autoApprove: true,
         },
       });
 
-      // Every server-scoped preference must survive a profile save, not only the
-      // model fields, so a rebuilt workspace can restore the full selection.
+      // Server-scoped catalog and routing preferences survive a profile save.
       const autoModel = { enabled: false, classifier: 'local', tiers: { simple: 'auto', standard: 'auto', complex: 'auto' }, protectLongChats: true };
       assert.deepEqual(pickModelPreferences({
-        providerId: 'openai',
-        modelId: 'gpt-5',
         enabledModelIds: ['openai/gpt-5'],
         knownModelIds: ['openai/gpt-5', 'openai/gpt-4.1'],
         autoEnableNewModels: false,
-        providerModelSelections: { openai: 'gpt-5' },
-        agentModelSelections: { plan: 'openai/gpt-5' },
-        modelVariantSelections: { 'openai/gpt-5': 'high' },
         recentModelIds: ['openai/gpt-5'],
         mode: 'plan',
         autoApprove: true,
         autoModel,
       } as any), {
-        providerId: 'openai',
-        modelId: 'gpt-5',
         enabledModelIds: ['openai/gpt-5'],
         knownModelIds: ['openai/gpt-5', 'openai/gpt-4.1'],
         autoEnableNewModels: false,
-        providerModelSelections: { openai: 'gpt-5' },
-        agentModelSelections: { plan: 'openai/gpt-5' },
-        modelVariantSelections: { 'openai/gpt-5': 'high' },
         recentModelIds: ['openai/gpt-5'],
         mode: 'plan',
         autoApprove: true,
@@ -243,8 +224,8 @@ describe('connection profiles', () => {
       });
     }
 
-    // 2. Malformed profiles and malformed model preferences are dropped instead of
-    // hydrating partial state.
+    // 2. Malformed retained preferences are dropped; removed model-selection
+    // fields are ignored as unknown legacy data.
     {
       const base = { id: 'p1', name: 'Home', serverUrl: 'https://example.com', username: '' };
       assert.equal(toConnectionProfile(null), undefined);
@@ -255,13 +236,9 @@ describe('connection profiles', () => {
       assert.equal(toConnectionProfile({ ...base, serverUrl: '' }), undefined);
       assert.equal(toConnectionProfile({ ...base, username: 5 }), undefined);
       assert.equal(toConnectionProfile({ ...base, modelPreferences: [] }), undefined);
-      assert.equal(toConnectionProfile({ ...base, modelPreferences: { providerId: 5 } }), undefined);
-      assert.equal(toConnectionProfile({ ...base, modelPreferences: { modelId: {} } }), undefined);
       assert.equal(toConnectionProfile({ ...base, modelPreferences: { enabledModelIds: [1] } }), undefined);
       assert.equal(toConnectionProfile({ ...base, modelPreferences: { knownModelIds: [1] } }), undefined);
       assert.equal(toConnectionProfile({ ...base, modelPreferences: { autoEnableNewModels: 'yes' } }), undefined);
-      assert.equal(toConnectionProfile({ ...base, modelPreferences: { providerModelSelections: { a: 1 } } }), undefined);
-      assert.equal(toConnectionProfile({ ...base, modelPreferences: { modelVariantSelections: { a: 1 } } }), undefined);
       assert.equal(toConnectionProfile({ ...base, modelPreferences: { recentModelIds: 'x' } }), undefined);
       assert.equal(toConnectionProfile({ ...base, modelPreferences: { mode: 5 } }), undefined);
       assert.equal(toConnectionProfile({ ...base, modelPreferences: { autoApprove: 'yes' } }), undefined);
@@ -269,10 +246,11 @@ describe('connection profiles', () => {
       // Absent or empty preferences stay absent rather than becoming blank values.
       assert.deepEqual(toConnectionProfile({ ...base, modelPreferences: null }), base);
       assert.deepEqual(toConnectionProfile({ ...base, modelPreferences: {} }), base);
+      assert.deepEqual(toConnectionProfile({ ...base, modelPreferences: { modelId: 'legacy', agentModelSelections: { build: 'legacy' }, modelVariantSelections: { legacy: 'high' } } }), base);
     }
 
     // 3. Hydration drops corrupt and malformed entries individually, rewrites the
-    // stored value with the explicit model, and never crashes on bad JSON.
+    // stored value with explicit fields only, and never crashes on bad JSON.
     {
       resetStorage();
       await asyncStorage.setItem(storageKeys.CONNECTION_PROFILES_STORAGE_KEY, '{not json');
@@ -285,7 +263,7 @@ describe('connection profiles', () => {
 
       const stored = [
         { id: 'keep', name: 'Keep', serverUrl: 'https://a.example', username: 'u', password: 'leaked', extra: true },
-        { id: 'bad-prefs', name: 'Bad', serverUrl: 'https://b.example', username: '', modelPreferences: { providerId: 5 } },
+        { id: 'bad-prefs', name: 'Bad', serverUrl: 'https://b.example', username: '', modelPreferences: { enabledModelIds: [1] } },
         { name: 'missing id', serverUrl: 'https://c.example', username: '' },
       ];
       g.__profilesTestAsyncStorage.set(storageKeys.CONNECTION_PROFILES_STORAGE_KEY, JSON.stringify(stored));
@@ -435,12 +413,12 @@ describe('connection profiles', () => {
       });
       await entered.promise;
       const cloud = saveConnectProfile('https://api.opencodecloud.link', { server_url: 'https://cloud.test', machine_id: 'machine', machine_name: 'Cloud', device_id: 'device', device_secret: 'cloud-secret', expires_at: new Date(Date.now() + 60_000).toISOString() });
-      const preferences = mutateConnectionProfiles(async (stored: any, save: any) => save(stored.map((profile: any) => profile.id === 'manual' ? { ...profile, modelPreferences: { modelId: 'model' } } : profile)));
+      const preferences = mutateConnectionProfiles(async (stored: any, save: any) => save(stored.map((profile: any) => profile.id === 'manual' ? { ...profile, modelPreferences: { enabledModelIds: ['provider/model'] } } : profile)));
       credential.resolve(); await Promise.all([edit, cloud, preferences]);
       const stored = await loadConnectionProfiles();
       assert.equal(stored.length, 2);
       assert.equal(stored.find((profile: any) => profile.id === 'manual')!.name, 'Edited');
-      assert.equal(stored.find((profile: any) => profile.id === 'manual')!.modelPreferences!.modelId, 'model');
+      assert.deepEqual(stored.find((profile: any) => profile.id === 'manual')!.modelPreferences!.enabledModelIds, ['provider/model']);
       assert.equal(await getProfilePassword('manual'), 'manual-secret');
       assert.equal(await getProfilePassword((await cloud).id), 'cloud-secret');
       await assert.rejects(mutateConnectionProfiles(async () => { throw new Error('failed writer'); }), /failed writer/);

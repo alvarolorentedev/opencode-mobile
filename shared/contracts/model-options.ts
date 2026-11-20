@@ -20,7 +20,7 @@ export type ModelOption = {
   pricing?: Model['cost'];
 };
 
-export type AgentOption = Partial<Pick<Agent, 'mode' | 'hidden'>> & {
+export type AgentOption = Partial<Pick<Agent, 'mode' | 'hidden' | 'model'>> & {
   id: string;
   label: string;
   description?: string;

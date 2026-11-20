@@ -147,15 +147,15 @@ Behavior:
 - if no active session exists, the app creates or resolves one first
 - local/mobile file URIs are read and converted to data URLs before sending because the server cannot reach device-local paths
 - remote `http` and `https` attachment URLs are passed through unchanged
-- the selected model must advertise attachment support
+- the active session's effective model must advertise attachment support
 - local files larger than 10 MB are rejected before base64 encoding
-- request body includes selected agent, selected model, and generated system prompt derived from preferences
+- submission includes the selected agent and generated system prompt; the session's model comes from `Session.model`, with explicit composer choices already stored through `session.switchModel`
 
 After submission:
 
 - active session is refreshed
 - transcript, diff, and todos are refreshed
-- untitled sessions are summarized using the selected model when possible
+- untitled sessions are summarized using the active session's model when possible
 - a pending local-notification tracker is created for the session
 
 ### 5. Watch the Session Progress
@@ -444,22 +444,18 @@ Behavior:
 - model choices are also filtered by the enabled-model list from Settings
 - the picker shows the provider alongside the selected model, groups results by provider, and searches provider/model names and IDs
 - the picker pins the currently selected model and the recently used models at the top; these sections hide while a search query is active
-- selecting a model updates both `providerId` and `modelId` and records the model in the recent list
-- the initial model follows the server config (`GET /config` -> `model`, variant-tolerant); a stored selection wins when still available
-- when neither the stored nor the server-configured model resolves, no model is auto-picked: the picker shows `Select model` and prompts are sent without a model so the server default applies, instead of silently sending a possibly blocked model
+- the picker reflects the active session's model and variant; selecting a model or reasoning level immediately updates that session through `session.switchModel` and records the model in the recent list
+- when the session has no explicit model, the picker reflects the server's effective agent/config default. New sessions keep that default unless the user chooses an override
+- legacy app-level model defaults are ignored; they are not copied into a session because they cannot be assigned safely across existing sessions
+- OpenCode 1 does not expose the supported session model-switch operation, so manual model and variant selection is available on OpenCode 2 only
 - discovered model metadata comes from nested attachment/input modality, tool-call, reasoning, status, and context/output limit capabilities
-- OpenCode 2 preserves server-reported model variant IDs, shows `Default` plus the selected model's variants, and applies a selected variant before each prompt or command; models without variants hide the selector
-- variant choices persist per model, stale variants fall back to `Default`, and a matching active session's valid server variant is used when that model has no saved choice
+- OpenCode 2 preserves server-reported model variant IDs, shows `Default` plus the active session's model variants, and stores the choice on the session; models without variants hide the selector
+- commands and prompts use the session's stored model. Auto-routing may temporarily switch the session for a routed turn; the server records the resulting session model
 - on OpenCode 1, the existing Low/Default/High reasoning control continues to affect the generated system prompt; OpenCode 2 reasoning selection is a server model variant, not a prompt hint
 
-## Model Memory
-
-The composer remembers the latest model per agent. Switching Build, Plan or a
-custom agent restores that agent's last explicit model; an agent without one
-sends no model override, so the server/agent default applies. Onboarding no
-longer asks for a global default model. Existing single-model preferences are
-migrated to the agent active at upgrade time. See
-[ADR 0037](../adr/0037-per-agent-model-memory.md).
+The session's model choice takes precedence over agent and config defaults. A
+new session without an explicit choice follows OpenCode's defaults. See
+[ADR 0046](../adr/0046-session-owned-model-selection.md).
 
 ## Session Title Summarization
 
@@ -514,7 +510,7 @@ Behavior:
 - `Edit` opens the same form for that connection: for a saved connection it updates the stored profile (and the live settings when it is active), for the current unsaved connection it updates the live settings only
 - editing the active connection never reconnects on its own; the row's Reconnect action does that, so an in-flight session is not dropped
 - the active connection cannot be deleted; other connections offer Delete with a confirmation
-- selecting Connect on another connection switches through `switchConnection()`, which persists the outgoing profile's model selection, restores the target profile's selection, clears all server-derived state, and reconnects with the target credentials
+- selecting Connect on another connection switches through `switchConnection()`, which persists the outgoing profile's catalog and routing preferences, restores the target profile's, clears all server-derived state, and reconnects with the target credentials
 - if the focused connection errors or is disconnected while another enabled connection is healthy, chat focus moves automatically to the last healthy server (or the next connected server) and is persisted; the failed connection remains available in Connection management for Reconnect, but disconnected, connecting and unavailable servers are omitted from server and project selectors
 - retryable connect failures retry automatically (1/2/5/10/20 s) while the workspace is visible and online; auth, entitlement, and incompatible-server failures require the user's action
 - the Chat header shows a compact offline/reconnecting/polling/slow-link notice. Offline pauses SSE retries and polling; connectivity restoration reopens the stream and runs a critical reconcile
@@ -1009,7 +1005,7 @@ iOS widgets and Live Activities remain [deferred](./parity/ios-widget.md).
 The following values are persisted locally:
 
 - connection settings and saved connection profiles (credentials only in SecureStore)
-- chat preferences (per active connection; each profile also keeps its model selection)
+- chat preferences (per active connection; each profile also keeps its catalog and auto-routing preferences)
 - active project path
 - last session ID by connection scope and project
 - session list/status caches by connection scope and project

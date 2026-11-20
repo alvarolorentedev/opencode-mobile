@@ -8,7 +8,7 @@ import type { Config , ProviderAuthValues } from '@/shared/protocol/opencode/typ
 import type { CachedCapabilities } from '@/features/ai/services/capabilities-snapshot';
 import { getClassifierModelId } from '@/features/ai/model/opencode-auto-model';
 import type { ModelOption } from '@/shared/contracts/model-options';
-import { getConfiguredProviderIds, getInitialMode, getInitialModelId, getInitialProviderId, getModelIdForProvider, getVisibleModels, reconcileEnabledModelIds, recordRecentModelId } from '@/features/ai/model/opencode-model-selection';
+import { getConfiguredProviderIds, getInitialMode, getVisibleModels, reconcileEnabledModelIds } from '@/features/ai/model/opencode-model-selection';
 import type { ChatPreferences } from '@/shared/preferences/opencode-preferences';
 import type { ProviderOption } from '@/features/ai/model/types';
 import { useQueryClient } from '@tanstack/react-query';
@@ -144,32 +144,11 @@ export function useCapabilitiesActions({
         current.knownModelIds,
         current.autoEnableNewModels,
       );
-      const enabledModels = configuredModels.filter((model) => enabledModelIds.includes(model.id));
       const mode = getInitialMode(result.agents, result.config, current.mode) ?? current.mode;
-      // Existing installs stored one global model. Seed it to the current agent
-      // once so the upgrade keeps the same selection.
-      const storedAgentSelections = current.agentModelSelections ?? {};
-      const agentModelSelections = Object.keys(storedAgentSelections).length === 0 && current.modelId && mode
-        ? { [mode]: current.modelId }
-        : storedAgentSelections;
-      const preferredModelId = agentModelSelections[mode];
-      const preferredProviderId = preferredModelId?.split('/')[0];
-      const nextProviderId = getInitialProviderId(configuredModels, result.config, preferredProviderId, preferredModelId);
-      const safeProviderId = nextProviderId && enabledModels.some((model) => model.providerID === nextProviderId)
-        ? nextProviderId
-        : getInitialProviderId(enabledModels, result.config, preferredProviderId, preferredModelId);
 
       return {
         ...current,
         mode,
-        providerId: safeProviderId,
-        modelId: getModelIdForProvider(
-          enabledModels,
-          safeProviderId,
-          getInitialModelId(enabledModels, result.config, preferredModelId),
-          safeProviderId ? current.providerModelSelections[safeProviderId] : undefined,
-        ),
-        agentModelSelections,
         enabledModelIds,
         knownModelIds,
         autoApprove: client.__opencode.contract === 'v2' ? current.autoApprove : false,
@@ -287,52 +266,12 @@ export function useCapabilitiesActions({
         updateKnownModelIds,
         current.autoEnableNewModels,
       );
-      const enabledModels = configuredModels.filter((model) => enabledModelIds.includes(model.id));
-      const nextMode = patch.mode ?? current.mode;
-      const switchingMode = patch.mode !== undefined && patch.mode !== current.mode;
-      const agentModelSelections = current.agentModelSelections ?? {};
-      const selectedForAgent = agentModelSelections[nextMode];
-      const requestedModelId = patch.modelId ?? (switchingMode ? selectedForAgent : current.modelId);
-      const requestedProviderId = patch.providerId ?? (switchingMode ? selectedForAgent?.split('/')[0] : current.providerId);
-      const safeProviderId = requestedProviderId && enabledModels.some((model) => model.providerID === requestedProviderId)
-        ? requestedProviderId
-        : getInitialProviderId(enabledModels, undefined, requestedProviderId, requestedModelId);
-      const nextProviderModelSelections = patch.modelId
-        ? {
-            ...current.providerModelSelections,
-            [patch.providerId ?? safeProviderId ?? patch.modelId.split('/')[0]]: patch.modelId,
-          }
-        : current.providerModelSelections;
-      const nextModelId = getModelIdForProvider(
-        enabledModels,
-        safeProviderId,
-        requestedModelId,
-        safeProviderId ? nextProviderModelSelections[safeProviderId] : undefined,
-      );
-      const nextAgentModelSelections = patch.modelId && nextMode
-        ? { ...agentModelSelections, [nextMode]: patch.modelId }
-        : agentModelSelections;
-
       return {
         ...current,
         ...patch,
         autoModel: patch.autoModel ? normalizeAutoModelPreferences(patch.autoModel) : current.autoModel,
-        modelVariantSelections: patch.modelVariantSelections
-          ? { ...current.modelVariantSelections, ...patch.modelVariantSelections }
-          : current.modelVariantSelections,
-        providerId: safeProviderId,
-        modelId: nextModelId,
-        agentModelSelections: nextAgentModelSelections,
         enabledModelIds,
         knownModelIds,
-        recentModelIds: recordRecentModelId(current.recentModelIds, patch.modelId),
-        providerModelSelections:
-          safeProviderId && nextModelId
-            ? {
-                ...nextProviderModelSelections,
-                [safeProviderId]: nextModelId,
-              }
-            : nextProviderModelSelections,
       };
     });
   }, [availableModels, availableProviders, setChatPreferences]);

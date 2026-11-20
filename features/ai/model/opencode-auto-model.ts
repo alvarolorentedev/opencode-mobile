@@ -145,7 +145,6 @@ export function resolveAutoModelSelection(input: {
   models: ModelOption[];
   defaultModelId?: string;
   currentModel?: { providerID: string; id: string; variant?: string };
-  modelVariantSelections?: Record<string, string | null>;
   attachments?: { mime?: string }[];
   contextTokens?: number;
   promptTokens?: number;
@@ -186,7 +185,7 @@ export function resolveAutoModelSelection(input: {
   const tierVariant = input.preferences.tierVariants?.[input.tier];
   const selectedVariant = tierVariant && model.variants.some((candidate) => candidate.id === tierVariant)
     ? tierVariant
-    : input.modelVariantSelections?.[model.id];
+    : currentId === model.id ? input.currentModel?.variant : undefined;
   const variant = selectedVariant && model.variants.some((candidate) => candidate.id === selectedVariant)
     ? selectedVariant
     : undefined;
@@ -195,6 +194,6 @@ export function resolveAutoModelSelection(input: {
     model,
     tier: input.tier,
     ...(variant ? { variant } : {}),
-    sameAsCurrent: currentId === model.id,
+    sameAsCurrent: currentId === model.id && input.currentModel?.variant === variant,
   };
 }

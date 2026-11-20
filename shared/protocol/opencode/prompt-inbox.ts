@@ -9,8 +9,6 @@ export type PromptContextItem =
   | { kind: 'skill'; id: string; name: string; token: string };
 export type CommandOptions = {
   agent?: string;
-  model?: string;
-  variant?: string;
   messageId?: string;
   attachments?: PromptAttachment[];
   context?: PromptContextItem[];

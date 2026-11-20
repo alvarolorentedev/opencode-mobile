@@ -10,7 +10,7 @@ import { Platform, View } from 'react-native';
 
 import { getAutoModelSuggestions } from '@/features/ai/model/opencode-auto-model';
 import { getModelVariantLabel } from '@/features/ai/model/model-variant-label';
-import { getVisibleModels } from '@/features/ai/model/opencode-model-selection';
+import { getVisibleModels, resolveConfigModelId } from '@/features/ai/model/opencode-model-selection';
 import type { ModelComplexity } from '@/shared/preferences/auto-model';
 import { AUTO_MODEL_PACK } from '@/features/ai/model/auto-model/catalog';
 import type { ServerContract } from '@/shared/protocol/opencode/client';
@@ -22,6 +22,7 @@ import { SettingsDisclosure } from '@/shared/ui/settings/settings-panel';
 
 type AutoModelSectionProps = {
   availableModels: ModelOption[];
+  currentConfig?: import('@/shared/protocol/opencode/types').Config;
   configuredProviders: ProviderOption[];
   chatPreferences: ChatPreferences;
   contract: ServerContract;
@@ -38,6 +39,7 @@ function formatBytes(bytes: number) {
 
 export function AutoModelSection({
   availableModels,
+  currentConfig,
   configuredProviders,
   chatPreferences,
   contract,
@@ -49,7 +51,7 @@ export function AutoModelSection({
   const setup = useAutoModelSetup(modelRouting.refreshAvailability);
   const autoModel = chatPreferences.autoModel;
   const visibleModels = getVisibleModels(availableModels, configuredProviders, chatPreferences.enabledModelIds);
-  const suggestions = getAutoModelSuggestions(visibleModels, chatPreferences.modelId);
+  const suggestions = getAutoModelSuggestions(visibleModels, resolveConfigModelId(visibleModels, currentConfig?.model));
   const localSupported = Platform.OS !== 'web';
   const serverSupported = contract === 'v2';
   const serverUsable = serverSupported && visibleModels.length > 0 && modelRouting.serverStatus !== 'unsupported';

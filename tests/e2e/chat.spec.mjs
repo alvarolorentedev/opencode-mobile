@@ -355,7 +355,10 @@ test('composer exposes agent selection without losing drafts', async ({ page, re
   await expect(prompt).toHaveValue('Keep this draft');
   await model.click();
   await picker.getByTestId('chat-model-picker-search').fill('deepseek');
+  const modelSwitch = page.waitForResponse((response) => response.request().method() === 'POST'
+    && new URL(response.url()).pathname.endsWith('/model'));
   await picker.getByRole('button', { name: /DeepSeek V4\.1 Flash Free/ }).click();
+  await modelSwitch;
   await expect(model).toHaveAccessibleName(/DeepSeek V4\.1 Flash Free/);
   await agent.click();
   const agentPicker = page.getByTestId('chat-agent-picker');
@@ -366,19 +369,12 @@ test('composer exposes agent selection without losing drafts', async ({ page, re
   await agentPicker.getByRole('radio', { name: 'Plan', exact: true }).click();
   await expect(agentPicker).toHaveCount(0);
   await expect(agent).toHaveAccessibleName('Agent: Plan');
-  await expect(model).toHaveAccessibleName('GPT-4.1 mini · OpenAI');
+  await expect(model).toHaveAccessibleName(/DeepSeek V4\.1 Flash Free/);
   await expect(prompt).toHaveValue('Keep this draft');
-  await model.click();
-  await picker.getByRole('button', { name: /^GPT-4\.1 mini / }).last().click();
-  await expect(model).toHaveAccessibleName('GPT-4.1 mini · OpenAI');
   await agent.click();
   await agentPicker.getByRole('radio', { name: 'Build', exact: true }).click();
   await expect(agent).toHaveAccessibleName('Agent: Build');
   await expect(model).toHaveAccessibleName(/DeepSeek V4\.1 Flash Free/);
-  await expect.poll(() => page.evaluate(() => JSON.parse(localStorage.getItem('opencode-mobile.chat-preferences')).agentModelSelections)).toMatchObject({
-    build: 'opencode/deepseek-v4.1-flash-free',
-    plan: 'openai/openai/gpt-4.1-mini',
-  });
   await agent.click();
   await agentPicker.getByRole('radio', { name: 'Plan', exact: true }).click();
   await expect(agent).toHaveAccessibleName('Agent: Plan');
@@ -395,17 +391,41 @@ test('composer exposes agent selection without losing drafts', async ({ page, re
   await expect(page.getByTestId('chat-model-picker')).toHaveCount(0);
 });
 
-test('model variants follow the server catalog, reach sessions, and persist per model', async ({ page, request }) => {
+test('new sessions use server defaults without an app model override', async ({ page, request }) => {
+  await resetScenario(request, 'reasoning-variants');
+  await openReadyChat(page);
+  const modelSwitches = [];
+  page.on('request', (request) => {
+    if (request.method() === 'POST' && new URL(request.url()).pathname.endsWith('/model')) modelSwitches.push(request);
+  });
+  const promptRequest = page.waitForRequest((request) => request.method() === 'POST'
+    && new URL(request.url()).pathname.endsWith('/prompt'));
+  await sendPrompt(page, 'Use the configured server default');
+  const prompt = await promptRequest;
+  expect(prompt.postDataJSON()).not.toHaveProperty('model');
+  await expect(page.getByText(/Finished: Use the configured server default/).first()).toBeVisible({ timeout: 20_000 });
+  expect(modelSwitches).toHaveLength(0);
+});
+
+test('model and variant choices persist on the session', async ({ page, request }) => {
   await resetScenario(request, 'reasoning-variants');
   await openReadyChat(page);
 
-  const model = page.getByTestId('chat-model-picker-trigger');
+  const model = page.locator('[data-testid="chat-model-picker-trigger"]:visible');
   await expect(model).toHaveAccessibleName('GPT-4.1 mini · OpenAI');
   await model.click();
   const picker = page.getByTestId('chat-model-picker');
   await expect(picker.getByRole('slider', { name: 'Reasoning', exact: true })).toHaveCount(0);
   await picker.getByTestId('chat-model-picker-search').fill('deepseek');
+  const modelSwitches = [];
+  page.on('request', (request) => {
+    if (request.method() === 'POST' && new URL(request.url()).pathname.endsWith('/model')) modelSwitches.push(request);
+  });
+  const selectedModelSwitch = page.waitForResponse((response) => response.request().method() === 'POST'
+    && new URL(response.url()).pathname.endsWith('/model'));
   await picker.getByRole('button', { name: /DeepSeek V4\.1 Flash Free/ }).click();
+  const selectedModelResponse = await selectedModelSwitch;
+  expect(selectedModelResponse.request().postDataJSON()).toEqual({ model: { id: 'deepseek-v4.1-flash-free', providerID: 'opencode' } });
   await expect(model).toHaveAccessibleName('DeepSeek V4.1 Flash Free · OpenCode · Default');
 
   await model.click();
@@ -413,26 +433,51 @@ test('model variants follow the server catalog, reach sessions, and persist per 
   await expect(variant).toHaveAttribute('aria-valuemax', '3');
   await expect(variant).toHaveAttribute('aria-valuetext', 'Default');
   await variant.focus();
+  const lowSwitch = page.waitForResponse((response) => response.request().method() === 'POST'
+    && new URL(response.url()).pathname.endsWith('/model'));
   await variant.press('ArrowRight');
+  await lowSwitch;
   await expect(variant).toHaveAttribute('aria-valuetext', 'Low');
+  const highSwitch = page.waitForResponse((response) => response.request().method() === 'POST'
+    && new URL(response.url()).pathname.endsWith('/model'));
   await variant.press('ArrowRight');
+  await highSwitch;
   await expect(variant).toHaveAttribute('aria-valuetext', 'High');
+  const maxSwitch = page.waitForResponse((response) => response.request().method() === 'POST'
+    && new URL(response.url()).pathname.endsWith('/model'));
   await variant.press('ArrowRight');
+  await maxSwitch;
   await expect(variant).toHaveAttribute('aria-valuetext', 'Max');
   await page.keyboard.press('Escape');
   await expect(model).toHaveAccessibleName('DeepSeek V4.1 Flash Free · OpenCode · Max');
-  await expect.poll(() => page.evaluate(() => JSON.parse(localStorage.getItem('opencode-mobile.workspaces')).connections.find((entry) => entry.id === JSON.parse(localStorage.getItem('opencode-mobile.workspaces')).focus.connectionId).preferences.modelVariantSelections['opencode/deepseek-v4.1-flash-free'])).toBe('max');
 
-  const maxSwitch = page.waitForResponse((response) => response.request().method() === 'POST'
-    && new URL(response.url()).pathname.endsWith('/model'));
+  const switchCountBeforePrompt = modelSwitches.length;
   await sendPrompt(page, 'Use the maximum reasoning variant');
-  const maxResponse = await maxSwitch;
-  expect(maxResponse.request().postDataJSON()).toEqual({ model: { id: 'deepseek-v4.1-flash-free', providerID: 'opencode', variant: 'max' } });
+  await expect(page.getByText(/Finished: Use the maximum reasoning variant/).first()).toBeVisible({ timeout: 20_000 });
+  expect(modelSwitches).toHaveLength(switchCountBeforePrompt);
   const stateResponse = await request.get(`${backendOrigin()}/__control/state`);
   expect(stateResponse.ok()).toBeTruthy();
-  expect((await stateResponse.json()).sessions[0].model).toEqual({ id: 'deepseek-v4.1-flash-free', providerID: 'opencode', variant: 'max' });
+  const state = await stateResponse.json();
+  const selectedSessionId = state.sessions[0].id;
+  expect(state.sessions[0].model).toEqual({ id: 'deepseek-v4.1-flash-free', providerID: 'opencode', variant: 'max' });
   const maxReply = page.locator('[data-testid^="transcript-message-"]').filter({ hasText: 'Finished: Use the maximum reasoning variant.' });
   await expect(maxReply.getByText('DeepSeek V4.1 Flash Free · Max', { exact: true })).toBeVisible();
+
+  const otherProject = '/workspace/secondary-project';
+  const otherSessionResponse = await request.post(`${backendOrigin()}/api/session`, {
+    data: { title: 'Other project model choice', location: { directory: otherProject } },
+  });
+  expect(otherSessionResponse.ok()).toBeTruthy();
+  const otherSession = (await otherSessionResponse.json()).data;
+  const otherModelResponse = await request.post(`${backendOrigin()}/api/session/${otherSession.id}/model`, {
+    data: { model: { id: 'gpt-4.1-mini', providerID: 'openai' } },
+  });
+  expect(otherModelResponse.ok()).toBeTruthy();
+
+  await page.goto(`/session/${otherSession.id}?project=${encodeURIComponent(otherProject)}`, { waitUntil: 'domcontentloaded' });
+  await expect(model).toHaveAccessibleName('gpt-4.1-mini · openai', { timeout: 20_000 });
+  await page.goto(`/session/${selectedSessionId}?project=${encodeURIComponent('/workspace/demo-project')}`, { waitUntil: 'domcontentloaded' });
+  await expect(model).toHaveAccessibleName('DeepSeek V4.1 Flash Free · OpenCode · Max', { timeout: 20_000 });
 
   await page.reload();
   await expect(page.getByTestId('chat-prompt-input')).toBeVisible();
@@ -441,16 +486,19 @@ test('model variants follow the server catalog, reach sessions, and persist per 
   await model.click();
   const resetVariant = page.getByRole('slider', { name: 'Reasoning', exact: true });
   await resetVariant.focus();
-  await resetVariant.press('Home');
-  await expect(resetVariant).toHaveAttribute('aria-valuetext', 'Default');
-  await page.keyboard.press('Escape');
-  await expect.poll(() => page.evaluate(() => JSON.parse(localStorage.getItem('opencode-mobile.workspaces')).connections.find((entry) => entry.id === JSON.parse(localStorage.getItem('opencode-mobile.workspaces')).focus.connectionId).preferences.modelVariantSelections['opencode/deepseek-v4.1-flash-free'])).toBe(null);
   const defaultSwitch = page.waitForResponse((response) => response.request().method() === 'POST'
     && new URL(response.url()).pathname.endsWith('/model'));
-  await sendPrompt(page, 'Use the default reasoning variant');
+  await resetVariant.press('Home');
   const defaultResponse = await defaultSwitch;
   expect(defaultResponse.request().postDataJSON()).toEqual({ model: { id: 'deepseek-v4.1-flash-free', providerID: 'opencode' } });
-  expect((await (await request.get(`${backendOrigin()}/__control/state`)).json()).sessions[0].model).toEqual({ id: 'deepseek-v4.1-flash-free', providerID: 'opencode' });
+  await expect(resetVariant).toHaveAttribute('aria-valuetext', 'Default');
+  await page.keyboard.press('Escape');
+  const switchCountBeforeDefaultPrompt = modelSwitches.length;
+  await sendPrompt(page, 'Use the default reasoning variant');
+  await expect(page.getByText(/Finished: Use the default reasoning variant/).first()).toBeVisible({ timeout: 20_000 });
+  expect(modelSwitches).toHaveLength(switchCountBeforeDefaultPrompt);
+  const finalState = await (await request.get(`${backendOrigin()}/__control/state`)).json();
+  expect(finalState.sessions.find((session) => session.id === selectedSessionId).model).toEqual({ id: 'deepseek-v4.1-flash-free', providerID: 'opencode' });
 });
 
 test('starter examples fill without sending and library empty copy follows visible chats', async ({ page, request }) => {

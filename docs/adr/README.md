@@ -88,7 +88,7 @@ coverage, and documentation links.
 | [0034](0034-device-local-project-archive.md) | Device-local project archive marker | Superseded by ADR 0038 |
 | [0035](0035-live-token-highlighting-in-the-composer.md) | Live token highlighting in the composer | Accepted |
 | [0036](0036-flexible-first-with-play-urgency.md) | Flexible-first store updates with a Play urgency override | Accepted |
-| [0037](0037-per-agent-model-memory.md) | Per-agent model memory and explicit auto-model thinking levels | Accepted |
+| [0037](0037-per-agent-model-memory.md) | Per-agent model memory and explicit auto-model thinking levels | Superseded by ADR 0046 |
 | [0038](0038-single-archived-projects-switch.md) | One archived-projects switch in the project picker | Accepted |
 | [0039](0039-plugin-command-reports-as-notices.md) | Plugin command reports render as distinct notices | Accepted |
 | [0040](0040-connection-owned-mission-control.md) | Connection-owned Mission Control activity | Accepted |
@@ -97,6 +97,7 @@ coverage, and documentation links.
 | [0043](0043-react-native-chart-kit.md) | ChartKit for the Mission Control usage chart | Accepted |
 | [0044](0044-shared-session-links.md) | Shared OpenCode session links | Accepted |
 | [0045](0045-queue-only-unsent-prompts.md) | Queue only unsent prompts | Accepted |
+| [0046](0046-session-owned-model-selection.md) | Session-owned model and variant selection | Accepted |
 
 ## Template
 

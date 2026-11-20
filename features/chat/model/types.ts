@@ -47,12 +47,15 @@ export type ChatContextValue = {
   replyToPermission: (requestId: string, reply: 'once' | 'always' | 'reject') => Promise<void>;
   replyToQuestion: (requestId: string, answers: PendingQuestionAnswer[]) => Promise<void>;
   rejectQuestion: (requestId: string) => Promise<void>;
-  commands: Command[];
+  commands: {
+    available: Command[];
+    execute: (sessionId: string, command: string, args: string, input?: Pick<import('@/shared/protocol/opencode/prompt-inbox').CommandOptions, 'attachments' | 'context'>) => Promise<SideQuestionAnswer | void>;
+    executeShell: (sessionId: string, command: string) => Promise<void>;
+  };
   availableSkills: import('@/shared/protocol/opencode/types').Skill[];
   availableReferences: import('@/shared/protocol/opencode/types').Reference[];
   searchProjectFiles: (query: string) => Promise<string[]>;
-  executeCommand: (sessionId: string, command: string, args: string, input?: Pick<import('@/shared/protocol/opencode/prompt-inbox').CommandOptions, 'attachments' | 'context'>) => Promise<SideQuestionAnswer | void>;
-  executeShell: (sessionId: string, command: string) => Promise<void>;
+  switchSessionModel: (sessionId: string, model: NonNullable<import('@/shared/protocol/opencode/types').Session['model']>) => Promise<void>;
   sendPrompt: SendPrompt;
   abortSession: (sessionId: string) => Promise<void>;
   setAutoApprove: (enabled: boolean) => Promise<void>;

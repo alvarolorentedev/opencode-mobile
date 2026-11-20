@@ -224,10 +224,6 @@ export function createSessionAdapter(client: ScopedOpencodeClient): SessionAdapt
       const context = resolvePromptContext(args, options?.context);
       const commandFiles = [...files.map((file) => ({ uri: file.url, name: file.filename || 'Attachment' })), ...context.files];
       if (options?.agent) await client.api!.session.switchAgent({ sessionID: sessionId, agent: options.agent });
-      if (options?.model) {
-        const [providerID, ...id] = options.model.split('/');
-        await client.api!.session.switchModel({ sessionID: sessionId, model: { providerID, id: id.join('/'), ...(options.variant && options.variant !== 'default' ? { variant: options.variant } : {}) } });
-      }
       await client.api!.session.command({ sessionID: sessionId, name: command, text: args,
         ...(commandFiles.length ? { files: commandFiles } : {}),
         ...(context.agents.length ? { agents: context.agents } : {}),

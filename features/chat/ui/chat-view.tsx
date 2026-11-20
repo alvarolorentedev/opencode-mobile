@@ -294,6 +294,10 @@ export function ChatView() {
           selectedAgentLabel={composer.selectedAgentLabel}
           showSendAction={composer.showSendAction}
           selectedVariant={composer.selectedVariant}
+          selectedModelId={composer.selectedModelId}
+          selectedModelFallbackLabel={composer.selectedModelFallbackLabel}
+          onModelSelect={actions.handleModelSelect}
+          onModelVariantChange={actions.handleModelVariantChange}
           autoRoutingEnabled={composer.autoRoutingEnabled}
           autoRoutingAvailable={composer.autoRoutingAvailable}
           onAutoRoutingChange={composer.onAutoRoutingChange}

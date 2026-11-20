@@ -160,8 +160,8 @@ steps). Shared
 navigation derives progress and forward/back destinations from that sequence;
 temporary reconnects retain the AI step and its sign-in dialog. Manual connection
 and Cloud Link pairing both continue to AI & Providers. General Settings edits
-language, the remembered Chat model, and V2 Steer/Append delivery. The model
-field requires a connection; delivery also requires V2.
+language and V2 Steer/Append delivery. Session model choices are made in Chat
+and require OpenCode 2; delivery also requires V2.
 Provider setup embeds the same composition as Settings, including auth dialogs,
 model toggles, account actions, confirmations and feedback. All selections write
 through existing provider actions, and Ready summarizes current provider state.
@@ -933,7 +933,7 @@ Responsibilities:
 Responsibilities:
 
 - configure the active connection (server URL, username, password, custom gateway headers) from its row and reconnect manually; editing applies only after Reconnect
-- add, edit, and delete named connection profiles, and switch between them from the connection list; switching persists the outgoing profile's model selection, restores the target profile's selection, and reconnects with that profile's credentials
+- add, edit, and delete named connection profiles, and switch between them from the connection list; switching persists the outgoing profile's catalog and routing preferences, restores the target profile's, and reconnects with that profile's credentials
 - inspect server health, realtime status, and MCP counts
 - add local or remote MCP servers; connect, disconnect, enable, disable, and complete remote OAuth
 - manage project or user-global MCPs, plugins, skills, and slash commands in Extensions; show the target config path, safety state, and last backup
@@ -1095,7 +1095,7 @@ It spans provider state, timers, speech recognition, TTS, keep-awake, and chat s
 
 ### Capability refresh
 
-Provider/model/agent choices depend on server config, configured providers, current preferences, and stored selections.
+Provider/model/agent catalogs depend on server config and configured providers; enabled-model filtering and the selected agent come from app preferences. A session's explicit model comes from `Session.model`.
 
 ## Interactive Terminal
 

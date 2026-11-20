@@ -104,7 +104,7 @@ function sessionCrudInput(patch: Record<string, unknown> = {}) {
       refreshVcsDiff: async () => [],
       refreshPendingInteractions: async () => undefined,
       refreshActiveSessions: async () => undefined,
-      chatPreferences: { modelId: undefined, modelVariantSelections: {}, mode: 'build', promptDelivery: 'steer' },
+      chatPreferences: { mode: 'build', promptDelivery: 'steer' },
       ...patch,
     },
   };

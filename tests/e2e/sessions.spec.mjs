@@ -258,7 +258,7 @@ test('chat library lists running sessions from other projects', async ({ page, r
   await expect(page.getByTestId('chat-library').getByText('secondary-project', { exact: false }).first()).toBeVisible();
 });
 
-test('saved connections keep sessions, caches, and model preferences separate', async ({ page, request }) => {
+test('saved connections keep sessions, caches, and routing settings separate', async ({ page, request }) => {
   // Two servers, two prompts, and two profile switches need more headroom than
   // a single-flow test.
   test.setTimeout(90_000);
@@ -266,7 +266,7 @@ test('saved connections keep sessions, caches, and model preferences separate', 
   await openReadyChat(page);
 
   // Connection A is the default happy-path server. Give it a session, then
-  // save it as a named connection and give it a non-default model preference.
+  // save it as a named connection and give it a non-default routing setting.
   const serverA = fakeV2Origin();
   await connectToServer(page, serverA);
   await sendPrompt(page, 'Server A session');
@@ -303,8 +303,7 @@ test('saved connections keep sessions, caches, and model preferences separate', 
     await sendPrompt(page, 'Server B session');
     await expect(page.getByText(/Finished: Server B session/).first()).toBeVisible({ timeout: 20_000 });
 
-    // Switching to A restores A's model preference and A's own session list;
-    // Both catalogs stay in V2's mixed list; model selection remains scoped to A.
+    // Switching to A restores its routing setting and session list.
     await goToTab(page, 'Settings');
     await connectToSavedConnection(page, 'Server A');
     await expectConnectedTo(page, new URL(serverA).port);
@@ -315,7 +314,7 @@ test('saved connections keep sessions, caches, and model preferences separate', 
     await expect(page.getByTestId('chat-library').getByRole('button', { name: 'Open Server B session' })).toBeVisible();
     await page.getByTestId('chat-library').getByRole('button', { name: 'Close' }).click();
 
-    // Switching back to B restores B's default model and B's own sessions.
+    // Switching back to B restores B's server default model and its sessions.
     await goToTab(page, 'Settings');
     await connectToSavedConnection(page, 'Server B');
     await expectConnectedTo(page, String(port));

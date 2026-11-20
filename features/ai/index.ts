@@ -3,6 +3,8 @@ export type { CachedCapabilities } from './services/capabilities-snapshot';
 export type { CapabilitiesContextValue } from './model/types';
 export { getModelVariantLabel } from './model/model-variant-label';
 export { getSelectedModelVariant } from './model/opencode-model-selection';
+export { getEffectiveSessionModel } from './model/opencode-model-selection';
+export { recordRecentModelId } from './model/opencode-model-selection';
 export { getVisibleModels } from './model/opencode-model-selection';
 export { ModelPicker } from './ui/model-picker';
 export { ProviderConfigDialog } from './ui/provider-config-dialog';

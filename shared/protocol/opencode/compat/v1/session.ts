@@ -133,14 +133,13 @@ export async function executeCommand(
   sessionId: string,
   command: string,
   args: string,
-  options?: { agent?: string; model?: string; messageId?: string },
+  options?: { agent?: string; messageId?: string },
 ) {
   return (await client.session.command({
     sessionID: sessionId,
     command,
     arguments: args,
     agent: options?.agent,
-    model: options?.model,
     messageID: options?.messageId,
   })).data;
 }

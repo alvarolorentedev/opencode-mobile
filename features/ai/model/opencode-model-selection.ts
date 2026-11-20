@@ -3,24 +3,20 @@ import type { Config } from '@/shared/protocol/opencode/types';
 import { getPrimaryAgents, type ModelOption, type AgentOption } from '@/shared/contracts/model-options';
 
 export function getSelectedModelVariant(
-  modelId: string | undefined,
-  selections: Record<string, string | null>,
+  sessionModel: { providerID: string; id: string; variant?: string } | undefined,
   models: ModelOption[],
-  sessionModel?: { providerID: string; id: string; variant?: string },
 ) {
-  const model = models.find((item) => item.id === modelId);
+  if (!sessionModel) return undefined;
+  const model = findModelOption(models, sessionModel);
   if (!model) return undefined;
-
-  if (Object.prototype.hasOwnProperty.call(selections, model.id)) {
-    const selected = selections[model.id];
-    return selected !== null && model.variants.some((variant) => variant.id === selected) ? selected : undefined;
-  }
-
-  return sessionModel?.providerID === model.providerID
-    && sessionModel.id === model.modelID
-    && model.variants.some((variant) => variant.id === sessionModel.variant)
+  return model.variants.some((variant) => variant.id === sessionModel.variant)
     ? sessionModel.variant
     : undefined;
+}
+
+function findModelOption(models: ModelOption[], modelRef: { providerID: string; id: string }) {
+  return models.find((model) => model.providerID === modelRef.providerID
+    && (model.modelID === modelRef.id || model.id === modelRef.id));
 }
 
 export function getInitialMode(agents: AgentOption[], config?: Config, storedMode?: string) {
@@ -63,62 +59,24 @@ export function resolveConfigModelId(models: ModelOption[], configModel?: string
   return undefined;
 }
 
-export function getInitialModelId(models: ModelOption[], config?: Config, storedModelId?: string) {
-  if (storedModelId && models.some((model) => model.id === storedModelId)) {
-    return storedModelId;
+export function getEffectiveSessionModel(
+  models: ModelOption[],
+  config: Config | undefined,
+  agents: AgentOption[],
+  session?: { agent?: string; model?: { providerID: string; id: string; variant?: string } },
+  fallbackAgentId?: string,
+) {
+  if (session?.model) {
+    const model = findModelOption(models, session.model);
+    return model
+      ? { providerID: model.providerID, id: model.modelID, ...(session.model.variant ? { variant: session.model.variant } : {}) }
+      : session.model;
   }
-
-  // An empty catalog is a transient reconnect state, not proof that the stored
-  // model disappeared. Keeping it lets the next successful read validate it.
-  if (!models.length) {
-    return storedModelId;
-  }
-
-  // No stored or server match: leave unset so prompts fall through to the
-  // server's configured model instead of a possibly blocked auto-pick.
-  return resolveConfigModelId(models, config?.model);
-}
-
-export function getInitialProviderId(models: ModelOption[], config?: Config, storedProviderId?: string, modelId?: string) {
-  if (storedProviderId && models.some((model) => model.providerID === storedProviderId)) {
-    return storedProviderId;
-  }
-
-  if (!models.length) {
-    return storedProviderId;
-  }
-
-  const modelMatch = models.find((model) => model.id === modelId);
-  if (modelMatch) {
-    return modelMatch.providerID;
-  }
-
-  const configModelId = resolveConfigModelId(models, config?.model);
-  const configMatch = configModelId ? models.find((model) => model.id === configModelId) : undefined;
-  if (configMatch) {
-    return configMatch.providerID;
-  }
-
-  return undefined;
-}
-
-export function getModelIdForProvider(models: ModelOption[], providerId?: string, selectedModelId?: string, preferredModelId?: string) {
-  const providerModels = providerId ? models.filter((model) => model.providerID === providerId) : models;
-  if (providerModels.length === 0) {
-    return selectedModelId;
-  }
-
-  if (selectedModelId && providerModels.some((model) => model.id === selectedModelId)) {
-    return selectedModelId;
-  }
-
-  if (preferredModelId && providerModels.some((model) => model.id === preferredModelId)) {
-    return preferredModelId;
-  }
-
-  // No explicit or server-backed choice: leave unset so the server default
-  // applies instead of silently sending a possibly blocked model.
-  return undefined;
+  const agentModel = agents.find((agent) => agent.id === (fallbackAgentId ?? session?.agent))?.model;
+  if (agentModel) return { providerID: agentModel.providerID, id: agentModel.modelID, variant: agentModel.variant };
+  const modelId = resolveConfigModelId(models, config?.model);
+  const model = models.find((candidate) => candidate.id === modelId);
+  return model ? { providerID: model.providerID, id: model.modelID } : undefined;
 }
 
 export function reconcileEnabledModelIds(

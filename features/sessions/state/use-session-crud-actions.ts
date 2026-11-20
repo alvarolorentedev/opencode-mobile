@@ -4,7 +4,7 @@ import { useCallback } from 'react';
 import type { Session, SessionStatus } from '@/shared/protocol/opencode/types';
 import { i18n } from '@/shared/i18n/index';
 import { buildSideQuestionPrompt, isBuiltinSessionCommand, type SideQuestionAnswer } from '@/shared/contracts/session-commands';
-import { getInitialMode, getSelectedModelParts, getSelectedModelVariant } from '@/features/ai/runtime';
+import { getInitialMode } from '@/features/ai/runtime';
 import { persistSessionCache } from '@/features/sessions/services/session-cache';
 import type { SessionCrudInput } from '@/features/sessions/model/action-inputs';
 import type { CommandOptions } from '@/shared/protocol/opencode/prompt-inbox';
@@ -21,7 +21,6 @@ export function useSessionCrudActions({
   availableAgents,
   commands,
   currentConfig,
-  availableModels,
   diffScopeBySessionRef,
   sessions,
   sessionStatuses,
@@ -240,23 +239,12 @@ export function useSessionCrudActions({
     }
     const agent = getInitialMode(availableAgents, currentConfig, chatPreferences.mode);
     if (!agent) throw new Error(i18n.t('chat:composer.noEligibleAgent'));
-    const selected = getSelectedModelParts(chatPreferences.modelId);
-    const variant = client.__opencode?.contract === 'v2'
-      ? getSelectedModelVariant(
-          chatPreferences.modelId,
-          chatPreferences.modelVariantSelections,
-          availableModels,
-          sessions.find((session) => session.id === sessionId)?.model,
-        )
-      : undefined;
     await svcExecuteCommand(client, sessionId, command, args, {
       ...input,
       agent,
-      model: selected ? `${selected.providerID}/${selected.modelID}` : undefined,
-      variant,
     });
     await Promise.all([refreshMessages(sessionId, true), refreshSessions()]).catch(() => undefined);
-  }, [availableAgents, availableModels, commands, currentConfig, isCurrentClient, chatPreferences.mode, chatPreferences.modelId, chatPreferences.modelVariantSelections, client, refreshMessages, refreshSessions, sessions]);
+  }, [availableAgents, commands, currentConfig, isCurrentClient, chatPreferences.mode, client, refreshMessages, refreshSessions]);
 
   const executeShell = useCallback(async (sessionId: string, command: string) => {
     await svcExecuteShell(client, sessionId, command);

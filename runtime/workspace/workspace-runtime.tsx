@@ -17,7 +17,7 @@ type Props = Omit<WorkspaceRuntimeInput, 'setSettings' | 'setChatPreferences' | 
 export const WorkspaceRuntime = memo(function WorkspaceRuntime({ defaults, updateSettings, updatePreferences, publish, forget, ...input }: Props) {
   const id = input.connection.id;
   const key = workspaceKey({ connectionId: id, projectPath: input.projectPath ?? '' });
-  const preferences = useMemo(() => ({ ...defaults, ...serverPreferences(defaultChatPreferences), providerId: undefined, modelId: undefined, ...input.connection.preferences }), [defaults, input.connection.preferences]);
+  const preferences = useMemo(() => ({ ...defaults, ...serverPreferences(defaultChatPreferences), ...input.connection.preferences }), [defaults, input.connection.preferences]);
   const latest = useRef({ settings: input.connection.settings, preferences });
   useLayoutEffect(() => { latest.current = { settings: input.connection.settings, preferences }; });
   const setSettings = useCallback<Dispatch<SetStateAction<OpencodeConnectionSettings>>>((next) => {

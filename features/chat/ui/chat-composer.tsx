@@ -53,6 +53,10 @@ type ChatComposerProps = {
   agentsLoading: boolean;
   showSendAction: boolean;
   selectedVariant?: string;
+  selectedModelId?: string;
+  selectedModelFallbackLabel?: string;
+  onModelSelect: (model: ModelOption) => void;
+  onModelVariantChange: (variant: string | undefined) => void;
   autoRoutingEnabled: boolean;
   autoRoutingAvailable: boolean;
   onAutoRoutingChange: (enabled: boolean) => void;
@@ -100,12 +104,16 @@ export function ChatComposer({
   agentsLoading,
   showSendAction,
   selectedVariant,
+  selectedModelId,
+  selectedModelFallbackLabel,
+  onModelSelect,
+  onModelVariantChange,
   autoRoutingEnabled,
   autoRoutingAvailable,
   onAutoRoutingChange,
   slim = false,
-  updateChatPreferences,
   visibleModels,
+  updateChatPreferences,
   isV2,
   suggestions,
   suggestionsActive,
@@ -129,7 +137,7 @@ export function ChatComposer({
       ? connectionStatus !== 'connected' || isSpeechInputListening
       : connectionStatus !== 'connected' || !isSpeechInputAvailable;
   const autoRoutingActive = autoRoutingEnabled && autoRoutingAvailable;
-  const selectedModel = visibleModels.find((model) => model.id === chatPreferences.modelId);
+  const selectedModel = visibleModels.find((model) => model.id === selectedModelId);
   const reasoningLabel = !autoRoutingActive && selectedModel?.variants.length ? getModelVariantLabel(selectedVariant, t) : undefined;
 
   // Android/web size the input from content-size events. iOS lets the native
@@ -155,21 +163,13 @@ export function ChatComposer({
       compact
       reasoningLabel={reasoningLabel}
       selectedVariant={selectedVariant}
-      onVariantChange={(variant) => {
-        const modelId = chatPreferences.modelId;
-        if (modelId) updateChatPreferences({ modelVariantSelections: { [modelId]: variant ?? null } });
-      }}
-      disabled={visibleModels.length === 0}
+      fallbackLabel={selectedModelFallbackLabel}
+      onVariantChange={onModelVariantChange}
+      disabled={visibleModels.length === 0 || !isV2}
       models={visibleModels}
-      onSelect={(model) => updateChatPreferences({
-        providerId: model.providerID,
-        modelId: model.id,
-        ...(chatPreferences.autoModel.enabled
-          ? { autoModel: { ...chatPreferences.autoModel, enabled: false } }
-          : {}),
-      })}
+      onSelect={onModelSelect}
       recentModelIds={chatPreferences.recentModelIds}
-      selectedModelId={chatPreferences.modelId}
+      selectedModelId={selectedModelId}
       slim={slim}
       autoRoutingEnabled={autoRoutingActive}
       autoRoutingAvailable={autoRoutingAvailable}

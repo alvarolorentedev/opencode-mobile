@@ -5,6 +5,8 @@ export { getConfiguredProviderIds } from './model/opencode-model-selection';
 export { getConfiguredProviders } from './model/selectors';
 export { getSelectedModelParts } from './model/opencode-model-selection';
 export { getSelectedModelVariant } from './model/opencode-model-selection';
+export { getEffectiveSessionModel } from './model/opencode-model-selection';
+export { recordRecentModelId } from './model/opencode-model-selection';
 export { hydrateCapabilitiesSnapshot } from './services/capabilities-snapshot';
 export { migrateCapabilitiesSnapshots } from './services/capabilities-snapshot';
 export { persistCapabilitiesSnapshot } from './services/capabilities-snapshot';

@@ -1,6 +1,6 @@
 # ADR 0037: Per-agent model memory and explicit auto-model thinking levels
 
-- Status: Accepted
+- Status: Superseded by ADR 0046
 - Date: 2026-11-05
 - Deciders: maintainers
 - Supersedes: —

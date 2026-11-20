@@ -217,13 +217,8 @@ Current fields:
 - `flatTranscript` (renders the transcript full-width without bubble chrome; defaults to `false`)
 - `slimInterface` (shrinks control sizes, spacing, and headers on the text-heavy screens; defaults to `false`)
 - `language` (optional; `undefined` follows the OS locale)
-- `providerId`
-- `modelId`
 - `enabledModelIds`
 - `knownModelIds` and `autoEnableNewModels` (whether newly discovered models are enabled by default; true by default)
-- `providerModelSelections`
-- `agentModelSelections` (latest explicit model per agent; switching agents restores it)
-- `modelVariantSelections` (server variant ID per model; `null` means the synthetic Default choice)
 - `recentModelIds`
 - `autoModel` (enabled, classifier mode, classifier model, per-tier `auto` or
   model ID, optional per-tier thinking level, and long-chat cache protection)
@@ -256,9 +251,9 @@ Current fields:
 
 The TTS engine, pack, and speaker are device-local and also excluded from `serverPreferences`. Downloaded voice models live under `opencode-tts/<packId>/` in the document directory and are not represented in preferences; Settings derives their status from the filesystem. Removing a pack deletes that directory, releases the native TTS model, and switches to the system engine when it was active. Temporary synthesis WAVs live in the cache directory and are deleted after playback, on cancel, and on the next Settings visit.
 
-These values combine application behavior settings and output-style preferences that are sent to the model as prompt instructions. `modelVariantSelections` is separate: it selects a server-supported variant for the matching model, is checked against the current model catalog, and falls back to Default when unavailable. If there is no saved entry, a valid variant already set on the active session is retained when it uses the selected model. `agentModelSelections` stores each agent's latest explicit model; a missing entry sends no model override so the server/agent default applies. See [ADR 0037](../adr/0037-per-agent-model-memory.md).
+These values combine application behavior settings and output-style preferences that are sent to the model as prompt instructions. An explicit model and variant belong to `Session.model`; the composer changes them with the V2 `session.switchModel` operation, and session refresh/event updates restore each choice when switching sessions. When a session has no explicit model, OpenCode resolves the agent and configuration defaults. Legacy app-level model/provider/variant selections are ignored during preference hydration; they are not migrated because one old value cannot determine choices for multiple sessions. See [ADR 0046](../adr/0046-session-owned-model-selection.md).
 
-`autoModel` is server-scoped with the rest of the model selections. Its tier
+`autoModel` is server-scoped with the rest of the catalog and routing preferences. Its tier
 values are `auto` or a model ID; `tierVariants` adds an optional thinking level
 per tier, and an unsupported value falls back without blocking routing.
 Unavailable IDs are retained and treated as unavailable at send time rather than
@@ -470,7 +465,7 @@ Persisted values:
 
 - `opencode-mobile.settings` (connection URL and username; the password and custom gateway headers live in secure storage)
 - `opencode-mobile.connect-control-plane` (last automatically resolved Cloud Link environment; defaults to production, accepts only production/staging, hydrated before pairing/Cloud Link startup)
-- `opencode-mobile.connection-profiles` (saved connections with name and the optional server-scoped preferences: provider/model, enabled models, per-provider and variant selections, agent mode, auto-approve, and auto-routing tiers; passwords and custom gateway headers live in secure storage)
+- `opencode-mobile.connection-profiles` (saved connections with name and optional server-scoped catalog filtering, model recents, agent mode, auto-approve, and auto-routing preferences; passwords and custom gateway headers live in secure storage)
 - `opencode-mobile.chat-preferences` (chat preferences, including the global UI `language`; not connection-scoped)
 - `opencode-mobile.onboarding-version` (completion-only first-run marker; see below)
 - `opencode-mobile.pending-notification-sessions` (non-secret connection references, keyed by connection scope + session ID)
@@ -929,20 +924,20 @@ From that, the app derives:
 Preference reconciliation then determines safe values for:
 
 - selected mode
-- selected provider
-- selected model
 - enabled models
 - auto-approve UI state
 
-This logic prevents stale persisted provider/model values from breaking the UI when server capabilities change.
+The active session model is read from `Session.model`; when absent, the server's
+agent/config defaults supply the effective model. No provider or model default
+is reconciled from app preferences.
 
 Reconnect reads are not always complete: a server can briefly expose no
 providers, models, or agents while it starts up, and capability discovery returns
 an empty catalog when no project is active. Those snapshots must not destroy the
-stored choices. An empty model catalog preserves the provider, model, and enabled
-IDs; an empty agent catalog preserves the stored agent; and enabled IDs for
-providers that are temporarily missing stay stored without being rendered. The
-catalog is only reconciled once models are present. A partial catalog keeps
+stored choices. An empty model catalog preserves enabled IDs; an empty agent
+catalog preserves the stored agent; and enabled IDs for providers that are
+temporarily missing stay stored without being rendered. The catalog is only
+reconciled once models are present. A partial catalog keeps
 unavailable enabled IDs alongside available ones, while a catalog in which none
 of the stored IDs resolve falls back to enabling the full catalog so the picker
 is never left empty. Newly discovered IDs are enabled when `autoEnableNewModels`
@@ -1022,7 +1017,7 @@ Current implementation assumes these invariants:
 - an active project path is required for session-scoped activity
 - a current session ID may temporarily be absent during project switches and bootstrapping
 - session caches are safe to keep even when not current
-- provider/model selections may need to be corrected after capability refresh
+- session model references may temporarily be absent from an incomplete catalog
 - pending permissions and questions are keyed by `sessionID` and surfaced for the current/sending session and its full descendant subtree, not unrelated sessions
 - attachment capability is checked against the selected model before send
 - local attachment files larger than 10 MB are rejected before base64 encoding
@@ -1215,14 +1210,13 @@ updates stop when Android suspends JS; timestamps explicitly represent cached da
 
 ## Onboarding preference selections
 
-The assistant writes language, delivery and remembered provider/model through
-`updateChatPreferences`, immediately using the existing
-persistence and reconciliation paths. Default model is the remembered Chat
-selection, not a separate new-chat policy. Its picker and Ready use the same
-configured/enabled catalog filter as Chat. Skip does not revert earlier choices.
-Navigation omits AI and project without a connection; model selection is hidden
-offline and message delivery is also hidden on V1. No onboarding preferences,
-credentials or step progress are duplicated in the completion marker.
+The assistant writes language and delivery through `updateChatPreferences`,
+immediately using the existing persistence path. It does not save a default
+model; session model choices belong to Chat, and new sessions use OpenCode's
+agent/config defaults. Skip does not revert earlier choices. Navigation omits
+AI and project without a connection; message delivery is hidden on V1. No
+onboarding preferences, credentials or step progress are duplicated in the
+completion marker.
 
 ## Workspace registry and presentation state
 
@@ -1238,7 +1232,7 @@ A legacy active connection is matched or saved as a profile and migrated into th
 
 Chat focus is validated against live runtimes. When the focused connection errors or is explicitly disconnected while another enabled server is connected, the workspace manager moves focus to the last healthy server (or the first other connected server) and persists that selection. The failed server remains available in Connection management for Reconnect without replacing the working chat, while server and project selectors omit any server that is not currently connected. The chat library applies the same rule: cached chats and favorites from non-connected servers stay hidden until they reconnect.
 
-Provider/model/agent selections, visible and recent models, model variants and auto-approve are scoped to a server. New servers default to auto-approve off. V2 auto-approve is a local per-server policy that answers each pending request once, using the existing permission service; persistent grants keep the server's actual semantics. General UI, language and voice device preferences remain app-wide. Hide subagents defaults to true when missing; a saved false is retained.
+Enabled and recent catalog models, agent mode, auto-routing tiers, and auto-approve are scoped to a server. Explicit composer model and variant choices are owned by each server session. New servers default to auto-approve off. V2 auto-approve is a local per-server policy that answers each pending request once, using the existing permission service; persistent grants keep the server's actual semantics. General UI, language and voice device preferences remain app-wide. Hide subagents defaults to true when missing; a saved false is retained.
 
 Chat focus, terminal target and Settings inspection target are independent composite references. The presentation map holds composer text/attachments, failed input, editor baseline/current text and transcript offsets. Hidden dirty drafts and PTYs participate in update blocking. Removing a connection names unsaved drafts in its confirmation. Drafts are intentionally not written to disk.
 

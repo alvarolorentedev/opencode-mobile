@@ -134,7 +134,8 @@ declared once, at the leaves.
   built-in fallbacks. Loading/empty catalogs show feedback without a checked row;
   draft, keyboard, and Back behavior stay local to the composer
 - open the model picker from the selected model/reasoning summary, with a reasoning slider above model search
-- remember the latest explicit model per agent; switching agents restores that agent's model, and an unconfigured agent sends no model override so the server/agent default applies
+- reflect the active session's model and variant; model or effort choices update the session immediately, and switching sessions restores each server-owned choice
+- use OpenCode's agent/config defaults for sessions without an explicit model; model selection is available on OpenCode 2, which exposes `session.switchModel`
 - when a classifier is available, the picker exposes the Auto-routing switch;
   the trigger reads `Auto-routing` while it is enabled, and explicit model
   selection turns it off
@@ -200,7 +201,7 @@ type ChatComposerProps = {
 - typing `/` shows matching server commands with descriptions; typing `@` shows visible agents (including subagents), skills, project files, and references. Selecting a row fills the draft.
 - a leading `!` switches the primary action to a V2 session shell command
 - there is no dedicated composer palette button; the text triggers are the only entry point
-- model selection uses a searchable sheet grouped by provider; its reasoning slider shows server variants for the selected OpenCode 2 model, including a synthetic Default, and stays hidden when that model has none
+- model selection uses a searchable sheet grouped by provider; its reasoning slider shows server variants for the active session's OpenCode 2 model, including a synthetic Default, and stays hidden when that model has none
 - the composer trigger includes the selected variant in its accessible name when the model provides variants
 
 ### `features/chat/ui/chat-prompt-input.tsx`

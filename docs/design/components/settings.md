@@ -91,7 +91,7 @@ dialog, so there is a single place to configure a connection.
 - list saved connections as collapsible rows with name, host, and an Active/Connecting badge
 - expand a row to see its server URL and username and to reach Connect, Edit, and Delete
 - always render a `Current connection` row when the active connection has not been saved as a profile, so the live connection stays editable
-- switch to a saved connection through `switchConnection()` (which persists the outgoing profile's model selection, restores the target's, and reconnects)
+- switch to a saved connection through `switchConnection()` (which persists the outgoing profile's catalog and routing preferences, restores the target's, and reconnects)
 - add a connection through `Add connection` (saves metadata to AsyncStorage, password to SecureStore, and connects)
 - edit a connection through the same dialog; editing the active connection applies to the live settings but waits for Reconnect, so an in-flight session is never dropped
 - delete a saved connection and its SecureStore password/header secrets, except the active one

@@ -170,6 +170,10 @@ export function unrevertSession(client: ScopedOpencodeClient, sessionId: string)
 export function interruptSession(client: ScopedOpencodeClient, sessionID: string) {
   return createSessionAdapter(client).interrupt(sessionID);
 }
+export function switchSessionModel(client: ScopedOpencodeClient, sessionID: string, model: NonNullable<Session['model']>) {
+  if (!client.api) throw new Error('Session model selection requires OpenCode 2.');
+  return client.api.session.switchModel({ sessionID, model });
+}
 export function waitForSessionIdle(client: ScopedOpencodeClient, sessionID: string) {
   return createSessionAdapter(client).waitForIdle(sessionID);
 }
