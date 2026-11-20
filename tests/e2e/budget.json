@@ -1,5 +1,5 @@
 {
-  "tests": 184,
+  "tests": 185,
   "specs": 19,
-  "justification": "Added session-owned model coverage: a fresh session prompt sends no app model override or model switch, and explicit model/variant choices persist per session across projects and reloads."
+  "justification": "Added session-owned model coverage: a fresh session prompt sends no app model override or model switch, and explicit model/variant choices persist per session across projects and reloads. Added a narrow-viewport check that the pending permission panel keeps its approval actions reachable."
 }

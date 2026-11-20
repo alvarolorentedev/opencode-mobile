@@ -1,0 +1,3 @@
+- Permission approval buttons stay reachable on short screens and with large text.
+- System and on-device wake phrase detection keep working together.
+- Scrolling over expanded diffs is restored.
