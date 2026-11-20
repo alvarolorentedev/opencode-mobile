@@ -291,6 +291,9 @@ Known limits:
     licensing still needs review for each pack and for F-Droid packaging.
   - On-device playback is hidden on web; the system voice remains available.
 - The local input path is foreground-only; it does not run with the screen off.
+- System dictation still needs an OS recognizer. On a device without one, the
+  composer microphone stays disabled; conversation mode remains available when
+  On-device voice is configured. Local one-shot dictation is not implemented.
 - Model install/removal and voice enrollment do not yet stop an active local
   detector. Stop conversation mode before changing the local voice setup.
 - Auto model routing's on-device classifier is not validated on native yet. The

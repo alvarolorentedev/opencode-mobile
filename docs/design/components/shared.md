@@ -237,7 +237,7 @@ not expose range semantics or arrow keys, the wrapper forwards
 Settings voice/volume/font controls retain their existing ranges and provider
 callbacks.
 
-The composer microphone starts direct speech-to-text dictation into the draft, preserving existing text and never submitting automatically. Empty drafts show the waveform action for conversation mode; text or attachments switch it to Send. Running tasks retain Stop. The top bar has no duplicate voice-chat action; conversation overlay and Back-stop handling remain in the existing header shell.
+The composer microphone starts direct speech-to-text dictation into the draft, preserving existing text and never submitting automatically. Empty drafts show the waveform action for conversation mode; text or attachments switch it to Send. Conversation mode starts when the system recognizer exists or On-device voice is selected; dictation still requires the system recognizer. Running tasks retain Stop. The top bar has no duplicate voice-chat action; conversation overlay and Back-stop handling remain in the existing header shell.
 
 Composer spacing uses 8px side margins and 6px top/bottom gaps (6px sides and 4px gaps in slim mode), with 8px/4px card top/bottom padding. It does not add another bottom safe-area inset because the visible tab bar owns that inset. Keyboard avoidance and tab visibility remain unchanged.
 

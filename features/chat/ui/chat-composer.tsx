@@ -131,11 +131,13 @@ export function ChatComposer({
   const maxInputHeight = slim ? 90 : 110;
   const hasComposerContent = Boolean(draft.trim()) || attachments.length > 0;
   const primaryAction = !showSendAction ? 'stop' : hasComposerContent ? 'send' : 'voice';
+  // Conversation mode runs locally without the OS recognizer in on-device mode.
+  const voiceActionAvailable = conversation.active || isSpeechInputAvailable || chatPreferences.voiceWakeMode === 'local';
   const primaryDisabled = primaryAction === 'stop'
     ? !currentSessionId || isStoppingSession
     : primaryAction === 'send'
       ? connectionStatus !== 'connected' || isSpeechInputListening
-      : connectionStatus !== 'connected' || !isSpeechInputAvailable;
+      : connectionStatus !== 'connected' || !voiceActionAvailable;
   const autoRoutingActive = autoRoutingEnabled && autoRoutingAvailable;
   const selectedModel = visibleModels.find((model) => model.id === selectedModelId);
   const reasoningLabel = !autoRoutingActive && selectedModel?.variants.length ? getModelVariantLabel(selectedVariant, t) : undefined;

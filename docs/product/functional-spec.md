@@ -742,6 +742,7 @@ Voice input degrades gracefully instead of failing outright:
 - recognition availability is re-checked when listening starts, not only on mount
 - an on-device attempt that fails because the language model is missing, or because Siri/Dictation is off, retries once through network recognition before surfacing an error
 - on Android, a recognizer that never reports a native start is retried once without continuous capture and punctuation, then once with a Google recognizer when one is available; only then is a retryable start error shown
+- when no OS recognizer exists, conversation mode still starts in On-device voice mode because its wake and command recognition are local; dictation stays unavailable
 - errors are classified so the UI can offer the right next step: retry (including re-prompting while the OS still allows it), open app settings after a denial, or no action when device policy restricts speech recognition
 - speech playback validates the selected voice and falls back to the system default when it no longer exists, and a watchdog reports an error if the synthesizer never starts or finishes
 
