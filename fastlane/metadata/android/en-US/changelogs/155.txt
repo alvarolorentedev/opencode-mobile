@@ -1,0 +1,6 @@
+- Wake phrase recognition now checks every recognizer alternative and joined phrases like "hey open code".
+- Conversation mode follows the device speech language when none is chosen.
+- The optional Require wake phrase switch is easier to find in settings search.
+- On-device conversation mode starts even when no system speech recognizer is available.
+- New chats use server model defaults, while per-session model and variant choices persist.
+- Attach photos from the native library picker.
