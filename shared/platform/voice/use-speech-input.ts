@@ -6,6 +6,7 @@ import { ensureVoiceInputPermissionAsync, isVoicePermissionPromptActive } from '
 import { canFallbackToNetwork, describeVoiceInputError, type VoiceRecoveryAction } from '@/shared/platform/voice/speech-errors';
 import { nextStartAttempt, readRecognitionServices, type StartAttempt } from '@/shared/platform/voice/recognition-service';
 import { drainRecognition } from '@/shared/platform/voice/recognition-teardown';
+import { resolveSpeechInputLocale, resultTranscripts } from '@/shared/platform/voice/speech-input-config';
 import { recognitionErrorReason, recordVoiceDiagnostic, type VoiceCancellation, type VoiceSource } from '@/shared/platform/voice/voice-diagnostics';
 import { readVoiceCapabilityFlags } from '@/shared/platform/voice/voice-capability-read';
 
@@ -28,7 +29,7 @@ type UseSpeechInputOptions = {
   levelStep?: number;
   locale?: string;
   onEnd?: () => void;
-  onResult: (transcript: string, isFinal: boolean) => void;
+  onResult: (transcript: string, isFinal: boolean, alternatives?: readonly string[]) => void;
   onSpeechStart?: () => void;
   preferOnDevice: boolean;
   source?: Exclude<VoiceSource, 'enrollment'>;
@@ -153,13 +154,12 @@ export function useSpeechInput({
   useSpeechRecognitionEvent('result', (event) => {
     if (activeOwner !== ownerId || !acceptingResultsRef.current) return;
     markStarted();
-    const transcript = event.results[0]?.transcript?.trim() ?? '';
-    if (transcript) heardSpeechRef.current = true;
-    if (!transcript && !event.isFinal) return;
+    const transcripts = resultTranscripts(event.results); // every hypothesis, not only the top
+    const transcript = transcripts[0] ?? '';
+    if (transcript) heardSpeechRef.current = true; else if (!event.isFinal) return;
     if (event.isFinal) ignoreErrorsUntilRef.current = Date.now() + 1500;
-    onResult(transcript, event.isFinal);
+    onResult(transcript, event.isFinal, transcripts.length > 1 ? transcripts.slice(1) : undefined);
   });
-
   const startRecognition = useCallback(
     async (options: StartOptions = {}, attempt: StartAttempt = {}) => {
       if (nativeSession?.owner === ownerId && !nativeSession.stopping) return true;
@@ -305,7 +305,7 @@ export function useSpeechInput({
           interimResults: true,
           iosCategory: IOS_RECOGNITION_CATEGORY,
           iosTaskHint: 'dictation',
-          lang: locale || 'en-US',
+          lang: resolveSpeechInputLocale(locale),
           requiresOnDeviceRecognition: wantsOnDevice,
           androidRecognitionServicePackage: effectiveAttempt.servicePackage,
           volumeChangeEventOptions: {

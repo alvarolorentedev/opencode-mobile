@@ -847,7 +847,10 @@ Additional behavior:
 - if recognition ends after the phrase but before a command, the command window
   survives the restart instead of asking for the phrase again
 - phrase matching is case- and punctuation-insensitive; a joined form such as
-  `heycode` also matches
+  `heycode` also matches, as does a compound split such as `hey open code` for
+  `hey opencode`
+- every recognizer alternative is checked, so a lower hypothesis can wake the
+  turn when the top transcript misheard the phrase
 - the phrase is passed to the recognizer as contextual vocabulary
 - recognition still runs while armed; the gate changes submission, not capture
 - confirmation stays local to the selected input mode; confirmation speech is

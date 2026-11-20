@@ -163,7 +163,7 @@ export function useConversationState({ connection, chatPreferences, currentSessi
         clearCommandTimeout();
       }
     },
-    onResult: (transcript, isFinal) => {
+    onResult: (transcript, isFinal, alternatives) => {
       const phase = conversationPhaseRef.current;
       if (phase === 'confirming') {
         confirmationRef.current?.handleResult(transcript, isFinal);
@@ -172,7 +172,7 @@ export function useConversationState({ connection, chatPreferences, currentSessi
       if (phase !== 'armed' && phase !== 'listening') {
         return;
       }
-      const result = wakePhraseSessionRef.current.push(transcript, isFinal);
+      const result = wakePhraseSessionRef.current.pushAll([transcript, ...(alternatives ?? [])], isFinal);
       if (!result.matched) {
         return;
       }

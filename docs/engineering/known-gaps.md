@@ -167,8 +167,9 @@ dedicated wake-word engine. Consequences:
 
 - the recognizer still streams while `armed`, so this does not reduce
   recognition cost, battery use or vendor audio traffic
-- phrase detection accuracy follows the OS recognizer; contextual biasing and
-  the configurable phrase mitigate but do not eliminate misses
+- phrase detection accuracy follows the OS recognizer; contextual biasing, the
+  configurable phrase, alternative-hypothesis matching and joined-token matching
+  mitigate but do not eliminate homophone misses
 - conversation mode stops when the app backgrounds, as it did before; the
   phrase is not an always-on background listener
 - ambient speech that follows a correctly detected phrase is still treated as

@@ -2,9 +2,10 @@
 //
 // The phrase is a turn gate, not a recognition engine: the OS recognizer keeps
 // streaming, but a turn only starts once the accumulated transcript contains
-// the configured phrase. Matching stays deliberately literal (exact tokens or a
-// single joined token) so noise cannot easily arm a turn; recognition recall is
-// improved by passing the phrase to the recognizer as contextual vocabulary.
+// the configured phrase. Matching stays deliberately literal (exact tokens or
+// tokens that join into the phrase) so noise cannot easily arm a turn;
+// recognition recall is improved by passing the phrase to the recognizer as
+// contextual vocabulary and by checking its alternative transcripts.
 
 export const DEFAULT_WAKE_PHRASE = 'hey code';
 export const MAX_WAKE_PHRASE_LENGTH = 60;
@@ -61,9 +62,10 @@ export type WakePhraseMatch = {
 
 /**
  * Find the first phrase occurrence in `text`. Matching is case- and
- * punctuation-insensitive. A multi-word phrase also matches when the recognizer
- * joins it into one token (`heycode`). Everything after the match is the
- * command; everything before it is discarded.
+ * punctuation-insensitive. A phrase also matches when the recognizer joins it
+ * into one token (`heycode`) or splits it across tokens (`hey open code` for
+ * `hey opencode`). Everything after the match is the command; everything before
+ * it is discarded.
  */
 export function findWakePhrase(text: string, phrase: string): WakePhraseMatch | undefined {
   const expected = phraseTokens(phrase);
@@ -72,38 +74,43 @@ export function findWakePhrase(text: string, phrase: string): WakePhraseMatch | 
   }
 
   const tokens = tokenize(text);
-  if (expected.length > 1) {
-    const joined = expected.join('');
-    for (const token of tokens) {
-      if (token.normalized === joined) {
+  const joined = expected.join('');
+  for (let index = 0; index < tokens.length; index++) {
+    if (index + expected.length <= tokens.length) {
+      let matched = true;
+      for (let offset = 0; offset < expected.length; offset++) {
+        if (tokens[index + offset].normalized !== expected[offset]) {
+          matched = false;
+          break;
+        }
+      }
+      if (matched) {
+        const first = tokens[index];
+        const last = tokens[index + expected.length - 1];
         return {
-          command: trimCommand(text.slice(token.end)),
-          end: token.end,
-          start: token.start,
+          command: trimCommand(text.slice(last.end)),
+          end: last.end,
+          start: first.start,
         };
       }
     }
-  }
 
-  for (let index = 0; index + expected.length <= tokens.length; index++) {
-    let matched = true;
-    for (let offset = 0; offset < expected.length; offset++) {
-      if (tokens[index + offset].normalized !== expected[offset]) {
-        matched = false;
+    // A joined phrase can be split across several tokens ("hey open code" for
+    // "hey opencode"), not only collapsed into one ("heycode").
+    let value = '';
+    for (let end = index; end < tokens.length; end++) {
+      value += tokens[end].normalized;
+      if (value === joined) {
+        return {
+          command: trimCommand(text.slice(tokens[end].end)),
+          end: tokens[end].end,
+          start: tokens[index].start,
+        };
+      }
+      if (value.length >= joined.length) {
         break;
       }
     }
-    if (!matched) {
-      continue;
-    }
-
-    const first = tokens[index];
-    const last = tokens[index + expected.length - 1];
-    return {
-      command: trimCommand(text.slice(last.end)),
-      end: last.end,
-      start: first.start,
-    };
   }
 
   return undefined;
@@ -163,6 +170,62 @@ export function createWakePhraseSession(phrase: string) {
     // than flickering the turn back to unarmed; the command timeout recovers.
   };
 
+  const push = (transcript: string, isFinal: boolean): WakePhraseSessionResult => {
+    const segment = transcript.trim();
+    if (!segment) {
+      if (isFinal) {
+        committed = current || committed;
+      }
+      return { command: matched ? lastCommand : '', matched };
+    }
+
+    current = committed ? `${committed} ${segment}` : segment;
+    if (isFinal) {
+      committed = current;
+    }
+
+    evaluate();
+
+    if (!matched && isFinal) {
+      const tail = retainTail(committed);
+      committed = tail;
+      current = tail;
+    }
+
+    return { command: matched ? lastCommand : '', matched };
+  };
+
+  /**
+   * Try the recognizer's alternative transcripts before committing the segment.
+   * The top hypothesis is usually right, but a lower one often contains a phrase
+   * the top misheard. Prefer an alternative that also carries a command so a
+   * phrase-only top hypothesis does not drop the rest of the turn.
+   */
+  const pushAll = (transcripts: readonly string[], isFinal: boolean): WakePhraseSessionResult => {
+    const candidates = transcripts.map((value) => value.trim()).filter(Boolean);
+    if (candidates.length === 0) {
+      return push('', isFinal);
+    }
+    if (matched || commandOnly || candidates.length === 1) {
+      return push(candidates[0], isFinal);
+    }
+
+    let phraseOnly: string | undefined;
+    for (const candidate of candidates) {
+      const text = committed ? `${committed} ${candidate}` : candidate;
+      const match = findWakePhrase(text, normalizedPhrase);
+      if (!match) {
+        continue;
+      }
+      if (match.command) {
+        return push(candidate, isFinal);
+      }
+      phraseOnly ??= candidate;
+    }
+
+    return push(phraseOnly ?? candidates[0], isFinal);
+  };
+
   return {
     command() {
       return matched ? lastCommand.trim() : '';
@@ -194,30 +257,8 @@ export function createWakePhraseSession(phrase: string) {
       }
       return { command: matched ? lastCommand : '', matched } satisfies WakePhraseSessionResult;
     },
-    push(transcript: string, isFinal: boolean): WakePhraseSessionResult {
-      const segment = transcript.trim();
-      if (!segment) {
-        if (isFinal) {
-          committed = current || committed;
-        }
-        return { command: matched ? lastCommand : '', matched };
-      }
-
-      current = committed ? `${committed} ${segment}` : segment;
-      if (isFinal) {
-        committed = current;
-      }
-
-      evaluate();
-
-      if (!matched && isFinal) {
-        const tail = retainTail(committed);
-        committed = tail;
-        current = tail;
-      }
-
-      return { command: matched ? lastCommand : '', matched };
-    },
+    push,
+    pushAll,
     reset() {
       committed = '';
       current = '';

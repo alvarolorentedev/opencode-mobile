@@ -31,8 +31,14 @@ describe('settings search', () => {
   it('reveals more audio settings for a wake phrase without matching playback settings', () => {
     const section = { id: 'voice', title: 'Voice & audio', targets: settingsTargets(t, 'voice', options) };
     const results = searchSettings([section], 'wake phrase');
-    expect(results.map((result) => result.target?.label)).toEqual(['Wake phrase']);
+    expect(results.map((result) => result.target?.label)).toEqual(['Wake phrase', t('settings:voice.requireWakePhrase.title')]);
     expect(results[0].target?.group).toBe('voice-more');
+  });
+
+  it('finds the optional wake phrase switch', () => {
+    const section = { id: 'voice', title: 'Voice & audio', targets: settingsTargets(t, 'voice', options) };
+    expect(searchSettings([section], 'require wake').map((result) => result.target?.label))
+      .toEqual([t('settings:voice.requireWakePhrase.title')]);
   });
 
   it('excludes unavailable platform, capability and conditional controls', () => {

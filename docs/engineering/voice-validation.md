@@ -20,7 +20,10 @@ Relevant Vitest suites:
 - `confirmation.test.ts`: localized strict grammar, ambiguity, readback policy.
 - `permissions.test.ts`: read-before-request, blocked-permission handling, and the Android permission-prompt window.
 - `speech-input.test.ts`: start watchdog, early empty end, missing teardown callback, Android compatibility and
-  Google-recognizer recovery, the retryable total-failure path, and permission-prompt background tolerance.
+  Google-recognizer recovery, the retryable total-failure path, permission-prompt background tolerance, and
+  alternative-hypothesis delivery.
+- `speech-input-config.test.ts`: system-locale fallback, explicit speech-locale override and result-hypothesis order.
+- `wake-phrase.test.ts`: literal, joined-token and alternative-hypothesis phrase matching.
 - `voice-enrollment.test.ts`: first PCM frame, startup rejection, missing PCM, and cancellation.
 - `recognition-service.test.ts`: recognizer package availability and recovery order.
 - `conversation-confirmation.test.ts`: TTS/echo guard, confirm/retry/edit/cancel,
@@ -57,6 +60,8 @@ Bluetooth and speakerphone routes.
 
 - [ ] Both phrases at 0.5 m, 2 m and 4 m, quiet and 55–65 dBA TV/music/babble.
 - [ ] “Hey Code, refactor the login component” without a pause; full command.
+- [ ] A phrase present only in a lower recognition alternative still wakes the turn.
+- [ ] An explicit speech locale overrides the device locale; the empty preference follows it.
 - [ ] Repeated immediate retries after a speaker rejection.
 - [ ] Speaker verification on/off; re-enrollment; TV/child voice rejection.
 - [ ] Incoming call, microphone interruption, route change, app background.

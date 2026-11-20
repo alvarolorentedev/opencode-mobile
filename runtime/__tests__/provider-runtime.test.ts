@@ -903,6 +903,14 @@ assert.equal(lastPrompt, 'open settings');
 assert.equal(sends, 13);
 await stopConversation();
 voiceRuntime.update({ chatPreferences });
+// A lower recognition hypothesis can carry the phrase when the top mishears it.
+const alternativeSends = sends;
+await startConversation();
+recognitionOptions.onResult('a code check alternatives', true, ['hey code check alternatives']);
+voiceRuntime.fire(2200); await voiceRuntime.settle();
+assert.equal(lastPrompt, 'check alternatives');
+assert.equal(sends, alternativeSends + 1);
+await stopConversation();
 voiceRuntime.unmount(); assert.equal(voiceRuntime.countTimers(2200), 0); assert.equal(voiceRuntime.countTimers(6000), 0); assert.ok(aborts > 0);
 
 // Profile orchestration stays provider-owned and serializes metadata/credentials.

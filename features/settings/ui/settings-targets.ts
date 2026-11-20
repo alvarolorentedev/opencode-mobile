@@ -39,6 +39,7 @@ export function settingsTargets(t: TFunction, section: string, options: {
       ...(localInput ? [field('voice.localWake.title'), ...(options.localInputSupported ? [field('voice.localWake.phraseLabel', 'voice-setup-prepare'), field('voice.localWake.commandModelLabel', 'voice-setup-prepare'), field('voice.localWake.voiceProfile', 'voice-setup-profile'),
         ...(options.enrolled ? [field('voice.localWake.speakerVerification', 'voice-setup-profile', 'voice.localWake.speakerVerificationDescription')] : [])] : [])]
         : [field('voice.wakePhrase.label', 'voice-more', 'voice.wakePhrase.helper'), field('voice.onDeviceInput.title', 'voice-more', 'voice.onDeviceInput.description')]),
+      field('voice.requireWakePhrase.title', undefined, 'voice.requireWakePhrase.description'),
       ...(options.native ? [field('voice.playbackEngine.label'), ...(localPlayback ? [field('voice.localTts.title', 'voice-tts'),
         ...(options.speakerAvailable ? [field('voice.localTts.speaker')] : [])] : [])] : []),
       ...(!localInput ? [field('voice.check.title', 'voice-more')] : []),

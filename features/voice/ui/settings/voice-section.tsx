@@ -87,13 +87,15 @@ export function VoiceSection(props: VoiceSectionProps) {
       }) : null}
     </SettingTarget>
     <Text className={cn("text-muted-foreground")} variant="label">{t(localInput ? 'settings:voice.mode.localDescription' : 'settings:voice.mode.systemDescription')}</Text>
-    <SettingSwitchRow
-      title={t('settings:voice.requireWakePhrase.title')}
-      description={t('settings:voice.requireWakePhrase.description')}
-      palette={palette}
-      value={prefs.wakePhraseRequired}
-      onValueChange={(wakePhraseRequired) => updateChatPreferences({ wakePhraseRequired })}
-    />
+    <SettingTarget label={t('settings:voice.requireWakePhrase.title')}>
+      <SettingSwitchRow
+        title={t('settings:voice.requireWakePhrase.title')}
+        description={t('settings:voice.requireWakePhrase.description')}
+        palette={palette}
+        value={prefs.wakePhraseRequired}
+        onValueChange={(wakePhraseRequired) => updateChatPreferences({ wakePhraseRequired })}
+      />
+    </SettingTarget>
     {!localInput && !prefs.wakePhraseRequired ? (
       <FieldDescription  invalid={false}>{t('settings:voice.requireWakePhrase.systemWarning')}</FieldDescription>
     ) : null}

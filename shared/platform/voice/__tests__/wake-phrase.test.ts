@@ -41,6 +41,13 @@ describe('wake phrase matching', () => {
     expect(findWakePhrase('heycodex fix this', 'hey code')).toBeUndefined();
   });
 
+  it('matches a joined phrase split across several tokens', () => {
+    expect(findWakePhrase('hey open code open settings', 'hey opencode')?.command).toBe('open settings');
+    expect(findWakePhrase('hey o pen code open settings', 'hey opencode')?.command).toBe('open settings');
+    expect(findWakePhrase('hey open code', 'hey opencode')?.command).toBe('');
+    expect(findWakePhrase('open code open settings', 'opencode')?.command).toBe('open settings');
+  });
+
   it('supports non-Latin phrases', () => {
     expect(findWakePhrase('Привет код открой настройки', 'привет код')?.command).toBe('открой настройки');
   });
@@ -117,5 +124,36 @@ describe('wake phrase session', () => {
     expect(session.command()).toBe('open settings now');
     session.reset();
     expect(session.push('plain text', true)).toEqual({ command: '', matched: false });
+  });
+
+  it('uses a lower recognizer alternative when it contains the phrase', () => {
+    const session = createWakePhraseSession('hey code');
+    expect(session.pushAll(['a code open settings', 'hey code open settings'], true)).toEqual({
+      command: 'open settings',
+      matched: true,
+    });
+  });
+
+  it('prefers a matching alternative that also carries the command', () => {
+    const session = createWakePhraseSession('hey code');
+    expect(session.pushAll(['hey code', 'hey code open settings'], true)).toEqual({
+      command: 'open settings',
+      matched: true,
+    });
+  });
+
+  it('keeps alternatives in the phrase tail across recognizer segments', () => {
+    const session = createWakePhraseSession('hey code');
+    expect(session.push('hey', true).matched).toBe(false);
+    expect(session.pushAll(['code open settings', 'coat open settings'], true)).toEqual({
+      command: 'open settings',
+      matched: true,
+    });
+  });
+
+  it('falls back to the top transcript when no alternative contains the phrase', () => {
+    const session = createWakePhraseSession('hey code');
+    expect(session.pushAll(['thank you', 'very much'], true)).toEqual({ command: '', matched: false });
+    expect(session.command()).toBe('');
   });
 });

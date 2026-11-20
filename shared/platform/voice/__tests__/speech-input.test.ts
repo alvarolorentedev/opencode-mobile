@@ -17,6 +17,7 @@ it('isolates recognition owners through competing starts, cancellation and netwo
   let stops = 0, aborts = 0, identity = 0, speechStarts = 0;
   const transcripts = [createTranscriptAccumulator(), createTranscriptAccumulator()];
   const results: string[][] = [[], []];
+  const alternativeResults: string[][] = [[], []];
   const permissions = {
     ensure: async () => ({ granted: true }),
     promptActive: false,
@@ -59,7 +60,10 @@ it('isolates recognition owners through competing starts, cancellation and netwo
   }, runtime.globals);
   const options = (index: number) => ({
     preferOnDevice: true,
-    onResult: (text: string, final: boolean) => results[index].push(transcripts[index].push(text, final)),
+    onResult: (text: string, final: boolean, alternatives?: readonly string[]) => {
+      results[index].push(transcripts[index].push(text, final));
+      alternativeResults[index].push(...(alternatives ?? []));
+    },
     onEnd: () => transcripts[index].checkpoint(),
     onSpeechStart: () => { speechStarts++; },
   });
@@ -74,8 +78,10 @@ it('isolates recognition owners through competing starts, cancellation and netwo
   assert.equal(runtime.value[0].isListening, true);
   assert.equal(runtime.value[1].isListening, false);
   assert.equal(starts.length, 1);
+  assert.equal(starts[0].lang, 'en-US', 'an empty speech locale follows the system locale');
   emit('speechstart');
-  emit('result', { results: [{ transcript: 'Привет' }], isFinal: false });
+  emit('result', { results: [{ transcript: 'Привет' }, { transcript: 'Приветик' }], isFinal: false });
+  assert.deepEqual(alternativeResults[0], ['Приветик'], 'lower recognition hypotheses reach the result callback');
   emit('error', { error: 'service-not-allowed' });
   emit('end'); await runtime.settle();
   assert.equal(runtime.countTimers(250), 1);

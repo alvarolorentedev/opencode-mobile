@@ -636,10 +636,14 @@ permission and Chat Library visibility do not gate widget reads.
   Speech recognition hook. Re-checks recognition availability at start, pins an
   explicit iOS audio session category, and retries once through network
   recognition when an on-device attempt fails.
+- `shared/platform/voice/speech-input-config.ts`
+  Resolves the system speech locale when no override is set and keeps every
+  non-empty recognizer hypothesis in confidence order.
 - `shared/platform/voice/wake-phrase.ts`
   Conversation-mode wake phrase normalization and matching. Interims and finals
-  are accumulated with a short tail for phrases split across segments; only the
-  text after the first phrase occurrence becomes the command.
+  are accumulated with a short tail for phrases split across segments; all
+  recognizer alternatives and joined token spans are checked, and only the text
+  after the first phrase occurrence becomes the command.
 - `shared/platform/voice/wake-feedback.ts`
   Short haptic cue when the wake phrase arms a turn.
 - `shared/platform/voice/local-wake-word/`
@@ -979,7 +983,8 @@ Supporting behaviors include:
   in `listening`, re-arms after every reply, and relies on confirmation as the
   submission gate. System recognition shows a vendor-privacy warning.
 - phrase matching on interims and finals, with a short tail so a phrase split
-  across segments still matches
+  across segments still matches. Every recognizer alternative is checked, and a
+  joined phrase may be split across tokens (`hey open code` for `hey opencode`)
 - final-result settling delay before submission
 - a command window timeout that re-arms when only the phrase is heard
 - optional pre-submission confirmation (enabled by default). The pending command
