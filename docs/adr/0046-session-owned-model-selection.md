@@ -1,6 +1,6 @@
 # ADR 0046: Session-owned model and variant selection
 
-- Status: Accepted
+- Status: Superseded by ADR 0047
 - Date: 2026-11-20
 - Deciders: maintainers
 - Supersedes: [ADR 0037](0037-per-agent-model-memory.md)

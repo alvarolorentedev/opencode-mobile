@@ -928,8 +928,10 @@ Preference reconciliation then determines safe values for:
 - auto-approve UI state
 
 The active session model is read from `Session.model`; when absent, the server's
-agent/config defaults supply the effective model. No provider or model default
-is reconciled from app preferences.
+agent/config defaults supply the effective model. A newly created session switches
+to the last picked model for that server when the catalog still has it, then the
+server owns the value. No provider or model default is reconciled from app
+preferences.
 
 Reconnect reads are not always complete: a server can briefly expose no
 providers, models, or agents while it starts up, and capability discovery returns
@@ -1212,7 +1214,8 @@ updates stop when Android suspends JS; timestamps explicitly represent cached da
 
 The assistant writes language and delivery through `updateChatPreferences`,
 immediately using the existing persistence path. It does not save a default
-model; session model choices belong to Chat, and new sessions use OpenCode's
+model; session model choices belong to Chat, new sessions switch to the last
+picked model when it is still available, and otherwise use OpenCode's
 agent/config defaults. Skip does not revert earlier choices. Navigation omits
 AI and project without a connection; message delivery is hidden on V1. No
 onboarding preferences, credentials or step progress are duplicated in the

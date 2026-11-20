@@ -135,7 +135,7 @@ declared once, at the leaves.
   draft, keyboard, and Back behavior stay local to the composer
 - open the model picker from the selected model/reasoning summary, with a reasoning slider above model search
 - reflect the active session's model and variant; model or effort choices update the session immediately, and switching sessions restores each server-owned choice
-- use OpenCode's agent/config defaults for sessions without an explicit model; model selection is available on OpenCode 2, which exposes `session.switchModel`
+- use OpenCode's agent/config defaults for sessions without an explicit model, except that a newly created session starts on the last model picked for that server when it is still available; model selection is available on OpenCode 2, which exposes `session.switchModel`
 - when a classifier is available, the picker exposes the Auto-routing switch;
   the trigger reads `Auto-routing` while it is enabled, and explicit model
   selection turns it off

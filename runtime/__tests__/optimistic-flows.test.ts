@@ -25,6 +25,7 @@ async function loadSessionCrud(runtime: ReturnType<typeof hookRuntime>) {
     listArchivedSessions: vi.fn(async () => []),
     revertSession: vi.fn(async () => undefined),
     shareSession: vi.fn(async () => ({ id: 's' })),
+    switchSessionModel: vi.fn(async () => undefined),
     summarizeSession: vi.fn(async () => undefined),
     unrevertSession: vi.fn(async () => undefined),
     unshareSession: vi.fn(async () => ({ id: 's' })),
@@ -104,7 +105,7 @@ function sessionCrudInput(patch: Record<string, unknown> = {}) {
       refreshVcsDiff: async () => [],
       refreshPendingInteractions: async () => undefined,
       refreshActiveSessions: async () => undefined,
-      chatPreferences: { mode: 'build', promptDelivery: 'steer' },
+      chatPreferences: { mode: 'build', promptDelivery: 'steer', recentModelIds: [] },
       ...patch,
     },
   };
@@ -385,11 +386,47 @@ describe('local-first session selection', () => {
 
     await expect(runtime.value.createSession()).resolves.toEqual({ id: 'new', title: '' });
     expect(services.createSession).toHaveBeenCalledOnce();
+    expect(services.switchSessionModel).not.toHaveBeenCalled();
     expect(state.sessions).toEqual([{ id: 'new', title: '' }]);
     expect(state.statuses.new).toEqual({ type: 'idle' });
 
     refresh.resolve();
     await runtime.settle();
+    runtime.unmount();
+  });
+
+  it('createSession starts on the model the user last picked', async () => {
+    const runtime = hookRuntime();
+    const { useSessionCrudActions, services } = await loadSessionCrud(runtime);
+    const { state, input } = sessionCrudInput({
+      client: { __opencode: { contract: 'v2' }, api: {} },
+      availableModels: [{ id: 'openai/gpt-5', providerID: 'openai', modelID: 'gpt-5' }],
+      chatPreferences: { mode: 'build', promptDelivery: 'steer', recentModelIds: ['openai/gpt-5'] },
+    });
+    runtime.mount(useSessionCrudActions, input);
+
+    const model = { providerID: 'openai', id: 'gpt-5' };
+    await expect(runtime.value.createSession()).resolves.toEqual({ id: 'new', title: '', model });
+    expect(services.switchSessionModel).toHaveBeenCalledWith(input.client, 'new', model);
+    expect(state.sessions[0].model).toEqual(model);
+
+    runtime.unmount();
+  });
+
+  it('createSession keeps the server default when the last model cannot be applied', async () => {
+    const runtime = hookRuntime();
+    const { useSessionCrudActions, services } = await loadSessionCrud(runtime);
+    services.switchSessionModel.mockRejectedValueOnce(new Error('model unavailable'));
+    const { state, input } = sessionCrudInput({
+      client: { __opencode: { contract: 'v2' }, api: {} },
+      availableModels: [{ id: 'openai/gpt-5', providerID: 'openai', modelID: 'gpt-5' }],
+      chatPreferences: { mode: 'build', promptDelivery: 'steer', recentModelIds: ['openai/gpt-5'] },
+    });
+    runtime.mount(useSessionCrudActions, input);
+
+    await expect(runtime.value.createSession()).resolves.toEqual({ id: 'new', title: '' });
+    expect(state.sessions[0].model).toBeUndefined();
+
     runtime.unmount();
   });
 

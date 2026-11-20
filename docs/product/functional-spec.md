@@ -445,7 +445,7 @@ Behavior:
 - the picker shows the provider alongside the selected model, groups results by provider, and searches provider/model names and IDs
 - the picker pins the currently selected model and the recently used models at the top; these sections hide while a search query is active
 - the picker reflects the active session's model and variant; selecting a model or reasoning level immediately updates that session through `session.switchModel` and records the model in the recent list
-- when the session has no explicit model, the picker reflects the server's effective agent/config default. New sessions keep that default unless the user chooses an override
+- when the session has no explicit model, the picker reflects the server's effective agent/config default. New sessions start on the last model picked for that server when it is still available; otherwise they keep the server default
 - legacy app-level model defaults are ignored; they are not copied into a session because they cannot be assigned safely across existing sessions
 - OpenCode 1 does not expose the supported session model-switch operation, so manual model and variant selection is available on OpenCode 2 only
 - discovered model metadata comes from nested attachment/input modality, tool-call, reasoning, status, and context/output limit capabilities
@@ -454,8 +454,9 @@ Behavior:
 - on OpenCode 1, the existing Low/Default/High reasoning control continues to affect the generated system prompt; OpenCode 2 reasoning selection is a server model variant, not a prompt hint
 
 The session's model choice takes precedence over agent and config defaults. A
-new session without an explicit choice follows OpenCode's defaults. See
-[ADR 0046](../adr/0046-session-owned-model-selection.md).
+new session starts on the last model picked in the picker for that server when it
+is still available, and otherwise follows OpenCode's defaults. See
+[ADR 0047](../adr/0047-new-session-last-used-model.md).
 
 ## Session Title Summarization
 

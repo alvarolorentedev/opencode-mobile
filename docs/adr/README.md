@@ -97,7 +97,8 @@ coverage, and documentation links.
 | [0043](0043-react-native-chart-kit.md) | ChartKit for the Mission Control usage chart | Accepted |
 | [0044](0044-shared-session-links.md) | Shared OpenCode session links | Accepted |
 | [0045](0045-queue-only-unsent-prompts.md) | Queue only unsent prompts | Accepted |
-| [0046](0046-session-owned-model-selection.md) | Session-owned model and variant selection | Accepted |
+| [0046](0046-session-owned-model-selection.md) | Session-owned model and variant selection | Superseded by ADR 0047 |
+| [0047](0047-new-session-last-used-model.md) | New sessions start on the last picked model | Accepted |
 
 ## Template
 

@@ -1,4 +1,4 @@
-import { createSession as svcCreateSession, compactSession as svcCompactSession, deleteSession as svcDeleteSession, executeCommand as svcExecuteCommand, executeShell as svcExecuteShell, forkSession as svcForkSession, generateSessionText as svcGenerateSessionText, interruptSession as svcInterruptSession, revertSession as svcRevertSession, unrevertSession as svcUnrevertSession, updateSessionTitle as svcUpdateSessionTitle, waitForSessionIdle as svcWaitForSessionIdle } from '@/shared/protocol/services/session-service';
+import { createSession as svcCreateSession, compactSession as svcCompactSession, deleteSession as svcDeleteSession, executeCommand as svcExecuteCommand, executeShell as svcExecuteShell, forkSession as svcForkSession, generateSessionText as svcGenerateSessionText, interruptSession as svcInterruptSession, revertSession as svcRevertSession, switchSessionModel as svcSwitchSessionModel, unrevertSession as svcUnrevertSession, updateSessionTitle as svcUpdateSessionTitle, waitForSessionIdle as svcWaitForSessionIdle } from '@/shared/protocol/services/session-service';
 import { useCallback } from 'react';
 
 import type { Session, SessionStatus } from '@/shared/protocol/opencode/types';
@@ -19,6 +19,7 @@ export function useSessionCrudActions({
   explicitSessionSelectionRef,
   locallyCreatedSessionsRef,
   availableAgents,
+  availableModels,
   commands,
   currentConfig,
   diffScopeBySessionRef,
@@ -92,17 +93,32 @@ export function useSessionCrudActions({
       if (!isCurrentClient(client)) {
         throw new Error('The active project changed before the session was created.');
       }
+      // A new chat starts from the model the user last picked in the picker.
+      // The server keeps owning the choice; if the switch fails or the model is
+      // gone, the chat still opens on the server's agent/config default.
+      const recentModelId = chatPreferences.recentModelIds[0];
+      const preferred = recentModelId ? availableModels.find((model) => model.id === recentModelId) : undefined;
+      let session = created;
+      if (preferred && client.__opencode?.contract === 'v2' && client.api) {
+        try {
+          const model = { providerID: preferred.providerID, id: preferred.modelID };
+          await svcSwitchSessionModel(client, created.id, model);
+          session = { ...created, model };
+        } catch {
+          // Keep the server default.
+        }
+      }
       // The server already returned the session. Show it immediately and let a
       // background read reconcile ordering/status instead of delaying the chat.
-      const nextSessions = [created, ...sessions.filter((session) => session.id !== created.id)];
-      const nextStatuses = { ...sessionStatuses, [created.id]: { type: 'idle' as const } };
-      locallyCreatedSessionsRef.current.set(created.id, Date.now());
-      setSessions((current) => [created, ...current.filter((session) => session.id !== created.id)]);
-      setSessionStatuses((current) => ({ ...current, [created.id]: { type: 'idle' } }));
+      const nextSessions = [session, ...sessions.filter((item) => item.id !== session.id)];
+      const nextStatuses = { ...sessionStatuses, [session.id]: { type: 'idle' as const } };
+      locallyCreatedSessionsRef.current.set(session.id, Date.now());
+      setSessions((current) => [session, ...current.filter((item) => item.id !== session.id)]);
+      setSessionStatuses((current) => ({ ...current, [session.id]: { type: 'idle' } }));
       persistSnapshot(nextSessions, nextStatuses);
-      return created;
+      return session;
     },
-    [client, isCurrentClient, locallyCreatedSessionsRef, persistSnapshot, sessionStatuses, sessions, setSessionStatuses, setSessions],
+    [availableModels, chatPreferences.recentModelIds, client, isCurrentClient, locallyCreatedSessionsRef, persistSnapshot, sessionStatuses, sessions, setSessionStatuses, setSessions],
   );
 
   const deleteSession = useCallback(
