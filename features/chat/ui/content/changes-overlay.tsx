@@ -135,12 +135,14 @@ export function ChangesOverlay({
         onToggleExpanded={() => setExpanded((value) => !value)}
         scrollable={false}
         headerAction={<Button accessibilityLabel={`${t('chat:diff.changeSourceLabel', { source: scopeLabel })}. ${scopeTitle}${isTurnScope ? ` · ${selectedTurnLabel}` : ''}`} onPress={() => setDiffSourcesVisible(true)} variant="ghost" size="icon"><Icon name={"dots-vertical"} size={24} color={palette.text} /></Button>}>
+        {/* No keyboardShouldPersistTaps here: gesture-handler's ScrollView maps
+            "handled" to disableScrollViewPanResponder, and selectable diff lines
+            then swallow Android drags instead of scrolling. This sheet has no input. */}
         <ChangesScrollView
           style={[styles.scroll, { backgroundColor: palette.background }]}
           contentContainerStyle={styles.changesList}
           stickyHeaderIndices={stickyHeaderIndices}
-          keyboardDismissMode="on-drag"
-          keyboardShouldPersistTaps="handled">
+          keyboardDismissMode="on-drag">
           {rows}
         </ChangesScrollView>
       </OverlaySheet>
