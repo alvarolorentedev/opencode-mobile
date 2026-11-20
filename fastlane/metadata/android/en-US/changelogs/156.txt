@@ -1,0 +1,2 @@
+- New chats start with the model and variant you picked last.
+- Diff file headers stay pinned while scrolling, with the height toggle in the sheet header.
