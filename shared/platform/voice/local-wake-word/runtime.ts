@@ -237,10 +237,11 @@ function enqueue(queue: Promise<unknown>, task: () => Promise<void>): Promise<vo
 
 export function resetWakeWordStream(): Promise<void> {
   // Reset is deliberately best-effort so a failed reset cannot strand a turn.
-  return enqueue(kwsQueue, async () => {
+  kwsQueue = enqueue(kwsQueue, async () => {
     const loaded = await runtimePromise;
     await loaded?.sherpa.KWS.resetStream().catch(() => undefined);
   });
+  return kwsQueue;
 }
 
 export async function acceptWakeWordSamples(samples: Float32Array): Promise<{

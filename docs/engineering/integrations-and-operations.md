@@ -112,7 +112,7 @@ missing capability. Native SDK calls stay out of generic UI. See the
 | Foreground activity service | Keep | `modules/opencode-activity/`; ongoing notification and Headless JS cannot be replaced by opportunistic Expo background tasks |
 | Per-connection custom CA | Add | `modules/opencode-tls/` + `shared/platform/tls-trust.ts`; Android host-aware OkHttp trust and iOS `NSURLProtocol`/`SRSecurityPolicy`; OpenCode 1 and Cloud Link keep system trust ([ADR 0021](../adr/0021-per-connection-custom-ca.md)) |
 | Speech recognition | Keep / SDK upgrade | `expo-speech-recognition` 58; existing permissions, recovery, vendor/on-device fallback and microphone owner |
-| Offline wake word and TTS | Keep | Sherpa 1.3.1 and its ABI/iOS aliases patch; shared voice lifecycle, explicit model downloads and idle cleanup |
+| Offline wake word and TTS | Keep | Sherpa 1.3.1 with pinned ABI, TTS alias and wake decode fixes; explicit model downloads and idle cleanup. See [ADR 0048](../adr/0048-system-and-local-wake-detection.md). |
 | Local classifier | Keep / lazy load | `llama.rn` exactly 0.12.9 with matching engine prebuilts and a small upstream iOS binding backport; no engine source build; AI loads only a requested downloaded model |
 | Sharing | Keep / standardize patch delivery | Official Expo Sharing; replace the bespoke source-rewriting script with a pinned patch; retain bounded copies, text and URI safety |
 | Deep links / quick actions | Keep | Expo Router, Expo Linking and existing quick-action package; preserve route trust validation and non-secret payloads |

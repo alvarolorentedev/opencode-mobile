@@ -1,7 +1,8 @@
 import { useAudioStream, type AudioStreamBuffer } from 'expo-audio';
 import { useCallback, useEffect, useRef } from 'react';
-import { Platform } from 'react-native';
+import { AppState, Platform } from 'react-native';
 
+import { i18n } from '@/shared/i18n/index';
 import { activateLocalWakeRecordingAsync, deactivateLocalWakeRecordingAsync } from '@/shared/platform/voice/local-wake-word/audio-session';
 import { getLocalVoiceModelStatus } from '@/shared/platform/voice/local-wake-word/models';
 import { createAudioRingBuffer, createResampler, int16ToFloat32, selectSpeechSegment } from '@/shared/platform/voice/local-wake-word/pcm';
@@ -9,6 +10,7 @@ import { acceptWakeWordSamples, computeLocalSpeakerEmbedding, ensureLocalCommand
 import { cosineSimilarity } from '@/shared/platform/voice/local-wake-word/similarity';
 import { loadLocalSpeakerProfile } from '@/shared/platform/voice/local-wake-word/speaker-profile';
 import { ensureLocalVoicePermissionAsync } from '@/shared/platform/voice/permissions';
+import { recordWakeDiagnostic } from '@/shared/platform/voice/voice-diagnostics';
 import type { LocalCommandModelId, LocalWakePhraseId } from '@/shared/platform/voice/local-wake-word/types';
 
 const SAMPLE_RATE = 16000;
@@ -22,6 +24,7 @@ const MAX_KWS_QUEUE_SAMPLES = MAX_KWS_QUEUE_SECONDS * SAMPLE_RATE;
 const MAX_HANDOFF_SAMPLES = Math.round(2.5 * SAMPLE_RATE);
 const MAX_CONSECUTIVE_FAILURES = 3;
 const STREAM_RECOVERY_MS = 750;
+const FIRST_FRAME_TIMEOUT_MS = 3000;
 
 export type LocalWakeWordOptions = {
   commandModel: LocalCommandModelId;
@@ -51,6 +54,9 @@ export function useLocalWakeWord({
   const kwsQueueSamplesRef = useRef(0);
   const generationRef = useRef(0);
   const startPromiseRef = useRef<Promise<boolean> | undefined>(undefined);
+  const recorderStartRef = useRef<Promise<boolean> | undefined>(undefined);
+  const recordingOwnedRef = useRef(false);
+  const firstFrameRef = useRef<((received: boolean) => void) | undefined>(undefined);
   const consecutiveFailuresRef = useRef(0);
   const failingRef = useRef(false);
   const recoveringStreamRef = useRef(false);
@@ -90,22 +96,28 @@ export function useLocalWakeWord({
     kwsQueueSamplesRef.current = 0;
   }, []);
 
+  const stopStream = useCallback(() => {
+    try { stream.stop(); } catch { /* Native stop can race with teardown. */ }
+  }, [stream]);
+
+  const stopRecording = useCallback(async () => {
+    if (!recordingOwnedRef.current) return;
+    recordingOwnedRef.current = false;
+    firstFrameRef.current?.(false);
+    stopStream();
+    await recorderStartRef.current?.catch(() => undefined);
+    await deactivateLocalWakeRecordingAsync().catch(() => undefined);
+  }, [stopStream]);
+
   const failWake = useCallback((message: string) => {
-    if (failingRef.current) {
-      return;
-    }
+    if (failingRef.current) return;
     failingRef.current = true;
     activeRef.current = false;
     generationRef.current += 1;
     clearKwsQueue();
-    try {
-      stream.stop();
-    } catch {
-      // Ignore a native stop race; deactivation still follows.
-    }
-    void deactivateLocalWakeRecordingAsync().catch(() => undefined);
+    void stopRecording();
     onErrorRef.current(message);
-  }, [clearKwsQueue, stream]);
+  }, [clearKwsQueue, stopRecording]);
 
   const keepOnlyUnprocessedAudio = useCallback(() => {
     // The KWS queue holds frames captured after the detected phrase. Rebuild
@@ -163,6 +175,7 @@ export function useLocalWakeWord({
         if (!embedding || score < thresholdRef.current) {
           // Drop the rejected phrase before the next attempt is verified.
           keepOnlyUnprocessedAudio();
+          recordWakeDiagnostic('local', 'speaker-rejected');
           onRejectedRef.current();
           return;
         }
@@ -181,34 +194,30 @@ export function useLocalWakeWord({
         : pending;
       activeRef.current = false;
       generationRef.current += 1;
-      try {
-        stream.stop();
-      } catch {
-        // Ignore a native stop race; the provider will start the OS recognizer.
-      }
+      stopStream();
+      recordWakeDiagnostic('local', 'detected');
       onWakeRef.current(handoff);
     } catch (error) {
       // A broken speaker or wake pass should fall back to a clean re-arm rather
       // than leaving the detector running in a failing state.
-      failWake(error instanceof Error ? error.message : 'On-device wake word failed.');
+      if (generation === generationRef.current) {
+        failWake(error instanceof Error ? error.message : 'On-device wake word failed.');
+      }
     } finally {
       busyRef.current = false;
     }
-  }, [failWake, keepOnlyUnprocessedAudio, stream, takeKwsQueue]);
+  }, [failWake, keepOnlyUnprocessedAudio, stopStream, takeKwsQueue]);
 
-  const recoverKwsFailure = useCallback(async (message: string) => {
+  const recoverKwsFailure = useCallback(async (message: string, generation: number) => {
+    if (generation !== generationRef.current || !activeRef.current) return false;
+    recordWakeDiagnostic('local', 'decode-failed');
     consecutiveFailuresRef.current += 1;
     if (consecutiveFailuresRef.current >= MAX_CONSECUTIVE_FAILURES) {
       failWake(message);
       return false;
     }
-    try {
-      await resetWakeWordStream();
-    } catch {
-      failWake(message);
-      return false;
-    }
-    return true;
+    await resetWakeWordStream();
+    return generation === generationRef.current;
   }, [failWake]);
 
   const drainKwsQueue = useCallback(async () => {
@@ -228,7 +237,7 @@ export function useLocalWakeWord({
           result = await acceptWakeWordSamples(chunk);
         } catch (error) {
           const recovered = await recoverKwsFailure(
-            error instanceof Error ? error.message : 'On-device wake word failed.',
+            error instanceof Error ? error.message : 'On-device wake word failed.', generation,
           );
           if (!recovered) {
             break;
@@ -239,7 +248,7 @@ export function useLocalWakeWord({
           break;
         }
         if (!result?.success) {
-          const recovered = await recoverKwsFailure(result?.error || 'On-device wake word failed.');
+          const recovered = await recoverKwsFailure(result?.error || 'On-device wake word failed.', generation);
           if (!recovered) {
             break;
           }
@@ -267,9 +276,8 @@ export function useLocalWakeWord({
       }
       const resampled = resamplerRef.current.push(samples);
       ringRef.current.push(resampled);
-      if (resampled.length === 0) {
-        return;
-      }
+      if (resampled.length === 0) return;
+      firstFrameRef.current?.(true);
 
       // KWS inference is serialized in the native bridge. Queue frames rather
       // than dropping them so a slow inference pass cannot cut a phrase in half.
@@ -280,7 +288,7 @@ export function useLocalWakeWord({
         const dropped = queue.shift();
         kwsQueueSamplesRef.current -= dropped?.length ?? 0;
       }
-      void drainKwsQueue();
+      if (!firstFrameRef.current) void drainKwsQueue();
     } catch {
       consecutiveFailuresRef.current += 1;
       if (consecutiveFailuresRef.current >= MAX_CONSECUTIVE_FAILURES) {
@@ -293,32 +301,66 @@ export function useLocalWakeWord({
     onBufferRef.current = handleAudioBuffer;
   }, [handleAudioBuffer]);
 
-  useEffect(() => {
-    if (!activeRef.current || audio.isStreaming) {
-      return;
-    }
-    const timer = setTimeout(() => {
-      if (!activeRef.current || audio.isStreaming || recoveringStreamRef.current) {
-        return;
+  const startRecording = useCallback((generation: number) => {
+    const starting = (async () => {
+      if (AppState.currentState === 'background') return false;
+      recordingOwnedRef.current = true;
+      await activateLocalWakeRecordingAsync();
+      if (generation !== generationRef.current) return false;
+      if (AppState.currentState === 'background') throw new Error(i18n.t('settings:voice.localWake.microphoneStartFailed'));
+      const startedAt = Date.now();
+      let resolveFirstFrame!: (received: boolean) => void;
+      const firstFrame = new Promise<boolean>((resolve) => { resolveFirstFrame = resolve; });
+      firstFrameRef.current = resolveFirstFrame;
+      let timer: ReturnType<typeof setTimeout> | undefined;
+      activeRef.current = true;
+      try {
+        await stream.start();
+        if (generation !== generationRef.current) {
+          stopStream();
+          return false;
+        }
+        timer = setTimeout(() => resolveFirstFrame(false), FIRST_FRAME_TIMEOUT_MS);
+        const received = await firstFrame;
+        if (generation !== generationRef.current) return false;
+        const duration = Date.now() - startedAt;
+        if (!received) {
+          recordWakeDiagnostic('local', 'no-microphone-frames', duration);
+          throw new Error(i18n.t('settings:voice.localWake.microphoneStartFailed'));
+        }
+        recordWakeDiagnostic('local', 'ready', duration);
+        return true;
+      } finally {
+        clearTimeout(timer);
+        firstFrameRef.current = undefined;
       }
+    })();
+    recorderStartRef.current = starting;
+    return starting.finally(() => { recorderStartRef.current = undefined; });
+  }, [stopStream, stream]);
+
+  useEffect(() => {
+    if (!activeRef.current || audio.isStreaming) return;
+    const generation = generationRef.current;
+    const timer = setTimeout(() => {
+      if (generation !== generationRef.current || !activeRef.current || startPromiseRef.current || recoveringStreamRef.current) return;
       recoveringStreamRef.current = true;
       void (async () => {
         try {
           await resetWakeWordStream();
-          if (!activeRef.current) {
-            return;
-          }
-          await activateLocalWakeRecordingAsync();
-          await stream.start();
+          if (generation !== generationRef.current || !await startRecording(generation)) return;
+          void drainKwsQueue();
         } catch {
-          failWake('The microphone stopped while listening for the wake word.');
+          if (generation === generationRef.current) {
+            failWake(i18n.t('settings:voice.localWake.microphoneStartFailed'));
+          }
         } finally {
-          recoveringStreamRef.current = false;
+          if (generation === generationRef.current) recoveringStreamRef.current = false;
         }
       })();
     }, STREAM_RECOVERY_MS);
     return () => clearTimeout(timer);
-  }, [audio.isStreaming, failWake, stream]);
+  }, [audio.isStreaming, drainKwsQueue, failWake, startRecording]);
 
   const stop = useCallback(async () => {
     activeRef.current = false;
@@ -329,23 +371,17 @@ export function useLocalWakeWord({
     recoveringStreamRef.current = false;
     generationRef.current += 1;
     clearKwsQueue();
-    try {
-      stream.stop();
-    } catch {
-      // Ignore transient native stop errors.
-    }
-    await deactivateLocalWakeRecordingAsync().catch(() => undefined);
-    await resetWakeWordStream().catch(() => undefined);
     ringRef.current.clear();
-  }, [clearKwsQueue, stream]);
+    const ownedRecording = recordingOwnedRef.current;
+    await stopRecording();
+    if (ownedRecording) await resetWakeWordStream();
+  }, [clearKwsQueue, stopRecording]);
 
   const start = useCallback(() => {
-    if (activeRef.current) {
-      return Promise.resolve(true);
-    }
-    if (startPromiseRef.current) {
-      return startPromiseRef.current;
-    }
+    if (AppState.currentState === 'background') return Promise.resolve(false);
+    if (startPromiseRef.current) return startPromiseRef.current;
+    if (recorderStartRef.current) return recorderStartRef.current.catch(() => false);
+    if (activeRef.current) return Promise.resolve(true);
     const promise = (async () => {
       if (Platform.OS === 'web') {
         onErrorRef.current('On-device wake word is not available on web.');
@@ -364,15 +400,17 @@ export function useLocalWakeWord({
           return false;
         }
         const permission = await ensureLocalVoicePermissionAsync();
+        if (startGeneration !== generationRef.current) return false;
         if (!permission.granted) {
           onErrorRef.current('Microphone permission is required for the on-device wake word.');
           return false;
         }
-        profileRef.current = await loadLocalSpeakerProfile();
+        const profile = await loadLocalSpeakerProfile();
         if (startGeneration !== generationRef.current) {
           return false;
         }
-        if (verifySpeakerRef.current && !profileRef.current?.length) {
+        profileRef.current = profile;
+        if (verifySpeakerRef.current && !profile?.length) {
           onErrorRef.current('Enroll your voice or turn off voice verification before using the on-device wake word.');
           return false;
         }
@@ -388,30 +426,7 @@ export function useLocalWakeWord({
         if (startGeneration !== generationRef.current) {
           return false;
         }
-        await activateLocalWakeRecordingAsync();
-        if (startGeneration !== generationRef.current) {
-          await deactivateLocalWakeRecordingAsync().catch(() => undefined);
-          return false;
-        }
-        // Mark active before start() resolves so the first captured buffer is
-        // not discarded while the native call is still settling.
-        activeRef.current = true;
-        try {
-          await stream.start();
-        } catch (error) {
-          activeRef.current = false;
-          throw error;
-        }
-        if (startGeneration !== generationRef.current) {
-          activeRef.current = false;
-          try {
-            stream.stop();
-          } catch {
-            // Ignore a native stop race.
-          }
-          await deactivateLocalWakeRecordingAsync().catch(() => undefined);
-          return false;
-        }
+        if (!await startRecording(startGeneration)) return false;
         // Warm the much larger VAD/ASR models while the wake detector is live, so
         // the command window after a wake is not delayed by model loading.
         void ensureLocalCommandRuntime(
@@ -420,10 +435,13 @@ export function useLocalWakeWord({
           languageRef.current,
           { verifySpeaker: verifySpeakerRef.current },
         ).catch(() => undefined);
+        void drainKwsQueue();
         return true;
       } catch (error) {
+        if (startGeneration !== generationRef.current) return false;
         activeRef.current = false;
-        await deactivateLocalWakeRecordingAsync().catch(() => undefined);
+        clearKwsQueue();
+        await stopRecording();
         if (startGeneration === generationRef.current) {
           onErrorRef.current(error instanceof Error ? error.message : 'Could not start the on-device wake word.');
         }
@@ -437,19 +455,9 @@ export function useLocalWakeWord({
       }
     });
     return promise;
-  }, [clearKwsQueue, stream]);
+  }, [clearKwsQueue, drainKwsQueue, startRecording, stopRecording]);
 
-  useEffect(() => () => {
-    activeRef.current = false;
-    generationRef.current += 1;
-    clearKwsQueue();
-    try {
-      stream.stop();
-    } catch {
-      // Ignore unmount races.
-    }
-    void deactivateLocalWakeRecordingAsync().catch(() => undefined);
-  }, [clearKwsQueue, stream]);
+  useEffect(() => () => { void stop(); }, [stop]);
 
   return { start, stop };
 }

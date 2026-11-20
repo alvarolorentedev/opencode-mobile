@@ -9,6 +9,7 @@ import { stopSpeaking } from '@/shared/platform/voice/speech-output';
 import { useSpeechInput } from '@/shared/platform/voice/use-speech-input';
 import { LOCAL_WAKE_PHRASES, normalizeLocalCommandModel, normalizeLocalWakePhrase } from '@/shared/platform/voice/local-wake-word/types';
 import { createWakePhraseSession, normalizeWakePhrase } from '@/shared/platform/voice/wake-phrase';
+import { recordWakeDiagnostic } from '@/shared/platform/voice/voice-diagnostics';
 import { playWakePhraseCue } from '@/shared/platform/voice/wake-feedback';
 import { CONVERSATION_KEEP_AWAKE_TAG, type ConversationInputPhase, type ConversationReadbackPhase } from '@/features/voice/model/types';
 import type { ChatPreferences } from '@/shared/preferences/opencode-preferences';
@@ -28,7 +29,6 @@ import { useConversationConnectionFeedback } from '@/features/voice/state/conver
 import { useConversationSnapshot } from '@/features/voice/state/conversation/use-conversation-snapshot';
 import { useConversationTimers, useConversationCleanup } from '@/features/voice/state/conversation/use-conversation-timers';
 import { useLocalWakeController } from '@/features/voice/state/conversation/use-local-wake-controller';
-type ConfirmationApi = ReturnType<typeof useConversationConfirmation>;
 export function useConversationState({ connection, chatPreferences, currentSessionId, setCurrentSessionId,
   sessionStatuses, messagesBySession, pendingPermissionsBySession, pendingQuestionsBySession,
   sendingState, ensureActiveSession, sendPrompt: sendPromptAction,
@@ -83,7 +83,7 @@ export function useConversationState({ connection, chatPreferences, currentSessi
   const stopLocalCommandRef = useRef<() => Promise<void>>(async () => undefined);
   const startLocalConfirmationRef = useRef<() => Promise<boolean>>(async () => false);
   const stopLocalConfirmationRef = useRef<() => Promise<void>>(async () => undefined);
-  const confirmationRef = useRef<ConfirmationApi | undefined>(undefined);
+  const confirmationRef = useRef<ReturnType<typeof useConversationConfirmation> | undefined>(undefined);
   const handleCapturedCommandRef = useRef<(text: string, source: 'system' | 'local') => void>(() => undefined);
   const abortSpeechInputRef = useRef<() => void>(() => undefined);
   // Every arm starts a fresh session. The phrase used for that turn is fixed at
@@ -115,14 +115,13 @@ export function useConversationState({ connection, chatPreferences, currentSessi
     contextualStrings: speechContextualStrings,
     levelStep: 2,
     locale: chatPreferences.speechLocale,
-    onEnd: () => {
+    onEnd: (heardTranscript) => {
       if (conversationPhaseRef.current === 'confirming') {
         confirmationRef.current?.handleEnd();
         return;
       }
       if (conversationPhaseRef.current === 'armed') {
-        // Keep only the phrase tail across the recognizer restart. A phrase
-        // split by a pause remains matchable; ambient noise is discarded.
+        if (heardTranscript) recordWakeDiagnostic('system', 'phrase-not-matched');
         wakePhraseSessionRef.current.checkpoint();
         return;
       }
@@ -177,6 +176,7 @@ export function useConversationState({ connection, chatPreferences, currentSessi
         return;
       }
       if (conversationPhaseRef.current === 'armed') {
+        recordWakeDiagnostic('system', 'detected');
         conversationPhaseRef.current = 'listening';
         setConversationPhase('listening');
         applyConversationFeedback(setConversationFeedback, setConversationFeedbackAction, undefined);

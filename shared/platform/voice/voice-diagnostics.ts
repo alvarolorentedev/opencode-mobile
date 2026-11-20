@@ -44,3 +44,16 @@ export function recordVoiceDiagnostic(outcome: 'retry' | 'cancelled' | 'blocked'
     telemetry.info(`voice.${outcome}`, attrs);
   }
 }
+
+type WakeOutcome = 'ready' | 'restart-gap' | 'silence' | 'speech-without-transcript' | 'transcript'
+  | 'phrase-not-matched' | 'detected' | 'no-microphone-frames' | 'decode-failed'
+  | 'speaker-rejected' | 'command-start-failed' | 'command-capture-failed' | 'command-not-heard';
+
+export function recordWakeDiagnostic(kind: 'system' | 'local', outcome: WakeOutcome, durationMs?: number) {
+  const attrs = { operation: 'voice.wake', kind, outcome, durationMs };
+  if (outcome === 'no-microphone-frames' || outcome === 'command-start-failed' || outcome === 'command-capture-failed') {
+    telemetry.info('voice.wake', attrs);
+  } else {
+    telemetry.debug('voice.wake', attrs);
+  }
+}

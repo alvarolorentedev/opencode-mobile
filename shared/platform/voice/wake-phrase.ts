@@ -9,6 +9,7 @@
 
 export const DEFAULT_WAKE_PHRASE = 'hey code';
 export const MAX_WAKE_PHRASE_LENGTH = 60;
+const PREFIX_TIMEOUT_MS = 6000;
 
 // Unicode letters and numbers are words. Everything else is a separator, so
 // paths, flags and shell punctuation in the command survive untouched.
@@ -122,149 +123,110 @@ export type WakePhraseSessionResult = {
 };
 
 /**
- * Accumulates recognition results for one conversation turn.
- *
- * Interims are revisions of the active segment; finals commit it. Before a
- * phrase match only a short tail of the latest final is retained, so a phrase
- * split across segments still matches while arbitrary noise is discarded. Once
- * matched, the full text is kept and the command is recomputed as the suffix
- * after the first phrase occurrence, which keeps interim revisions from
- * duplicating or losing words.
+ * Interims replace the active segment. Until the wake segment settles, keep
+ * checking alternatives so the command is revised with the wake hypothesis.
  */
 export function createWakePhraseSession(phrase: string) {
   const normalizedPhrase = normalizeWakePhrase(phrase);
-  const expected = phraseTokens(normalizedPhrase);
-  const tailTokenCount = Math.max(0, expected.length - 1);
+  const expected = phraseTokens(normalizedPhrase).join('');
 
+  type Prefix = { text: string; expiresAt: number };
+  let prefixes = new Map<string, Prefix>();
+  let pendingPrefixes: typeof prefixes | undefined;
   let committed = '';
   let current = '';
   let matched = false;
   let commandOnly = false;
-  let lastCommand = '';
 
   const fullText = () => current || committed;
+  const command = () => commandOnly ? fullText() : findWakePhrase(fullText(), normalizedPhrase)?.command ?? '';
+  const result = (): WakePhraseSessionResult => ({ command: matched ? command() : '', matched });
 
-  const retainTail = (value: string) => {
-    if (tailTokenCount === 0) {
-      return '';
+  const checkpoint = () => {
+    if (matched) {
+      committed = fullText();
+    } else if (pendingPrefixes) {
+      prefixes = pendingPrefixes;
     }
-    const tokens = tokenize(value);
-    if (tokens.length <= tailTokenCount) {
-      return value.trim();
-    }
-    return value.slice(tokens[tokens.length - tailTokenCount].start).trim();
+    pendingPrefixes = undefined;
+    current = '';
+    return result();
   };
 
-  const evaluate = () => {
-    if (commandOnly) {
-      lastCommand = fullText();
-      return;
-    }
-    const match = findWakePhrase(fullText(), normalizedPhrase);
-    if (match) {
-      matched = true;
-      lastCommand = match.command;
-      return;
-    }
-    // A revision can temporarily drop the phrase. Keep the last command rather
-    // than flickering the turn back to unarmed; the command timeout recovers.
-  };
-
-  const push = (transcript: string, isFinal: boolean): WakePhraseSessionResult => {
-    const segment = transcript.trim();
-    if (!segment) {
-      if (isFinal) {
-        committed = current || committed;
-      }
-      return { command: matched ? lastCommand : '', matched };
-    }
-
-    current = committed ? `${committed} ${segment}` : segment;
-    if (isFinal) {
-      committed = current;
-    }
-
-    evaluate();
-
-    if (!matched && isFinal) {
-      const tail = retainTail(committed);
-      committed = tail;
-      current = tail;
-    }
-
-    return { command: matched ? lastCommand : '', matched };
-  };
-
-  /**
-   * Try the recognizer's alternative transcripts before committing the segment.
-   * The top hypothesis is usually right, but a lower one often contains a phrase
-   * the top misheard. Prefer an alternative that also carries a command so a
-   * phrase-only top hypothesis does not drop the rest of the turn.
-   */
   const pushAll = (transcripts: readonly string[], isFinal: boolean): WakePhraseSessionResult => {
     const candidates = transcripts.map((value) => value.trim()).filter(Boolean);
-    if (candidates.length === 0) {
-      return push('', isFinal);
+    if (!candidates.length) {
+      return isFinal ? checkpoint() : result();
     }
-    if (matched || commandOnly || candidates.length === 1) {
-      return push(candidates[0], isFinal);
+    if (commandOnly || committed) {
+      current = committed ? `${committed} ${candidates[0]}` : candidates[0];
+      return isFinal ? checkpoint() : result();
     }
 
+    const now = Date.now();
+    const activePrefixes = [...prefixes.values()].filter((prefix) => prefix.expiresAt > now);
+    const nextPrefixes = new Map<string, Prefix>();
     let phraseOnly: string | undefined;
     for (const candidate of candidates) {
-      const text = committed ? `${committed} ${candidate}` : candidate;
-      const match = findWakePhrase(text, normalizedPhrase);
-      if (!match) {
-        continue;
+      const segments = [
+        { text: candidate, expiresAt: now + PREFIX_TIMEOUT_MS },
+        ...activePrefixes.map((prefix) => ({ ...prefix, text: `${prefix.text} ${candidate}` })),
+      ];
+      for (const { text, expiresAt } of segments) {
+        const match = findWakePhrase(text, normalizedPhrase);
+        if (match?.command) {
+          matched = true;
+          current = text;
+          return isFinal ? checkpoint() : result();
+        }
+        if (match) {
+          phraseOnly ??= text;
+          continue;
+        }
+        const tokens = tokenize(text);
+        let suffix = '';
+        for (let index = tokens.length - 1; index >= 0; index--) {
+          suffix = tokens[index].normalized + suffix;
+          if (suffix.length >= expected.length) break;
+          if (expected.startsWith(suffix)) {
+            const previous = nextPrefixes.get(suffix);
+            if (!previous || expiresAt > previous.expiresAt) {
+              nextPrefixes.set(suffix, { text: text.slice(tokens[index].start), expiresAt });
+            }
+          }
+        }
       }
-      if (match.command) {
-        return push(candidate, isFinal);
-      }
-      phraseOnly ??= candidate;
     }
 
-    return push(phraseOnly ?? candidates[0], isFinal);
+    if (phraseOnly) {
+      matched = true;
+      current = phraseOnly;
+    }
+    pendingPrefixes = nextPrefixes;
+    return isFinal ? checkpoint() : result();
   };
 
   return {
     command() {
-      return matched ? lastCommand.trim() : '';
+      return matched ? command() : '';
     },
     matched() {
       return matched;
     },
-    /**
-     * Mark this session as already woken. Used by the local wake-word path:
-     * the OS recognizer starts after the on-device detector, so its transcript
-     * is the whole command and must not be searched for the phrase again.
-     */
     markMatched() {
       matched = true;
       commandOnly = true;
-      lastCommand = fullText();
     },
-    checkpoint() {
-      if (current) {
-        committed = current;
-      }
-      evaluate();
-      if (!matched) {
-        // Preserve only the short phrase tail across a recognition boundary so
-        // a split phrase can still match without carrying a noisy buffer.
-        const tail = retainTail(committed);
-        committed = tail;
-        current = tail;
-      }
-      return { command: matched ? lastCommand : '', matched } satisfies WakePhraseSessionResult;
-    },
-    push,
+    checkpoint,
+    push: (transcript: string, isFinal: boolean) => pushAll([transcript], isFinal),
     pushAll,
     reset() {
+      prefixes.clear();
+      pendingPrefixes = undefined;
       committed = '';
       current = '';
       matched = false;
       commandOnly = false;
-      lastCommand = '';
     },
     value() {
       return fullText() || undefined;

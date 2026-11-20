@@ -77,3 +77,92 @@ index 603409e..75b5ec6 100644
      var numThreads: Int = 1,
      var debug: Boolean = false,
      var provider: String = "cpu",
+diff --git a/node_modules/@siteed/sherpa-onnx.rn/android/src/main/kotlin/net/siteed/sherpaonnx/handlers/KWSHandler.kt b/node_modules/@siteed/sherpa-onnx.rn/android/src/main/kotlin/net/siteed/sherpaonnx/handlers/KWSHandler.kt
+--- a/node_modules/@siteed/sherpa-onnx.rn/android/src/main/kotlin/net/siteed/sherpaonnx/handlers/KWSHandler.kt
++++ b/node_modules/@siteed/sherpa-onnx.rn/android/src/main/kotlin/net/siteed/sherpaonnx/handlers/KWSHandler.kt
+@@ -182,33 +182,15 @@
+                 // accumulates frames, and isReady() gates decode calls.
+                 stream!!.acceptWaveform(samples, sampleRate)
+ 
+-                // Decode while the spotter has enough frames ready.
+-                // NOTE: The v1.12.28 KWS model has a confirmed Reshape bug that
+-                // crashes (SIGABRT) when decode is called. We wrap in try-catch
+-                // but C++ Ort::Exception causes process abort — this catch only
+-                // helps if the JNI layer converts it to a Java exception.
+-                var decodeCount = 0
+                 var detectedKeyword = ""
+-                try {
+-                    while (spotter!!.isReady(stream!!)) {
+-                        spotter!!.decode(stream!!)
+-                        decodeCount++
++                while (spotter!!.isReady(stream!!)) {
++                    spotter!!.decode(stream!!)
++                    // The next decode can consume this result while checking for silence.
++                    detectedKeyword = spotter!!.getResult(stream!!).keyword
++                    if (detectedKeyword.isNotEmpty()) {
++                        spotter!!.reset(stream!!)
++                        break
+                     }
+-
+-                    val result = spotter!!.getResult(stream!!)
+-                    if (result.keyword.isNotEmpty()) {
+-                        detectedKeyword = result.keyword
+-                        Log.i(TAG, "KEYWORD DETECTED: \"$detectedKeyword\" (after ${totalSamplesAccepted} samples)")
+-                        spotter!!.reset(stream!!)
+-                    }
+-                } catch (e: Exception) {
+-                    Log.e(TAG, "Decode error (likely upstream model bug): ${e.message}")
+-                    // Reset stream to recover if possible
+-                    try { spotter!!.reset(stream!!) } catch (_: Exception) {}
+-                }
+-
+-                if (decodeCount > 0) {
+-                    Log.d(TAG, "Decoded $decodeCount times, keyword: \"$detectedKeyword\"")
+                 }
+ 
+                 val resultMap = Arguments.createMap()
+diff --git a/node_modules/@siteed/sherpa-onnx.rn/ios/handlers/SherpaOnnxKWSHandler.swift b/node_modules/@siteed/sherpa-onnx.rn/ios/handlers/SherpaOnnxKWSHandler.swift
+--- a/node_modules/@siteed/sherpa-onnx.rn/ios/handlers/SherpaOnnxKWSHandler.swift
++++ b/node_modules/@siteed/sherpa-onnx.rn/ios/handlers/SherpaOnnxKWSHandler.swift
+@@ -146,33 +146,21 @@
+         // Accept waveform
+         SherpaOnnxOnlineStreamAcceptWaveform(streamPtr, Int32(sampleRate), floatSamples, Int32(floatSamples.count))
+ 
+-        // Decode while ready
+-        var decodeCount = 0
+-        while SherpaOnnxIsKeywordStreamReady(spotterPtr, streamPtr) == 1 {
++        var keyword = ""
++        while keyword.isEmpty && SherpaOnnxIsKeywordStreamReady(spotterPtr, streamPtr) == 1 {
+             SherpaOnnxDecodeKeywordStream(spotterPtr, streamPtr)
+-            decodeCount += 1
+-        }
+-
+-        // Get result
+-        let resultPtr = SherpaOnnxGetKeywordResult(spotterPtr, streamPtr)
+-        var keyword = ""
+-
+-        if let resultPtr = resultPtr {
+-            if let kwPtr = resultPtr.pointee.keyword {
+-                keyword = String(cString: kwPtr)
++            // The next decode can consume this result while checking for silence.
++            if let result = SherpaOnnxGetKeywordResult(spotterPtr, streamPtr) {
++                if let value = result.pointee.keyword {
++                    keyword = String(cString: value)
++                }
++                SherpaOnnxDestroyKeywordResult(result)
+             }
+-            SherpaOnnxDestroyKeywordResult(resultPtr)
+         }
+ 
+         let detected = !keyword.isEmpty
+-
+         if detected {
+-            NSLog("%@ KEYWORD DETECTED: \"%@\" (after %lld samples)", SherpaOnnxKWSHandler.TAG, keyword, totalSamplesAccepted)
+             SherpaOnnxResetKeywordStream(spotterPtr, streamPtr)
+-        }
+-
+-        if decodeCount > 0 {
+-            NSLog("%@ Decoded %d times, keyword: \"%@\"", SherpaOnnxKWSHandler.TAG, decodeCount, keyword)
+         }
+ 
+         return [

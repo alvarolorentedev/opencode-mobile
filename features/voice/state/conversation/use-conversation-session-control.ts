@@ -80,18 +80,19 @@ export function useConversationSessionControl({
   const stopConversationMode = useCallback(async () => {
     cancelConfirmation();
     clearPendingConversationResult();
+    conversationCancelRequestedRef.current = true;
     localWakeModeActiveRef.current = false;
-    await stopLocalWakeRef.current().catch(() => undefined);
+    const stopLocal = stopLocalWakeRef.current().catch(() => undefined);
     if (conversationListeningRestartTimeoutRef.current) {
       clearTimeout(conversationListeningRestartTimeoutRef.current);
       conversationListeningRestartTimeoutRef.current = undefined;
     }
 
-    conversationCancelRequestedRef.current = true;
     conversationSubmittingRef.current = false;
     conversationPhaseRef.current = 'off';
     setReadbackPhase('idle');
     abortSpeechInput();
+    await stopLocal;
     await stopSpeaking().catch(() => undefined);
     await stopWorkingSoundAsync().catch(() => undefined);
     setPendingConversationTurn(undefined);
@@ -121,7 +122,7 @@ export function useConversationSessionControl({
   ]);
 
   const toggleConversationMode = useCallback(async () => {
-    if (conversationStartingRef.current) return;
+    if (conversationStartingRef.current && !localWakeModeActiveRef.current) return;
     if (conversationPhase !== 'off') {
       await stopConversationMode();
       return;
@@ -187,6 +188,7 @@ export function useConversationSessionControl({
     currentSessionId,
     ensureActiveSession,
     getLatestConversationAssistantEntry,
+    localWakeModeActiveRef,
     pendingPermissionsBySession,
     pendingQuestionsBySession,
     sendingStateActive,

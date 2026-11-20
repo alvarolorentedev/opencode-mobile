@@ -265,6 +265,7 @@ async function loadAndroidWatchdogHarness({
   let now = 1000;
   const outcomes: Record<string, unknown>[] = [];
   const failures: Record<string, unknown>[] = [];
+  const wakeDiagnostics: Record<string, unknown>[] = [];
   const native = {
     addListener: (event: string, listener: Listener) => {
       if (!listeners.has(event)) listeners.set(event, new Set());
@@ -309,13 +310,14 @@ async function loadAndroidWatchdogHarness({
     '@/shared/platform/voice/speech-errors': await loadTs('shared/platform/voice/speech-errors.ts'),
     '@/shared/observability/client': {
       telemetry: {
+        debug: (_name: string, attrs: Record<string, unknown>) => wakeDiagnostics.push(attrs),
         info: (_name: string, attrs: Record<string, unknown>) => outcomes.push(attrs),
         captureError: (_error: unknown, attrs: Record<string, unknown>) => failures.push(attrs),
       },
     },
   }, { ...runtime.globals, Date: { now: () => now } });
   runtime.mount(speech.useSpeechInput, { source: 'conversation', preferOnDevice: true, onResult: () => {} });
-  return { runtime, starts, emit, outcomes, failures, advance: (ms: number) => { now += ms; }, get aborts() { return aborts; } };
+  return { runtime, starts, emit, outcomes, failures, wakeDiagnostics, advance: (ms: number) => { now += ms; }, get aborts() { return aborts; } };
 }
 
 it('retries an early empty Android end and reports one failure after an early native error exhausts recovery', async () => {
@@ -359,6 +361,41 @@ it('preserves normal silence, speech, and user cancellation', async () => {
   emit('end'); await runtime.settle();
   assert.deepEqual(outcomes.map(({ outcome }) => outcome), ['cancelled']);
   assert.equal(failures.length, 0);
+});
+
+it('requests unformatted Android wake alternatives on the initial attempt and on retry', async () => {
+  const { runtime, starts, emit } = await loadAndroidWatchdogHarness();
+  await runtime.value.start({ continuous: true, wakeGate: true, contextualStrings: ['hey code'] });
+  assert.equal(starts[0].addsPunctuation, false);
+  emit('error', { error: 'language-not-supported', code: 12 });
+  emit('end');
+  runtime.fire(250); await runtime.settle();
+
+  assert.equal(starts[1].requiresOnDeviceRecognition, false);
+  assert.equal(starts[1].addsPunctuation, false);
+  assert.equal(starts[1].contextualStrings?.[0], 'hey code');
+  assert.equal(starts[1].continuous, true);
+});
+
+it('records separate wake readiness, silence, restart gap, speech and transcript outcomes', async () => {
+  const { runtime, emit, wakeDiagnostics, advance } = await loadAndroidWatchdogHarness();
+  await runtime.value.start({ wakeGate: true });
+  emit('start');
+  advance(2000);
+  emit('end');
+  advance(350);
+  await runtime.value.start({ wakeGate: true });
+  emit('speechstart');
+  emit('end');
+  await runtime.value.start({ wakeGate: true });
+  emit('result', { isFinal: true, results: [{ transcript: 'ambient non-command' }] });
+  emit('end');
+
+  assert.deepEqual(wakeDiagnostics.map(({ outcome }) => outcome), [
+    'ready', 'silence', 'restart-gap', 'speech-without-transcript', 'restart-gap', 'transcript',
+  ]);
+  assert.equal(wakeDiagnostics[2].durationMs, 350);
+  assert.doesNotMatch(JSON.stringify(wakeDiagnostics), /ambient non-command/);
 });
 
 it('bounds a missing end callback and waits for confirmed native inactivity before retrying', async () => {

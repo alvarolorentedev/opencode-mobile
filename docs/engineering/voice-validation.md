@@ -23,7 +23,8 @@ Relevant Vitest suites:
   Google-recognizer recovery, the retryable total-failure path, permission-prompt background tolerance, and
   alternative-hypothesis delivery.
 - `speech-input-config.test.ts`: system-locale fallback, explicit speech-locale override and result-hypothesis order.
-- `wake-phrase.test.ts`: literal, joined-token and alternative-hypothesis phrase matching.
+- `wake-phrase.test.ts`: literal and joined-token matching, alternatives through
+  final revisions, compound prefixes across a restart, expiry and reset.
 - `voice-enrollment.test.ts`: first PCM frame, startup rejection, missing PCM, and cancellation.
 - `recognition-service.test.ts`: recognizer package availability and recovery order.
 - `conversation-confirmation.test.ts`: TTS/echo guard, confirm/retry/edit/cancel,
@@ -31,7 +32,8 @@ Relevant Vitest suites:
 - `provider-runtime.test.ts`: integrated system/local, wake/no-wake, and
   confirmation submission.
 - `local-wake-word.test.ts`: resampling, downmix, speaker segment, token checks.
-- `local-wake-word-hook.test.ts`: handoff queue and KWS failure recovery.
+- `local-wake-word-hook.test.ts`: first frame, no-frame timeout, cancellation,
+  handoff queue and KWS failure recovery.
 - `local-command-capture.test.ts`: handoff audio and short-turn timeout recovery.
 
 ## Offline acoustic benchmark
@@ -50,6 +52,36 @@ device-independent results separately:
 
 Do not call this a phone benchmark. Device CPU, microphone, audio session and
 native bridge timing are measured separately.
+
+For a bridge regression check, feed the same 16 kHz mono PCM WAV through the
+production Sherpa bridge with the pinned model. Start with a fresh keyword
+stream for each run. Use approximately 100 ms chunks for one run and coalesce
+the keyword and trailing silence into a single batch for the other. Expect
+exactly one detection in each run. Also check the next wake after a speaker
+rejection.
+
+## Android wake regression comparison
+
+Compare version `1.0.156` with the candidate build on the affected Android when
+available, plus a Pixel and an iPhone control. Log the phone, OS version,
+recognizer service and settings in the validation notes. Enable local verbose
+[voice diagnostics](../architecture/observability.md#voice-capture-diagnostics)
+before each run.
+
+- Test each mode with 20 positive trials at 0.5 m in quiet and 20 at 2 m with
+  55–65 dBA background speech. Start with `Hey code` and include `Hey opencode`
+  in the device checklist below. Repeat local trials with speaker verification
+  enabled and a current profile. Use the same speakers, commands, distance and
+  conditions for both builds.
+- Record wake cues, complete commands when spoken without a pause, median and
+  p95 wake latency, and false activations over at least one hour of negative
+  audio per mode. Keep logs and any consented fixtures local.
+- Target 18 of 20 wakes in quiet, 16 of 20 in noise, and at most one false wake
+  per hour with no increase from baseline. Where a trial fails, classify it
+  from the local records before attributing it to acoustic accuracy.
+- If On-device misses persist with valid frames and successful decoding, use
+  the offline benchmark above to tune Sherpa against separate positive and
+  negative samples before changing model settings.
 
 ## Physical-device checklist
 

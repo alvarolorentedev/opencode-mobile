@@ -1,5 +1,11 @@
-import type { ExpoSpeechRecognitionResult } from 'expo-speech-recognition';
+import type { ExpoSpeechRecognitionResult, SetCategoryOptions } from 'expo-speech-recognition';
 import { getLocales } from 'expo-localization';
+
+export const IOS_RECOGNITION_CATEGORY: SetCategoryOptions = {
+  category: 'playAndRecord',
+  categoryOptions: ['defaultToSpeaker', 'allowBluetooth'],
+  mode: 'measurement',
+};
 
 /**
  * Resolve the recognizer locale. The empty preference means "follow the

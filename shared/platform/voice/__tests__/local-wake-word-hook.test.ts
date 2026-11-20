@@ -8,16 +8,19 @@ async function wakeWordHarness({
   threshold = 0.5,
   verifySpeaker = true,
   ensureRuntime = async () => undefined,
+  startStream = async () => undefined,
 }: {
   profile?: number[];
   threshold?: number;
   verifySpeaker?: boolean;
   ensureRuntime?: () => Promise<unknown>;
+  startStream?: () => Promise<unknown>;
 } = {}) {
   const runtime = hookRuntime();
-  const stream = { start: vi.fn(async () => undefined), stop: vi.fn() };
+  const stream = { start: vi.fn(startStream), stop: vi.fn() };
+  const deactivate = vi.fn(async () => undefined);
   let onBuffer: ((buffer: any) => void) | undefined;
-  const accept = vi.fn();
+  const accept = vi.fn().mockResolvedValue({ success: true, detected: false, keyword: '' });
   const embedding = vi.fn();
   const onWake = vi.fn();
   const onRejected = vi.fn();
@@ -27,7 +30,7 @@ async function wakeWordHarness({
   const types = await loadTs('shared/platform/voice/local-wake-word/types.ts');
   const { useLocalWakeWord } = await loadTs('shared/platform/voice/use-local-wake-word.ts', {
     react: runtime.react,
-    'react-native': { Platform: { OS: 'android' } },
+    'react-native': { AppState: { currentState: 'active' }, Platform: { OS: 'android' } },
     'expo-audio': {
       useAudioStream: (options: any) => {
         onBuffer = options.onBuffer;
@@ -40,7 +43,7 @@ async function wakeWordHarness({
     '@/shared/platform/voice/local-wake-word/pcm': pcm,
     '@/shared/platform/voice/local-wake-word/similarity': similarity,
     '@/shared/platform/voice/local-wake-word/types': types,
-    "@/shared/platform/voice/local-wake-word/audio-session": { activateLocalWakeRecordingAsync: async () => undefined, deactivateLocalWakeRecordingAsync: async () => undefined },
+    "@/shared/platform/voice/local-wake-word/audio-session": { activateLocalWakeRecordingAsync: async () => undefined, deactivateLocalWakeRecordingAsync: deactivate },
     "@/shared/platform/voice/local-wake-word/models": { getLocalVoiceModelStatus: () => 'ready' },
     "@/shared/platform/voice/local-wake-word/runtime": { acceptWakeWordSamples: accept, computeLocalSpeakerEmbedding: embedding, ensureLocalCommandRuntime: async () => undefined, ensureLocalVoiceRuntime: ensureRuntime, resetWakeWordStream: async () => undefined },
     "@/shared/platform/voice/local-wake-word/speaker-profile": { loadLocalSpeakerProfile: async () => profile }
@@ -59,19 +62,25 @@ async function wakeWordHarness({
     const samples = new Int16Array(length).fill(value);
     onBuffer?.({ data: samples.buffer, sampleRate: 16000, channels: 1, timestamp: 0 });
   };
-  return { runtime, stream, accept, embedding, onWake, onRejected, onError, feed };
+  const start = async () => {
+    const starting = runtime.value.start();
+    await runtime.settle();
+    feed(0);
+    expect(await starting).toBe(true);
+    await runtime.settle();
+    accept.mockClear();
+  };
+  return { runtime, stream, accept, deactivate, embedding, onWake, onRejected, onError, feed, start };
 }
 
 describe('on-device wake word capture', () => {
   it('queues frames while KWS inference is in flight instead of dropping them', async () => {
     const view = await wakeWordHarness();
+    await view.start();
     const first = deferred<WakeResult>();
     view.accept
       .mockImplementationOnce(() => first.promise)
       .mockResolvedValue({ success: true, detected: false, keyword: '' });
-
-    await view.runtime.value.start();
-    await view.runtime.settle();
 
     view.feed(1000);
     expect(view.accept).toHaveBeenCalledTimes(1);
@@ -90,8 +99,7 @@ describe('on-device wake word capture', () => {
 
   it('hands audio captured during the speaker check to command capture', async () => {
     const view = await wakeWordHarness();
-    await view.runtime.value.start();
-    await view.runtime.settle();
+    await view.start();
 
     const firstEmbedding = deferred<number[] | undefined>();
     view.embedding.mockImplementationOnce(() => firstEmbedding.promise);
@@ -114,8 +122,7 @@ describe('on-device wake word capture', () => {
 
   it('surfaces repeated native KWS failures instead of going silently deaf', async () => {
     const view = await wakeWordHarness();
-    await view.runtime.value.start();
-    await view.runtime.settle();
+    await view.start();
 
     view.accept.mockRejectedValue(new Error('native KWS failed'));
     view.feed(1000);
@@ -132,8 +139,7 @@ describe('on-device wake word capture', () => {
 
   it('keeps the detector live after a speaker rejection so an immediate retry is heard', async () => {
     const view = await wakeWordHarness();
-    await view.runtime.value.start();
-    await view.runtime.settle();
+    await view.start();
 
     view.embedding.mockResolvedValue([0, 1]);
     view.accept.mockResolvedValueOnce({ success: true, detected: true, keyword: '▁HE Y ▁CO DE' });
@@ -157,8 +163,7 @@ describe('on-device wake word capture', () => {
 
   it('drops a rejected phrase without discarding a retry already in flight', async () => {
     const view = await wakeWordHarness();
-    await view.runtime.value.start();
-    await view.runtime.settle();
+    await view.start();
 
     const firstEmbedding = deferred<number[] | undefined>();
     view.embedding
@@ -184,6 +189,62 @@ describe('on-device wake word capture', () => {
       new Array(160).fill(2000 / 32768),
     );
     expect(view.onWake).toHaveBeenCalledOnce();
+  });
+
+  it('waits for a valid frame and preserves a frame arriving before native start resolves', async () => {
+    const nativeStart = deferred<void>();
+    const view = await wakeWordHarness({ startStream: () => nativeStart.promise });
+    const starting = view.runtime.value.start();
+    await view.runtime.settle();
+    view.feed(1000);
+    expect(view.accept).not.toHaveBeenCalled();
+
+    nativeStart.resolve();
+    await expect(starting).resolves.toBe(true);
+    await view.runtime.settle();
+
+    expect(view.accept).toHaveBeenCalledOnce();
+    expect(view.runtime.countTimers(3000)).toBe(0);
+  });
+
+  it('releases the recorder and reports failure when native start produces no frames', async () => {
+    const view = await wakeWordHarness();
+    const starting = view.runtime.value.start();
+    await view.runtime.settle();
+    expect(view.runtime.countTimers(3000)).toBe(1);
+    view.feed(0, 0);
+    view.runtime.fire(3000);
+
+    await expect(starting).resolves.toBe(false);
+    expect(view.stream.stop).toHaveBeenCalledOnce();
+    expect(view.deactivate).toHaveBeenCalledOnce();
+    expect(view.onError).toHaveBeenCalledWith('settings:voice.localWake.microphoneStartFailed');
+    expect(view.onWake).not.toHaveBeenCalled();
+  });
+
+  it('cancels the frame wait on stop and ignores late audio', async () => {
+    const view = await wakeWordHarness();
+    const starting = view.runtime.value.start();
+    await view.runtime.settle();
+    await view.runtime.value.stop();
+    view.feed();
+    await expect(starting).resolves.toBe(false);
+    expect(view.runtime.countTimers(3000)).toBe(0);
+    expect(view.accept).not.toHaveBeenCalled();
+    expect(view.onError).not.toHaveBeenCalled();
+  });
+
+  it('ignores a decoder failure that arrives after stop', async () => {
+    const view = await wakeWordHarness();
+    await view.start();
+    const decode = deferred<WakeResult>();
+    view.accept.mockImplementationOnce(() => decode.promise);
+    view.feed();
+    await view.runtime.value.stop();
+    decode.reject(new Error('stale decode'));
+    await view.runtime.settle();
+    expect(view.onError).not.toHaveBeenCalled();
+    expect(view.onWake).not.toHaveBeenCalled();
   });
 
   it('does not reopen the microphone when stop lands while start is still loading', async () => {

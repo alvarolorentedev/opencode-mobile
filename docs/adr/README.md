@@ -99,6 +99,7 @@ coverage, and documentation links.
 | [0045](0045-queue-only-unsent-prompts.md) | Queue only unsent prompts | Accepted |
 | [0046](0046-session-owned-model-selection.md) | Session-owned model and variant selection | Superseded by ADR 0047 |
 | [0047](0047-new-session-last-used-model.md) | New sessions start on the last picked model | Accepted |
+| [0048](0048-system-and-local-wake-detection.md) | Retain System and On-device wake detection | Accepted |
 
 ## Template
 

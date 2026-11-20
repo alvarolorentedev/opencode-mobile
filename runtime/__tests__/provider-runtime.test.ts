@@ -415,7 +415,7 @@ let localWakeOptions: any;
 let localCommandOptions: any;
 let localWakeStarts = 0;
 let localCommandStarts = 0;
-let localWakeStartResult = true;
+let localWakeStartResult: boolean | Promise<boolean> = true;
 const sendGate = deferred<void>();
 let permissionRequests: any;
 const startSpeech = async () => {
@@ -667,13 +667,16 @@ voiceRuntime.value.clearConversationFeedback();
 
 // Interims revise the active command instead of appending duplicated words.
 await startConversation();
-recognitionOptions.onResult('hey code open', false);
-recognitionOptions.onResult('hey code open settings', false);
+recognitionOptions.onResult('a code open', false, ['hey code open']);
+recognitionOptions.onResult('a code open settings', false, ['hey code open settings']);
 await voiceRuntime.settle();
 assert.equal(voiceRuntime.value.conversation.latestHeardText, 'open settings');
-recognitionOptions.onResult('hey code open settings', true);
+recognitionOptions.onResult('a code open Android settings', true, ['hey code open Android settings']);
 voiceRuntime.fire(2200); await voiceRuntime.settle();
-assert.equal(lastPrompt, 'open settings'); assert.equal(sends, 2);
+assert.equal(lastPrompt, 'open Android settings');
+recognitionOptions.onEnd();
+voiceRuntime.fire(2200); await voiceRuntime.settle();
+assert.equal(sends, 2, 'the final lower-ranked hypothesis submits the complete command once');
 
 // A command may continue across finalized segments after the phrase.
 await startConversation();
@@ -695,7 +698,7 @@ assert.equal(lastPrompt, 'run tests'); assert.equal(sends, 4);
 // A recognition end while armed preserves only the phrase tail, so a phrase
 // split across the restart still matches.
 await startConversation();
-recognitionOptions.onResult('hey', true);
+recognitionOptions.onResult('hey', true, ['hay']);
 recognitionOptions.onEnd(); abortSpeech();
 await voiceRuntime.update({}); voiceRuntime.fire(350); await voiceRuntime.settle();
 assert.equal(phase(), 'armed');
@@ -793,6 +796,28 @@ assert.match(voiceRuntime.value.conversation.feedback, /phrase gate/);
 await voiceRuntime.value.toggleConversationMode(); await voiceRuntime.settle();
 voiceRuntime.update({ chatPreferences });
 localWakeStartResult = true;
+
+// While the local detector is warming up, stop and background both cancel
+// startup without activating the System recognizer as a fallback.
+voiceRuntime.update({ chatPreferences: { ...chatPreferences, voiceWakeMode: 'local' } });
+for (const cancel of ['stop', 'background']) {
+  const localStart = deferred<boolean>();
+  localWakeStartResult = localStart.promise;
+  const starting = voiceRuntime.value.toggleConversationMode();
+  await voiceRuntime.settle();
+  assert.equal(phase(), 'armed');
+  if (cancel === 'stop') await stopConversation();
+  else onConversationAppStateChange('background');
+  await voiceRuntime.settle();
+
+  localStart.resolve(false);
+  await starting;
+  await voiceRuntime.settle();
+  assert.equal(phase(), 'off');
+  assert.equal(listening, false, 'a canceled local start cannot open the System recognizer');
+}
+localWakeStartResult = true;
+voiceRuntime.update({ chatPreferences });
 
 // Opting into progress updates reads completed interim bubbles before the final
 // settled reply while input stays armed.

@@ -141,6 +141,14 @@ Unexpected terminal failures appear in `errors.jsonl` as local-only records;
 they are never uploaded. Voice diagnostics contain no audio, recognized text,
 embeddings, device identifiers, or native exception messages.
 
+The `voice.wake` operation records System and On-device wake outcomes locally.
+Select **Verbose** in Diagnostics before reproducing a miss. System records
+include readiness, restart gaps, silence, speech without a transcript, a
+transcript without a matching phrase, and detection. On-device records include
+first-frame readiness or timeout, decode failures, speaker rejection, detection,
+and command capture failures after the wake. The structured attributes contain
+only the input mode, outcome and elapsed time when available.
+
 To inspect a terminal voice failure, open Settings → Diagnostics → Recent
 activity or export a report. The failure appears in `errors.jsonl` and recent
 activity. It is not expected in Grafana because handled voice failures stay

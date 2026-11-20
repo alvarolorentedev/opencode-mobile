@@ -640,10 +640,10 @@ permission and Chat Library visibility do not gate widget reads.
   Resolves the system speech locale when no override is set and keeps every
   non-empty recognizer hypothesis in confidence order.
 - `shared/platform/voice/wake-phrase.ts`
-  Conversation-mode wake phrase normalization and matching. Interims and finals
-  are accumulated with a short tail for phrases split across segments; all
-  recognizer alternatives and joined token spans are checked, and only the text
-  after the first phrase occurrence becomes the command.
+  Conversation-mode wake phrase normalization and matching. Each revision of
+  the wake segment considers every recognizer alternative. Literal phrase
+  prefixes can continue in the next segment or recognition session for up to
+  six seconds.
 - `shared/platform/voice/wake-feedback.ts`
   Short haptic cue when the wake phrase arms a turn.
 - `shared/platform/voice/local-wake-word/`
@@ -982,9 +982,9 @@ Supporting behaviors include:
 - optional no-wake mode (`wakePhraseRequired: false`): conversation mode starts
   in `listening`, re-arms after every reply, and relies on confirmation as the
   submission gate. System recognition shows a vendor-privacy warning.
-- phrase matching on interims and finals, with a short tail so a phrase split
-  across segments still matches. Every recognizer alternative is checked, and a
-  joined phrase may be split across tokens (`hey open code` for `hey opencode`)
+- literal wake phrase matching, including joined and split tokens. Android
+  requests unformatted results when starting while armed so the recognizer can
+  return distinct hypotheses. See [ADR 0048](../adr/0048-system-and-local-wake-detection.md).
 - final-result settling delay before submission
 - a command window timeout that re-arms when only the phrase is heard
 - optional pre-submission confirmation (enabled by default). The pending command
@@ -1014,7 +1014,8 @@ still reviewed by default and the app remains foreground-only.
 - `shared/platform/voice/use-local-wake-word.ts` captures 16 kHz PCM, resamples with an
   anti-aliasing FIR when the device delivers 44.1/48 kHz, feeds the KWS model,
   keeps a short rolling buffer, and verifies the enrolled speaker when enabled.
-  Frames are queued while a native KWS call is in flight. On acceptance, the
+  Startup waits up to three seconds for the first valid frame. Frames are queued
+  while a native KWS call is in flight. On acceptance, the
   post-keyword queue is handed to command capture; on rejection, the detector
   stays live for an immediate retry. Repeated native failures surface and recover
   instead of leaving a silently deaf detector.

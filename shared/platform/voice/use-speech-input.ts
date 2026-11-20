@@ -1,13 +1,13 @@
 import { useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { AppState, Platform } from 'react-native';
-import { ExpoSpeechRecognitionModule, useSpeechRecognitionEvent, type ExpoSpeechRecognitionErrorEvent, type SetCategoryOptions } from 'expo-speech-recognition';
+import { ExpoSpeechRecognitionModule, useSpeechRecognitionEvent, type ExpoSpeechRecognitionErrorEvent } from 'expo-speech-recognition';
 
 import { ensureVoiceInputPermissionAsync, isVoicePermissionPromptActive } from '@/shared/platform/voice/permissions';
 import { canFallbackToNetwork, describeVoiceInputError, type VoiceRecoveryAction } from '@/shared/platform/voice/speech-errors';
 import { nextStartAttempt, readRecognitionServices, type StartAttempt } from '@/shared/platform/voice/recognition-service';
 import { drainRecognition } from '@/shared/platform/voice/recognition-teardown';
-import { resolveSpeechInputLocale, resultTranscripts } from '@/shared/platform/voice/speech-input-config';
-import { recognitionErrorReason, recordVoiceDiagnostic, type VoiceCancellation, type VoiceSource } from '@/shared/platform/voice/voice-diagnostics';
+import { IOS_RECOGNITION_CATEGORY, resolveSpeechInputLocale, resultTranscripts } from '@/shared/platform/voice/speech-input-config';
+import { recognitionErrorReason, recordVoiceDiagnostic, recordWakeDiagnostic, type VoiceCancellation, type VoiceSource } from '@/shared/platform/voice/voice-diagnostics';
 import { readVoiceCapabilityFlags } from '@/shared/platform/voice/voice-capability-read';
 
 const RETRY_DELAY_MS = 250;
@@ -15,20 +15,14 @@ const START_WATCHDOG_MS = Platform.OS === 'ios' ? 5000 : 3000;
 const START_FAILED_MESSAGE = 'Voice input could not start. The device speech recognizer did not respond. Try again.';
 const isAppBackgrounded = () => AppState.currentState === 'background';
 
-const IOS_RECOGNITION_CATEGORY: SetCategoryOptions = {
-  category: 'playAndRecord',
-  categoryOptions: ['defaultToSpeaker', 'allowBluetooth'],
-  mode: 'measurement',
-};
-
-type StartOptions = { contextualStrings?: string[]; continuous?: boolean };
+type StartOptions = { contextualStrings?: string[]; continuous?: boolean; wakeGate?: boolean };
 type StartFailure = { reason: string; code?: ExpoSpeechRecognitionErrorEvent['error']; nativeCode?: number };
 const EARLY_END_MS = 1000;
 type UseSpeechInputOptions = {
   contextualStrings?: string[];
   levelStep?: number;
   locale?: string;
-  onEnd?: () => void;
+  onEnd?: (heardTranscript: boolean) => void;
   onResult: (transcript: string, isFinal: boolean, alternatives?: readonly string[]) => void;
   onSpeechStart?: () => void;
   preferOnDevice: boolean;
@@ -36,10 +30,7 @@ type UseSpeechInputOptions = {
   volumeUpdateIntervalMillis?: number;
 };
 
-// `useSpeechInput` is mounted more than once (chat dictation and conversation
-// mode) while the native recognizer is a singleton. These module-level values
-// route native events and controls to the instance that started recognition,
-// including its retries.
+// Route singleton native recognition and its retries to the owning hook.
 let activeOwner: string | undefined;
 let activeOnDevice = false;
 let recognitionReserved = false;
@@ -79,7 +70,8 @@ export function useSpeechInput({
   const servicePackageRef = useRef<string | undefined>(undefined);
   const currentAttemptRef = useRef<StartAttempt>({});
   const readyAtRef = useRef<number | undefined>(undefined);
-  const heardSpeechRef = useRef(false);
+  const evidenceRef = useRef<'silence' | 'speech-without-transcript' | 'transcript'>('silence');
+  const wakeEndRef = useRef<number | undefined>(undefined);
   const attemptRef = useRef(0);
   const attemptedAtRef = useRef(0);
   const recordAttempt = useCallback((outcome: 'retry' | 'blocked' | 'failed', failure: StartFailure) => {
@@ -130,6 +122,10 @@ export function useSpeechInput({
     try { ExpoSpeechRecognitionModule.abort(); } catch { /* transient native state */ }
   }, [ownerId]);
   const markStarted = useCallback(() => {
+    if (readyAtRef.current === undefined && lastStartOptionsRef.current.wakeGate) {
+      const lastEnd = wakeEndRef.current;
+      recordWakeDiagnostic('system', lastEnd === undefined ? 'ready' : 'restart-gap', Date.now() - (lastEnd ?? attemptedAtRef.current));
+    }
     readyAtRef.current ??= Date.now();
     clearStartWatchdog();
     setStartFailed(false);
@@ -146,7 +142,7 @@ export function useSpeechInput({
   });
   useSpeechRecognitionEvent('speechstart', () => {
     if (activeOwner === ownerId && acceptingResultsRef.current) {
-      heardSpeechRef.current = true;
+      if (evidenceRef.current === 'silence') evidenceRef.current = 'speech-without-transcript';
       markStarted();
       onSpeechStart?.();
     }
@@ -156,7 +152,7 @@ export function useSpeechInput({
     markStarted();
     const transcripts = resultTranscripts(event.results); // every hypothesis, not only the top
     const transcript = transcripts[0] ?? '';
-    if (transcript) heardSpeechRef.current = true; else if (!event.isFinal) return;
+    if (transcript) evidenceRef.current = 'transcript'; else if (!event.isFinal) return;
     if (event.isFinal) ignoreErrorsUntilRef.current = Date.now() + 1500;
     onResult(transcript, event.isFinal, transcripts.length > 1 ? transcripts.slice(1) : undefined);
   });
@@ -241,10 +237,7 @@ export function useSpeechInput({
           && !onDeviceFallbackRef.current
           && preferOnDevice
           && capabilities.onDeviceSupported;
-        lastStartOptionsRef.current = {
-          contextualStrings: options.contextualStrings,
-          continuous: options.continuous,
-        };
+        lastStartOptionsRef.current = options;
         const startContextualStrings = options.contextualStrings ?? contextualStrings;
 
         activeOwner = ownerId;
@@ -252,7 +245,7 @@ export function useSpeechInput({
         activeOnDevice = wantsOnDevice;
         acceptingResultsRef.current = true;
         readyAtRef.current = undefined;
-        heardSpeechRef.current = false;
+        evidenceRef.current = 'silence';
         attemptedAtRef.current = Date.now();
         attemptRef.current++;
         let resolveEnd!: (value: true) => void;
@@ -264,9 +257,13 @@ export function useSpeechInput({
           const superseded = startRequestRef.current !== session.request;
           const readyAt = readyAtRef.current;
           const endedTooSoon = Platform.OS === 'android' && readyAt !== undefined
-            && !heardSpeechRef.current && Date.now() - readyAt < EARLY_END_MS;
+            && evidenceRef.current === 'silence' && Date.now() - readyAt < EARLY_END_MS;
           const unexpectedEnd = !session.stopping && !superseded && (readyAt === undefined || endedTooSoon);
-          const recoveringEmptyAttempt = !heardSpeechRef.current && (fallbackTimeoutRef.current || (superseded && startPendingRef.current));
+          const recoveringEmptyAttempt = evidenceRef.current === 'silence' && (fallbackTimeoutRef.current || (superseded && startPendingRef.current));
+          if (options.wakeGate && !superseded && readyAt !== undefined) {
+            wakeEndRef.current = Date.now();
+            recordWakeDiagnostic('system', evidenceRef.current, wakeEndRef.current - readyAt);
+          }
           clearStartWatchdog();
           recognitionReserved = startPendingRef.current || Boolean(fallbackTimeoutRef.current);
           acceptingResultsRef.current = false;
@@ -281,7 +278,7 @@ export function useSpeechInput({
           if (mountedRef.current && unexpectedEnd) {
             beginStartRecoveryRef.current(currentAttemptRef.current, { reason: endedTooSoon ? 'early-end' : 'end-before-ready' });
           } else if (mountedRef.current && !recoveringEmptyAttempt) {
-            onEndRef.current?.();
+            onEndRef.current?.(!superseded && evidenceRef.current === 'transcript');
           }
         };
         const subscription = ExpoSpeechRecognitionModule.addListener('end', finish);
@@ -299,7 +296,7 @@ export function useSpeechInput({
           beginStartRecoveryRef.current(currentAttemptRef.current, { reason: 'ready-timeout' });
         }, START_WATCHDOG_MS);
         ExpoSpeechRecognitionModule.start({
-          addsPunctuation: !effectiveAttempt.compatibility,
+          addsPunctuation: !effectiveAttempt.compatibility && !(Platform.OS === 'android' && options.wakeGate),
           continuous: effectiveAttempt.compatibility ? false : options.continuous ?? Platform.OS !== 'ios',
           contextualStrings: startContextualStrings?.length ? startContextualStrings : undefined,
           interimResults: true,
@@ -404,7 +401,7 @@ export function useSpeechInput({
     }
 
     const readyAt = readyAtRef.current;
-    if (Platform.OS === 'android' && !heardSpeechRef.current
+    if (Platform.OS === 'android' && evidenceRef.current === 'silence'
       && (readyAt === undefined || Date.now() - readyAt < EARLY_END_MS)
       && (event.error === 'audio-capture' || event.error === 'client' || event.error === 'aborted')) {
       beginStartRecoveryRef.current(currentAttemptRef.current, failure);
@@ -441,6 +438,7 @@ export function useSpeechInput({
     [startRecognition],
   );
   const stop = useCallback(() => {
+    wakeEndRef.current = undefined;
     startRequestRef.current++;
     startPendingRef.current = false;
     clearPendingFallback();
@@ -456,6 +454,7 @@ export function useSpeechInput({
     } catch { /* transient native state */ }
   }, [clearPendingFallback, clearStartWatchdog, ownerId]);
   const abort = useCallback((reason: VoiceCancellation = 'user') => {
+    wakeEndRef.current = undefined;
     if (activeOwner === ownerId && (acceptingResultsRef.current || fallbackTimeoutRef.current)) {
       recordVoiceDiagnostic('cancelled', { source, phase: 'recognition', reason });
     }

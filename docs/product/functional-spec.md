@@ -850,8 +850,9 @@ Additional behavior:
 - phrase matching is case- and punctuation-insensitive; a joined form such as
   `heycode` also matches, as does a compound split such as `hey open code` for
   `hey opencode`
-- every recognizer alternative is checked, so a lower hypothesis can wake the
-  turn when the top transcript misheard the phrase
+- every recognizer alternative is checked through the final revision of the
+  wake segment. Literal phrase prefixes can carry into the next segment for up
+  to six seconds.
 - the phrase is passed to the recognizer as contextual vocabulary
 - recognition still runs while armed; the gate changes submission, not capture
 - confirmation stays local to the selected input mode; confirmation speech is
@@ -867,8 +868,9 @@ Optional on-device wake word:
   the missing parts; the default Moonshine pack totals ~152 MB, while Whisper
   tiny multilingual is ~161 MB. Enrolling a voice profile stays disabled until
   the models are ready.
-- The KWS model detects the phrase acoustically; it does not transcribe the
-  room while armed.
+- The KWS model detects the phrase acoustically. Local capture is ready after
+  the first valid microphone frame. If startup delivers no frames within three
+  seconds, conversation mode releases the recorder and falls back to System.
 - If voice verification is enabled and a profile is enrolled, the detected
   segment must match that profile. Rejected turns stay armed and surface
   feedback. Capture stays live across a rejection, so the user can repeat the

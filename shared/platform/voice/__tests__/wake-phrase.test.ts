@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 import {
   DEFAULT_WAKE_PHRASE,
@@ -142,13 +142,39 @@ describe('wake phrase session', () => {
     });
   });
 
-  it('keeps alternatives in the phrase tail across recognizer segments', () => {
+  it('revises the wake command from alternatives through the final segment', () => {
     const session = createWakePhraseSession('hey code');
-    expect(session.push('hey', true).matched).toBe(false);
-    expect(session.pushAll(['code open settings', 'coat open settings'], true)).toEqual({
-      command: 'open settings',
-      matched: true,
-    });
+    expect(session.pushAll(['a code open', 'hey code open'], false).command).toBe('open');
+    expect(session.pushAll(['a code open settings', 'hey code open settings'], true).command).toBe('open settings');
+    expect(session.pushAll(['on Android', 'on iOS'], true).command).toBe('open settings on Android');
+  });
+
+  it('matches a lower-ranked compound prefix across a recognizer restart', () => {
+    const session = createWakePhraseSession('hey opencode');
+    expect(session.pushAll(['stay open', 'hey open'], false).matched).toBe(false);
+    expect(session.checkpoint().matched).toBe(false);
+    expect(session.pushAll(['coat open settings', 'code /help'], true)).toEqual({ command: '/help', matched: true });
+  });
+
+  it('expires prefixes and discards them on reset or intervening speech', () => {
+    const clock = vi.spyOn(Date, 'now').mockReturnValue(0);
+    try {
+      const session = createWakePhraseSession('hey code');
+      session.push('hey', true);
+      clock.mockReturnValue(6000);
+      session.checkpoint();
+      expect(session.push('code open settings', true).matched).toBe(false);
+
+      session.push('hey', true);
+      session.reset();
+      expect(session.push('code open settings', true).matched).toBe(false);
+
+      session.push('hey', true);
+      session.push('unrelated speech', true);
+      expect(session.push('code open settings', true).matched).toBe(false);
+    } finally {
+      clock.mockRestore();
+    }
   });
 
   it('falls back to the top transcript when no alternative contains the phrase', () => {

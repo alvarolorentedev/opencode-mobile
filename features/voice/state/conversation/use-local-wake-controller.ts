@@ -4,6 +4,7 @@ import { useLocalCommandCapture } from '@/shared/platform/voice/use-local-comman
 import { useLocalWakeWord } from '@/shared/platform/voice/use-local-wake-word';
 import type { LocalCommandModelId, LocalWakePhraseId } from '@/shared/platform/voice/local-wake-word/types';
 import type { VoiceRecoveryAction } from '@/shared/platform/voice/speech-errors';
+import { recordWakeDiagnostic } from '@/shared/platform/voice/voice-diagnostics';
 import { playWakePhraseCue } from '@/shared/platform/voice/wake-feedback';
 import { applyConversationFeedback } from '@/features/voice/state/conversation/feedback';
 import type { ConversationInputPhase } from '@/features/voice/model/types';
@@ -87,6 +88,7 @@ export function useLocalWakeController({
       if (!localWakeModeActiveRef.current || conversationPhaseRef.current === 'off') {
         return;
       }
+      if (wakePhraseRequired) recordWakeDiagnostic('local', 'command-capture-failed');
       applyConversationFeedback(setConversationFeedback, setConversationFeedbackAction, message);
       if (!wakePhraseRequired) {
         conversationPhaseRef.current = 'listening';
@@ -106,6 +108,7 @@ export function useLocalWakeController({
       if (!localWakeModeActiveRef.current || conversationPhaseRef.current === 'off') {
         return;
       }
+      if (wakePhraseRequired) recordWakeDiagnostic('local', 'command-not-heard');
       applyConversationFeedback(
         setConversationFeedback,
         setConversationFeedbackAction,
@@ -186,7 +189,8 @@ export function useLocalWakeController({
     setConversationPhase('listening');
     setConversationLatestHeardText(undefined);
     const started = await startCommandRef.current(initialSamples);
-    if (!started) {
+    if (!started && localWakeModeActiveRef.current && conversationPhaseRef.current === 'listening') {
+      recordWakeDiagnostic('local', 'command-start-failed');
       conversationPhaseRef.current = 'armed';
       setConversationPhase('armed');
       applyConversationFeedback(
@@ -258,9 +262,11 @@ export function useLocalWakeController({
 
   const stop = useCallback(async () => {
     localWakeModeActiveRef.current = false;
-    await stopCommandRef.current().catch(() => undefined);
-    await stopConfirmationRef.current().catch(() => undefined);
-    await stopWakeWord().catch(() => undefined);
+    await Promise.all([
+      stopWakeWord().catch(() => undefined),
+      stopCommandRef.current().catch(() => undefined),
+      stopConfirmationRef.current().catch(() => undefined),
+    ]);
   }, [localWakeModeActiveRef, stopWakeWord]);
 
   useLayoutEffect(() => {

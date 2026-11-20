@@ -50,7 +50,7 @@ export function useConversationArming({
   setQueuedConversationPrompt: Dispatch<SetStateAction<string | undefined>>;
   startLocalCommandRef: { current: () => Promise<boolean> };
   startLocalWakeRef: { current: () => Promise<boolean> };
-  startSpeechInput: (options?: { continuous?: boolean }) => Promise<boolean>;
+  startSpeechInput: (options?: { continuous?: boolean; wakeGate?: boolean }) => Promise<boolean>;
   voiceWakeMode: 'phrase' | 'local';
   wakePhraseRequired: boolean;
   wakePhraseSessionRef: { current: ReturnType<typeof createWakePhraseSession> };
@@ -101,6 +101,7 @@ export function useConversationArming({
         const localStarted = wakePhraseRequired
           ? await startLocalWakeRef.current()
           : await startLocalCommandRef.current();
+        if (conversationCancelRequestedRef.current) return false;
         if (localStarted) {
           return true;
         }
@@ -115,7 +116,7 @@ export function useConversationArming({
     }
     localWakeModeActiveRef.current = false;
     onSensorChange('phrase');
-    const started = await startSpeechInput({ continuous: true });
+    const started = await startSpeechInput({ continuous: true, wakeGate: conversationPhaseRef.current === 'armed' });
     // The ref can change while the native start resolves (stop, background, or
     // an immediately matched phrase); widen it back to the full union.
     if (conversationCancelRequestedRef.current || conversationPhaseRef.current === 'off') {
