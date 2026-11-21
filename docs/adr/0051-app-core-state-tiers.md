@@ -59,6 +59,7 @@ Zustand is an approved dependency for this role. Redux, Redux Toolkit and XState
 - [x] Add tier checks for the app store and server-state ownership.
 - [ ] Add the cross-tier integration harness.
 - [ ] Move connection lifecycle and SSE into connection managers.
+- [x] Move the connection state machine into a plain, testable manager.
 - [ ] Extract prompt, session and workspace commands from the composition.
 - [ ] Move canonical transcripts to Query with a live overlay store.
 - [x] Delete the feature domain contexts; keep the narrow shared-UI scope exception.

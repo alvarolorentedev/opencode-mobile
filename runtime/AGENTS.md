@@ -10,7 +10,9 @@ and [feature boundaries](../docs/architecture/feature-boundaries.md).
   [ADR 0051](../docs/adr/0051-app-core-state-tiers.md). React mounts it once.
 - `runtime/workspace/workspace-provider.tsx`: coordinates the app-store registry/focus, root persistence,
   native coordinators, and the single connectivity monitor.
-- `runtime/connections/connection-runtime.tsx`: one connection lifecycle/catalog owner.
+- `runtime/connections/connection-lifecycle.ts`: plain connection state
+  machine. `connection-runtime.tsx` subscribes to it and keeps the probe,
+  renewal and stream effects.
 - `runtime/workspace/workspace-runtime.tsx`: retained connection/project branch.
 - `runtime/composition/`: domain wiring, values, reset and cross-feature effects.
 - `runtime/persistence/`: app hydration/write-back and cross-domain credential-scope migration.

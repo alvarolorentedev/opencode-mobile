@@ -6,11 +6,12 @@ import { isCertificateFailureReason, isTlsTrustSupported, probeConnectionTrust }
 import { getNormalizedServerUrl, isValidServerUrl } from '@/shared/contracts/server-url';
 import { isServerConnectedEvent, serverDataResources } from '@/shared/protocol/opencode/server-data-events';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { createContext, useCallback, useContext, useEffect, useLayoutEffect, useMemo, useReducer, useRef, type PropsWithChildren } from 'react';
+import { createContext, useCallback, useContext, useEffect, useLayoutEffect, useMemo, useRef, useState, type PropsWithChildren } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { TFunction } from 'i18next';
 import { AppState } from 'react-native';
-import { connectionTransition , useConnectionRetry } from '@/features/connections/runtime';
+import { useConnectionRetry } from '@/features/connections/runtime';
+import { createConnectionLifecycle } from '@/runtime/connections/connection-lifecycle';
 import type { ConnectionLifecycle } from '@/features/connections/index';
 import type { ConnectionState } from '@/shared/contracts/domain';
 import { replaceQueryPartition } from '@/shared/server-data/keys';
@@ -39,7 +40,10 @@ export function useConnectionLifecycle(entry: ConnectionRecord, setup: ConnectSe
   const cache = useQueryClient();
   const identity = useQueryIdentity();
   const active = useQueryActivity();
-  const [state, dispatch] = useReducer(connectionTransition, { phase: 'idle', operation: 0, connection: { status: 'idle', message: 'Disconnected' }, contract: 'v2' } satisfies ConnectionLifecycle);
+  const [manager] = useState(createConnectionLifecycle);
+  const [state, setState] = useState(manager.getState);
+  useLayoutEffect(() => manager.subscribe(() => setState(manager.getState())), [manager]);
+  const dispatch = manager.dispatch;
   const latest = useRef({ entry, setup, identity, t, state });
   useLayoutEffect(() => { latest.current = { entry, setup, identity, t, state }; });
   const operation = useRef(0);
