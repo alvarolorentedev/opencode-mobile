@@ -172,6 +172,11 @@ Primary fields:
 - `pendingPermissionsBySession`
 - `pendingQuestionsBySession`
 
+Approvals are project-scoped Query data now: the refresh path writes one
+`pending-interactions` entry per project and the runtime selects it. They are
+listed here because the action layer still calls the grouped maps "session
+caches"; there is no second React copy.
+
 These are keyed by session ID and held in memory.
 
 `diffsBySession` holds normalized `FileDiff` entries. Both contracts pass through `shared/protocol/opencode/diff.ts` before they are stored, so a v1 `before`/`after` pair arrives with a rebuilt unified `patch` and the viewer renders the same line preview for either contract.

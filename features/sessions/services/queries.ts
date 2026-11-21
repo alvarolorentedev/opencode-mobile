@@ -2,7 +2,7 @@ import { queryOptions } from '@tanstack/react-query';
 
 import { withReadSignal, type ScopedOpencodeClient } from '@/shared/protocol/opencode/client';
 import { listSessions } from '@/shared/protocol/services/session-service';
-import { connectionQueryKey, type QueryIdentity } from '@/shared/server-data/keys';
+import { connectionQueryKey, projectQueryKey, type QueryIdentity } from '@/shared/server-data/keys';
 
 export type SessionCatalogData = {
   sessions: import('@/shared/protocol/opencode/types').Session[];
@@ -35,4 +35,15 @@ export function sessionCatalogOptions(identity: QueryIdentity, client: ScopedOpe
     queryKey: sessionCatalogKey(identity, client.__opencode.contract),
     queryFn: ({ signal }) => listSessions(withReadSignal(client, signal)),
   });
+}
+
+export type PendingInteractionsData = {
+  permissions: Record<string, import('@/shared/protocol/opencode/client').PendingPermissionRequest[]>;
+  questions: Record<string, import('@/shared/protocol/opencode/client').PendingQuestionRequest[]>;
+};
+
+// Pending approvals are project-scoped server data. The refresh path writes
+// this key; the runtime only selects from it.
+export function pendingInteractionsKey(identity: QueryIdentity, client: ScopedOpencodeClient) {
+  return projectQueryKey(identity, client, 'pending-interactions');
 }

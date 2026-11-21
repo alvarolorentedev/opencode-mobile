@@ -2,12 +2,15 @@ import { useCallback, type Dispatch, type SetStateAction } from 'react';
 
 import type { useWorkspaceRuntimeState } from '@/runtime/workspace/use-workspace-runtime-state';
 import type { Session } from '@/shared/protocol/opencode/types';
+import type { ApprovalsCatalog } from '@/features/sessions/runtime';
 
 type ResetInput = {
   state: ReturnType<typeof useWorkspaceRuntimeState>;
   resetTerminal: () => void;
   resetTranscript: () => void;
   setSessions: Dispatch<SetStateAction<Session[]>>;
+  setPendingPermissionsBySession: ApprovalsCatalog['setPendingPermissionsBySession'];
+  setPendingQuestionsBySession: ApprovalsCatalog['setPendingQuestionsBySession'];
 };
 
 // Connection switches must discard every value scoped to the previous server
@@ -19,6 +22,8 @@ export function useOpencodeProviderReset({
   resetTerminal,
   resetTranscript,
   setSessions,
+  setPendingPermissionsBySession,
+  setPendingQuestionsBySession,
 }: ResetInput) {
   const {
     bootstrapPromiseRef,
@@ -31,8 +36,6 @@ export function useOpencodeProviderReset({
     explicitSessionSelectionRef,
     locallyCreatedSessionsRef,
     setCurrentSessionId,
-                setPendingPermissionsBySession,
-    setPendingQuestionsBySession,
     setMcpAuthPrompt,
         } = state;
 

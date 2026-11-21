@@ -272,6 +272,7 @@
       "parseFavoriteSessions",
       "serializeFavoriteSessions",
       "useActiveSessions",
+      "ApprovalsCatalog",
       "MissionOverview",
       "SessionCatalog",
       "useMissionActivity",
@@ -280,6 +281,7 @@
       "useNativeSurfaces",
       "usePermissionRulesState",
       "useSessionActions",
+      "useApprovalsCatalog",
       "useSessionCatalog",
       "useSessionRefresh",
       "useSessionState"

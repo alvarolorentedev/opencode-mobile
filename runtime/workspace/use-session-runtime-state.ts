@@ -18,7 +18,7 @@ export function useSessionRuntimeState(input: WorkspaceRuntimeInput, connection:
   const setSettings = input.setSettings;
   const chatPreferences = input.preferences;
   const { activeProjectPath, setActiveProjectPath, activeProjectPathRef, projectFileRequestRef } = useProjectRuntimeState(input.projectPath);
-  const { currentSessionId, setCurrentSessionId, pendingPermissionsBySession, setPendingPermissionsBySession, pendingQuestionsBySession, setPendingQuestionsBySession, isBootstrappingChat, setIsBootstrappingChat, activeSessionsVisible, setActiveSessionsVisible, currentSessionIdRef, pendingDeepLinkTargetRef, deepLinkOperationRef, bootstrapPromiseRef, bootstrapTokenRef, explicitSessionSelectionRef, locallyCreatedSessionsRef, suppressedPendingRequestIdsRef } = useSessionState(workspaceKey({ connectionId: input.connection.id, projectPath: input.projectPath ?? '' }));
+  const { currentSessionId, setCurrentSessionId, isBootstrappingChat, setIsBootstrappingChat, activeSessionsVisible, setActiveSessionsVisible, currentSessionIdRef, pendingDeepLinkTargetRef, deepLinkOperationRef, bootstrapPromiseRef, bootstrapTokenRef, explicitSessionSelectionRef, locallyCreatedSessionsRef, suppressedPendingRequestIdsRef } = useSessionState(workspaceKey({ connectionId: input.connection.id, projectPath: input.projectPath ?? '' }));
   const { messagesBySession, setMessagesBySession, diffsBySession, setDiffsBySession, vcsDiffsByScope, setVcsDiffsByScope, diffScopeBySession, setDiffScopeBySession, selectedDiffMessageBySession, setSelectedDiffMessageBySession, todosBySession, setTodosBySession, isRefreshingMessages, setIsRefreshingMessages, isRefreshingDiffs, setIsRefreshingDiffs, diffScopeBySessionRef, selectedDiffMessageBySessionRef, messagesBySessionRef, busyNotificationsRef, promptSubmissionRef } = useChatRuntimeState();
   const { mcpAuthPrompt, setMcpAuthPrompt } = useExtensionPromptState();
 
@@ -66,8 +66,6 @@ export function useSessionRuntimeState(input: WorkspaceRuntimeInput, connection:
     diffScopeBySession, setDiffScopeBySession,
     selectedDiffMessageBySession, setSelectedDiffMessageBySession,
     todosBySession, setTodosBySession,
-    pendingPermissionsBySession, setPendingPermissionsBySession,
-    pendingQuestionsBySession, setPendingQuestionsBySession,
     mcpAuthPrompt, setMcpAuthPrompt,
     isRefreshingMessages, setIsRefreshingMessages,
     isRefreshingDiffs, setIsRefreshingDiffs,

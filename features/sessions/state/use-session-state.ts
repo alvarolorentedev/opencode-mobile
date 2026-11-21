@@ -1,6 +1,5 @@
-import { useCallback, useLayoutEffect, useRef, useState, type Dispatch, type SetStateAction } from 'react';
+import { useCallback, useLayoutEffect, useRef, type Dispatch, type SetStateAction } from 'react';
 
-import type { PendingPermissionRequest, PendingQuestionRequest } from '@/shared/protocol/opencode/client';
 import { useAppCore, useAppStore } from '@/runtime/core';
 import type { SelectionState } from '@/runtime/core';
 
@@ -30,10 +29,6 @@ export function useSessionState(scopeKey: string) {
     write((current) => ({ activeSessionsVisible: typeof value === 'function' ? value(current.activeSessionsVisible) : value }));
   }, [write]);
 
-  const [pendingPermissionsBySession, setPendingPermissionsBySession] = useState<Record<string, PendingPermissionRequest[]>>({});
-
-  const [pendingQuestionsBySession, setPendingQuestionsBySession] = useState<Record<string, PendingQuestionRequest[]>>({});
-
   const currentSessionIdRef = useRef<string | undefined>(currentSessionId);
 
   const pendingDeepLinkTargetRef = useRef<import('@/shared/contracts/domain').SessionDeepLinkTarget | undefined>(undefined);
@@ -52,5 +47,5 @@ export function useSessionState(scopeKey: string) {
 
   useLayoutEffect(() => { currentSessionIdRef.current = currentSessionId; });
 
-  return { currentSessionId, setCurrentSessionId, pendingPermissionsBySession, setPendingPermissionsBySession, pendingQuestionsBySession, setPendingQuestionsBySession, isBootstrappingChat, setIsBootstrappingChat, activeSessionsVisible, setActiveSessionsVisible, currentSessionIdRef, pendingDeepLinkTargetRef, deepLinkOperationRef, bootstrapPromiseRef, bootstrapTokenRef, explicitSessionSelectionRef, locallyCreatedSessionsRef, suppressedPendingRequestIdsRef };
+  return { currentSessionId, setCurrentSessionId, isBootstrappingChat, setIsBootstrappingChat, activeSessionsVisible, setActiveSessionsVisible, currentSessionIdRef, pendingDeepLinkTargetRef, deepLinkOperationRef, bootstrapPromiseRef, bootstrapTokenRef, explicitSessionSelectionRef, locallyCreatedSessionsRef, suppressedPendingRequestIdsRef };
 }
