@@ -32,6 +32,8 @@ export function SessionDiffBody({ diff }: { diff: FileDiff }) {
   // means the server reported changes without content the viewer can render.
   const emptyPreviewKey = diff.patch ? 'chat:cards.noLineChanges' : 'chat:cards.previewUnavailable';
 
+  // Selectable text inside a scroll view breaks Android scroll gestures
+  // (react-native#33419), so diff lines are not individually selectable.
   return (
     <View className={cn(stylesClasses.diffViewer, "border-b border-border")}>
       {diffBlocks.length === 0 ? <Text className={cn("text-muted-foreground")} variant="label">{t(emptyPreviewKey)}</Text> : diffBlocks.map((block, blockIndex) => {
@@ -57,7 +59,7 @@ export function SessionDiffBody({ diff }: { diff: FileDiff }) {
               ]}>
               <Text className={cn(stylesClasses.diffLineNumber, "text-muted-foreground")} variant="label">{line.rightNumber ?? line.leftNumber ?? ''}</Text>
               <Text style={[styles.diffMarker, { color: tone.accentColor || palette.muted }]}>{line.kind === 'added' ? '+' : line.kind === 'removed' ? '-' : ' '}</Text>
-              <Text selectable className={cn(stylesClasses.diffLineText, "text-foreground")} style={[styles.code]} variant="label">{line.text || ' '}</Text>
+              <Text className={cn(stylesClasses.diffLineText, "text-foreground")} style={[styles.code]} variant="label">{line.text || ' '}</Text>
             </View>
           );
         });
