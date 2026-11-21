@@ -1,7 +1,3 @@
-import { createContext } from 'react';
-import { useDomainValue } from '@/shared/utilities/use-domain-value';
-import type { ConversationContextValue } from '@/features/voice/model/types';
+import { useWorkspaceDomainValue } from '@/runtime/core';
 
-export const ConversationContext = createContext<ConversationContextValue | null>(null);
-
-export const useConversation = () => useDomainValue(ConversationContext, 'useConversation');
+export const useConversation = () => useWorkspaceDomainValue((values) => values.conversationValue, 'useConversation');

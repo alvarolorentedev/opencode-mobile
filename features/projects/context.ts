@@ -1,11 +1,4 @@
-import { createContext } from 'react';
-import { useDomainValue } from '@/shared/utilities/use-domain-value';
-import type { ProjectsContextValue , ProjectFilesContextValue } from '@/features/projects/model/types';
+import { useWorkspaceDomainValue } from '@/runtime/core';
 
-export const ProjectsContext = createContext<ProjectsContextValue | null>(null);
-
-export const ProjectFilesContext = createContext<ProjectFilesContextValue | null>(null);
-
-export const useProjects = () => useDomainValue(ProjectsContext, 'useProjects');
-
-export const useProjectFiles = () => useDomainValue(ProjectFilesContext, 'useProjectFiles');
+export const useProjects = () => useWorkspaceDomainValue((values) => values.projectsValue, 'useProjects');
+export const useProjectFiles = () => useWorkspaceDomainValue((values) => values.projectFilesValue, 'useProjectFiles');

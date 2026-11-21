@@ -8,11 +8,12 @@ import { defaultConnectionSettings } from '@/shared/protocol/opencode/client';
 import { ConnectionRuntime } from '@/runtime/connections/connection-runtime';
 import { CURRENT_ONBOARDING_VERSION, isOnboardingComplete } from '@/features/onboarding/runtime';
 import { defaultChatPreferences } from '@/shared/preferences/opencode-preferences';
-import { OpencodeProviderTree } from '@/runtime/workspace/domain-provider-tree';
 import type { ConnectionContextValue } from '@/features/connections/index';
 import type { SessionDeepLinkTarget } from '@/shared/contracts/domain';
 import { ServerDataActivity, ServerDataScope } from '@/shared/server-data/client';
 import { useAppUpdates } from '@/features/updates/runtime';
+import { UpdatesContext } from '@/features/updates/context';
+import { PreferencesContext } from '@/shared/preferences/context';
 import { useConnectState , useServicesState } from '@/features/cloud-link/runtime';
 import { useConnectionProfiles } from '@/features/connections/runtime';
 import { useFileClipboard } from '@/features/projects/runtime';
@@ -244,7 +245,11 @@ export function WorkspaceProvider({ children }: PropsWithChildren) {
     const preferences = serverPreferences(current.values.preferencesValue.chatPreferences);
     setChatPreferences((previous) => JSON.stringify(serverPreferences(previous)) === JSON.stringify(preferences) ? previous : { ...previous, ...preferences });
   }, [current, setSettings, setChatPreferences]);
-  const values = focusedValues;
+  const setFocusedValues = core.store.getState().setFocusedValues;
+  useEffect(() => {
+    setFocusedValues(focusedValues);
+    return () => setFocusedValues(undefined);
+  }, [focusedValues, setFocusedValues]);
   const readTarget = pathname === '/service' ? undefined : pathname === '/settings' ? inspectionTarget ?? focus
     : pathname === '/terminal' ? terminalTarget ?? focus : focus;
   const workspaceActions = useMemo(() => ({ createChat, createChatInWorktree, focus }), [createChat, createChatInWorktree, focus]);
@@ -264,10 +269,12 @@ export function WorkspaceProvider({ children }: PropsWithChildren) {
       })}
       </ConnectionRuntime>
     </ServerDataScope>)}
-    {values && current ? <OpencodeProviderTree values={values} updates={updates}>
-      <WorkspaceNative runtime={current} preferences={shell.chatPreferences} ready={isHydrated} active={Boolean(focus)} busy={Object.values(snapshots).some((runtime) => runtime.busy)} />
-      {children}
-    </OpencodeProviderTree> : <View style={{ flex: 1, backgroundColor: '#101212', alignItems: 'center', justifyContent: 'center' }}><ActivityIndicator color="#C3CECB" /></View>}
+    {focusedValues && current ? <UpdatesContext.Provider value={updates}>
+      <PreferencesContext.Provider value={focusedValues.preferencesValue}>
+        <WorkspaceNative runtime={current} preferences={shell.chatPreferences} ready={isHydrated} active={Boolean(focus)} busy={Object.values(snapshots).some((runtime) => runtime.busy)} />
+        {children}
+      </PreferencesContext.Provider>
+    </UpdatesContext.Provider> : <View style={{ flex: 1, backgroundColor: '#101212', alignItems: 'center', justifyContent: 'center' }}><ActivityIndicator color="#C3CECB" /></View>}
     </WorkspaceContext.Provider>
     </WorkspaceActionsContext.Provider>
   </VoiceSetupTestContext.Provider>;

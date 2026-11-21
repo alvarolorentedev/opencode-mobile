@@ -23,8 +23,8 @@ focus, preferences and persistence; `WorkspaceProvider` coordinates those
 lifecycles. One `ConnectionRuntime` per connection owns probing, recovery,
 credential renewal and the shared session catalog. Each retained
 `WorkspaceRuntime` owns project workflows. TanStack Query owns routine server
-responses. Existing narrow domain hooks expose the branch supplied by
-`WorkspaceScope`.
+responses. Feature hooks select the focused or scoped values from the app core;
+there is no per-domain context tree.
 
 State is split into seven practical domains:
 

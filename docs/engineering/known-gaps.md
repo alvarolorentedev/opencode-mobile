@@ -14,7 +14,8 @@ Closed on 2026-10-18. The coupling hotspot was split without changing behavior:
 - `runtime/composition/opencode-provider.tsx` is now a thin wrapper (~33 lines). The
   domain hooks and their input spreads moved to
   `runtime/composition/use-opencode-provider-composition.ts` (~410 lines), and the
-  context-provider tree moved to `runtime/workspace/domain-provider-tree.tsx`.
+  context-provider tree was later replaced by `runtime/core/workspace-scope.ts`
+  under ADR 0051.
 - The provider line ratchet in `tests/vitest/architecture.test.ts` dropped from
   500 to 60 in the same change, so the entrypoint cannot regrow into a god
   object. The repo-wide 500-line ceiling still covers both new files.

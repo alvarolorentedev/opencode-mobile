@@ -1,11 +1,4 @@
-import { createContext } from 'react';
-import { useDomainValue } from '@/shared/utilities/use-domain-value';
-import type { McpContextValue , ExtensionsContextValue } from '@/features/extensions/model/types';
+import { useWorkspaceDomainValue } from '@/runtime/core';
 
-export const McpContext = createContext<McpContextValue | null>(null);
-
-export const ExtensionsContext = createContext<ExtensionsContextValue | null>(null);
-
-export const useMcp = () => useDomainValue(McpContext, 'useMcp');
-
-export const useExtensions = () => useDomainValue(ExtensionsContext, 'useExtensions');
+export const useMcp = () => useWorkspaceDomainValue((values) => values.mcpValue, 'useMcp');
+export const useExtensions = () => useWorkspaceDomainValue((values) => values.extensionsValue, 'useExtensions');

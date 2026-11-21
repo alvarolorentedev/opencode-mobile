@@ -45,6 +45,8 @@ export type AppState = {
   registry: RegistryState;
   selection: Record<string, SelectionState>;
   presentation: Map<string, unknown>;
+  focusedValues?: import('@/runtime/workspace/workspace-types').WorkspaceValues;
+  setFocusedValues: (values: import('@/runtime/workspace/workspace-types').WorkspaceValues | undefined) => void;
   setShellValue: <K extends keyof ShellState>(
     key: K,
     value: ShellState[K] | ((current: ShellState[K]) => ShellState[K]),
@@ -70,6 +72,7 @@ export function createAppStore(defaults: AppStoreDefaults): AppStore {
     selection: {},
     // Mutated in place; the hook only needs the stable map identity.
     presentation: new Map<string, unknown>(),
+    focusedValues: undefined,
     setShellValue: (key, value) => set((state) => ({
       shell: {
         ...state.shell,
@@ -90,5 +93,6 @@ export function createAppStore(defaults: AppStoreDefaults): AppStore {
         },
       };
     }),
+    setFocusedValues: (values) => set({ focusedValues: values }),
   }));
 }

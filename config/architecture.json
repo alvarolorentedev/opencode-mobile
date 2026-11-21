@@ -82,8 +82,11 @@
       "RegistryState",
       "SelectionState",
       "ShellState",
+      "WorkspaceScopeContext",
+      "useActiveWorkspaceTarget",
       "useAppCore",
-      "useAppStore"
+      "useAppStore",
+      "useWorkspaceDomainValue"
     ],
     "features/updates/index.ts": [
       "UpdateBanner",

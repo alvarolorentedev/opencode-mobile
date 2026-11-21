@@ -1,6 +1,4 @@
 import type { Session } from '@/shared/protocol/opencode/types';
-import { useUpdates } from '@/features/updates/context';
-import { OpencodeProviderTree } from '@/runtime/workspace/domain-provider-tree';
 import type { useWorkspaceConnections } from '@/runtime/workspace/use-workspace-connections';
 import { workspaceKey, type NewWorktreeChatResult, type NewWorktreeChatTarget, type WorkspaceCatalog, type WorkspaceTarget } from '@/shared/contracts/workspace';
 import type { WorkspaceValues } from '@/runtime/workspace/workspace-types';
@@ -8,6 +6,8 @@ import { createContext, useContext, useEffect, useMemo, useState, type PropsWith
 import { ActivityIndicator, View } from 'react-native';
 import type { MissionOverview } from '@/features/sessions/runtime';
 import { useAppStore } from '@/runtime/core/context';
+import { WorkspaceScopeContext } from '@/runtime/core/workspace-scope';
+export { WorkspaceScopeContext };
 
 export type WorkspaceRegistry = ReturnType<typeof useWorkspaceConnections> & {
   createChat: (target: WorkspaceTarget) => Promise<Session>;
@@ -25,7 +25,6 @@ export type WorkspaceActions = {
   createChatInWorktree: (target: NewWorktreeChatTarget) => Promise<NewWorktreeChatResult>;
   focus?: WorkspaceTarget;
 };
-export const WorkspaceScopeContext = createContext<WorkspaceTarget | undefined>(undefined);
 export const WorkspaceContext = createContext<WorkspaceRegistry | null>(null);
 export const WorkspaceActionsContext = createContext<WorkspaceActions | null>(null);
 export function useWorkspaces() {
@@ -46,18 +45,25 @@ export function useWorkspacePresentation() {
 }
 export function WorkspaceScope({ target, children }: PropsWithChildren<{ target?: WorkspaceTarget }>) {
   const registry = useWorkspaces();
-  const updates = useUpdates();
-  const { ensure, valuesFor } = registry;
+  const { ensure, valuesFor, resolveKey } = registry;
   const incoming = useMemo(() => valuesFor(target), [target, valuesFor]);
   const [retainedTarget, setRetainedTarget] = useState(target);
+  const effective = incoming ? target : retainedTarget;
   const values = incoming ?? (retainedTarget ? valuesFor(retainedTarget) : undefined);
   const key = target && workspaceKey(target);
+  // The snapshot key can be the placeholder project while the target names the
+  // active project. Provide the resolved target so domain selectors look up
+  // the same snapshot that valuesFor found.
+  const resolvedKey = effective ? resolveKey(effective) : undefined;
+  const resolvedTarget = resolvedKey
+    ? (([connectionId, projectPath]) => ({ connectionId, projectPath }))(JSON.parse(resolvedKey) as [string, string])
+    : effective;
   useEffect(() => {
     if (!target) return;
     const controller = new AbortController();
     void ensure(target, { signal: controller.signal }).then(() => setRetainedTarget(target)).catch(() => undefined);
     return () => controller.abort();
   }, [key, target, ensure]);
-  return values ? <WorkspaceScopeContext.Provider value={target ?? registry.focus}><OpencodeProviderTree values={values} updates={updates}>{children}</OpencodeProviderTree></WorkspaceScopeContext.Provider>
+  return values ? <WorkspaceScopeContext.Provider value={resolvedTarget ?? registry.focus ?? registry.retainedFocus}>{children}</WorkspaceScopeContext.Provider>
     : <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}><ActivityIndicator /></View>;
 }

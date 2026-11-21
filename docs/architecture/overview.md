@@ -87,7 +87,7 @@ During the migration the provider composition below remains the current owner of
 domain state; it may read the core as an adapter and must not gain new state.
 
 The dominant design decision is central orchestration through the provider layer:
-`runtime/composition/opencode-provider.tsx` mounts `WorkspaceProvider`, which coordinates the app-store connection registry and the app-wide coordinators. Each retained connection/project branch mounts a headless `WorkspaceRuntime`, reusing `use-opencode-provider-composition.ts`. `WorkspaceScope` supplies its existing narrow domain contexts to the selected surface.
+`runtime/composition/opencode-provider.tsx` mounts `WorkspaceProvider`, which coordinates the app-store connection registry and the app-wide coordinators. Each retained connection/project branch mounts a headless `WorkspaceRuntime`, reusing `use-opencode-provider-composition.ts`. Domain hooks select the focused or scoped values from the app core; there is no per-domain context provider tree.
 
 This composition unit is the application's effective domain layer. It owns:
 
@@ -233,7 +233,7 @@ The completion version, preference schema and first-run migration are unchanged.
 - `runtime/composition/use-opencode-provider-composition.ts`
   The orchestrator: wires the domain hooks, assembles their inputs, and derives
   the context values. This is the application's effective domain layer.
-- `runtime/workspace/domain-provider-tree.tsx`
+- `runtime/core/workspace-scope.ts`
   The nested domain context providers, in their documented order
   (`UpdatesContext` innermost).
 - `shared/contracts/domain.ts`

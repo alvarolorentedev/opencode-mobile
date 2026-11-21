@@ -1,7 +1,3 @@
-import { createContext } from 'react';
-import { useDomainValue } from '@/shared/utilities/use-domain-value';
-import type { TerminalContextValue } from '@/features/terminal/model/types';
+import { useWorkspaceDomainValue } from '@/runtime/core';
 
-export const TerminalContext = createContext<TerminalContextValue | null>(null);
-
-export const useTerminal = () => useDomainValue(TerminalContext, 'useTerminal');
+export const useTerminal = () => useWorkspaceDomainValue((values) => values.terminalValue, 'useTerminal');

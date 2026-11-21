@@ -18,8 +18,9 @@ and [feature boundaries](../docs/architecture/feature-boundaries.md).
 - `runtime/presentation/`: stable drafts/scroll positions, owned by the app store and independent of registry updates.
 
 Server facts belong to Query; device facts belong to the app store. Do not add a
-second store or mirror a Query response. During the migration, contexts under
-`runtime/composition` may read the core as adapters; they must not gain state.
+second store or mirror a Query response. Feature domain hooks select the focused
+or scoped values from `runtime/core/workspace-scope.ts`; do not add a per-domain
+context.
 
 Use feature headless APIs for behavior; do not grow domain logic in composition.
 Preserve query partitions, cancellation, foreground/demand gates, explicit readiness,

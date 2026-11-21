@@ -109,7 +109,7 @@ Used primarily by tab icons.
 - thin entrypoint that mounts the provider tree with the composition unit's values
 
 Orchestration lives in `runtime/composition/use-opencode-provider-composition.ts` and the
-context wiring in `runtime/workspace/domain-provider-tree.tsx`; the entrypoint is held
+context wiring in `runtime/core/workspace-scope.ts`; the entrypoint is held
 to 60 lines by the architecture ratchet and only re-exports the public types.
 
 The public UI contract is exposed through domain hooks from `features/chat/context.ts` (`useOnboarding`, `useConnection`, `useDiagnostics`, `useCapabilities`, `usePreferences`, `useProjects`, `useProjectFiles`, `useCurrentSession`, `useSessionLibrary`, `useChat`, `useApprovals`, `useConversation`, `useTerminal`, `useMcp`), each typed by its matching `*ContextValue`. There is no combined runtime context value.

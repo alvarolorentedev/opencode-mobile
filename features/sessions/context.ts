@@ -1,15 +1,5 @@
-import { createContext } from 'react';
-import { useDomainValue } from '@/shared/utilities/use-domain-value';
-import type { CurrentSessionContextValue , SessionLibraryContextValue , ApprovalsContextValue } from '@/features/sessions/model/types';
+import { useWorkspaceDomainValue } from '@/runtime/core';
 
-export const CurrentSessionContext = createContext<CurrentSessionContextValue | null>(null);
-
-export const SessionLibraryContext = createContext<SessionLibraryContextValue | null>(null);
-
-export const ApprovalsContext = createContext<ApprovalsContextValue | null>(null);
-
-export const useCurrentSession = () => useDomainValue(CurrentSessionContext, 'useCurrentSession');
-
-export const useSessionLibrary = () => useDomainValue(SessionLibraryContext, 'useSessionLibrary');
-
-export const useApprovals = () => useDomainValue(ApprovalsContext, 'useApprovals');
+export const useCurrentSession = () => useWorkspaceDomainValue((values) => values.currentSessionValue, 'useCurrentSession');
+export const useSessionLibrary = () => useWorkspaceDomainValue((values) => values.sessionLibraryValue, 'useSessionLibrary');
+export const useApprovals = () => useWorkspaceDomainValue((values) => values.approvalsValue, 'useApprovals');

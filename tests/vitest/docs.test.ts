@@ -105,6 +105,8 @@ const INLINE_PATH_ALLOWLIST = new Set([
   'Foundations/',
   'Controls/',
   'Feedback/',
+  // Retired provider directory named by ADR 0009.
+  'providers/',
   // Removed paths named as history in known-gaps.md.
   'components/chat/chat-content.tsx',
   'tests/e2e/flows.spec.mjs',

@@ -1,7 +1,3 @@
-import { createContext } from 'react';
-import { useDomainValue } from '@/shared/utilities/use-domain-value';
-import type { ChatContextValue } from '@/features/chat/model/types';
+import { useWorkspaceDomainValue } from '@/runtime/core';
 
-export const ChatContext = createContext<ChatContextValue | null>(null);
-
-export const useChat = () => useDomainValue(ChatContext, 'useChat');
+export const useChat = () => useWorkspaceDomainValue((values) => values.chatValue, 'useChat');
