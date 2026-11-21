@@ -79,7 +79,9 @@ export function useActiveSessions({
     catalogStatuses: statuses,
     catalogSessions: sessions,
     catalogCheckedAt: query.dataUpdatedAt || undefined,
-    catalogError: query.isError ? true : undefined,
+    // Query pauses fetches while offline instead of rejecting them. Mission
+    // Control treats a paused catalog like the old failed-read flag.
+    catalogError: query.isError || query.isPaused ? true : undefined,
     refreshActiveSessions,
     removeSession,
   };
