@@ -18,6 +18,7 @@ import { useConnectionProfiles } from '@/features/connections/runtime';
 import { useFileClipboard } from '@/features/projects/runtime';
 import { useNetworkStatus } from '@/shared/network/use-network-status';
 import { useOpencodePersistence } from '@/runtime/persistence/use-opencode-persistence';
+import { useAppCore, useAppStore } from '@/runtime/core/context';
 import { useShareState } from '@/features/sharing/runtime';
 import { useVoiceSetupTest, VoiceSetupTestContext } from '@/features/voice/runtime';
 import { useWorkspaceAutoApprove } from '@/runtime/composition/use-workspace-auto-approve';
@@ -54,7 +55,13 @@ export function WorkspaceProvider({ children }: PropsWithChildren) {
   }, []);
   const [profiles, setProfiles] = useState<ConnectionProfile[]>([]);
   const onboardingCompleted = isOnboardingComplete(shell.onboardingVersion);
-  const manager = useWorkspaceConnections(shell, isHydrated);
+  const core = useAppCore();
+  const registryState = useAppStore((state) => state.registry);
+  const manager = useWorkspaceConnections(shell, isHydrated, {
+    registry: registryState,
+    getRegistry: () => core.store.getState().registry,
+    setRegistry: core.store.getState().setRegistry,
+  });
   useWorkspaceAutoApprove(manager);
   const { updateSettings: updateWorkspaceSettings, retry, change, removeConnection: removeWorkspaceConnection, connectedWorkspace, isEnabled } = manager;
   const { setFavoriteSessions, setSettings, setChatPreferences, setHiddenProjects } = shell;

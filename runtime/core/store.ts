@@ -3,6 +3,8 @@ import { createStore, type StoreApi } from 'zustand/vanilla';
 import type { OpencodeConnectionSettings } from '@/shared/protocol/opencode/client/types';
 import type { ChatPreferences } from '@/shared/preferences/opencode-preferences';
 import type { FavoriteSession, HiddenProjectsByConnection } from '@/shared/contracts/domain';
+import type { ConnectionRecord, WorkspaceTarget } from '@/shared/contracts/workspace';
+import type { WorkspaceSnapshot } from '@/runtime/workspace/workspace-types';
 
 // Device-local state only. Server facts belong to TanStack Query; anything in
 // this store is a user or device decision. See docs/architecture/state-and-data.md.
@@ -16,12 +18,22 @@ export type ShellState = {
   hiddenProjects: HiddenProjectsByConnection;
 };
 
+export type RegistryState = {
+  connections: ConnectionRecord[];
+  focus?: WorkspaceTarget;
+  retainedFocus?: WorkspaceTarget;
+  ready: boolean;
+  snapshots: Record<string, WorkspaceSnapshot>;
+};
+
 export type AppState = {
   shell: ShellState;
+  registry: RegistryState;
   setShellValue: <K extends keyof ShellState>(
     key: K,
     value: ShellState[K] | ((current: ShellState[K]) => ShellState[K]),
   ) => void;
+  setRegistry: (patch: Partial<RegistryState> | ((current: RegistryState) => Partial<RegistryState>)) => void;
 };
 
 export type AppStore = StoreApi<AppState>;
@@ -37,6 +49,7 @@ export function createAppStore(defaults: AppStoreDefaults): AppStore {
       favoriteSessions: [],
       hiddenProjects: {},
     },
+    registry: { connections: [], ready: false, snapshots: {} },
     setShellValue: (key, value) => set((state) => ({
       shell: {
         ...state.shell,
@@ -44,6 +57,9 @@ export function createAppStore(defaults: AppStoreDefaults): AppStore {
           ? (value as (current: ShellState[typeof key]) => ShellState[typeof key])(state.shell[key])
           : value,
       },
+    })),
+    setRegistry: (patch) => set((state) => ({
+      registry: { ...state.registry, ...(typeof patch === 'function' ? patch(state.registry) : patch) },
     })),
   }));
 }

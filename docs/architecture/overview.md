@@ -87,7 +87,7 @@ During the migration the provider composition below remains the current owner of
 domain state; it may read the core as an adapter and must not gain new state.
 
 The dominant design decision is central orchestration through the provider layer:
-`runtime/composition/opencode-provider.tsx` mounts `WorkspaceProvider`, which owns the connection registry and app-wide coordinators. Each retained connection/project branch mounts a headless `WorkspaceRuntime`, reusing `use-opencode-provider-composition.ts`. `WorkspaceScope` supplies its existing narrow domain contexts to the selected surface.
+`runtime/composition/opencode-provider.tsx` mounts `WorkspaceProvider`, which coordinates the app-store connection registry and the app-wide coordinators. Each retained connection/project branch mounts a headless `WorkspaceRuntime`, reusing `use-opencode-provider-composition.ts`. `WorkspaceScope` supplies its existing narrow domain contexts to the selected surface.
 
 This composition unit is the application's effective domain layer. It owns:
 

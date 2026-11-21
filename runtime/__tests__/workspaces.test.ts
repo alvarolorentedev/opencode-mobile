@@ -4,6 +4,23 @@ import { loadTs, hookRuntime } from '../../tests/helpers/runtime.mjs';
 
 const identity = { getConnectionScope: (value: any) => `${value.serverUrl}:${value.username}`, getConnectionUiScope: (value: any) => `${value.serverUrl}:${value.username}` };
 const keys = { sessionKey: (value: any) => JSON.stringify([value.connectionId, value.projectPath, value.sessionId]) };
+
+function mountWorkspaceConnections(driver: ReturnType<typeof hookRuntime>, useWorkspaceConnections: any, shell: any) {
+  function useHarness() {
+    const registryRef = driver.react.useRef({ connections: [], ready: false, snapshots: {} });
+    const [, rerender] = driver.react.useState(0);
+    const setRegistry = driver.react.useCallback((patch: any) => {
+      registryRef.current = {
+        ...registryRef.current,
+        ...(typeof patch === 'function' ? patch(registryRef.current) : patch),
+      };
+      rerender((value: number) => value + 1);
+    }, []);
+    const getRegistry = driver.react.useCallback(() => registryRef.current, []);
+    return useWorkspaceConnections(shell, true, { registry: registryRef.current, getRegistry, setRegistry });
+  }
+  driver.mount(useHarness, {});
+}
 describe('multi-server contracts', () => {
   it('keeps colliding session identities separate and interleaves by current/running/recency', async () => {
     const { librarySessions } = await loadTs('features/sessions/model/workspace-library.ts', {
@@ -243,7 +260,7 @@ it('keeps lifecycle decisions current without resetting retained runtimes', asyn
     "@/shared/storage/workspace-storage": { WORKSPACES_STORAGE_KEY: 'workspaces', parseWorkspaces: () => ({ connections: entries, focus: { connectionId: 'a', projectPath: '/repo' } }), serializeWorkspaces: () => 'stored' },
     "@/shared/contracts/workspace": { workspaceKey: ({ connectionId, projectPath }: any) => JSON.stringify([connectionId, projectPath]) }
   }, driver.globals);
-  driver.mount(({ shell }: any) => useWorkspaceConnections(shell, true), { shell });
+  mountWorkspaceConnections(driver, useWorkspaceConnections, shell);
   const isEnabled = driver.value.isEnabled;
   await driver.settle();
   expect(isEnabled('a')).toBe(true);
@@ -323,7 +340,7 @@ it('persists the focused auto-model choice and ignores background workspace copi
     "@/shared/storage/workspace-storage": { WORKSPACES_STORAGE_KEY: 'workspaces', parseWorkspaces: () => ({ connections: entries, focus: { connectionId: 'a', projectPath: '/repo' } }), serializeWorkspaces: () => 'stored' },
     "@/shared/contracts/workspace": { workspaceKey: ({ connectionId, projectPath }: any) => JSON.stringify([connectionId, projectPath]) }
   }, driver.globals);
-  driver.mount(({ shell }: any) => useWorkspaceConnections(shell, true), { shell });
+  mountWorkspaceConnections(driver, useWorkspaceConnections, shell);
   await driver.settle();
 
   const enabled = { ...chatPreferences, autoModel: { ...chatPreferences.autoModel, enabled: true } };
@@ -387,7 +404,7 @@ it('moves chat focus to a connected server when the focused server fails', async
     "@/shared/storage/workspace-storage": { WORKSPACES_STORAGE_KEY: 'workspaces', parseWorkspaces: () => ({ connections: entries, focus: { connectionId: 'b', projectPath: '/repo' } }), serializeWorkspaces: () => 'stored' },
     "@/shared/contracts/workspace": { workspaceKey: ({ connectionId, projectPath }: any) => JSON.stringify([connectionId, projectPath]) }
   }, driver.globals);
-  driver.mount(({ shell }: any) => useWorkspaceConnections(shell, true), { shell });
+  mountWorkspaceConnections(driver, useWorkspaceConnections, shell);
   await driver.settle();
   const snapshot = (id: string, status: string) => ({ enabled: true, native: { settings: entries.find((entry) => entry.id === id)!.settings }, suspend: vi.fn(),
     values: { projectsValue: { activeProjectPath: '/repo' }, conversationValue: { conversation: { active: false }, toggleConversationMode: vi.fn(async () => {}) }, connectionValue: { connection: { status } } } });

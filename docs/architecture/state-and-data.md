@@ -18,7 +18,13 @@ Related ADRs: [0002 provider-centric orchestration](../adr/0002-provider-centric
 
 ## State Ownership Overview
 
-The application is provider-centric. `WorkspaceProvider` owns the registry, focus, preferences and persistence. One `ConnectionRuntime` per connection owns probing, recovery, credential renewal and the shared session catalog. Each retained `WorkspaceRuntime` owns project workflows. TanStack Query owns routine server responses. Existing narrow domain hooks expose the branch supplied by `WorkspaceScope`.
+The application is provider-centric. The app store owns the connection registry,
+focus, preferences and persistence; `WorkspaceProvider` coordinates those
+lifecycles. One `ConnectionRuntime` per connection owns probing, recovery,
+credential renewal and the shared session catalog. Each retained
+`WorkspaceRuntime` owns project workflows. TanStack Query owns routine server
+responses. Existing narrow domain hooks expose the branch supplied by
+`WorkspaceScope`.
 
 State is split into seven practical domains:
 

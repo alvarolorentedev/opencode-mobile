@@ -49,6 +49,7 @@ Zustand is an approved dependency for this role. Redux, Redux Toolkit and XState
 - [x] Add `runtime/core` and mount the app core once.
 - [x] Move workspace shell preferences into the app store.
 - [x] Move session lists and statuses to Query and delete the per-project authority.
+- [x] Move the workspace registry and focus into the app store.
 - [ ] Move connection lifecycle and SSE into connection managers.
 - [ ] Extract prompt, session and workspace commands from the composition.
 - [ ] Move canonical transcripts to Query with a live overlay store.

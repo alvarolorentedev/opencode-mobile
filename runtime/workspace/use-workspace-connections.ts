@@ -16,6 +16,7 @@ import { createPersistenceWriter } from '@/shared/storage/persistence-hydration'
 import { findSessionForNavigation } from '@/shared/protocol/services/session-service';
 import { createSharedEventStream } from '@/shared/network/shared-event-stream';
 import type { WorkspaceShellState } from '@/runtime/workspace/use-workspace-shell-state';
+import type { AppState, RegistryState } from '@/runtime/core/store';
 import { connectedWorkspaceTarget } from '@/runtime/workspace/workspace-focus';
 import { createWorkspaceWaiters } from '@/runtime/workspace/workspace-lifecycle';
 import { parseWorkspaces, serializeWorkspaces, WORKSPACES_STORAGE_KEY } from '@/shared/storage/workspace-storage';
@@ -29,13 +30,25 @@ export function serverPreferences(value: Partial<ChatPreferences>) {
   return Object.fromEntries(SERVER_PREFERENCE_KEYS.filter((key) => key in value).map((key) => [key, value[key]])) as Partial<ChatPreferences>;
 }
 
-export function useWorkspaceConnections(shell: WorkspaceShellState, hydrated: boolean) {
-  const [connections, setConnections] = useState<ConnectionRecord[]>([]);
-  const [focus, setFocus] = useState<WorkspaceTarget>();
-  const [retainedFocus, setRetainedFocus] = useState<WorkspaceTarget>();
-  const [ready, setReady] = useState(false);
-  const [snapshots, setSnapshots] = useState<Record<string, WorkspaceSnapshot>>({});
-  const records = useRef(connections), selected = useRef(focus), live = useRef(snapshots);
+export type WorkspaceRegistryAccess = {
+  registry: RegistryState;
+  getRegistry: () => RegistryState;
+  setRegistry: AppState['setRegistry'];
+};
+
+export function useWorkspaceConnections(shell: WorkspaceShellState, hydrated: boolean, access: WorkspaceRegistryAccess) {
+  const { registry, getRegistry, setRegistry } = access;
+  const { connections, focus, retainedFocus, ready, snapshots } = registry;
+  const records = { get current() { return getRegistry().connections; } };
+  const selected = { get current() { return getRegistry().focus; } };
+  const live = { get current() { return getRegistry().snapshots; } };
+  const setConnections = useCallback((next: ConnectionRecord[]) => setRegistry({ connections: next }), [setRegistry]);
+  const setSnapshots = useCallback((next: Record<string, WorkspaceSnapshot>) => setRegistry({ snapshots: next }), [setRegistry]);
+  const setFocus = useCallback((next: WorkspaceTarget | undefined) => setRegistry({ focus: next }), [setRegistry]);
+  const setRetainedFocus = useCallback((next: WorkspaceTarget | undefined | ((current: WorkspaceTarget | undefined) => WorkspaceTarget | undefined)) => {
+    setRegistry((current) => ({ retainedFocus: typeof next === 'function' ? next(current.retainedFocus) : next }));
+  }, [setRegistry]);
+  const setReady = useCallback((next: boolean) => setRegistry({ ready: next }), [setRegistry]);
   const lastAvailable = useRef<string | undefined>(undefined);
   const previousAvailable = useRef<string | undefined>(undefined);
   const shellRef = useRef(shell);
@@ -54,16 +67,16 @@ export function useWorkspaceConnections(shell: WorkspaceShellState, hydrated: bo
       return previous && (previous.settings !== entry.settings || previous.enabled !== entry.enabled || previous.events !== entry.events)
         ? { ...entry, revision: (previous.revision ?? 0) + 1, authRevision: (previous.authRevision ?? 0) + (previous.settings.password !== entry.settings.password || JSON.stringify(previous.settings.headers) !== JSON.stringify(entry.settings.headers) || JSON.stringify(previous.settings.certificate) !== JSON.stringify(entry.settings.certificate) || JSON.stringify(previous.settings.oidc) !== JSON.stringify(entry.settings.oidc) || getConnectionScope(previous.settings) !== getConnectionScope(entry.settings) ? 1 : 0) } : entry;
     });
-    records.current = revisioned; setConnections(revisioned); waiters.notify();
+    setConnections(revisioned); waiters.notify();
   }, [waiters]);
   const isEnabled = useCallback((id: string) => records.current.some((entry) => entry.id === id && entry.enabled), []);
   const select = useCallback((target: WorkspaceTarget, persist = true) => {
-    if (persist) canPersist.current = true; selected.current = target; setFocus(target);
+    if (persist) canPersist.current = true; setFocus(target);
     if (Object.entries(live.current).some(([key, value]) => (JSON.parse(key) as string[])[0] === target.connectionId && ((JSON.parse(key) as string[])[1] === target.projectPath || value.values.projectsValue.activeProjectPath === target.projectPath))) setRetainedFocus(target);
   }, []);
   const publish = useCallback((key: string, snapshot: WorkspaceSnapshot) => {
     if (live.current[key] === snapshot) return;
-    live.current = { ...live.current, [key]: snapshot }; setSnapshots(live.current);
+    setSnapshots({ ...live.current, [key]: snapshot });
     const target = selected.current;
     if (target && (JSON.parse(key) as string[])[0] === target.connectionId && ((JSON.parse(key) as string[])[1] === target.projectPath || snapshot.values.projectsValue.activeProjectPath === target.projectPath)) {
       setRetainedFocus((previous) => previous?.connectionId === target.connectionId && previous.projectPath === target.projectPath ? previous : target);
@@ -71,7 +84,7 @@ export function useWorkspaceConnections(shell: WorkspaceShellState, hydrated: bo
     waiters.notify();
   }, [waiters]);
   const forget = useCallback((key: string) => {
-    const next = { ...live.current }; delete next[key]; live.current = next; setSnapshots(next); waiters.notify();
+    const next = { ...live.current }; delete next[key]; setSnapshots(next); waiters.notify();
   }, [waiters]);
 
   const saveProfile = useCallback(async (settings: OpencodeConnectionSettings) => mutateConnectionProfiles(async (profiles, save) => {

@@ -29,4 +29,16 @@ describe('app store', () => {
     expect(store.getState().shell.controlPlaneUrl).toBe('https://control');
     expect(store.getState().shell.settings).toBe(defaults.settings);
   });
+
+  it('merges registry patches without dropping connections or snapshots', () => {
+    const store = createAppStore(defaults);
+    store.getState().setRegistry({ ready: true });
+    store.getState().setRegistry((current) => ({
+      focus: { connectionId: 'c', projectPath: '/p' },
+      ready: current.ready,
+    }));
+    expect(store.getState().registry.ready).toBe(true);
+    expect(store.getState().registry.focus).toEqual({ connectionId: 'c', projectPath: '/p' });
+    expect(store.getState().registry.snapshots).toEqual({});
+  });
 });

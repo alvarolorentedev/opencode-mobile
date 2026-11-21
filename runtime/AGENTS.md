@@ -8,7 +8,7 @@ and [feature boundaries](../docs/architecture/feature-boundaries.md).
 - `runtime/core/`: the app composition root. One Query client for server facts,
   one Zustand store for device facts, and the commands/managers added by
   [ADR 0051](../docs/adr/0051-app-core-state-tiers.md). React mounts it once.
-- `runtime/workspace/workspace-provider.tsx`: registry/focus, root persistence coordination,
+- `runtime/workspace/workspace-provider.tsx`: coordinates the app-store registry/focus, root persistence,
   native coordinators, and the single connectivity monitor.
 - `runtime/connections/connection-runtime.tsx`: one connection lifecycle/catalog owner.
 - `runtime/workspace/workspace-runtime.tsx`: retained connection/project branch.
