@@ -62,5 +62,6 @@ Zustand is an approved dependency for this role. Redux, Redux Toolkit and XState
 - [ ] Extract prompt, session and workspace commands from the composition.
 - [ ] Move canonical transcripts to Query with a live overlay store.
 - [x] Delete the feature domain contexts; keep the narrow shared-UI scope exception.
+- [x] Move chat UI state, retained-scope values and MCP prompts into the app core.
 - [ ] Add the cross-tier integration harness.
 - [ ] Update the state, boundary and runtime guidance as each phase lands.

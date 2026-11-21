@@ -49,8 +49,9 @@ constructs the app once: one TanStack Query client for server facts and one
 app store for device facts ([ADR 0051](../adr/0051-app-core-state-tiers.md)).
 A workspace is a key, not a React provider subtree. Features read the focused
 or scoped values through selector hooks in `runtime/core/workspace-scope.ts`;
-the old per-domain context tree is gone. The narrow shared-UI scope exception
-remains only for portal ancestry and update blockers.
+the old per-domain context tree is gone. `WorkspaceScope` supplies only the
+scoped runtime values and target for retained panes; the narrow shared-UI scope
+exception remains for portal ancestry and update blockers.
 
 One application owner retains registry/focus, persisted preferences and the stable
 presentation map. One connection owner supplies lifecycle, event transport and

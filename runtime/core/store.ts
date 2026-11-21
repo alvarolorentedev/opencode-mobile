@@ -33,6 +33,20 @@ export type SelectionState = {
   activeSessionsVisible: boolean;
 };
 
+export type ChatUiState = {
+  diffScopeBySession: Record<string, import('@/shared/contracts/domain').DiffScope>;
+  selectedDiffMessageBySession: Record<string, string | undefined>;
+  isRefreshingMessages: boolean;
+  isRefreshingDiffs: boolean;
+};
+
+const EMPTY_CHAT: ChatUiState = {
+  diffScopeBySession: {},
+  selectedDiffMessageBySession: {},
+  isRefreshingMessages: false,
+  isRefreshingDiffs: false,
+};
+
 const EMPTY_SELECTION: SelectionState = {
   activeProjectPath: undefined,
   currentSessionId: undefined,
@@ -44,15 +58,19 @@ export type AppState = {
   shell: ShellState;
   registry: RegistryState;
   selection: Record<string, SelectionState>;
+  chat: Record<string, ChatUiState>;
   presentation: Map<string, unknown>;
+  mcpAuthPrompt?: { mcpName: string; url: string };
   focusedValues?: import('@/runtime/workspace/workspace-types').WorkspaceValues;
   setFocusedValues: (values: import('@/runtime/workspace/workspace-types').WorkspaceValues | undefined) => void;
+  setMcpAuthPrompt: (value: { mcpName: string; url: string } | undefined | ((current: { mcpName: string; url: string } | undefined) => { mcpName: string; url: string } | undefined)) => void;
   setShellValue: <K extends keyof ShellState>(
     key: K,
     value: ShellState[K] | ((current: ShellState[K]) => ShellState[K]),
   ) => void;
   setRegistry: (patch: Partial<RegistryState> | ((current: RegistryState) => Partial<RegistryState>)) => void;
   setSelection: (scopeKey: string, patch: Partial<SelectionState> | ((current: SelectionState) => Partial<SelectionState>)) => void;
+  setChat: (scopeKey: string, patch: Partial<ChatUiState> | ((current: ChatUiState) => Partial<ChatUiState>)) => void;
 };
 
 export type AppStore = StoreApi<AppState>;
@@ -70,6 +88,8 @@ export function createAppStore(defaults: AppStoreDefaults): AppStore {
     },
     registry: { connections: [], ready: false, snapshots: {} },
     selection: {},
+    chat: {},
+    mcpAuthPrompt: undefined,
     // Mutated in place; the hook only needs the stable map identity.
     presentation: new Map<string, unknown>(),
     focusedValues: undefined,
@@ -94,5 +114,17 @@ export function createAppStore(defaults: AppStoreDefaults): AppStore {
       };
     }),
     setFocusedValues: (values) => set({ focusedValues: values }),
+    setMcpAuthPrompt: (value) => set((state) => ({
+      mcpAuthPrompt: typeof value === 'function' ? value(state.mcpAuthPrompt) : value,
+    })),
+    setChat: (scopeKey, patch) => set((state) => {
+      const current = state.chat[scopeKey] ?? EMPTY_CHAT;
+      return {
+        chat: {
+          ...state.chat,
+          [scopeKey]: { ...current, ...(typeof patch === 'function' ? patch(current) : patch) },
+        },
+      };
+    }),
   }));
 }

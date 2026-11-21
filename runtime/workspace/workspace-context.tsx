@@ -6,7 +6,7 @@ import { createContext, useContext, useEffect, useMemo, useState, type PropsWith
 import { ActivityIndicator, View } from 'react-native';
 import type { MissionOverview } from '@/features/sessions/runtime';
 import { useAppStore } from '@/runtime/core/context';
-import { WorkspaceScopeContext } from '@/runtime/core/workspace-scope';
+import { WorkspaceScopeContext, WorkspaceValuesContext } from '@/runtime/core/workspace-scope';
 export { WorkspaceScopeContext };
 
 export type WorkspaceRegistry = ReturnType<typeof useWorkspaceConnections> & {
@@ -64,6 +64,6 @@ export function WorkspaceScope({ target, children }: PropsWithChildren<{ target?
     void ensure(target, { signal: controller.signal }).then(() => setRetainedTarget(target)).catch(() => undefined);
     return () => controller.abort();
   }, [key, target, ensure]);
-  return values ? <WorkspaceScopeContext.Provider value={resolvedTarget ?? registry.focus ?? registry.retainedFocus}>{children}</WorkspaceScopeContext.Provider>
+  return values ? <WorkspaceScopeContext.Provider value={resolvedTarget ?? registry.focus ?? registry.retainedFocus}><WorkspaceValuesContext.Provider value={values}>{children}</WorkspaceValuesContext.Provider></WorkspaceScopeContext.Provider>
     : <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}><ActivityIndicator /></View>;
 }

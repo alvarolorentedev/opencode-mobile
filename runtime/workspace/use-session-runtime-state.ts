@@ -20,7 +20,7 @@ export function useSessionRuntimeState(input: WorkspaceRuntimeInput, connection:
   const scopeKey = workspaceKey({ connectionId: input.connection.id, projectPath: input.projectPath ?? '' });
   const { activeProjectPath, setActiveProjectPath, activeProjectPathRef, projectFileRequestRef } = useProjectRuntimeState(scopeKey, input.projectPath);
   const { currentSessionId, setCurrentSessionId, isBootstrappingChat, setIsBootstrappingChat, activeSessionsVisible, setActiveSessionsVisible, currentSessionIdRef, pendingDeepLinkTargetRef, deepLinkOperationRef, bootstrapPromiseRef, bootstrapTokenRef, explicitSessionSelectionRef, locallyCreatedSessionsRef, suppressedPendingRequestIdsRef } = useSessionState(scopeKey);
-  const { diffScopeBySession, setDiffScopeBySession, selectedDiffMessageBySession, setSelectedDiffMessageBySession, isRefreshingMessages, setIsRefreshingMessages, isRefreshingDiffs, setIsRefreshingDiffs, diffScopeBySessionRef, selectedDiffMessageBySessionRef, busyNotificationsRef, promptSubmissionRef } = useChatRuntimeState();
+  const { diffScopeBySession, setDiffScopeBySession, selectedDiffMessageBySession, setSelectedDiffMessageBySession, isRefreshingMessages, setIsRefreshingMessages, isRefreshingDiffs, setIsRefreshingDiffs, diffScopeBySessionRef, selectedDiffMessageBySessionRef, busyNotificationsRef, promptSubmissionRef } = useChatRuntimeState(scopeKey);
   const { mcpAuthPrompt, setMcpAuthPrompt } = useExtensionPromptState();
 
   const connectionScope = useMemo(
@@ -49,8 +49,6 @@ export function useSessionRuntimeState(input: WorkspaceRuntimeInput, connection:
     connectionScopeRef.current = connectionScope;
     connectionRef.current = connection;
     currentSessionIdRef.current = currentSessionId;
-    diffScopeBySessionRef.current = diffScopeBySession;
-    selectedDiffMessageBySessionRef.current = selectedDiffMessageBySession;
   });
 
   return {
