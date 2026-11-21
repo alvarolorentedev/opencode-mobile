@@ -153,7 +153,8 @@
     "tailwindcss": "4.3.5",
     "uniwind": "1.13.1",
     "yaml": "2.9.1",
-    "zod": "^4.6.7"
+    "zod": "^4.6.7",
+    "zustand": "5.1.0"
   },
   "devDependencies": {
     "@opencode/schema": "2.3.2",

@@ -359,7 +359,6 @@
       "react-native-paper",
       "redux",
       "@reduxjs/toolkit",
-      "zustand",
       "xstate",
       "@xstate/react",
       "nativewind",

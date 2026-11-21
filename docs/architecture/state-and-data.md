@@ -30,6 +30,26 @@ State is split into seven practical domains:
 6. notification tracking support state
 7. terminal state
 
+## State tiers
+
+[ADR 0051](../adr/0051-app-core-state-tiers.md) splits ownership by source of truth:
+
+- **Server facts live in TanStack Query only.** A response must not be mirrored
+  into another store. Sessions and session statuses are moving from per-project
+  React state to Query keys; until that migration lands, their existing owner
+  remains authoritative.
+- **Device facts live in the app store** (`runtime/core/store.ts`): connection
+  records and focus, selection, preferences, favorites, hidden projects, drafts
+  and scroll, prompt admission, conversation and terminal state. One store
+  instance per app core; commands are plain functions and React reads selectors.
+- `runtime/core/create-app-core.ts` is the only app composition root. A
+  workspace is a key, not a React provider subtree. During the migration the
+  existing domain contexts may read from the core as adapters; they must not
+  gain new state.
+
+Do not add a third store, a DI container, Redux or XState. Redux, Redux Toolkit
+and XState remain retired dependencies.
+
 ## Routine server reads
 
 `shared/server-data/` defines the canonical Query options. Do not mirror these

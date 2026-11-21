@@ -44,13 +44,20 @@ uses the existing global preference contract in the shared i18n subsystem.
 
 ## Runtime ownership
 
-`runtime/` owns cross-feature state and lifecycle composition. One application
-owner retains registry/focus, persisted preferences and the stable presentation
-map. One connection owner supplies lifecycle, event transport and session catalog.
-Each connection/project branch mounts the existing domain hooks once and retains
-its session selection, prompts, transcript, approvals, files, conversation and PTYs.
-Screens do not mount those owners. Settings and Onboarding may compose other
-features' public UI; this does not transfer ownership of their state.
+`runtime/` owns cross-feature state and lifecycle composition. `runtime/core/`
+constructs the app once: one TanStack Query client for server facts and one
+app store for device facts ([ADR 0051](../adr/0051-app-core-state-tiers.md)).
+A workspace is a key, not a React provider subtree. During the migration the
+existing provider composition and domain contexts remain adapters over that
+core; they must not gain new state.
+
+One application owner retains registry/focus, persisted preferences and the stable
+presentation map. One connection owner supplies lifecycle, event transport and
+session catalog. Each connection/project branch mounts the existing domain hooks
+once and retains its session selection, prompts, transcript, approvals, files,
+conversation and PTYs. Screens do not mount those owners. Settings and Onboarding
+may compose other features' public UI; this does not transfer ownership of their
+state.
 
 `runtime/workspace.ts` is the consumer interface for workspace navigation, retained
 presentation and entry-point readiness. Boot gating and focused shared-input access

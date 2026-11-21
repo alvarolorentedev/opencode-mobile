@@ -57,7 +57,9 @@ API-dependent features are V2-only; never add a new V1 adapter or fallback.
 
 Preserve the single connectivity/query owners, connection-wide catalogs/streams,
 credential-generation guards, retained workspace state and stable presentation map.
-Do not mirror Query responses into another state store. Preserve SSE plus polling,
+Do not mirror Query responses into another state store. Server facts belong to
+TanStack Query; device facts belong to the app store in `runtime/core` (ADR 0051).
+Do not add a second store, a DI container, Redux or XState. Preserve SSE plus polling,
 foreground/demand gates and the separation between inspection, terminal and chat focus.
 
 Native changes also follow [native module guidance](modules/AGENTS.md) and

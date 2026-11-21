@@ -29,7 +29,11 @@ The app uses a simple structural pattern:
 - `shared/` contains protocol, storage, platform interfaces and formatting; product workflows live in features.
 - `features/` colocates presentation, domain state/actions, services, rules and owned tests.
 
-This means the real application architecture is not screen-centric. It is provider-centric.
+This means the real application architecture is not screen-centric. It is
+provider-centric today, with state ownership moving to the app core
+([ADR 0051](../adr/0051-app-core-state-tiers.md)): server facts in TanStack
+Query, device facts in one app store. Feature ownership and import boundaries do
+not change with that migration.
 
 ## Top-Level Runtime Composition
 
@@ -76,6 +80,11 @@ removes a suspected layout-feedback path for issue #62; physical-device
 validation is still required to establish whether it resolves the flicker.
 
 ## Core Architectural Principle
+
+`runtime/core/create-app-core.ts` is the app composition root. It owns one
+TanStack Query client for server facts and one Zustand store for device facts.
+During the migration the provider composition below remains the current owner of
+domain state; it may read the core as an adapter and must not gain new state.
 
 The dominant design decision is central orchestration through the provider layer:
 `runtime/composition/opencode-provider.tsx` mounts `WorkspaceProvider`, which owns the connection registry and app-wide coordinators. Each retained connection/project branch mounts a headless `WorkspaceRuntime`, reusing `use-opencode-provider-composition.ts`. `WorkspaceScope` supplies its existing narrow domain contexts to the selected surface.

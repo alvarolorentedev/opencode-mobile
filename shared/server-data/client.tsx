@@ -14,8 +14,9 @@ export function createServerQueryClient() {
 const ForegroundContext = createContext(true);
 const subscribeFocus = (listener: () => void) => focusManager.subscribe(listener);
 export const isServerQueryForeground = () => focusManager.isFocused() && (Platform.OS === 'web' || AppState.currentState === 'active');
-export function ServerDataProvider({ children }: PropsWithChildren) {
-  const [client] = useState(createServerQueryClient);
+export function ServerDataProvider({ children, client: provided }: PropsWithChildren<{ client?: QueryClient }>) {
+  const [fallback] = useState(createServerQueryClient);
+  const client = provided ?? fallback;
   const foreground = useSyncExternalStore(subscribeFocus, isServerQueryForeground, () => true);
   useEffect(() => {
     if (Platform.OS === 'web') return;
