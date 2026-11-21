@@ -23,6 +23,10 @@ describe('transcript visibility', () => {
     expect(isTranscriptDisplayMessage(entry('assistant', [], 'hello'))).toBe(true);
   });
 
+  it('does not treat a bare native timeline marker as content', () => {
+    expect(isTranscriptDisplayMessage(entry('assistant'))).toBe(false);
+  });
+
   it('shows tool-only, reasoning-only, and patch-only turns', () => {
     expect(isTranscriptDisplayMessage(entry('assistant', [tool]))).toBe(true);
     expect(isTranscriptDisplayMessage(entry('assistant', [reasoning]))).toBe(true);

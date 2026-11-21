@@ -808,9 +808,10 @@ Derived from phase plus latest non-display transcript activity.
 
 Session history is paginated. Opening a session makes one newest-window read of
 up to 200 raw records and stores the backward cursor; there is no display-target
-backfill loop. Scrolling to the top pulls one older 200-record batch through the
-server's backward cursor and prepends it. A single scroll trigger never chains
-additional reads. The loaded window is not capped: records the user has paged
+backfill loop. A read reports older history only when it returned a full page,
+because V2 returns a positional cursor for every non-empty page. Scrolling to the
+top pulls one older 200-record batch through the server's backward cursor and
+prepends it. A single scroll trigger never chains additional reads. The loaded window is not capped: records the user has paged
 through stay in memory so the first message remains reachable and scrolling back
 down needs no forward re-fetch. Tail activity (SSE part/message updates, the
 safety poll, idle completion) fetches exactly one newest page of 20 records and

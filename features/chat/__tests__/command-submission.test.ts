@@ -17,7 +17,7 @@ async function controller(contract = 'v2') {
     'react-native': { Keyboard: { dismiss: noop } },
     '@/shared/platform/clipboard': {}, '@/shared/platform/haptics': { copyHaptic: noop },
     '@/runtime/ui': { useUpdateBlocker: noop },
-    '@/shared/presentation/transcript': { buildTranscriptRows: () => [], getTurnPatchDetails: () => [] },
+    '@/shared/presentation/transcript': { buildTranscriptRows: () => [], getTurnPatchDetails: () => [], isTranscriptDisplayMessage: () => false },
     '@/shared/presentation/usage': { getLatestContextTokens: () => 0 },
     '@/features/sharing/index': {},
     '@/features/ai/index': { getEffectiveSessionModel: noop, getInitialMode, getSelectedModelVariant: noop, getVisibleModels: () => [] },

@@ -16,7 +16,7 @@ import type { ModelOption } from '@/shared/contracts/model-options';
 import type { SideQuestionAnswer } from '@/shared/contracts/session-commands';
 import type { Command } from '@/shared/protocol/opencode/types';
 import type { PromptContextItem } from '@/shared/protocol/opencode/prompt-inbox';
-import { buildTranscriptRows, getTurnPatchDetails } from '@/shared/presentation/transcript';
+import { buildTranscriptRows, getTurnPatchDetails, isTranscriptDisplayMessage } from '@/shared/presentation/transcript';
 import { getLatestContextTokens } from '@/shared/presentation/usage';
 import type { ComposerSuggestion } from '@/features/chat/ui/composer-suggestion-types';
 import { getChatActivityState, getCurrentTurnActivityKey } from '@/features/chat/ui/chat-view-utils';
@@ -167,7 +167,9 @@ export function useChatViewController() {
   const activityStatusLabel = activityState && !getCurrentTurnActivityKey(transcriptRows)
     ? t(`chat:activity.${activityState}`)
     : undefined;
-  const hasTranscriptMessages = currentMessages.length > 0;
+  // Native timeline markers (model/agent/location switches) are records without
+  // display content; they must not hide the starter prompts.
+  const hasTranscriptMessages = currentTranscript.some(isTranscriptDisplayMessage);
   const selectedSession = useMemo(
     () => sessions.find((session) => session.id === currentSessionId) || activeSession,
     [activeSession, currentSessionId, sessions],

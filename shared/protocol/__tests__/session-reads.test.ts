@@ -44,7 +44,9 @@ const api = {
     messageCalls++;
     const offset = cursor ? Number(cursor) : 0;
     const newest = [...history].reverse();
-    return { data: newest.slice(offset, offset + limit), cursor: { next: offset + limit < newest.length ? String(offset + limit) : null } };
+    const data = newest.slice(offset, offset + limit);
+    // V2 returns a positional cursor for every non-empty page, including the last.
+    return { data, cursor: { next: data.length ? String(offset + limit) : null } };
   } },
   session: {
     async list() { listCalls++; await Promise.resolve(); return { data: [{ id: 's', time: { created: 0, updated: 1 }, location: { directory: '/repo' } }] }; },
@@ -171,6 +173,27 @@ describe('session reads', () => {
     await getSessionMessages(clampedClient, 's', { limit: 300 });
     h.api = previous;
     expect(limits).toEqual([200]);
+  });
+
+  it('treats a short V2 page as the end even though the server returns a next cursor', async () => {
+    const previous = h.api;
+    h.api = {
+      message: {
+        list: async () => ({
+          data: [
+            { id: 'm2', type: 'user', text: 'b', time: { created: 2 } },
+            { id: 'm1', type: 'user', text: 'a', time: { created: 1 } },
+          ],
+          cursor: { next: 'next-id' },
+        }),
+      },
+    };
+    const shortClient = buildV2Client({ serverUrl: 'http://test', directory: '/repo', username: '', password: '' } as never);
+    const page = await getSessionMessages(shortClient, 's');
+    h.api = previous;
+    expect(page.records).toHaveLength(2);
+    expect(page.hasMore).toBe(false);
+    expect(page.nextBefore).toBeUndefined();
   });
 
   it('pages V1 chronologically through its header cursor', async () => {

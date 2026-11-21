@@ -128,7 +128,10 @@ export function createSessionAdapter(client: ScopedOpencodeClient): SessionAdapt
       const page = await client.api!.message.list(before ? { sessionID: sessionId, limit, cursor: before } : { sessionID: sessionId, limit, order: 'desc' });
       const records = [...page.data].reverse().map((message) => toMessageRecord(message, sessionId)).filter((record): record is SessionMessageRecord => Boolean(record));
       const nextBefore = page.cursor.next && page.cursor.next !== before ? page.cursor.next : undefined;
-      return { records, hasMore: Boolean(nextBefore), nextBefore };
+      // Older history is possible only when the page is full. V2 returns
+      // cursor.next for every non-empty page, including the last one.
+      const hasMore = Boolean(nextBefore) && records.length >= limit;
+      return { records, hasMore, nextBefore: hasMore ? nextBefore : undefined };
     };
     // A rewrite must not reuse a page read before the server-side change (for
     // example a revert or compaction). Ordinary tails still coalesce.
