@@ -49,9 +49,8 @@ State is split into seven practical domains:
   and scroll, prompt admission, conversation and terminal state. One store
   instance per app core; commands are plain functions and React reads selectors.
 - `runtime/core/create-app-core.ts` is the only app composition root. A
-  workspace is a key, not a React provider subtree. During the migration the
-  existing domain contexts may read from the core as adapters; they must not
-  gain new state.
+  workspace is a key, not a React provider subtree. Feature hooks select the
+  focused or scoped values from the core; there is no per-domain context tree.
 
 Do not add a third store, a DI container, Redux or XState. Redux, Redux Toolkit
 and XState remain retired dependencies.

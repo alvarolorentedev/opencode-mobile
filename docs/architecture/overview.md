@@ -109,14 +109,14 @@ This composition unit is the application's effective domain layer. It owns:
 
 If this app were reimplemented, this provider would be the main source of truth for required behavior.
 
-Its public contract is split into domain contexts (`features/chat/context.ts`
-+ the `*ContextValue` types): onboarding, connection, diagnostics, capabilities,
-preferences, projects, project files, current session, session library, chat,
-approvals, conversation, terminal, MCP, and app updates. The provider still
-owns all the state and actions; each domain value is memoized and rendered as its
-own context, so a consumer only re-renders when the domain it reads changes and
-each screen declares its real dependencies instead of pulling from one
-combined domain surface. There is no combined runtime context value.
+Its public contract is the set of domain values (`*ContextValue` types):
+onboarding, connection, diagnostics, capabilities, preferences, projects,
+project files, current session, session library, chat, approvals, conversation,
+terminal, MCP, and app updates. Feature hooks select the focused or scoped
+domain value from the app core; each domain value is memoized, so a consumer
+only re-renders when the domain it reads changes and each screen declares its
+real dependencies instead of pulling from one combined surface. There is no
+combined runtime context value.
 
 `WorkspaceActionsContext` exposes the app-level actions and focus separately
 from the changing workspace snapshot registry. The stable presentation map
@@ -228,18 +228,17 @@ The completion version, preference schema and first-run migration are unchanged.
 ### Provider Layer
 
 - `runtime/composition/opencode-provider.tsx`
-  Thin entrypoint: mounts the context tree with the values from the
-  composition unit.
+  Thin entrypoint: creates the app core and mounts the workspace registry.
 - `runtime/composition/use-opencode-provider-composition.ts`
   The orchestrator: wires the domain hooks, assembles their inputs, and derives
-  the context values. This is the application's effective domain layer.
+  the domain values. This is the application's effective domain layer.
 - `runtime/core/workspace-scope.ts`
-  The nested domain context providers, in their documented order
-  (`UpdatesContext` innermost).
+  Focused/scoped value selectors and the scope carriers. There is no domain
+  context provider tree.
 - `shared/contracts/domain.ts`
-  Shared public types, the domain context values, and their union.
+  Shared public types and the domain value union.
 - `features/chat/context.ts`
-  The domain contexts and their `use*` hooks.
+  The domain `use*` hooks, implemented as core selectors.
 - `shared/preferences/opencode-preferences.ts`
   Chat preference shape, defaults, and the derived system prompt.
 - `shared/protocol/opencode/capabilities.ts`
