@@ -4,7 +4,7 @@ Related ADR: [0003 V2-first protocol boundary](../adr/0003-v2-first-protocol-bou
 
 ## Primary Contract And Compatibility
 
-OpenCode 2 is the primary contract, using the installed `@opencode/client` 2.0.16 SDK and its native `/api` operations. `ScopedOpencodeClient` exposes a typed subset as `api`, with explicit account, OAuth and inbox actions. Native responses, pagination cursors and events are consumed directly; no fabricated v1 response envelopes exist on this path.
+OpenCode 2 is the primary contract, using the installed `@opencode/client` 2.3.2 SDK and its native `/api` operations. `ScopedOpencodeClient` exposes a typed subset as `api`, with explicit account, OAuth and inbox actions. Native responses, pagination cursors and events are consumed directly; no fabricated v1 response envelopes exist on this path.
 
 OpenCode 1 uses `@opencode-ai/sdk/v2/client` only within `shared/protocol/opencode/compat/v1/`. The `compatibility` extension preserves legacy behavior and v1-only operations. Transcript entries, capability options, session summaries and diagnostics are app-owned presentation models, derived in protocol helpers/services/provider selectors. Screens and components do not parse SDK records.
 
