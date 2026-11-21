@@ -1,0 +1,3 @@
+- New V2 chats stream replies live while they are generated instead of re-reading the whole conversation, so large attachments no longer stall the transcript.
+- Long diffs in the Files changed sheet scroll smoothly.
+- Updated the OpenCode client and dependencies.
