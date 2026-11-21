@@ -34,6 +34,7 @@ export function importViolations(from: string, target: string, symbols: string[]
   }
   if (a && target.startsWith('runtime/') && !['runtime/ui.ts', 'runtime/workspace.ts', 'runtime/core.ts'].includes(target)) problems.push('runtime private import');
   if (isUi(from) && !typeOnly && target.startsWith('modules/')) problems.push('native module in presentation');
+  if (isUi(from) && !typeOnly && target === 'runtime/core.ts') problems.push('app store in presentation');
   if (isUi(from) && !typeOnly && (target.startsWith('shared/protocol/') || target.startsWith('shared/storage/') || target.startsWith('shared/server-data/'))) problems.push('IO in presentation');
   return problems;
 }
@@ -46,6 +47,7 @@ describe('feature boundaries', () => {
     assert.deepEqual(importViolations('shared/ui/portal.tsx', 'runtime/ui.ts', ['*'], false), ['unauthorized shared runtime import']);
     assert.deepEqual(importViolations('shared/ui/portal.tsx', 'runtime/workspace/workspace-context.tsx', ['WorkspaceScope'], false), ['unauthorized shared runtime import']);
     assert.deepEqual(importViolations('features/chat/ui/example.tsx', 'modules/opencode-activity/index.ts', ['default'], false), ['native module in presentation']);
+    assert.deepEqual(importViolations('features/chat/ui/example.tsx', 'runtime/core.ts', ['useAppStore'], false), ['app store in presentation']);
     assert.deepEqual(importViolations('features/chat/ui/example.tsx', 'shared/storage/connection-password.ts', ['getPassword'], false), ['IO in presentation']);
     const names = new Set(['features/sessions/state/private.ts']);
     assert.equal(resolveImport('features/chat/ui/example.tsx', '../../sessions/state/private', names), 'features/sessions/state/private.ts');

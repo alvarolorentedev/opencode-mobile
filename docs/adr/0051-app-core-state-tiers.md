@@ -52,9 +52,10 @@ Zustand is an approved dependency for this role. Redux, Redux Toolkit and XState
 - [x] Move the workspace registry and focus into the app store.
 - [x] Move per-workspace session selection into the app store.
 - [x] Move pending approvals into Query.
+- [x] Add tier checks for the app store and server-state ownership.
+- [ ] Add the cross-tier integration harness.
 - [ ] Move connection lifecycle and SSE into connection managers.
 - [ ] Extract prompt, session and workspace commands from the composition.
 - [ ] Move canonical transcripts to Query with a live overlay store.
 - [ ] Delete the domain contexts and the shared UI runtime exception.
-- [ ] Add tier/ownership architecture checks and the integration harness.
 - [ ] Update the state, boundary and runtime guidance as each phase lands.

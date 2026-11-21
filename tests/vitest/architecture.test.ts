@@ -182,5 +182,24 @@ describe('architecture ratchets', () => {
       }
     }
     assert.deepEqual(compatibilityOffenders, [], `Client contract branching belongs in lib/opencode/contracts or compat/v1: ${compatibilityOffenders.join(', ')}`);
+
+    // One app store, and server facts never live in React state. Zustand is
+    // owned by runtime/core; sessions, statuses and approvals are Query data.
+    const storeOffenders: string[] = [];
+    const serverStateOffenders: string[] = [];
+    for (const dir of ['features', 'runtime']) {
+      for (const file of await collectSourceFiles(path.join(root, dir))) {
+        const relative = path.relative(root, file).split(path.sep).join('/');
+        const source = await readFile(file, 'utf8');
+        if (/(?:from\s*|require\s*\()['"]zustand(?:\/vanilla)?['"]/.test(source) && !relative.startsWith('runtime/core/')) {
+          storeOffenders.push(relative);
+        }
+        if (/useState<\s*(?:Session\[\]|Record<string,\s*SessionStatus|Record<string,\s*PendingPermissionRequest|Record<string,\s*PendingQuestionRequest)/.test(source)) {
+          serverStateOffenders.push(relative);
+        }
+      }
+    }
+    assert.deepEqual(storeOffenders, [], `Zustand belongs to runtime/core: ${storeOffenders.join(', ')}`);
+    assert.deepEqual(serverStateOffenders, [], `Server facts belong to Query, not useState: ${serverStateOffenders.join(', ')}`);
   });
 });
