@@ -7,6 +7,7 @@ import type { WorkspaceValues } from '@/runtime/workspace/workspace-types';
 import { createContext, useContext, useEffect, useMemo, useState, type PropsWithChildren } from 'react';
 import { ActivityIndicator, View } from 'react-native';
 import type { MissionOverview } from '@/features/sessions/runtime';
+import { useAppStore } from '@/runtime/core/context';
 
 export type WorkspaceRegistry = ReturnType<typeof useWorkspaceConnections> & {
   createChat: (target: WorkspaceTarget) => Promise<Session>;
@@ -27,10 +28,6 @@ export type WorkspaceActions = {
 export const WorkspaceScopeContext = createContext<WorkspaceTarget | undefined>(undefined);
 export const WorkspaceContext = createContext<WorkspaceRegistry | null>(null);
 export const WorkspaceActionsContext = createContext<WorkspaceActions | null>(null);
-// Presentation state is stable and independent of the changing snapshot
-// registry. Keeping it in its own context stops drafts and scroll positions
-// from re-rendering on every background workspace publish.
-export const WorkspacePresentationContext = createContext<Map<string, unknown> | null>(null);
 export function useWorkspaces() {
   const value = useContext(WorkspaceContext);
   if (!value) throw new Error('useWorkspaces must be used inside OpencodeProvider.');
@@ -41,10 +38,11 @@ export function useWorkspaceActions() {
   if (!value) throw new Error('useWorkspaceActions must be used inside OpencodeProvider.');
   return value;
 }
+// Presentation state is stable and independent of the changing snapshot
+// registry. It lives in the app store so drafts and scroll positions never
+// re-render on a background workspace publish.
 export function useWorkspacePresentation() {
-  const value = useContext(WorkspacePresentationContext);
-  if (!value) throw new Error('useWorkspacePresentation must be used inside OpencodeProvider.');
-  return value;
+  return useAppStore((state) => state.presentation);
 }
 export function WorkspaceScope({ target, children }: PropsWithChildren<{ target?: WorkspaceTarget }>) {
   const registry = useWorkspaces();

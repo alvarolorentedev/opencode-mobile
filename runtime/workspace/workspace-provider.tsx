@@ -25,7 +25,7 @@ import { useWorkspaceAutoApprove } from '@/runtime/composition/use-workspace-aut
 import { serverPreferences, useWorkspaceConnections } from '@/runtime/workspace/use-workspace-connections';
 import { useWorkspaceShellState } from '@/runtime/workspace/use-workspace-shell-state';
 import { useWorkspaceValues, type WorkspaceValueOverrides } from '@/runtime/workspace/use-workspace-values';
-import { WorkspaceActionsContext, WorkspaceContext, WorkspacePresentationContext, type WorkspaceRegistry } from '@/runtime/workspace/workspace-context';
+import { WorkspaceActionsContext, WorkspaceContext, type WorkspaceRegistry } from '@/runtime/workspace/workspace-context';
 import { librarySessions, useMissionOverview } from '@/features/sessions/runtime';
 import { MISSION_PATH } from '@/shared/contracts/mission-control';
 import { WorkspaceNative } from '@/runtime/composition/workspace-native';
@@ -48,7 +48,7 @@ export function WorkspaceProvider({ children }: PropsWithChildren) {
   // configure() is process-global and resets listeners.
   const network = useNetworkStatus();
   const { isHydrated } = useOpencodePersistence({ ...shell, defaultChatPreferences, defaultSettings: defaultConnectionSettings });
-  const [presentation] = useState(() => new Map<string, unknown>());
+  const presentation = useAppStore((state) => state.presentation);
   const [catalogs, setCatalogs] = useState<Record<string, WorkspaceCatalog>>({});
   const publishCatalog = useCallback((connectionId: string, catalog: WorkspaceCatalog) => {
     setCatalogs((current) => current[connectionId] === catalog ? current : { ...current, [connectionId]: catalog });
@@ -248,7 +248,7 @@ export function WorkspaceProvider({ children }: PropsWithChildren) {
   const readTarget = pathname === '/service' ? undefined : pathname === '/settings' ? inspectionTarget ?? focus
     : pathname === '/terminal' ? terminalTarget ?? focus : focus;
   const workspaceActions = useMemo(() => ({ createChat, createChatInWorktree, focus }), [createChat, createChatInWorktree, focus]);
-  return <VoiceSetupTestContext.Provider value={voiceSetupTest}><WorkspacePresentationContext.Provider value={presentation}>
+  return <VoiceSetupTestContext.Provider value={voiceSetupTest}>
     <WorkspaceActionsContext.Provider value={workspaceActions}>
     <WorkspaceContext.Provider value={registry}>
     {connections.map((entry) => <ServerDataScope key={entry.id} connection={entry} active={readTarget?.connectionId === entry.id}>
@@ -270,5 +270,5 @@ export function WorkspaceProvider({ children }: PropsWithChildren) {
     </OpencodeProviderTree> : <View style={{ flex: 1, backgroundColor: '#101212', alignItems: 'center', justifyContent: 'center' }}><ActivityIndicator color="#C3CECB" /></View>}
     </WorkspaceContext.Provider>
     </WorkspaceActionsContext.Provider>
-  </WorkspacePresentationContext.Provider></VoiceSetupTestContext.Provider>;
+  </VoiceSetupTestContext.Provider>;
 }

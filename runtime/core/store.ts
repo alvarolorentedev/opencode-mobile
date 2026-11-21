@@ -44,6 +44,7 @@ export type AppState = {
   shell: ShellState;
   registry: RegistryState;
   selection: Record<string, SelectionState>;
+  presentation: Map<string, unknown>;
   setShellValue: <K extends keyof ShellState>(
     key: K,
     value: ShellState[K] | ((current: ShellState[K]) => ShellState[K]),
@@ -67,6 +68,8 @@ export function createAppStore(defaults: AppStoreDefaults): AppStore {
     },
     registry: { connections: [], ready: false, snapshots: {} },
     selection: {},
+    // Mutated in place; the hook only needs the stable map identity.
+    presentation: new Map<string, unknown>(),
     setShellValue: (key, value) => set((state) => ({
       shell: {
         ...state.shell,

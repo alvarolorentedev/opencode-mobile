@@ -15,7 +15,7 @@ and [feature boundaries](../docs/architecture/feature-boundaries.md).
 - `runtime/composition/`: domain wiring, values, reset and cross-feature effects.
 - `runtime/persistence/`: app hydration/write-back and cross-domain credential-scope migration.
 - `runtime/realtime/`: SSE plus polling reconciliation and coalescing.
-- `runtime/presentation/`: stable drafts/scroll positions, independent of registry updates.
+- `runtime/presentation/`: stable drafts/scroll positions, owned by the app store and independent of registry updates.
 
 Server facts belong to Query; device facts belong to the app store. Do not add a
 second store or mirror a Query response. During the migration, contexts under
