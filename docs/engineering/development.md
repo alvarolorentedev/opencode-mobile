@@ -123,9 +123,12 @@ Keep these at their reviewed version until the blocker clears:
 | `solid-js` 1.9 | The plugin GUI host hands Solid to third-party plugin modules, so a major is an ABI break, not an internal bump. |
 | `@opencode/client` 2.3.2, `@opencode/schema` 2.3.2, `@opencode-ai/sdk` 1.18.32 | Protocol surface: bump together, then run the contract suites, the fake-server self-test and the full browser E2E. |
 
-`npm audit` still reports build-tooling advisories that have no safe fix here:
-Sherpa's installer `adm-zip` and Expo's CLI `glob`/`minimatch` line. They are
-development dependencies, not shipped code paths; re-check them at each SDK move.
+`npm audit` still reports advisories that have no safe fix here: Sherpa's
+installer `adm-zip`, Expo's CLI `glob`/`minimatch` line and the `zod` 3 copy that
+`expo-mcp`'s tunnel pulls in (the app validates with `zod` 4). All of them are
+development or optional-tooling dependencies, not shipped code paths; re-check
+them at each SDK move. `expo-mcp` stays on the SDK's expected `0.2.x` because
+`npx expo install --check` owns that version.
 
 
 Build a production Android release:

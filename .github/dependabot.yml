@@ -55,6 +55,8 @@ updates:
       - dependency-name: typescript
       - dependency-name: eslint
       - dependency-name: '@scure/base'
+      # expo install --check owns this one and expects the SDK's 0.2.x line.
+      - dependency-name: expo-mcp
       # Need stored-data, purchase and widget migration on real hardware.
       - dependency-name: '@react-native-async-storage/async-storage'
       - dependency-name: expo-iap
