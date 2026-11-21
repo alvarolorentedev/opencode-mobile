@@ -1,0 +1,3 @@
+- Mission charts reload instantly from the last saved view and refresh in the background.
+- Expanded diffs scroll correctly in the changes overlay.
+- Model and reasoning selections apply only after the picker closes.
