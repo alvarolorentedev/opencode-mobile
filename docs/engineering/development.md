@@ -84,7 +84,49 @@ npm run prebuild:ios   # Generate iOS native project
 npm run build:ios:local # Build iOS release archive locally
 ```
 
-### Android Builds
+### Dependency Updates
+
+Expo-managed packages follow the installed SDK, not the newest npm tag. Run
+`npx expo install --check` and let `npx expo install --fix` write the expected
+versions; `npx expo-doctor` covers the remaining project checks. Everything else
+is bumped deliberately, one batch per commit, with `npm run validate:commit` and
+the owning checks from [strategy](validation/strategy.md) before it lands.
+
+`.github/dependabot.yml` opens grouped weekly PRs for the rest. Its `ignore`
+list is the same set described below — update both together.
+
+Four packages carry an install-time patch from
+[library-extraction](library-extraction.md#remaining-dependency-patches):
+`react-native`, `expo-sharing`, `llama.rn` and `@siteed/sherpa-onnx.rn`. A bump
+means porting the patch in the same commit:
+
+1. Edit the sources under `node_modules/<package>` until the reviewed behavior is
+   present again.
+2. `rm patches/<package>+<old>.patch && npx patch-package <package>` and rename
+   the patch file it writes.
+3. Update the patch inventory row, any comment that names the old version, and
+   `tests/vitest/native-share-patch.test.ts` for Sharing.
+4. `npm ci` from a clean tree proves every patch still applies, then run the
+   owning native build.
+
+Keep these at their reviewed version until the blocker clears:
+
+| Package | Blocker |
+| --- | --- |
+| `llama.rn` 0.12.9, `expo-in-app-updates` 0.13.0 | [ADR 0017](../adr/0017-native-defaults-and-prebuilt-engines.md) requires prebuilt engines and the unmodified updater. |
+| `typescript` 6.0.3 | TypeScript 7 ships no compiler API for the architecture, discovery and iOS config tests, and `typescript-eslint` refuses to load against it. |
+| `eslint` 9 | ESLint 10 removes `context.getFilename()`, which the `eslint-plugin-react` bundled by `eslint-config-expo` 58 still calls. Move with the SDK's config. |
+| `@scure/base` 1.2.6 | v2 freezes the coder objects, so a chat feed test that spies on `base64.decode` cannot load; revisit when that suite no longer needs the spy. |
+| `@react-native-async-storage/async-storage` 2 | v3 changes the native store; moving it needs a stored-data migration test on a real upgrade. |
+| `expo-iap` 5 | Purchases and restores need signed store sandbox acceptance. |
+| `react-native-android-widget` 0.22 | Pre-1.0 breaking changes must be verified against installed widget receivers on a device. |
+| `solid-js` 1.9 | The plugin GUI host hands Solid to third-party plugin modules, so a major is an ABI break, not an internal bump. |
+| `@opencode/client` 2.3.2, `@opencode/schema` 2.3.2, `@opencode-ai/sdk` 1.18.32 | Protocol surface: bump together, then run the contract suites, the fake-server self-test and the full browser E2E. |
+
+`npm audit` still reports build-tooling advisories that have no safe fix here:
+Sherpa's installer `adm-zip` and Expo's CLI `glob`/`minimatch` line. They are
+development dependencies, not shipped code paths; re-check them at each SDK move.
+
 
 Build a production Android release:
 ```bash

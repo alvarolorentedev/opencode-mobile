@@ -1,0 +1,63 @@
+version: 2
+# Weekly grouped npm updates. The ignore list mirrors the pinned, patched and
+# device-gated set in docs/engineering/development.md#dependency-updates; keep
+# both in sync when a package becomes upgradable.
+updates:
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+    groups:
+      expo:
+        patterns:
+          - expo
+          - expo-*
+      opentelemetry:
+        patterns:
+          - '@opentelemetry/*'
+      dev-tooling:
+        patterns:
+          - '@playwright/*'
+          - '@storybook/*'
+          - '@tailwindcss/*'
+          - '@vitejs/*'
+          - storybook
+          - tailwindcss
+          - vite
+          - vitest
+          - ws
+    ignore:
+      # ADR 0017: prebuilt engines only, and the updater stays unmodified.
+      - dependency-name: llama.rn
+      - dependency-name: expo-in-app-updates
+      # Patch-package owners: rebase the patch in the same commit.
+      - dependency-name: react-native
+      - dependency-name: '@siteed/sherpa-onnx.rn'
+      - dependency-name: expo-sharing
+      - dependency-name: '@expensify/react-native-live-markdown'
+      # Expo SDK 58 peers and off-mapping native modules; move with the SDK.
+      - dependency-name: react-native-reanimated
+      - dependency-name: react-native-worklets
+      - dependency-name: react-native-gesture-handler
+      - dependency-name: '@shopify/flash-list'
+      - dependency-name: react-native-svg
+      - dependency-name: '@react-native-community/slider'
+      - dependency-name: uniwind
+      - dependency-name: react-native-enriched-markdown
+      - dependency-name: react
+      - dependency-name: react-dom
+      # Deliberate protocol pins.
+      - dependency-name: '@opencode/client'
+      - dependency-name: '@opencode/schema'
+      - dependency-name: '@opencode-ai/sdk'
+      # Blocked until the toolchain supports them; see the doc table.
+      - dependency-name: typescript
+      - dependency-name: eslint
+      - dependency-name: '@scure/base'
+      # Need stored-data, purchase and widget migration on real hardware.
+      - dependency-name: '@react-native-async-storage/async-storage'
+      - dependency-name: expo-iap
+      - dependency-name: react-native-android-widget
+      # Solid is a public ABI for plugin GUI modules.
+      - dependency-name: solid-js
