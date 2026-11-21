@@ -27,6 +27,15 @@ const EMPTY_PROJECTS: Project[] = [];
 
 export function useConnectionLifecycle(entry: ConnectionRecord, setup: ConnectSetup, updateSettings: (id: string, settings: OpencodeConnectionSettings) => void, online: boolean, hydrated: boolean) {
   const { t } = useTranslation();
+  // i18next's TFunction no longer accepts a plain options record, and the
+  // protocol layer must not type itself against i18next generics, so adapt at
+  // this boundary. Callers only pass flat interpolation values.
+  const translate = useCallback(
+    (key: string, options?: Record<string, unknown>): string =>
+      // The protocol layer only ever asks for plain strings, never key details.
+      (options ? t(key, options as never) : t(key)) as string,
+    [t],
+  );
   const cache = useQueryClient();
   const identity = useQueryIdentity();
   const active = useQueryActivity();
@@ -89,12 +98,12 @@ export function useConnectionLifecycle(entry: ConnectionRecord, setup: ConnectSe
       } catch (error) {
         if (!current()) return latest.current.state.connection;
         let kind = classifyConnectionFailure(error);
-        let message = getConnectionError(settings.serverUrl, error, t);
+        let message = getConnectionError(settings.serverUrl, error, translate);
         if ((kind === 'unknown' || kind === 'certificate') && settings.serverUrl.startsWith('https:') && isTlsTrustSupported()) {
           const tls = await probeConnectionTrust(settings);
           if (!tls.ok && isCertificateFailureReason(tls.reason)) {
             kind = 'certificate';
-            message = getCertificateErrorMessage(tls.reason, t);
+            message = getCertificateErrorMessage(tls.reason, translate);
           }
         }
         const connection: ConnectionState = { status: 'error', kind, message, checkedAt: Date.now(), retryableStartup: Boolean(settings.connect) && isRetryableCloudLinkStartupError(error) };
