@@ -172,7 +172,7 @@ test('V2 creates a PTY on B while chat stays on A and retains its renderer', asy
 test('V2 settings inspection and auto-approve are independent of chat', async ({ page }) => {
   await goToTab(page, 'Settings');
   await choose(page, 'settings-server-picker', 'Build server');
-  await page.getByRole('button', { name: /^Approvals/ }).click();
+  await page.getByTestId('settings-category-permissions').click();
   const overlay = page.getByTestId('settings-section-overlay');
   await expect(overlay.getByText('Changes apply to Build server')).toBeVisible();
   await expect(overlay.getByTestId('settings-server-picker')).toHaveCount(0);
@@ -221,7 +221,7 @@ test('V2 replies to colliding approvals only on the Settings server', async ({ p
   await expect(page.getByRole('button', { name: /^Open chats/ })).toContainText('Chat on Build server');
   await goToTab(page, 'Settings');
   await choose(page, 'settings-server-picker', 'Build server');
-  await page.getByRole('button', { name: /^Approvals/ }).click();
+  await page.getByTestId('settings-category-permissions').click();
   const overlay = page.getByTestId('settings-section-overlay');
   await expect(overlay.getByText('Requested by Chat on Build server')).toBeVisible();
   await overlay.getByRole('button', { name: 'Allow once', exact: true }).click();
