@@ -3,7 +3,7 @@ import { router } from 'expo-router';
 import { useEffect, useRef } from 'react';
 import { Platform } from 'react-native';
 
-import { parseNotificationRoute } from '@/shared/contracts/notification-route';
+import { notificationResponseKey, parseNotificationRoute } from '@/shared/contracts/notification-route';
 
 // Routes taps on locally scheduled completion/attention notifications through
 // the existing session deep-link resolver, so the connection, project and
@@ -15,11 +15,11 @@ export function useNotificationRoute() {
     if (Platform.OS === 'web') return;
     const open = (response: Notifications.NotificationResponse | null) => {
       if (!response) return;
-      const identifier = response.notification.request.identifier;
-      if (!identifier || handled.current === identifier) return;
+      const key = notificationResponseKey(response.notification.request.identifier, response.notification.date);
+      if (!key || handled.current === key) return;
       const route = parseNotificationRoute(response.notification.request.content.data);
       if (!route) return;
-      handled.current = identifier;
+      handled.current = key;
       router.push({
         pathname: '/session/[id]',
         params: {

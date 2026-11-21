@@ -7,6 +7,12 @@ export type NotificationRoute = {
   connectionScope?: string;
 };
 
+// A notification identifier is reused when a chat's alert is replaced, so tap
+// de-duplication also keys on the delivered notification's timestamp.
+export function notificationResponseKey(identifier: string | undefined, date: number | undefined) {
+  return identifier ? `${identifier}:${date ?? 0}` : undefined;
+}
+
 export function parseNotificationRoute(data: unknown): NotificationRoute | undefined {
   if (typeof data !== 'object' || data === null) return undefined;
   const { sessionId, projectPath, connectionScope } = data as Record<string, unknown>;

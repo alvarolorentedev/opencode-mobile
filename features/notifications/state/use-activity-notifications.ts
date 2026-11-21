@@ -24,6 +24,8 @@ type Input = {
   sessions: Session[];
   sendingState: { active: boolean; sessionId?: string };
   promptError?: { sessionId?: string; occurredAt: number };
+  // Requests this client will approve itself need no needs-input alert.
+  autoApprove?: boolean;
   // True while the global SSE stream is healthy. When it is, interaction reads
   // can be limited to directories with running work because events reconcile
   // other projects directly.
@@ -228,7 +230,7 @@ export function useActivityNotifications(input: Input) {
     // Locally observed needs-input alert. It is best effort: it fires only
     // while JS is alive and only when the app is not already showing the prompt.
     const target = attentionTarget(event);
-    if (target.sessionId && AppState.currentState !== 'active') {
+    if (target.sessionId && !latest.current.autoApprove && AppState.currentState !== 'active') {
       void raisePendingAttention(latest.current.connectionScope, target.sessionId, target.key).catch(() => undefined);
     }
     const resolved = settledSession(event);

@@ -49,7 +49,7 @@ function pluginNotice() {
 }
 function props() {
   return { catalogClient: {} as any, settings: { serverUrl: 'https://server', username: '', password: '', directory: '' },
-    contract: 'v2' as const, connectionScope: 'scope', connected: true, currentSessionId: 'one', sessions: [session('one')], sendingState: { active: false }, streamConnectedRef: { current: true } };
+    contract: 'v2' as const, connectionScope: 'scope', connected: true, currentSessionId: 'one', sessions: [session('one')], sendingState: { active: false }, autoApprove: false, streamConnectedRef: { current: true } };
 }
 
 beforeEach(() => {
@@ -226,6 +226,16 @@ describe('provider observer', () => {
   it('does not alert for a blocker while the app is foregrounded', async () => {
     await mount();
     h.runtime.value({ type: 'form.created', data: { form: { id: 'f1', sessionID: 'one' } } });
+    await h.runtime.settle();
+    expect(h.attention).toHaveLength(0);
+    h.runtime.unmount();
+  });
+
+  it('does not alert for a request this client will auto-approve', async () => {
+    await mount();
+    h.runtime.update({ autoApprove: true }); await h.runtime.settle();
+    h.appState = 'background'; h.listener('background');
+    h.runtime.value({ type: 'permission.asked', data: { id: 'p1', sessionID: 'one' } });
     await h.runtime.settle();
     expect(h.attention).toHaveLength(0);
     h.runtime.unmount();

@@ -100,6 +100,7 @@ function completePendingNotification(key: string, pending: PendingNotificationSe
     await notify?.();
     delete current[key];
     await writePendingNotificationSessions(current);
+    await dismissAttentionNotification(pending.connectionScope, pending.sessionId);
   });
 }
 
@@ -170,6 +171,17 @@ async function configureAttentionChannelAsync() {
   });
 }
 
+// One needs-input entry per chat: a new block episode updates the existing
+// notification instead of stacking another entry for the same session.
+function attentionNotificationIdentifier(connectionScope: string, sessionId: string) {
+  return `attention:${connectionScope}:${sessionId}`;
+}
+
+async function dismissAttentionNotification(connectionScope: string, sessionId: string) {
+  if (!canUseNotifications()) return;
+  await Notifications.dismissNotificationAsync(attentionNotificationIdentifier(connectionScope, sessionId)).catch(() => undefined);
+}
+
 async function scheduleAttentionNotification(pending: PendingNotificationSession) {
   if (!canUseNotifications()) {
     return;
@@ -179,6 +191,7 @@ async function scheduleAttentionNotification(pending: PendingNotificationSession
     await configureAttentionChannelAsync();
 
     await Notifications.scheduleNotificationAsync({
+      identifier: attentionNotificationIdentifier(pending.connectionScope, pending.sessionId),
       content: {
         title: pending.sessionTitle?.trim() || i18n.t('notifications:activity.untitled'),
         body: i18n.t('notifications:activity.needsInput'),
@@ -384,6 +397,7 @@ export async function clearPendingTaskFinishedNotification(connectionScope: stri
     if (requestedAt !== undefined && current[key].requestedAt !== requestedAt) return false;
     delete current[key];
     await writePendingNotificationSessions(current);
+    await dismissAttentionNotification(connectionScope, sessionId);
     return true;
   });
 }
@@ -423,7 +437,7 @@ export async function claimPendingAttention(connectionScope: string, sessionId: 
 }
 
 export async function clearPendingAttention(connectionScope: string, sessionId: string) {
-  return withPendingSessions(async () => {
+  const cleared = await withPendingSessions(async () => {
     const current = await readPendingNotificationSessions();
     const record = current[pendingNotificationKey(connectionScope, sessionId)];
     if (!record?.attentionKey) return false;
@@ -431,6 +445,10 @@ export async function clearPendingAttention(connectionScope: string, sessionId: 
     await writePendingNotificationSessions(current);
     return true;
   });
+  // The request was answered, rejected, or cancelled: its alert is no longer
+  // actionable, so remove it instead of leaving it in the notification shade.
+  await dismissAttentionNotification(connectionScope, sessionId);
+  return cleared;
 }
 
 // Local, best-effort needs-input alert for a task already tracked by this

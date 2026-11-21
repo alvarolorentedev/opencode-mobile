@@ -282,6 +282,7 @@ export function useOpencodeProviderComposition(input: WorkspaceRuntimeInput) {
     catalogClient, settings: state.settings, contract: state.serverContract,
     connectionScope: state.connectionScope, connected: input.isConnectionOwner && state.connection.status === 'connected',
     currentSessionId: input.visible ? state.currentSessionId : undefined, sessions: state.sessions, sendingState: prompt.sendingState, promptError: prompt.promptError,
+    autoApprove: state.chatPreferences.autoApprove,
     streamConnectedRef,
   });
 

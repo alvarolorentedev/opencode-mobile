@@ -26,6 +26,7 @@ describe('background notification monitor', () => {
     const g = globalThis as any;
     g.__notificationsTestAsyncStorage = new Map();
     g.__notificationsTestScheduled = [];
+    g.__notificationsTestDismissed = [];
     g.__notificationsTestBuilds = [];
     g.__notificationsTestResolutions = [];
     g.__notificationsTestResolver = () => undefined;
@@ -55,6 +56,7 @@ describe('background notification monitor', () => {
       export function setNotificationHandler() {}
       export async function setNotificationChannelAsync() {}
       export async function scheduleNotificationAsync(request) { globalThis.__notificationsTestScheduled.push(request); return 'notification-id'; }
+      export async function dismissNotificationAsync(identifier) { globalThis.__notificationsTestDismissed.push(identifier); }
       export async function getPermissionsAsync() { return { granted: true, status: 'granted', canAskAgain: true }; }
       export async function requestPermissionsAsync() { return { granted: true, status: 'granted', canAskAgain: true }; }
     `)}`;
@@ -127,7 +129,7 @@ describe('background notification monitor', () => {
       [/from '@\/shared\/storage\/keys'/g, `from "${storageKeysUri}"`],
     ]);
 
-    const { trackPendingTaskFinishedNotification, clearPendingTaskFinishedNotification, listPendingTaskFinishedNotifications } = await import(notificationsUri);
+    const { trackPendingTaskFinishedNotification, clearPendingTaskFinishedNotification, listPendingTaskFinishedNotifications, raisePendingAttention, clearPendingAttention } = await import(notificationsUri);
     const storageKeys = await import(storageKeysUri);
     const { getConnectionScope } = await import(connectionScopeUri);
     const { pendingNotificationKey } = await import(notificationPendingUri);
@@ -326,5 +328,20 @@ describe('background notification monitor', () => {
     storage.set(storageKeys.PENDING_NOTIFICATION_SESSIONS_STORAGE_KEY, '{');
     await trackPendingTaskFinishedNotification(record('after-corruption'));
     assert.equal(Object.keys(readPending()).length, 1, 'malformed JSON can be replaced safely');
+
+    // Needs-input alerts reuse one identifier per chat and are dismissed when
+    // the request is resolved, so repeated approvals cannot stack entries.
+    storage.clear(); g.__notificationsTestScheduled.length = 0; g.__notificationsTestDismissed.length = 0;
+    await trackPendingTaskFinishedNotification(record('blocked'));
+    assert.equal(await raisePendingAttention(scopeA, 'blocked', 'blocked'), true);
+    const attention = g.__notificationsTestScheduled.at(-1);
+    assert.equal(attention.identifier, `attention:${scopeA}:blocked`);
+    assert.equal(attention.content.body, 'notifications:activity.needsInput');
+    assert.equal(await raisePendingAttention(scopeA, 'blocked', 'blocked'), false, 'one alert per block episode');
+    assert.equal(g.__notificationsTestScheduled.length, 1);
+    assert.equal(await clearPendingAttention(scopeA, 'blocked'), true);
+    assert.equal(g.__notificationsTestDismissed.at(-1), attention.identifier);
+    assert.equal(await raisePendingAttention(scopeA, 'blocked', 'blocked'), true, 'a later episode re-arms');
+    assert.equal(g.__notificationsTestScheduled.at(-1).identifier, attention.identifier, 'the same chat reuses one notification');
   });
 });
