@@ -1,16 +1,12 @@
 import { getConnectionScope } from '@/shared/contracts/connection-scope';
 import type { ConnectionRecord } from '@/shared/contracts/workspace';
-import { focusManager, onlineManager, QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { focusManager, onlineManager, QueryClientProvider, type QueryClient } from '@tanstack/react-query';
 import { createContext, useContext, useEffect, useMemo, useState, useSyncExternalStore, type PropsWithChildren } from 'react';
 import { AppState, Platform } from 'react-native';
 import type { QueryIdentity } from '@/shared/server-data/keys';
+import { createServerQueryClient } from '@/shared/server-data/query-client';
 
-export function createServerQueryClient() {
-  return new QueryClient({ defaultOptions: {
-    queries: { retry: false, staleTime: 60_000, gcTime: 300_000, refetchOnWindowFocus: false, refetchOnReconnect: false, refetchInterval: false },
-    mutations: { retry: false },
-  } });
-}
+export { createServerQueryClient };
 const ForegroundContext = createContext(true);
 const subscribeFocus = (listener: () => void) => focusManager.subscribe(listener);
 export const isServerQueryForeground = () => focusManager.isFocused() && (Platform.OS === 'web' || AppState.currentState === 'active');

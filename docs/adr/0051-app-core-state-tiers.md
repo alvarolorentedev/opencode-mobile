@@ -57,12 +57,12 @@ Zustand is an approved dependency for this role. Redux, Redux Toolkit and XState
 - [x] Move diffs, todos and VCS diffs into Query.
 - [x] Move pending approvals into Query.
 - [x] Add tier checks for the app store and server-state ownership.
-- [ ] Add the cross-tier integration harness.
 - [ ] Move connection lifecycle and SSE into connection managers.
 - [x] Move the connection state machine into a plain, testable manager.
 - [ ] Extract prompt, session and workspace commands from the composition.
 - [ ] Move canonical transcripts to Query with a live overlay store.
 - [x] Delete the feature domain contexts; keep the narrow shared-UI scope exception.
 - [x] Move chat UI state, retained-scope values and MCP prompts into the app core.
-- [ ] Add the cross-tier integration harness.
+- [x] Add core/store/Query and session-catalog integration harness tests.
+- [ ] Add a full headless composition harness.
 - [ ] Update the state, boundary and runtime guidance as each phase lands.

@@ -1,9 +1,6 @@
-import { getConnectControlPlanes } from '@/shared/contracts/cloud-link';
-import { createServerQueryClient } from '@/shared/server-data/client';
-import { defaultConnectionSettings } from '@/shared/protocol/opencode/client';
-import { defaultChatPreferences } from '@/shared/preferences/opencode-preferences';
+import { createServerQueryClient } from '@/shared/server-data/query-client';
 
-import { createAppStore } from './store';
+import { createAppStore, type AppStoreDefaults } from './store';
 
 export type AppCore = {
   store: ReturnType<typeof createAppStore>;
@@ -11,14 +8,11 @@ export type AppCore = {
 };
 
 // The only app-level composition root. React mounts this once; features read
-// it through selectors instead of receiving state through providers.
-export function createAppCore(): AppCore {
+// it through selectors instead of receiving state through providers. Defaults
+// are injected so tests and the app share the same constructor.
+export function createAppCore(defaults: AppStoreDefaults): AppCore {
   return {
-    store: createAppStore({
-      settings: defaultConnectionSettings,
-      chatPreferences: defaultChatPreferences,
-      controlPlaneUrl: getConnectControlPlanes()[0] ?? '',
-    }),
+    store: createAppStore(defaults),
     queryClient: createServerQueryClient(),
   };
 }
