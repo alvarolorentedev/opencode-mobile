@@ -8,6 +8,7 @@ import { isServerConnectedEvent, serverDataResources } from '@/shared/protocol/o
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { createContext, useCallback, useContext, useEffect, useLayoutEffect, useMemo, useReducer, useRef, type PropsWithChildren } from 'react';
 import { useTranslation } from 'react-i18next';
+import type { TFunction } from 'i18next';
 import { AppState } from 'react-native';
 import { connectionTransition , useConnectionRetry } from '@/features/connections/runtime';
 import type { ConnectionLifecycle } from '@/features/connections/index';
@@ -25,17 +26,16 @@ import type { Project } from '@/shared/protocol/opencode/types';
 
 const EMPTY_PROJECTS: Project[] = [];
 
+// i18next's TFunction no longer accepts a plain options record, and the protocol
+// layer must not type itself against i18next generics, so adapt at this boundary.
+// The protocol layer only ever asks for plain strings, never key details.
+function connectionTranslator(t: TFunction) {
+  return (key: string, options?: Record<string, unknown>): string =>
+    (options ? t(key, options as never) : t(key)) as string;
+}
+
 export function useConnectionLifecycle(entry: ConnectionRecord, setup: ConnectSetup, updateSettings: (id: string, settings: OpencodeConnectionSettings) => void, online: boolean, hydrated: boolean) {
   const { t } = useTranslation();
-  // i18next's TFunction no longer accepts a plain options record, and the
-  // protocol layer must not type itself against i18next generics, so adapt at
-  // this boundary. Callers only pass flat interpolation values.
-  const translate = useCallback(
-    (key: string, options?: Record<string, unknown>): string =>
-      // The protocol layer only ever asks for plain strings, never key details.
-      (options ? t(key, options as never) : t(key)) as string,
-    [t],
-  );
   const cache = useQueryClient();
   const identity = useQueryIdentity();
   const active = useQueryActivity();
@@ -51,7 +51,8 @@ export function useConnectionLifecycle(entry: ConnectionRecord, setup: ConnectSe
   const countedContract = useRef<ServerContract | undefined>(undefined);
   const preparedUpdate = useRef<{ revision: number; settings: OpencodeConnectionSettings } | undefined>(undefined);
   const connect = useCallback((): Promise<ConnectionState> => {
-    const { entry, setup, t, identity } = latest.current;
+    const { entry, setup, identity } = latest.current;
+    const translate = connectionTranslator(latest.current.t);
     if (!entry.enabled) return Promise.resolve({ status: 'idle', message: 'Disconnected' });
     const pending = inFlight.current;
     if (pending && pending.revision === (entry.revision ?? 0)) return pending.promise;
