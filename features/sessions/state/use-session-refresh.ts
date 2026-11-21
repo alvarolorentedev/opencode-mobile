@@ -51,7 +51,8 @@ export function useSessionRefresh({ activeProjectPath, client, isCurrentClient, 
         }
         return areSessionStatusMapsEqual(current, next) ? current : next;
       });
-      void persistSessionCache(connectionScope, activeProjectPath, nextSessions, result.statuses);
+      const statuses = Object.fromEntries(nextSessions.map((session) => [session.id, result.statuses[session.id] ?? { type: 'idle' as const }]));
+      void persistSessionCache(connectionScope, activeProjectPath, nextSessions, statuses);
       return nextSessions;
     },
     [activeProjectPath, client, connectionScope, isCurrentClient, locallyCreatedSessionsRef, sessionsRef, setSessionStatuses, setSessions],

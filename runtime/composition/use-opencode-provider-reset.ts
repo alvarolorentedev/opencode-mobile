@@ -1,19 +1,24 @@
-import { useCallback } from 'react';
+import { useCallback, type Dispatch, type SetStateAction } from 'react';
 
 import type { useWorkspaceRuntimeState } from '@/runtime/workspace/use-workspace-runtime-state';
+import type { Session } from '@/shared/protocol/opencode/types';
 
 type ResetInput = {
   state: ReturnType<typeof useWorkspaceRuntimeState>;
   resetTerminal: () => void;
   resetTranscript: () => void;
+  setSessions: Dispatch<SetStateAction<Session[]>>;
 };
 
 // Connection switches must discard every value scoped to the previous server
-// before a new generation starts serving reads.
+// before a new generation starts serving reads. Session statuses are
+// connection-scoped and partitioned by the Query keys, so they are not cleared
+// here; a project switch must not wipe the other projects' rows.
 export function useOpencodeProviderReset({
   state,
   resetTerminal,
   resetTranscript,
+  setSessions,
 }: ResetInput) {
   const {
     bootstrapPromiseRef,
@@ -26,8 +31,6 @@ export function useOpencodeProviderReset({
     explicitSessionSelectionRef,
     locallyCreatedSessionsRef,
     setCurrentSessionId,
-    setSessions,
-    setSessionStatuses,
                 setPendingPermissionsBySession,
     setPendingQuestionsBySession,
     setMcpAuthPrompt,
@@ -46,7 +49,6 @@ export function useOpencodeProviderReset({
     locallyCreatedSessionsRef.current.clear();
     setCurrentSessionId(undefined);
     setSessions([]);
-    setSessionStatuses({});
     resetTranscript();
     setPendingPermissionsBySession({});
     setPendingQuestionsBySession({});
@@ -68,7 +70,6 @@ export function useOpencodeProviderReset({
     setMcpAuthPrompt,
     setPendingPermissionsBySession,
     setPendingQuestionsBySession,
-        setSessionStatuses,
-    setSessions,
+        setSessions,
       ]);
 }

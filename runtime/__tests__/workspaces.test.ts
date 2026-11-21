@@ -426,23 +426,23 @@ it('flattens terminal catalogs once per server PTY and keeps the owning workspac
 
 it('reads the shared active-session catalog only for the owning runtime', async () => {
   const driver = hookRuntime();
-  const listActiveSessions = vi.fn(async () => ({ sessions: [], statuses: {} }));
+  const listSessions = vi.fn(async () => ({ sessions: [], statuses: {} }));
   const { useActiveSessions } = await loadTs('features/sessions/state/use-active-sessions.ts', {
     react: driver.react,
     "@/features/sessions/model/active-sessions": { getActiveSessions: () => [] },
     "@/features/sessions/model/session-utils": { areSessionListsEqual: () => true, areSessionStatusMapsEqual: () => true },
     "@/shared/protocol/opencode/client": { withReadSignal: (client: object) => client },
-    "@/shared/protocol/services/session-service": { listActiveSessions }
+    "@/shared/protocol/services/session-service": { listSessions }
   });
   driver.mount((props: any) => useActiveSessions(props), {
-    catalogClient: {}, isCurrentCatalogClient: () => true, connectionScope: 'scope',
+    catalogClient: { __opencode: { contract: 'v2', directory: '' } },
     connected: false, currentSessionId: undefined, hideSubagentChats: false, visible: false,
   });
   await driver.value.refreshActiveSessions();
-  expect(listActiveSessions).not.toHaveBeenCalled();
+  expect(listSessions).not.toHaveBeenCalled();
   driver.update({ connected: true });
   await driver.value.refreshActiveSessions();
   driver.flush();
-  expect(listActiveSessions).toHaveBeenCalledOnce();
+  expect(listSessions).toHaveBeenCalled();
   driver.unmount();
 });

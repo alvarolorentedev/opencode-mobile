@@ -49,7 +49,10 @@ export function useSessionCrudActions({
 }: SessionCrudInput) {
   const persistSnapshot = useCallback((nextSessions: Session[], nextStatuses: Record<string, SessionStatus>) => {
     if (!activeProjectPath) return;
-    void persistSessionCache(connectionScopeRef.current, activeProjectPath, nextSessions, nextStatuses);
+    // The in-memory status map is connection-wide; the project cache must only
+    // carry the rows this project owns or a later hydration leaks stale peers.
+    const statuses = Object.fromEntries(nextSessions.map((session) => [session.id, nextStatuses[session.id] ?? { type: 'idle' as const }]));
+    void persistSessionCache(connectionScopeRef.current, activeProjectPath, nextSessions, statuses);
   }, [activeProjectPath, connectionScopeRef]);
 
   const openSession = useCallback(

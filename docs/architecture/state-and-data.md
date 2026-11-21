@@ -35,9 +35,9 @@ State is split into seven practical domains:
 [ADR 0051](../adr/0051-app-core-state-tiers.md) splits ownership by source of truth:
 
 - **Server facts live in TanStack Query only.** A response must not be mirrored
-  into another store. Sessions and session statuses are moving from per-project
-  React state to Query keys; until that migration lands, their existing owner
-  remains authoritative.
+  into another store. Session lists and statuses are Query resources: a project
+  list is keyed by directory, and the status map is connection-wide. The status
+  map has one writer; project views select from it instead of keeping a copy.
 - **Device facts live in the app store** (`runtime/core/store.ts`): connection
   records and focus, selection, preferences, favorites, hidden projects, drafts
   and scroll, prompt admission, conversation and terminal state. One store
@@ -143,8 +143,13 @@ Meaning:
 
 - `activeProjectPath` is the app-selected project context
 - `serverProjects` are raw projects returned by the server
-- `sessions` are the current project's sessions sorted newest-first. Native reads follow distinct cursors until the catalog ends. External OpenCode 2 links fetch the session by ID and verify its project before opening it.
-- `sessionStatuses` stores per-session runtime status from the server
+- `sessions` are the current project's sessions sorted newest-first. The list is
+  a Query resource keyed by the project directory; native reads follow distinct
+  cursors until the catalog ends. External OpenCode 2 links fetch the session by
+  ID and verify its project before opening it.
+- `sessionStatuses` is the connection-wide status map, also owned by Query. The
+  connection catalog writes it; project views and the Chat Library select from
+  it. Do not keep a per-project status copy.
 - `currentSessionId` is the selected/open session
 - an explicit selection stays selected while the project session list catches up with a catalog row; once the list includes it, normal reconciliation handles later removal
 - opening a project with no explicit selection picks the newest session in the server list; nothing remembers the previous chat

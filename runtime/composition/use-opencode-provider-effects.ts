@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react';
 
 import type { ScopedOpencodeClient } from '@/shared/protocol/opencode/client';
+import type { Session, SessionStatus } from '@/shared/protocol/opencode/types';
 import { pruneProviderTranscripts } from '@/features/chat/runtime';
 import type { useWorkspaceRuntimeState } from '@/runtime/workspace/use-workspace-runtime-state';
 
@@ -9,6 +10,9 @@ import type { useWorkspaceRuntimeState } from '@/runtime/workspace/use-workspace
 const RECENT_TRANSCRIPT_SESSIONS = 3;
 
 type ProviderEffectsInput = ReturnType<typeof useWorkspaceRuntimeState> & {
+  sessions: Session[];
+  sessionsRef: { current: Session[] };
+  sessionStatuses: Record<string, SessionStatus>;
   active: boolean;
   client: ScopedOpencodeClient;
   isCurrentClient: (candidate: object) => boolean;

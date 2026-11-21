@@ -2,15 +2,7 @@ import { useRef, useState } from 'react';
 
 import type { PendingPermissionRequest, PendingQuestionRequest } from '@/shared/protocol/opencode/client';
 
-import type { Session, SessionStatus } from '@/shared/protocol/opencode/types';
-
 export function useSessionState() {
-
-  const [sessions, setSessions] = useState<Session[]>([]);
-
-  const sessionsRef = useRef<Session[]>([]);
-
-  const [sessionStatuses, setSessionStatuses] = useState<Record<string, SessionStatus>>({});
 
   const [currentSessionId, setCurrentSessionId] = useState<string>();
 
@@ -37,5 +29,5 @@ export function useSessionState() {
   const locallyCreatedSessionsRef = useRef<Map<string, number>>(new Map());
 
   const suppressedPendingRequestIdsRef = useRef<Set<string>>(new Set());
-  return { sessions, setSessions, sessionsRef, sessionStatuses, setSessionStatuses, currentSessionId, setCurrentSessionId, pendingPermissionsBySession, setPendingPermissionsBySession, pendingQuestionsBySession, setPendingQuestionsBySession, isBootstrappingChat, setIsBootstrappingChat, activeSessionsVisible, setActiveSessionsVisible, currentSessionIdRef, pendingDeepLinkTargetRef, deepLinkOperationRef, bootstrapPromiseRef, bootstrapTokenRef, explicitSessionSelectionRef, locallyCreatedSessionsRef, suppressedPendingRequestIdsRef };
+  return { currentSessionId, setCurrentSessionId, pendingPermissionsBySession, setPendingPermissionsBySession, pendingQuestionsBySession, setPendingQuestionsBySession, isBootstrappingChat, setIsBootstrappingChat, activeSessionsVisible, setActiveSessionsVisible, currentSessionIdRef, pendingDeepLinkTargetRef, deepLinkOperationRef, bootstrapPromiseRef, bootstrapTokenRef, explicitSessionSelectionRef, locallyCreatedSessionsRef, suppressedPendingRequestIdsRef };
 }

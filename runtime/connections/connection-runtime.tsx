@@ -258,7 +258,7 @@ export function ConnectionRuntime({ entry, setup, updateSettings, online, hydrat
   const current = useRef(catalogClient);
   useLayoutEffect(() => { current.current = catalogClient; });
   const isCurrentCatalogClient = useCallback((client: object) => entry.enabled && client === current.current, [entry.enabled]);
-  const sessions = useActiveSessions({ catalogClient, isCurrentCatalogClient, connectionScope: getConnectionScope(entry.settings), connected: entry.enabled && lifecycle.connection.status === 'connected', currentSessionId: undefined, hideSubagentChats: false, visible: active && libraryVisible });
+  const sessions = useActiveSessions({ catalogClient, connected: entry.enabled && lifecycle.connection.status === 'connected', currentSessionId: undefined, hideSubagentChats: false, visible: active && libraryVisible });
   const sessionCatalog = useMemo<WorkspaceCatalog>(() => ({ sessions: sessions.catalogSessions, statuses: sessions.catalogStatuses, refresh: sessions.refreshActiveSessions, removeSession: sessions.removeSession }), [sessions.catalogSessions, sessions.catalogStatuses, sessions.refreshActiveSessions, sessions.removeSession]);
   const foreground = useQueryForeground();
   const projects = useQuery({ ...projectsOptions(identity, catalogClient),

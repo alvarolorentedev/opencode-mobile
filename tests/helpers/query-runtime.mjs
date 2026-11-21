@@ -1,4 +1,4 @@
-import { QueryClient, QueryObserver, QueriesObserver, hashKey, queryOptions, onlineManager, focusManager } from '@tanstack/react-query';
+import { hashKey, onlineManager, focusManager, QueryClient, QueryObserver, QueriesObserver, queryOptions, skipToken } from '@tanstack/react-query';
 
 // Real query-core observers with the deterministic provider hook driver. React
 // context is the boundary being supplied here, not a reimplementation of Query.
@@ -10,7 +10,7 @@ export function queryRuntime(react) {
     clients.set(react, client);
   }
   return {
-    QueryClient, QueryObserver, queryOptions, onlineManager, focusManager,
+    QueryClient, QueryObserver, queryOptions, onlineManager, focusManager, skipToken,
     useQueryClient: () => client,
     useQueries({ queries }) {
       const options = queries.map((query) => client.defaultQueryOptions(query));

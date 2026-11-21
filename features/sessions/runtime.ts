@@ -19,5 +19,7 @@ export { useConnectionLinkActions } from './state/use-connection-link-actions';
 export { useNativeSurfaces } from './state/use-native-surfaces';
 export { usePermissionRulesState } from './state/use-permission-rules-state';
 export { useSessionActions } from './state/use-session-actions';
+export { useSessionCatalog } from './state/use-session-catalog';
+export type { SessionCatalog } from './state/use-session-catalog';
 export { useSessionRefresh } from './state/use-session-refresh';
 export { useSessionState } from './state/use-session-state';

@@ -1,10 +1,11 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 
-import { withReadSignal, type ScopedOpencodeClient } from '@/shared/protocol/opencode/client';
+import { useQueryIdentity } from '@/shared/server-data/client';
+import type { ScopedOpencodeClient } from '@/shared/protocol/opencode/client';
 import type { Session, SessionStatus } from '@/shared/protocol/opencode/types';
 import { getActiveSessions } from '@/features/sessions/model/active-sessions';
-import { areSessionListsEqual, areSessionStatusMapsEqual } from '@/features/sessions/model/session-utils';
-import { listActiveSessions as svcListActiveSessions } from '@/shared/protocol/services/session-service';
+import { sessionCatalogOptions, type SessionCatalogData } from '@/features/sessions/services/queries';
 
 // The snapshot also refreshes on connect and whenever the Chat Library opens,
 // so a slow poll is enough to keep the cross-project running list fresh
@@ -14,85 +15,50 @@ export const MAX_ACTIVE_SESSIONS = 4;
 const EMPTY_SESSIONS: Session[] = [];
 const EMPTY_STATUSES: Record<string, SessionStatus> = {};
 
-type ActiveSessionsSnapshot = {
-  scope?: string;
-  client?: ScopedOpencodeClient;
-  checkedAt?: number;
-  error?: boolean;
-  sessions: Session[];
-  statuses: Record<string, SessionStatus>;
-};
-
-// Cross-project session snapshot for the Chat Library "Active" group. It reads
-// through the unscoped catalog client so it sees every project on the active
-// connection, seeds on connect, and polls only while the Chat Library is visible
-// and a remote session is running. The snapshot is tagged with its connection
-// scope, so a server switch immediately hides the previous server's sessions
-// without a reset effect.
+// Cross-project session snapshot for the Chat Library "Active" group. The
+// unscoped catalog is the single owner of the connection-wide status map;
+// project lists read statuses from the same key.
 export function useActiveSessions({
   catalogClient,
-  isCurrentCatalogClient,
-  connectionScope,
   connected,
   currentSessionId,
   hideSubagentChats,
   visible,
 }: {
   catalogClient: ScopedOpencodeClient;
-  isCurrentCatalogClient: (candidate: object) => boolean;
-  connectionScope: string;
   connected: boolean;
   currentSessionId?: string;
   hideSubagentChats: boolean;
   visible: boolean;
 }) {
-  const [snapshot, setSnapshot] = useState<ActiveSessionsSnapshot>({ sessions: [], statuses: {} });
+  const identity = useQueryIdentity();
+  const queryClient = useQueryClient();
+  const options = useMemo(() => sessionCatalogOptions(identity, catalogClient), [identity, catalogClient]);
+  const query = useQuery({ ...options, enabled: connected });
+  const sessions = query.data?.sessions ?? EMPTY_SESSIONS;
+  const statuses = query.data?.statuses ?? EMPTY_STATUSES;
 
-  const refreshActiveSessions = useCallback(async (signal?: AbortSignal) => {
-    if (!connected || signal?.aborted) {
-      return;
-    }
-    const checkedAt = Date.now();
-    try {
-      const result = await svcListActiveSessions(signal ? withReadSignal(catalogClient, signal) : catalogClient);
-      if (signal?.aborted || !isCurrentCatalogClient(catalogClient)) {
-        return;
-      }
-      setSnapshot((previous) => {
-        if (previous.client === catalogClient && (previous.checkedAt ?? 0) > checkedAt) return previous;
-        const sessions = result.sessions as Session[];
-        const statuses = result.statuses as Record<string, SessionStatus>;
-        if (previous.client === catalogClient
-          && areSessionListsEqual(previous.sessions, sessions)
-          && areSessionStatusMapsEqual(previous.statuses, statuses)) {
-          return { ...previous, checkedAt, error: false };
-        }
-        return { scope: connectionScope, client: catalogClient, checkedAt, sessions, statuses };
-      });
-    } catch {
-      if (signal?.aborted || !isCurrentCatalogClient(catalogClient)) return;
-      setSnapshot((previous) => previous.client === catalogClient ? (previous.checkedAt ?? 0) > checkedAt ? previous : { ...previous, error: true }
-        : { scope: connectionScope, client: catalogClient, sessions: [], statuses: {}, error: true });
-    }
-  }, [catalogClient, connected, connectionScope, isCurrentCatalogClient]);
+  const refreshActiveSessions = useCallback(async () => {
+    if (!connected) return;
+    await queryClient.fetchQuery({ ...options, staleTime: 0 }).catch(() => undefined);
+  }, [connected, options, queryClient]);
 
   const removeSession = useCallback((sessionId: string) => {
-    setSnapshot((previous) => {
-      if (!previous.sessions.some((session) => session.id === sessionId)) return previous;
-      const statuses = { ...previous.statuses };
-      delete statuses[sessionId];
-      return { ...previous, sessions: previous.sessions.filter((session) => session.id !== sessionId), statuses };
+    queryClient.setQueryData<SessionCatalogData>(options.queryKey, (current) => {
+      if (!current?.sessions.some((session) => session.id === sessionId)) return current;
+      const nextStatuses = { ...current.statuses };
+      delete nextStatuses[sessionId];
+      return { ...current, sessions: current.sessions.filter((session) => session.id !== sessionId), statuses: nextStatuses };
     });
-  }, []);
+  }, [options.queryKey, queryClient]);
 
-  const current = snapshot.scope === connectionScope && snapshot.client === catalogClient ? snapshot : undefined;
   const activeSessions = useMemo(() => getActiveSessions({
-    sessions: current?.sessions ?? [],
-    statuses: current?.statuses ?? {},
+    sessions,
+    statuses,
     currentSessionId,
     hideSubagentChats,
     maxTotal: MAX_ACTIVE_SESSIONS,
-  }), [current, currentSessionId, hideSubagentChats]);
+  }), [currentSessionId, hideSubagentChats, sessions, statuses]);
 
   const hasRunning = activeSessions.some((session) => session.status.type !== 'idle');
   useEffect(() => {
@@ -108,6 +74,13 @@ export function useActiveSessions({
     return () => clearInterval(interval);
   }, [connected, hasRunning, refreshActiveSessions, visible]);
 
-  return { activeSessions, catalogStatuses: current?.statuses ?? EMPTY_STATUSES, catalogSessions: current?.sessions ?? EMPTY_SESSIONS,
-    catalogCheckedAt: current?.checkedAt, catalogError: current?.error, refreshActiveSessions, removeSession };
+  return {
+    activeSessions,
+    catalogStatuses: statuses,
+    catalogSessions: sessions,
+    catalogCheckedAt: query.dataUpdatedAt || undefined,
+    catalogError: query.isError ? true : undefined,
+    refreshActiveSessions,
+    removeSession,
+  };
 }
