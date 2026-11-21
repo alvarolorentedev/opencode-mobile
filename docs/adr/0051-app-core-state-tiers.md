@@ -66,3 +66,28 @@ Zustand is an approved dependency for this role. Redux, Redux Toolkit and XState
 - [x] Add core/store/Query and session-catalog integration harness tests.
 - [ ] Add a full headless composition harness.
 - [ ] Update the state, boundary and runtime guidance as each phase lands.
+
+## Deliberate follow-ups
+
+These are the remaining orchestration improvements. They are not state-ownership
+gaps; the current hybrid is stable and fully tested, and each needs its own
+focused pass with the full browser suite.
+
+- **Commands are still hooks.** `use-opencode-provider-composition.ts` remains
+  the per-workspace orchestrator. Extracting a plain command core requires
+  explicit ports for prompt, session and project actions, and is the largest
+  remaining change. Do it domain by domain with the composition integration
+  harness.
+- **SSE, renewal and probe effects remain in React.** The connection state
+  machine is a plain manager, but its effects still live in
+  `useConnectionLifecycle`. Move them behind a manager only when a non-React
+  consumer needs them.
+- **Messages, diffs and todos use connection-scoped Query maps.** Split them
+  into per-session infinite queries and a store-backed live overlay only when
+  retention profiling shows the map rewrite matters; the current shape is
+  Query-owned and covered by the chat/realtime/diff flows.
+- **Retention still uses the existing caches.** Query persistence is deferred;
+  the per-project session and transcript caches remain the cold-start policy.
+- **`loadTs` remains.** Migrate suites to native imports as they are touched;
+  a big-bang rewrite would risk the behavioral contract for no state-layer gain.
+
