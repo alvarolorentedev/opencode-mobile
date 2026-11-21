@@ -7,11 +7,11 @@ const pkg = JSON.parse(readFileSync(new URL('../../package.json', import.meta.ur
 
 describe('observability dependency boundary', () => {
   it('uses the OpenTelemetry SDK for traces, metrics and logs', () => {
-    expect(pkg.dependencies?.['@opentelemetry/api']).toBe('1.9.0');
+    expect(pkg.dependencies?.['@opentelemetry/api']).toBe('1.10.0');
     expect(pkg.dependencies?.['@opentelemetry/api-logs']).toBe('0.223.0');
-    expect(pkg.dependencies?.['@opentelemetry/sdk-trace']).toBe('2.12.0');
-    expect(pkg.dependencies?.['@opentelemetry/sdk-metrics']).toBe('2.12.0');
-    expect(pkg.dependencies?.['@opentelemetry/sdk-logs']).toBe('0.223.0');
+    expect(pkg.dependencies?.['@opentelemetry/sdk-trace']).toBe('3.1.1');
+    expect(pkg.dependencies?.['@opentelemetry/sdk-metrics']).toBe('3.1.1');
+    expect(pkg.dependencies?.['@opentelemetry/sdk-logs']).toBe('3.1.1');
     expect(pkg.dependencies?.fflate).toBe('0.8.3');
   });
 
