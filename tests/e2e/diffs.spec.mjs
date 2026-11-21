@@ -43,14 +43,25 @@ test('files changed follows the latest user turn', async ({ page, request }) => 
   const firstLine = overlay.getByText('Added line 1', { exact: true });
   const lastLine = overlay.getByText('Added line 75', { exact: true });
   const followingFile = overlay.getByText('src/following.ts', { exact: true });
+  const inSheet = async (locator) => {
+    const [box, viewport] = await Promise.all([locator.boundingBox(), sheet.boundingBox()]);
+    return Boolean(box && viewport && box.y >= viewport.y && box.y + box.height <= viewport.y + viewport.height);
+  };
+  const scrollIntoSheet = async (locator) => {
+    for (let attempt = 0; attempt < 12 && !(await inSheet(locator)); attempt += 1) {
+      await page.mouse.wheel(0, 600);
+    }
+  };
+
   const compactHeight = (await sheet.boundingBox()).height;
   await file.click();
   await expect(lastLine).not.toBeInViewport();
   await firstLine.hover();
   await page.mouse.wheel(0, 500);
   await expect(file).toBeInViewport();
-  await page.mouse.wheel(0, 2000);
+  await scrollIntoSheet(lastLine);
   await expect(lastLine).toBeInViewport();
+  await scrollIntoSheet(followingFile);
   await expect(followingFile).toBeInViewport();
 
   const expand = overlay.getByRole('button', { name: 'Expand sheet' });

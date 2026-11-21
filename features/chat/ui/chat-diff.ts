@@ -1,15 +1,21 @@
 import type { Colors } from '@/shared/ui/theme/theme';
 
-type DiffLine = {
+export type DiffLine = {
   kind: 'context' | 'added' | 'removed';
   leftNumber?: number;
   rightNumber?: number;
   text: string;
 };
 
-type DiffBlock =
+export type DiffBlock =
   | { type: 'lines'; lines: DiffLine[] }
   | { type: 'collapsed'; hiddenCount: number; startLine?: number; endLine?: number };
+
+export type CollapsedDiffBlock = Extract<DiffBlock, { type: 'collapsed' }>;
+
+export type DiffDisplayRow =
+  | { type: 'line'; line: DiffLine }
+  | { type: 'collapsed'; block: CollapsedDiffBlock };
 
 const DIFF_CONTEXT_LINES = 3;
 
@@ -129,4 +135,18 @@ export function buildCollapsedDiffBlocks(lines: DiffLine[], contextSize = DIFF_C
   }
 
   return blocks.filter((block) => block.type === 'lines' || block.hiddenCount > 0);
+}
+
+// One row per rendered line keeps the overlay list virtualizable; a whole diff
+// body mounted at once blocks the JS thread on large patches.
+export function buildDiffDisplayRows(patch: string): DiffDisplayRow[] {
+  const rows: DiffDisplayRow[] = [];
+  for (const block of buildCollapsedDiffBlocks(buildPatchDiff(patch))) {
+    if (block.type === 'collapsed') {
+      rows.push({ type: 'collapsed', block });
+      continue;
+    }
+    for (const line of block.lines) rows.push({ type: 'line', line });
+  }
+  return rows;
 }

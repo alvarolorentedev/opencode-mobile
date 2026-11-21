@@ -5,7 +5,7 @@ import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Pressable, StyleSheet, View } from 'react-native';
 
-import { getDiffPalette, buildPatchDiff, buildCollapsedDiffBlocks } from '@/features/chat/ui/chat-diff';
+import { buildDiffDisplayRows, getDiffPalette, type CollapsedDiffBlock, type DiffLine } from '@/features/chat/ui/chat-diff';
 import type { FileDiff } from '@/shared/protocol/opencode/types';
 import { usePalette } from '@/shared/ui/theme/use-palette';
 
@@ -23,47 +23,52 @@ export function SessionDiffHeader({ diff, expanded, onPress }: { diff: FileDiff;
   );
 }
 
-export function SessionDiffBody({ diff }: { diff: FileDiff }) {
-  const { t } = useTranslation();
+export function SessionDiffLineRow({ line }: { line: DiffLine }) {
   const palette = usePalette();
-  const diffLines = useMemo(() => buildPatchDiff(diff.patch || ''), [diff.patch]);
-  const diffBlocks = useMemo(() => buildCollapsedDiffBlocks(diffLines), [diffLines]);
-  // A patch that yields no lines is a genuinely empty hunk. No patch at all
-  // means the server reported changes without content the viewer can render.
-  const emptyPreviewKey = diff.patch ? 'chat:cards.noLineChanges' : 'chat:cards.previewUnavailable';
+  const tone = getDiffPalette(line.kind, palette);
 
   // Selectable text inside a scroll view breaks Android scroll gestures
   // (react-native#33419), so diff lines are not individually selectable.
   return (
-    <View className={cn(stylesClasses.diffViewer, "border-b border-border")}>
-      {diffBlocks.length === 0 ? <Text className={cn("text-muted-foreground")} variant="label">{t(emptyPreviewKey)}</Text> : diffBlocks.map((block, blockIndex) => {
-        if (block.type === 'collapsed') {
-          return (
-            <View key={`${diff.file}-collapsed-${blockIndex}`} className={cn(stylesClasses.diffCollapsedRow, "bg-background border-border")}>
-              <Text className={cn("text-muted-foreground")} style={[styles.code]} variant="label">{t('chat:cards.hiddenLines', { count: block.hiddenCount })}{block.startLine && block.endLine ? ` (${block.startLine}-${block.endLine})` : ''}</Text>
-            </View>
-          );
-        }
+    <View
+      style={[
+        styles.diffLineRow,
+        {
+          backgroundColor: tone.backgroundColor,
+          borderLeftColor: tone.accentColor,
+        },
+      ]}>
+      <Text className={cn(stylesClasses.diffLineNumber, "text-muted-foreground")} variant="label">{line.rightNumber ?? line.leftNumber ?? ''}</Text>
+      <Text style={[styles.diffMarker, { color: tone.accentColor || palette.muted }]}>{line.kind === 'added' ? '+' : line.kind === 'removed' ? '-' : ' '}</Text>
+      <Text className={cn(stylesClasses.diffLineText, "text-foreground")} style={[styles.code]} variant="label">{line.text || ' '}</Text>
+    </View>
+  );
+}
 
-        return block.lines.map((line, index) => {
-          const tone = getDiffPalette(line.kind, palette);
-          return (
-            <View
-              key={`${diff.file}-${blockIndex}-${index}-${line.leftNumber ?? 'x'}-${line.rightNumber ?? 'x'}`}
-              style={[
-                styles.diffLineRow,
-                {
-                  backgroundColor: tone.backgroundColor,
-                  borderLeftColor: tone.accentColor,
-                },
-              ]}>
-              <Text className={cn(stylesClasses.diffLineNumber, "text-muted-foreground")} variant="label">{line.rightNumber ?? line.leftNumber ?? ''}</Text>
-              <Text style={[styles.diffMarker, { color: tone.accentColor || palette.muted }]}>{line.kind === 'added' ? '+' : line.kind === 'removed' ? '-' : ' '}</Text>
-              <Text className={cn(stylesClasses.diffLineText, "text-foreground")} style={[styles.code]} variant="label">{line.text || ' '}</Text>
-            </View>
-          );
-        });
-      })}
+export function SessionDiffCollapsedRow({ block }: { block: CollapsedDiffBlock }) {
+  const { t } = useTranslation();
+
+  return (
+    <View className={cn(stylesClasses.diffCollapsedRow, "bg-background border-border")}>
+      <Text className={cn("text-muted-foreground")} style={[styles.code]} variant="label">{t('chat:cards.hiddenLines', { count: block.hiddenCount })}{block.startLine && block.endLine ? ` (${block.startLine}-${block.endLine})` : ''}</Text>
+    </View>
+  );
+}
+
+export function SessionDiffBody({ diff }: { diff: FileDiff }) {
+  const { t } = useTranslation();
+  const rows = useMemo(() => buildDiffDisplayRows(diff.patch || ''), [diff.patch]);
+  // A patch that yields no lines is a genuinely empty hunk. No patch at all
+  // means the server reported changes without content the viewer can render.
+  const emptyPreviewKey = diff.patch ? 'chat:cards.noLineChanges' : 'chat:cards.previewUnavailable';
+
+  return (
+    <View className={cn(stylesClasses.diffViewer, "border-b border-border")}>
+      {rows.length === 0 ? <Text className={cn("text-muted-foreground")} variant="label">{t(emptyPreviewKey)}</Text> : rows.map((row, index) => (
+        row.type === 'collapsed'
+          ? <SessionDiffCollapsedRow key={`collapsed-${index}`} block={row.block} />
+          : <SessionDiffLineRow key={`line-${index}-${row.line.leftNumber ?? 'x'}-${row.line.rightNumber ?? 'x'}`} line={row.line} />
+      ))}
     </View>
   );
 }
