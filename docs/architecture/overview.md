@@ -673,8 +673,9 @@ The Android `expo-sharing` receive plugin accepts single/multiple files (`*/*`).
 `features/sharing/model/native-intent.ts` routes shares to the preview with a receipt key so a
 new intent refreshes an already-visible screen. The iOS extension remains
 [deferred](../product/parity/ios-share.md). The pinned install-time patch in
-`patches/expo-sharing+58.0.21.patch` fixes stream handling, accompanying text,
-unique cache copies and bounded reads; review it on upgrade.
+`patches/expo-sharing+58.0.23.patch` fixes accompanying text beside streams,
+the ten-item cap, the 10 MB read bound and the unreadable-item marker; review it
+on upgrade. Upstream 58.0.23 supplies the unique cache destinations.
 Android autolinking builds only `expo-sharing` from source so the patched Kotlin
 is compiled instead of silently using Expo's bundled precompiled AAR. FOSS
 preparation preserves that setting.

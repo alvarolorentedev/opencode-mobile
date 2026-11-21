@@ -268,8 +268,9 @@ Current behavior:
 ### Share Receive (Inbound)
 
 Android accepts single/multiple generic files (`*/*`) using `expo-sharing`.
-`patches/expo-sharing+58.0.21.patch` preserves text/plain streams and accompanying
-text, unique cache filenames and bounded unknown-size reads. The package is pinned
+`patches/expo-sharing+58.0.23.patch` preserves accompanying text beside streams,
+the ten-item cap, the 10 MB read bound and the unreadable-item marker. Upstream
+58.0.23 supplies the unique cache destinations. The package is pinned
 and built from source so the install-time patch reaches release artifacts. The
 config plugin copies its owned resource-retention XML. Review every patch hunk
 before upgrading Sharing. Native

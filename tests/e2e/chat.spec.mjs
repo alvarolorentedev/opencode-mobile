@@ -165,7 +165,10 @@ test('happy path keeps the main chat flow stable @smoke', async ({ page, request
   await expect(page.getByText(/export default function ChatLandingScreen/)).toBeVisible();
   await goToTab(page, 'Projects');
   await expect(page.getByRole('tab', { name: 'Projects' })).toHaveAttribute('aria-selected', 'true');
-  await expect(page.getByRole('button', { name: /^Open chats/ })).toHaveCount(0);
+  // The inactive tab stays mounted, so it must stay out of the accessibility
+  // tree. expo-router 58.0.32 marks it inert on web instead of aria-hidden and
+  // Playwright's role engine does not honour inert.
+  await expect(page.locator('[aria-label^="Open chats"]').first().locator('xpath=ancestor-or-self::*[@inert or @aria-hidden="true"]')).toHaveCount(1);
   await page.getByTestId('project-view-changes').click();
   await expect(page.getByText('Modified', { exact: true })).toHaveCount(2);
 });

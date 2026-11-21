@@ -97,7 +97,7 @@ and redirect-safe Expo fetch remain app-owned. See
 
 | Owner | Version | Required behavior | Removal condition |
 | --- | --- | --- | --- |
-| Sharing | 58.0.21 | Text streams/accompanying text, unique bounded copies, unreadable items | Stable SDK-compatible upstream contains every fix; release/device sharing passes |
+| Sharing | 58.0.23 | Text alongside streams, ten-item cap, 10 MB read bound and unreadable items | Stable SDK-compatible upstream contains every fix; release/device sharing passes |
 | Llama binding | 0.12.9 | Upstream iOS bridge type access for current RN headers; retain prebuilt engines | Compatible upstream release supplies this fix and matching engine prebuilts; device classifier checks pass |
 | Sherpa | 1.3.1 | Android Kotlin/JNI config ABI and iOS TTS key aliases | Stable wrapper contains both fixes; Android/iOS local TTS passes |
 | React Native | 0.88.1 | Forward per-socket `redirect: 'error'` for OIDC WebSockets; use the rendering TextView's default typeface for unstyled Android Fabric text measurement and refresh it on configuration changes ([upstream fix](https://github.com/facebook/react-native/pull/58036)) | Upstream includes both fixes; verify redirect safety and Android text rendering on affected hardware |
@@ -196,10 +196,11 @@ client test harness.
 
 ## Upstream Instead Of Publishing
 
-- `patches/expo-sharing+58.0.21.patch` → `expo-sharing`. Upstreaming stream
-  handling, accompanying text, unique bounded cache copies, and the resource
-  keep rule would remove a version-pinned patch and the `buildFromSource`
-  autolinking workaround.
+- `patches/expo-sharing+58.0.23.patch` → `expo-sharing`. Upstreaming accompanying
+  text beside streams, the ten-item cap, the 10 MB read bound, the unreadable
+  marker, and the resource keep rule would remove a version-pinned patch and the
+  `buildFromSource` autolinking workaround. Unique cache destinations are already
+  upstream in 58.0.23.
 - `shared/protocol/opencode/contracts/` + `shared/protocol/opencode/compat/v1/` → `@opencode/client` or
   a published compatibility package. This is the largest protocol maintenance
   surface in the app and belongs with the SDK.
