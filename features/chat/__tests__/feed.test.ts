@@ -118,14 +118,17 @@ describe('feed attachments', () => {
     expect(assistant.details[1]).toMatchObject({ uri: 'data:image/png;base64,aGVsbG8=' });
   });
 
-  it('validates the delivery setting and refreshes for every inbox event', () => {
+  it('validates the delivery setting and refreshes the inbox for every inbox event', () => {
     expect(defaultChatPreferences.promptDelivery).toBe('steer');
     expect(parseChatPreferences('{"promptDelivery":"queue"}').promptDelivery).toBe('queue');
     expect(parseChatPreferences('{"promptDelivery":"invalid"}').promptDelivery).toBeUndefined();
     for (const type of ['enqueued', 'delivered', 'cancelled', 'delivery.changed']) {
       const scheduleSessionRefresh = vi.fn();
       handleProviderEvent({ id: 'event', type: `session.inbox.${type}`, data: { sessionID: 's' } } as never, { scheduleSessionRefresh } as never);
-      expect(scheduleSessionRefresh).toHaveBeenCalledWith('s', { messages: true });
+      expect(scheduleSessionRefresh).toHaveBeenCalledWith('s', {
+        inboxOnly: true,
+        ...(type === 'delivered' ? { delivered: true } : {}),
+      });
     }
   });
 });

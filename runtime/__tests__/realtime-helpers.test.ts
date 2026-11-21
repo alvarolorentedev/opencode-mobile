@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 import { jitterRetryDelay, MAX_RETRY_MS, nextRetryDelay, RETRY_RESET_MS } from '@/runtime/realtime/backoff';
 import { isStreamStale, shouldCycleForeground } from '@/runtime/realtime/liveness';
@@ -56,6 +56,31 @@ describe('reconcile session set', () => {
       currentSessionId: 'current',
       conversationSessionId: 'conversation',
     })]).toEqual(['pending', 'current', 'conversation']);
+  });
+
+  it('retries only the live message while the stream is connected', async () => {
+    const live = vi.fn(async () => undefined);
+    const pages = vi.fn(async () => undefined);
+    const reconciler = createReconciler({
+      getSources: () => ({
+        pendingSessionIds: [],
+        currentSessionId: 's',
+        streamConnected: true,
+        refreshSessions: async () => undefined,
+        refreshSessionStatuses: async () => undefined,
+        refreshPendingInteractions: async () => undefined,
+        refreshMessages: pages,
+        refreshLiveMessages: live,
+        refreshSessionDiff: async () => undefined,
+        refreshSessionTodos: async () => undefined,
+      }),
+      onPollFailure: () => {},
+    });
+    await reconciler.reconcile();
+    expect(live).toHaveBeenCalledWith('s');
+    expect(pages).not.toHaveBeenCalled();
+    await reconciler.reconcile(true);
+    expect(pages).toHaveBeenCalledWith('s', true);
   });
 
   it('queues a full reconcile behind an in-flight poll', async () => {

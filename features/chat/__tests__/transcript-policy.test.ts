@@ -39,6 +39,7 @@ const page = (records: Message[], hasMore = false, nextBefore = hasMore ? 'curso
 async function mountTranscript(
   initial: Record<string, Message[]>,
   getSessionMessages: ReturnType<typeof vi.fn>,
+  getSessionMessage: ReturnType<typeof vi.fn> = vi.fn(async () => undefined),
 ) {
   const runtime = hookRuntime();
   const { useTranscriptState } = await loadTs('features/chat/state/use-transcript-state.ts', {
@@ -47,9 +48,12 @@ async function mountTranscript(
     '@/shared/presentation/transcript': transcript,
     '@/shared/presentation/usage': usage,
     "@/shared/utilities/prune": { pruneByKeepIds },
-    "@/shared/protocol/services/session-service": { getSessionMessages, TRANSCRIPT_PAGE_LIMIT: 20, MAX_MESSAGE_PAGE_LIMIT: 200 },
+    "@/shared/protocol/services/session-service": { getSessionMessages, getSessionMessage, TRANSCRIPT_PAGE_LIMIT: 20, MAX_MESSAGE_PAGE_LIMIT: 200 },
     "@/shared/protocol/opencode/contracts/session-adapter": { MAX_MESSAGE_PAGE_LIMIT: 200 },
     "@/features/chat/model/session-ledger": { recordSessionUsageAndTodos },
+    "@/features/chat/state/use-live-transcript": { useLiveTranscript: () => ({ applyEvent: () => false, activeMessageId: () => undefined, clearMessage: () => {}, clearSession: () => {}, overlay: (_sessionId: string, records: unknown[]) => records, adopt: () => {}, appendUserMessage: () => {}, markLocalSend: () => {}, isLocalSendRecent: () => false, reset: () => {}, prune: () => {} }) },
+    "@/shared/protocol/opencode/v2/mappers": { toMessageRecord: (message: { __record?: unknown }) => message.__record },
+    "@/shared/protocol/opencode/in-flight": { coalesceRead: (_client: unknown, _key: string, read: () => unknown) => read() },
     "@/features/chat/services/transcript-cache": { hydrateTranscriptCache: async () => {}, persistTranscriptCache: async () => {} }
   });
   function useHarness() {
@@ -82,6 +86,30 @@ describe('transcript refresh policy', () => {
     expect(ids(runtime.value.messagesBySession.s)).toEqual(['a', 'b']);
     expect(getSessionMessages).toHaveBeenCalledTimes(1);
     expect(getSessionMessages.mock.calls[0][2]).toEqual({ limit: 200, fresh: true });
+  });
+
+  it('reconciles one live message without re-reading the newest page', async () => {
+    const getSessionMessages = vi.fn(async () => page([textRecord('a'), textRecord('b')]));
+    const live = textRecord('b', 'streamed reply');
+    const getSessionMessage = vi.fn(async () => ({ __record: live }));
+    const { runtime, value } = await mountTranscript({ s: [userRecord('u'), textRecord('b', 'partial')] }, getSessionMessages, getSessionMessage);
+    await value.refreshMessages('s', true, { messageId: 'b' });
+    runtime.flush();
+    expect(getSessionMessages).not.toHaveBeenCalled();
+    expect(getSessionMessage).toHaveBeenCalledWith({}, 's', 'b');
+    expect(runtime.value.messagesBySession.s.find((record: Message) => record.info.id === 'b')?.parts[0].text).toBe('streamed reply');
+    expect(runtime.value.messagesBySession.s[0].info.id).toBe('u');
+  });
+
+  it('keeps an unchanged large user record by identity on merge', () => {
+    const url = `data:video/mp4;base64,${'A'.repeat(120_000)}`;
+    const prior = {
+      info: { id: 'u', sessionID: 's', role: 'user' as const, time: { created: 1 } },
+      parts: [{ id: 'u-file', sessionID: 's', messageID: 'u', type: 'file' as const, url, mime: 'video/mp4', filename: 'clip.mp4' }],
+    };
+    const previous = [prior];
+    const next = format.mergeSessionMessageWindow(previous, [structuredClone(prior)]);
+    expect(next).toBe(previous);
   });
 
   it('tail merge appends new records without dropping the held window', async () => {

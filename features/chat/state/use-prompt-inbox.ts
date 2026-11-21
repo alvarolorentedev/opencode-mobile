@@ -5,7 +5,7 @@ import { classifyConnectionFailure } from '@/shared/protocol/opencode/client/err
 import type { ScopedOpencodeClient } from '@/shared/protocol/opencode/client';
 import type { SessionMessageRecord } from '@/shared/presentation/format';
 import { PromptPreparationError, type PendingNotice, type PendingPrompt, type PromptDelivery, type PromptInput } from '@/shared/protocol/opencode/prompt-inbox';
-import type { TranscriptRefreshMode } from '@/shared/contracts/domain';
+import type { TranscriptReadOptions } from '@/shared/contracts/domain';
 import { getSessionInbox, getSessionNotices, submitLegacyPrompt } from '@/shared/protocol/services/session-service';
 
 const EMPTY_PROMPTS: Record<string, PendingPrompt[]> = {};
@@ -45,13 +45,20 @@ export function usePromptInbox({
   queueScope,
   isCurrentClient,
   refreshMessages: readMessages,
+  appendUserMessage,
   connected = true,
   online = true,
 }: {
   client: ScopedOpencodeClient;
   queueScope: string;
   isCurrentClient: (candidate: object) => boolean;
-  refreshMessages: (sessionId: string, silent?: boolean, options?: { mode?: TranscriptRefreshMode }) => Promise<SessionMessageRecord[]>;
+  refreshMessages: (sessionId: string, silent?: boolean, options?: TranscriptReadOptions) => Promise<SessionMessageRecord[]>;
+  appendUserMessage?: (sessionId: string, input: {
+    id: string;
+    createdAt: number;
+    text: string;
+    attachments: { url: string; mime?: string; filename?: string }[];
+  }) => void;
   connected?: boolean;
   online?: boolean;
 }) {
@@ -59,6 +66,7 @@ export function usePromptInbox({
   const [snapshots, setSnapshots] = useState<Map<string, PromptSnapshot>>(() => new Map());
   const snapshot = snapshots.get(scope) ?? EMPTY_SNAPSHOT;
   const [queueSize, setQueueSize] = useState(0);
+  const snapshotsRef = useRef(snapshots);
   const snapshotRef = useRef(snapshot);
   const activeQueueScope = useRef(scope);
   const reachability = useRef({ connected, online });
@@ -70,6 +78,7 @@ export function usePromptInbox({
   const pendingNoticesBySession = snapshot.notices;
 
   useLayoutEffect(() => {
+    snapshotsRef.current = snapshots;
     snapshotRef.current = snapshot;
     activeQueueScope.current = scope;
     reachability.current = { connected, online };
@@ -81,30 +90,39 @@ export function usePromptInbox({
     syncQueueSize();
   }, [scope, syncQueueSize]);
 
+  // Keep the latest snapshot readable synchronously: a prompt delivery can
+  // arrive before the render that would otherwise publish the optimistic send.
+  const publish = useCallback((next: Map<string, PromptSnapshot>) => {
+    snapshotsRef.current = next;
+    snapshotRef.current = next.get(scope) ?? EMPTY_SNAPSHOT;
+    setSnapshots(next);
+  }, [scope]);
+
   const update = useCallback((sessionId: string, change: (previous: PendingPrompt[]) => PendingPrompt[]) => {
     if (!isCurrentClient(client)) return;
-    setSnapshots((current) => {
-      const branch = current.get(scope) ?? EMPTY_SNAPSHOT;
-      const next = new Map(current);
-      next.set(scope, { ...branch, prompts: { ...branch.prompts, [sessionId]: change(branch.prompts[sessionId] ?? []) } });
-      return next;
-    });
-  }, [client, isCurrentClient, scope]);
+    const current = snapshotsRef.current;
+    const branch = current.get(scope) ?? EMPTY_SNAPSHOT;
+    const next = new Map(current);
+    next.set(scope, { ...branch, prompts: { ...branch.prompts, [sessionId]: change(branch.prompts[sessionId] ?? []) } });
+    publish(next);
+  }, [client, isCurrentClient, publish, scope]);
 
   const updateNotices = useCallback((sessionId: string, notices: PendingNotice[]) => {
     if (!isCurrentClient(client)) return;
-    setSnapshots((current) => {
-      const branch = current.get(scope) ?? EMPTY_SNAPSHOT;
-      const previous = branch.notices[sessionId] ?? [];
-      if (previous.length === notices.length && previous.every((notice, index) => notice.id === notices[index].id)) return current;
-      const next = new Map(current);
-      next.set(scope, { ...branch, notices: { ...branch.notices, [sessionId]: notices } });
-      return next;
-    });
-  }, [client, isCurrentClient, scope]);
+    const current = snapshotsRef.current;
+    const branch = current.get(scope) ?? EMPTY_SNAPSHOT;
+    const previous = branch.notices[sessionId] ?? [];
+    if (previous.length === notices.length && previous.every((notice, index) => notice.id === notices[index].id)) return;
+    const next = new Map(current);
+    next.set(scope, { ...branch, notices: { ...branch.notices, [sessionId]: notices } });
+    publish(next);
+  }, [client, isCurrentClient, publish, scope]);
 
-  const refreshMessages = useCallback(async (sessionId: string, silent = false, options?: { mode?: TranscriptRefreshMode }) => {
+  const refreshMessages = useCallback(async (sessionId: string, silent = false, options?: TranscriptReadOptions) => {
     if (!client.promptInbox) return readMessages(sessionId, silent, options);
+    // A targeted assistant reconcile does not change the pending stack. Skipping
+    // the inbox read also avoids re-downloading a queued prompt's attachments.
+    if (options?.messageId && !options.delivered) return readMessages(sessionId, silent, options);
     const revision = (revisions.current[sessionId] ?? 0) + 1;
     revisions.current[sessionId] = revision;
     // Read the inbox first: a delivery committed between reads will already be
@@ -113,7 +131,27 @@ export function usePromptInbox({
       getSessionInbox(client, sessionId).catch(() => undefined),
       getSessionNotices(client, sessionId).catch(() => undefined),
     ]);
-    const records = await readMessages(sessionId, silent, options);
+    // Inbox transitions only need the pending stack. Reading the transcript for
+    // them would re-download the newly delivered prompt and its attachments.
+    const records = options?.inboxOnly ? [] : await readMessages(sessionId, silent, options);
+    if (options?.delivered && pending) {
+      // A delivered prompt becomes a transcript record from its pending data;
+      // the stored message (and its inline attachment bytes) is never fetched.
+      const pendingIds = new Set(pending.map((prompt) => prompt.id));
+      const local = snapshotRef.current.prompts[sessionId] ?? [];
+      const candidates = local.filter((prompt) => (prompt.state === 'sending' || prompt.state === 'waiting') && !pendingIds.has(prompt.id));
+      const deliveredPrompt = options.inboxID
+        ? local.find((prompt) => prompt.id === options.inboxID) ?? candidates[0]
+        : candidates[0];
+      if (deliveredPrompt) {
+        appendUserMessage?.(sessionId, {
+          id: options.inboxID ?? deliveredPrompt.id,
+          createdAt: deliveredPrompt.createdAt,
+          text: deliveredPrompt.text,
+          attachments: deliveredPrompt.attachments.map((attachment) => ({ url: attachment.uri, mime: attachment.mime, filename: attachment.filename })),
+        });
+      }
+    }
     if (revisions.current[sessionId] === revision) {
       const delivered = new Set(records.map((record) => record.info.id));
       if (pending) {
@@ -125,7 +163,7 @@ export function usePromptInbox({
       if (notices) updateNotices(sessionId, notices.filter((notice) => !delivered.has(notice.id)));
     }
     return records;
-  }, [client, readMessages, update, updateNotices]);
+  }, [appendUserMessage, client, readMessages, update, updateNotices]);
 
   const submitPrompt = useCallback(async (input: PromptInput, delivery: PromptDelivery) => {
     if (!client.promptInbox) {
@@ -143,6 +181,7 @@ export function usePromptInbox({
       queuedInputs.current.set(id, { input, delivery, scope });
       syncQueueSize();
       update(sessionId, (previous) => [...previous.filter((item) => item.id !== id), { ...prompt, state: 'queued' }]);
+      return undefined;
     };
     if (!reachability.current.online) return enqueue();
     update(sessionId, (previous) => [...previous, prompt]);
@@ -150,6 +189,7 @@ export function usePromptInbox({
       const admitted = await client.promptInbox.submit(input, delivery);
       revisions.current[sessionId] = (revisions.current[sessionId] ?? 0) + 1;
       update(sessionId, (previous) => [...previous.filter((item) => item.id !== id && item.id !== admitted.id), admitted]);
+      return admitted;
     } catch (error) {
       if (canQueueAfterFailure(error)) return enqueue();
       if (!(error instanceof PromptPreparationError) && isUncertainDelivery(error)) {

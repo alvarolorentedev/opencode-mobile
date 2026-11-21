@@ -11,6 +11,16 @@ import type { ManagedService, ServiceInput, ServiceManagementVersion } from '@/s
 //   server-side history rewrites (compaction and revert).
 export type TranscriptRefreshMode = 'initial' | 'tail' | 'replace';
 
+// Options for a transcript refresh. A live V2 turn is reconciled by reading its
+// assistant message alone; the full page is only used for opens and recovery.
+export type TranscriptReadOptions = {
+  mode?: TranscriptRefreshMode;
+  messageId?: string;
+  inboxOnly?: boolean;
+  delivered?: boolean;
+  inboxID?: string;
+};
+
 export type SessionDeepLinkTarget = {
   sessionId: string;
   projectPath?: string;

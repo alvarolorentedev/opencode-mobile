@@ -1,13 +1,19 @@
-import type { TranscriptRefreshMode } from '@/shared/contracts/domain';
+import type { TranscriptReadOptions } from '@/shared/contracts/domain';
 
 export type ReconcileSources = {
   pendingSessionIds: string[];
   currentSessionId?: string;
   conversationSessionId?: string;
+  // A connected stream paints live V2 turns, so the safety poll does not read
+  // transcripts. Reconnect/foreground passes (full) still reconcile.
+  streamConnected?: boolean;
+  // A connected stream paints live turns; only a still-live message needs a
+  // targeted retry (heals a missed turn-end or failed reconcile).
+  refreshLiveMessages?: (sessionId: string) => Promise<unknown>;
   refreshSessions: () => Promise<unknown>;
   refreshSessionStatuses?: () => Promise<unknown>;
   refreshPendingInteractions: () => Promise<unknown>;
-  refreshMessages: (sessionId: string, silent: boolean, options?: { mode?: TranscriptRefreshMode }) => Promise<unknown>;
+  refreshMessages: (sessionId: string, silent: boolean, options?: TranscriptReadOptions) => Promise<unknown>;
   refreshSessionDiff: (sessionId: string, silent: boolean) => Promise<unknown>;
   refreshSessionTodos: (sessionId: string) => Promise<unknown>;
   refreshNativeSurfaces?: (full?: boolean) => Promise<unknown>;
@@ -54,7 +60,11 @@ export function createReconciler({
       // together. A slow session list must not stop the current chat from
       // tailing its newest page.
       const corePromise = Promise.allSettled([sessionRefresh, sources.refreshPendingInteractions()]);
-      const messagesPromise = Promise.allSettled([...sessions].map((id) => sources.refreshMessages(id, true)));
+      const messagesPromise: Promise<PromiseSettledResult<unknown>[]> = !full && sources.streamConnected
+        ? sources.refreshLiveMessages
+          ? Promise.allSettled([...sessions].map((id) => sources.refreshLiveMessages!(id)))
+          : Promise.resolve([])
+        : Promise.allSettled([...sessions].map((id) => sources.refreshMessages(id, true)));
       const [core, messages] = await Promise.all([corePromise, messagesPromise]);
       onPollFailure(
         core.some((entry) => entry.status === 'rejected')

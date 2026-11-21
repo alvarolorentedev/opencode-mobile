@@ -1,4 +1,5 @@
 import type { SessionMessageRecord } from '@/shared/presentation/format/types';
+import type { Part } from '@/shared/protocol/opencode/types';
 
 // Record equality covers BOTH parts and info. toTranscriptEntry reads
 // record.info.error (via getMessageError) — if the server adds an error
@@ -6,13 +7,30 @@ import type { SessionMessageRecord } from '@/shared/presentation/format/types';
 // error banner AND poison the WeakMap cache. JSON.stringify is cheap here:
 // info is small metadata (id/role/time/error) and the network/parse cost of
 // the fetch has already been paid.
+// User prompts never change after admission. Comparing their parts directly
+// avoids allocating a multi-megabyte string for an inline attachment on every
+// page merge.
+function userPartsEqual(prior: Part[], record: Part[]) {
+  if (prior.length !== record.length) return false;
+  for (let index = 0; index < prior.length; index += 1) {
+    const left = prior[index];
+    const right = record[index];
+    if (left.type !== right.type || left.id !== right.id) return false;
+    if (left.type === 'text' && right.type === 'text' && left.text !== right.text) return false;
+    if (left.type === 'file' && right.type === 'file') {
+      if (left.url !== right.url || left.mime !== right.mime || left.filename !== right.filename) return false;
+    }
+  }
+  return true;
+}
+
 function sessionMessageRecordsEqual(prior: SessionMessageRecord, record: SessionMessageRecord) {
-  return (
-    prior === record ||
-    (prior.parts.length === record.parts.length &&
-      JSON.stringify(prior.parts) === JSON.stringify(record.parts) &&
-      JSON.stringify(prior.info) === JSON.stringify(record.info))
-  );
+  if (prior === record) return true;
+  if (prior.parts.length !== record.parts.length) return false;
+  const partsEqual = prior.info.role === 'user' && record.info.role === 'user'
+    ? userPartsEqual(prior.parts, record.parts)
+    : JSON.stringify(prior.parts) === JSON.stringify(record.parts);
+  return partsEqual && JSON.stringify(prior.info) === JSON.stringify(record.info);
 }
 
 // A page is a contiguous slice of durable server order. When a response arrives

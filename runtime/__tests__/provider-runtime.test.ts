@@ -358,13 +358,13 @@ wake(null); await runtime.settle(); runtime.unmount(); assert.equal(runtime.coun
   messageModes.length = 0;
   heldSessions = deferred<void>();
   liveness.update({ busy: true }); liveness.fire(10000); await liveness.settle();
-  assert.deepEqual(messageModes, [undefined], 'the busy safety poll tails the transcript');
+  assert.deepEqual(messageModes, [], 'the busy safety poll trusts the live stream');
   wake(null); await liveness.settle(); liveness.fire(1000); await liveness.settle();
   assert.equal(subscriptions, 4);
   wake({ location: { directory: '/repo' }, type: 'server.connected' }); await liveness.settle();
-  assert.deepEqual(messageModes, [undefined], 'the reconnect reconcile waits for the in-flight poll');
+  assert.deepEqual(messageModes, [], 'a reconnect reconcile waits for the in-flight poll');
   heldSessions.resolve(undefined); heldSessions = undefined; await liveness.settle();
-  assert.deepEqual(messageModes, [undefined, undefined], 'the reconnect reconcile cannot be swallowed by the poll');
+  assert.deepEqual(messageModes, [undefined], 'the reconnect reconcile reads the transcript');
   // A short background return must still re-assert domain data even though the
   // stream stayed up and no restart/rebuild is requested.
   const sessionsBeforeForeground = sessions;

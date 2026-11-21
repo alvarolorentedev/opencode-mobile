@@ -3,11 +3,15 @@ import { useCallback, useEffect, useLayoutEffect, useRef, useState, type Dispatc
 import { mergeSessionMessageWindow, prependSessionMessageHistory, type SessionMessageRecord } from '@/shared/presentation/format';
 import type { SessionUsageStep } from '@/shared/presentation/usage';
 import type { ScopedOpencodeClient } from '@/shared/protocol/opencode/client';
-import type { TranscriptRefreshMode } from '@/shared/contracts/domain';
+import type { TranscriptReadOptions, TranscriptRefreshMode } from '@/shared/contracts/domain';
 import { pruneByKeepIds } from '@/shared/utilities/prune';
 import { hydrateTranscriptCache, persistTranscriptCache } from '@/features/chat/services/transcript-cache';
 import { recordSessionUsageAndTodos } from '@/features/chat/model/session-ledger';
-import { getSessionMessages as svcGetSessionMessages, MAX_MESSAGE_PAGE_LIMIT, TRANSCRIPT_PAGE_LIMIT } from '@/shared/protocol/services/session-service';
+import { useLiveTranscript } from '@/features/chat/state/use-live-transcript';
+import { coalesceRead } from '@/shared/protocol/opencode/in-flight';
+import { isV2Client } from '@/shared/protocol/opencode/contracts/contract';
+import { toMessageRecord } from '@/shared/protocol/opencode/v2/mappers';
+import { getSessionMessage as svcGetSessionMessage, getSessionMessages as svcGetSessionMessages, MAX_MESSAGE_PAGE_LIMIT, TRANSCRIPT_PAGE_LIMIT } from '@/shared/protocol/services/session-service';
 
 // One newest-window read when a session opens (or history is rewritten).
 // Older history is fetched in full batches of the same size, one per explicit
@@ -17,6 +21,17 @@ export const INITIAL_TRANSCRIPT_LIMIT = MAX_MESSAGE_PAGE_LIMIT;
 export const OLDER_TRANSCRIPT_LIMIT = MAX_MESSAGE_PAGE_LIMIT;
 
 type MessageWindow = { nextBefore?: string; hasMore: boolean };
+
+function replaceMessageRecord(previous: SessionMessageRecord[], record: SessionMessageRecord) {
+  const index = previous.findIndex((item) => item.info.id === record.info.id);
+  if (index >= 0) {
+    const next = previous.slice();
+    next[index] = record;
+    return next;
+  }
+  const tail = previous[previous.length - 1];
+  return !tail || record.info.time.created >= tail.info.time.created ? [...previous, record] : previous;
+}
 
 // Owns the paginated transcript for every session: the loaded messages are held
 // by the provider, while this hook owns the pagination cursors, and accumulates
@@ -93,6 +108,14 @@ export function useTranscriptState({
     recordSessionUsageAndTodos(sessionId, records, setUsageStepsBySession, setTodoRecordsBySession);
   }, []);
 
+  const live = useLiveTranscript({
+    client,
+    isCurrentClient,
+    messagesBySessionRef,
+    setMessagesBySession,
+    recordUsageAndTodos,
+  });
+
   useEffect(() => {
     if (!currentSessionId || !activeProjectPath || (messagesBySessionRef.current[currentSessionId]?.length ?? 0) > 0) {
       return;
@@ -129,8 +152,50 @@ export function useTranscriptState({
   }, []);
 
   const refreshMessages = useCallback(
-    async (sessionId: string, silent = false, options?: { mode?: TranscriptRefreshMode }) => {
+    async (sessionId: string, silent = false, options?: TranscriptReadOptions) => {
       const held = messagesBySessionRef.current[sessionId] ?? [];
+      // A live V2 turn reconciles its assistant message alone. Reading the newest
+      // page here would re-download the sent prompt and any attachment bytes it
+      // carries on every check.
+      if (options?.messageId && isV2Client(client) && held.length > 0) {
+        const messageId = options.messageId;
+        return coalesceRead(client, `message:${sessionId}:${messageId}`, async () => {
+          const generation = readStateFor(sessionId).generation;
+          let message;
+          try {
+            message = await svcGetSessionMessage(client, sessionId, messageId);
+          } catch (error) {
+            const status = (error as { status?: number; cause?: { status?: number } } | undefined)?.status
+              ?? (error as { cause?: { status?: number } } | undefined)?.cause?.status;
+            // Older servers without a single-message read keep the live record
+            // until the next full reconcile instead of failing the turn.
+            if (status === 404 || status === 405) {
+              live.clearMessage(sessionId, messageId);
+              return messagesBySessionRef.current[sessionId] ?? held;
+            }
+            throw error;
+          }
+          if (!isCurrentClient(client) || readStateRef.current[sessionId]?.generation !== generation) {
+            return messagesBySessionRef.current[sessionId] ?? held;
+          }
+          const record = toMessageRecord(message, sessionId);
+          if (!record) return messagesBySessionRef.current[sessionId] ?? held;
+          live.clearMessage(sessionId, messageId);
+          const previous = messagesBySessionRef.current[sessionId] ?? held;
+          const canonical = replaceMessageRecord(previous, record);
+          const next = live.overlay(sessionId, canonical);
+          if (next !== previous) {
+            setMessagesBySession((current) => {
+              const latest = current[sessionId] ?? previous;
+              const merged = live.overlay(sessionId, replaceMessageRecord(latest, record));
+              return merged === latest ? current : { ...current, [sessionId]: merged };
+            });
+          }
+          recordUsageAndTodos(sessionId, [record]);
+          persist(sessionId, canonical);
+          return next;
+        });
+      }
       // Records can already be held without a paging cursor when the transcript
       // cache hydrates before the first network read, or when a refresh is the
       // first pass after a window reset. A tail refresh records that window
@@ -166,13 +231,16 @@ export function useTranscriptState({
         // never pages backward; older history arrives through loadOlderMessages
         // only when the user scrolls to the top.
         if (rewrite) {
+          // A server-side rewrite invalidates the live parts of that session.
+          if (mode === 'replace') live.clearSession(sessionId);
           // Bypass read coalescing: an in-flight page could have been read
           // before the compaction/revert this rewrite is reconciling.
           const page = await svcGetSessionMessages(client, sessionId, { limit: INITIAL_TRANSCRIPT_LIMIT, fresh: true });
           if (!isCurrentClient(client) || !isCurrentGeneration()) {
             return page.records;
           }
-          setMessagesBySession((current) => ({ ...current, [sessionId]: page.records }));
+          live.adopt(sessionId, page.records);
+          setMessagesBySession((current) => ({ ...current, [sessionId]: live.overlay(sessionId, page.records) }));
           setMessageWindows((current) => ({
             ...current,
             [sessionId]: { nextBefore: page.nextBefore, hasMore: page.hasMore },
@@ -206,15 +274,16 @@ export function useTranscriptState({
 
         const currentHeld = messagesBySessionRef.current[sessionId] ?? held;
         if (staleTail) {
+          live.adopt(sessionId, page.records);
           // Older responses may still hold records the newer window dropped.
           // Fill gaps in place, but never adopt their window or move the paging
           // cursor backward, and never roll streamed content back.
           setMessagesBySession((current) => {
             const previous = current[sessionId] ?? held;
-            const next = mergeSessionMessageWindow(previous, page.records, {
+            const next = live.overlay(sessionId, mergeSessionMessageWindow(previous, page.records, {
               applyUpdates: false,
               adoptUnknownWindow: false,
-            });
+            }));
             return next === previous ? current : { ...current, [sessionId]: next };
           });
           recordUsageAndTodos(sessionId, page.records);
@@ -224,14 +293,14 @@ export function useTranscriptState({
         // The read-state object is mutable bookkeeping held by a ref; keeping
         // the same object is what lets an older in-flight refresh observe the
         // newer window instead of replacing it.
-        // eslint-disable-next-line react-hooks/immutability
         readState.tailApplied = Math.max(readState.tailApplied, tailRequest);
         const knownIds = new Set(currentHeld.map((record) => record.info.id));
         if (!page.records.some((record) => knownIds.has(record.info.id))) {
           // A burst larger than one page landed. Adopt the fetched page and
           // restart history paging from its oldest record instead of
           // downloading bridging pages.
-          setMessagesBySession((current) => ({ ...current, [sessionId]: page.records }));
+          live.adopt(sessionId, page.records);
+          setMessagesBySession((current) => ({ ...current, [sessionId]: live.overlay(sessionId, page.records) }));
           setMessageWindows((current) => ({
             ...current,
             [sessionId]: { nextBefore: page.nextBefore, hasMore: page.hasMore },
@@ -242,9 +311,10 @@ export function useTranscriptState({
         }
 
         const merged = mergeSessionMessageWindow(currentHeld, page.records);
+        live.adopt(sessionId, page.records);
         setMessagesBySession((current) => {
           const previous = current[sessionId] ?? held;
-          const next = mergeSessionMessageWindow(previous, page.records);
+          const next = live.overlay(sessionId, mergeSessionMessageWindow(previous, page.records));
           if (next === previous) {
             return current;
           }
@@ -270,7 +340,7 @@ export function useTranscriptState({
         finishHydration?.();
       }
     },
-    [beginHydration, client, isCurrentClient, persist, readStateFor, recordUsageAndTodos, setIsRefreshingMessages, setMessagesBySession],
+    [beginHydration, client, isCurrentClient, live, persist, readStateFor, recordUsageAndTodos, setIsRefreshingMessages, setMessagesBySession],
   );
 
   const loadOlderMessages = useCallback(
@@ -334,7 +404,8 @@ export function useTranscriptState({
     setTodoRecordsBySession({});
     hydrationRequestRef.current = {};
     readStateRef.current = {};
-  }, []);
+    live.reset();
+  }, [live]);
 
   // Drop pagination, usage, and plan state for sessions that are no longer kept
   // in memory, mirroring the provider's transcript-cache pruning.
@@ -343,7 +414,8 @@ export function useTranscriptState({
     setUsageStepsBySession((current) => pruneByKeepIds(current, keepIds, limit));
     setTodoRecordsBySession((current) => pruneByKeepIds(current, keepIds, limit));
     readStateRef.current = pruneByKeepIds(readStateRef.current, keepIds, limit);
-  }, []);
+    live.prune(keepIds);
+  }, [live]);
 
   return {
     messageWindows,
@@ -353,6 +425,11 @@ export function useTranscriptState({
     usageStepsBySession,
     todoRecordsBySession,
     refreshMessages,
+    applyTranscriptEvent: live.applyEvent,
+    liveTranscriptMessageId: live.activeMessageId,
+    appendUserMessage: live.appendUserMessage,
+    markLocalSend: live.markLocalSend,
+    isLocalSendRecent: live.isLocalSendRecent,
     loadOlderMessages,
     reset,
     prune,

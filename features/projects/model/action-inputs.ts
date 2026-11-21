@@ -8,7 +8,7 @@ import type { FileDiff, Session, SessionStatus, Todo } from '@/shared/protocol/o
 
 import type { SessionRefreshOptions } from '@/shared/protocol/opencode/event-dispatch';
 
-import type { DiffScope, TranscriptRefreshMode } from '@/shared/contracts/domain';
+import type { DiffScope, TranscriptReadOptions } from '@/shared/contracts/domain';
 
 export type ProjectActionsInput = {
   fileClipboard?: import('@/features/projects/state/use-file-clipboard').FileClipboard;
@@ -49,7 +49,7 @@ export type ProjectActionsInput = {
   sessionRefreshOptionsRef: { current: Record<string, SessionRefreshOptions> };
   serverContract: ServerContract;
   settingsRef: { current: OpencodeConnectionSettings };
-  refreshMessages: (sessionId: string, silent?: boolean, options?: { mode?: TranscriptRefreshMode }) => Promise<SessionMessageRecord[]>;
+  refreshMessages: (sessionId: string, silent?: boolean, options?: TranscriptReadOptions) => Promise<SessionMessageRecord[]>;
 };
 
 // Each extracted action hook declares only the slice it consumes. The aggregate

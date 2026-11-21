@@ -5,7 +5,7 @@ import { useCallback, useEffect, useRef, useState, type Dispatch, type SetStateA
 
 import type { OpencodeConnectionSettings, ScopedOpencodeClient } from '@/shared/protocol/opencode/client';
 import type { SessionMessageRecord } from '@/shared/presentation/format';
-import type { PromptContextItem, PromptDelivery, PromptInput } from '@/shared/protocol/opencode/prompt-inbox';
+import type { PromptContextItem, PromptDelivery, PromptInput, PendingPrompt } from '@/shared/protocol/opencode/prompt-inbox';
 import { pendingNotificationKey , clearPendingTaskFinishedNotification, listPendingTaskFinishedNotifications, notifyTaskFinished, trackPendingTaskFinishedNotification } from '@/features/notifications/runtime';
 import { getConnectionScope, getConnectionUiScope } from '@/shared/contracts/connection-scope';
 import type { AgentOption, ModelOption } from '@/shared/contracts/model-options';
@@ -15,10 +15,9 @@ import { i18n } from '@/shared/i18n/index';
 import { buildSystemPrompt } from '@/features/chat/model/system-prompt';
 import type { SessionRefreshOptions } from '@/shared/protocol/opencode/event-dispatch';
 import type { ProviderOption } from '@/features/ai/index';
-import type { TranscriptRefreshMode } from '@/shared/contracts/domain';
 
 type PromptLifecycleInput = {
-  submitPrompt: (input: PromptInput, delivery: PromptDelivery) => Promise<void>;
+  submitPrompt: (input: PromptInput, delivery: PromptDelivery) => Promise<PendingPrompt | undefined>;
   client: ScopedOpencodeClient;
   isCurrentClient: (candidate: object) => boolean;
   activeProjectPath?: string;
@@ -36,8 +35,8 @@ type PromptLifecycleInput = {
   promptSubmissionRef: { current: { active: boolean; sessionId?: string } };
   setSelectedDiffMessageBySession: Dispatch<SetStateAction<Record<string, string | undefined>>>;
   refreshSessions: () => Promise<unknown>;
-  refreshMessages: (sessionId: string, silent?: boolean, options?: { mode?: TranscriptRefreshMode }) => Promise<SessionMessageRecord[]>;
-  refreshSessionDiff: (sessionId: string, silent?: boolean, messageId?: string) => Promise<unknown>;
+  markLocalSend: (sessionId: string) => void;
+  refreshSessionDiff: (sessionId: string, silent?: boolean, messageId?: string, records?: SessionMessageRecord[]) => Promise<unknown>;
   refreshSessionTodos: (sessionId: string) => Promise<unknown>;
   scheduleSessionRefresh: (sessionId: string, options?: SessionRefreshOptions) => void;
 };
@@ -61,7 +60,7 @@ export function usePromptLifecycle({
   promptSubmissionRef,
   setSelectedDiffMessageBySession,
   refreshSessions,
-  refreshMessages,
+  markLocalSend,
   refreshSessionDiff,
   refreshSessionTodos,
   scheduleSessionRefresh,
@@ -206,6 +205,7 @@ export function usePromptLifecycle({
         const resolvedContext = context?.map((item) => item.kind === 'file' && root && !item.path.startsWith('/')
           ? { ...item, path: `${root}/${item.path}` }
           : item);
+        markLocalSend(sessionId);
         await submitPrompt({
           sessionID: sessionId,
           agent,
@@ -221,32 +221,19 @@ export function usePromptLifecycle({
         if (!isCurrentClient(client)) {
           return true;
         }
-        // Delayed safety refresh. The server may finish after promptAsync
-        // returns, and a completion across projects can be missed when the
-        // event directory does not match the active project. Merge the newest
-        // page once after the typical completion window (never a full rebuild)
-        // so the busy safety poll can run at a slower, lower-data cadence.
-        scheduleSessionRefresh(sessionId, { sessions: true, messages: true, diff: true, todos: true, delayMs: 5000 });
+        // Delayed safety refresh for title/diff/todos. The transcript paints from
+        // live V2 events and reconciles its assistant message at idle, so this
+        // never re-reads the sent prompt or its attachments.
+        scheduleSessionRefresh(sessionId, { sessions: true, diff: true, todos: true, delayMs: 5000 });
 
         // A new user turn supersedes any earlier turn the diff surface was pinned to.
         if (owned) setSelectedDiffMessageBySession((current) => ({ ...current, [sessionId]: undefined }));
-        // Admission is the user-visible commit. Reconcile list ordering,
-        // transcript, diff, todos, and title in the background so a slow server
-        // cannot hold the composer or the next steer/queue submission.
-        void (async () => {
-          await Promise.all([
-            refreshMessages(sessionId, true),
-            refreshSessionDiff(sessionId, true),
-            refreshSessionTodos(sessionId),
-          ]);
-          if (!isCurrentClient(client)) return;
-        })().catch(() => undefined);
         return true;
       } catch (error) {
         const owned = ownsSubmission();
         if (owned) promptSubmissionRef.current = { active: false };
         if (promptAccepted) {
-          if (isCurrentClient(client)) scheduleSessionRefresh(sessionId, { sessions: true, messages: true, diff: true, todos: true, delayMs: 1000 });
+          if (isCurrentClient(client)) scheduleSessionRefresh(sessionId, { sessions: true, diff: true, todos: true, delayMs: 1000 });
           return true;
         }
         if (owned) setPromptError({
@@ -268,7 +255,7 @@ export function usePromptLifecycle({
         ));
       }
     },
-    [activeProjectPath, availableAgents, availableModels, currentConfig, busyNotificationsRef, chatPreferences, client, connectionScope, isCurrentClient, promptSubmissionRef, refreshMessages, refreshSessionDiff, refreshSessionTodos, routePrompt, scheduleSessionRefresh, sessions, setPromptError, setSelectedDiffMessageBySession, settingsRef, submitPrompt],
+    [activeProjectPath, availableAgents, availableModels, currentConfig, busyNotificationsRef, chatPreferences, client, connectionScope, isCurrentClient, markLocalSend, promptSubmissionRef, routePrompt, scheduleSessionRefresh, sessions, setPromptError, setSelectedDiffMessageBySession, settingsRef, submitPrompt],
   );
 
   const abortSession = useCallback(
@@ -292,12 +279,11 @@ export function usePromptLifecycle({
 
       await Promise.all([
         refreshSessions(),
-        refreshMessages(sessionId, true),
         refreshSessionDiff(sessionId, true),
         refreshSessionTodos(sessionId),
       ]);
     },
-    [busyNotificationsRef, client, connectionScope, isCurrentClient, promptSubmissionRef, refreshMessages, refreshSessionDiff, refreshSessionTodos, refreshSessions, settingsRef],
+    [busyNotificationsRef, client, connectionScope, isCurrentClient, promptSubmissionRef, refreshSessionDiff, refreshSessionTodos, refreshSessions, settingsRef],
   );
 
   useEffect(() => {

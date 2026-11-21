@@ -150,7 +150,7 @@ describe('prompt submission ownership', () => {
     const input = { client, isCurrentClient: (candidate: object) => candidate === currentClient.current, activeProjectPath: '/repo', connectionScope: scopes.getConnectionScope(settings),
       sessions: [{ id: 's', title: 'chat' }], sessionStatuses: {}, availableAgents: [{ id: 'build', label: 'Build', mode: 'primary' }], availableModels: [], chatPreferences: preferences.defaultChatPreferences,
       settingsRef: { current: settings }, busyNotificationsRef: { current: new Set() }, promptSubmissionRef: submission,
-      setSelectedDiffMessageBySession: vi.fn(), refreshSessions: refresh, refreshMessages: refresh,
+      setSelectedDiffMessageBySession: vi.fn(), refreshSessions: refresh, markLocalSend: vi.fn(),
       refreshSessionDiff: refresh, refreshSessionTodos: refresh, scheduleSessionRefresh: vi.fn(), summarizeSessionTitle: vi.fn(),
       submitPrompt: vi.fn().mockReturnValueOnce(a.promise).mockReturnValueOnce(b.promise),
     };

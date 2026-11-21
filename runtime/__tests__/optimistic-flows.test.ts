@@ -482,7 +482,7 @@ describe('local-first session selection', () => {
 });
 
 describe('non-blocking prompt reconciliation', () => {
-  it('returns after admission while post-send reads are still pending', async () => {
+  it('returns after admission without a transcript read', async () => {
     const runtime = hookRuntime();
     const appearance = await loadTs('shared/ui/theme/appearance.ts');
     const autoModelPreferences = await loadTs('shared/preferences/auto-model.ts');
@@ -512,10 +512,8 @@ describe('non-blocking prompt reconciliation', () => {
     "@/shared/protocol/opencode/attachment": { prepareAttachment: async (att: unknown) => att },
     "@/features/ai/state/use-prompt-routing": { usePromptRouting: () => async () => undefined }
   });
-    const refresh = deferredGate();
-    let messagesSettled = false;
-    const submitPrompt = vi.fn(async () => undefined);
-    const refreshMessages = vi.fn(async () => { await refresh.promise; messagesSettled = true; return []; });
+    const submitPrompt = vi.fn(async () => ({ id: 'u1', sessionId: 's', createdAt: 1, text: 'Hello', attachments: [], delivery: 'steer', state: 'waiting' }));
+    const markLocalSend = vi.fn();
     const refreshSessionDiff = vi.fn(async () => []);
     const refreshSessionTodos = vi.fn(async () => []);
     const scheduleSessionRefresh = vi.fn();
@@ -534,7 +532,7 @@ describe('non-blocking prompt reconciliation', () => {
       promptSubmissionRef: { current: { active: false } },
       setSelectedDiffMessageBySession: vi.fn(),
       refreshSessions: vi.fn(async () => [{ id: 's', title: 'chat' }]),
-      refreshMessages,
+      markLocalSend,
       refreshSessionDiff,
       refreshSessionTodos,
       scheduleSessionRefresh,
@@ -553,20 +551,16 @@ describe('non-blocking prompt reconciliation', () => {
     await expect(sending).resolves.toBe(true);
     expect(submitPrompt).toHaveBeenCalledOnce();
     expect(submitPrompt).toHaveBeenCalledWith(expect.objectContaining({ agent: 'build' }), 'steer');
+    expect(markLocalSend).toHaveBeenCalledWith('s');
     runtime.update({ availableAgents: [] });
     await expect(runtime.value.sendPrompt('s', 'Keep this draft')).rejects.toThrow('chat:composer.noEligibleAgent');
     expect(submitPrompt).toHaveBeenCalledOnce();
     await runtime.settle();
     expect(runtime.value.promptError.message).toBe('chat:composer.noEligibleAgent');
     expect(scheduleSessionRefresh).toHaveBeenCalledOnce();
-    expect(refreshMessages).toHaveBeenCalledOnce();
-    expect(messagesSettled).toBe(false);
-
-    refresh.resolve();
-    await runtime.settle();
-    expect(messagesSettled).toBe(true);
-    expect(refreshSessionDiff).toHaveBeenCalledOnce();
-    expect(refreshSessionTodos).toHaveBeenCalledOnce();
+    expect(markLocalSend).toHaveBeenCalledOnce();
+    expect(refreshSessionDiff).not.toHaveBeenCalled();
+    expect(refreshSessionTodos).not.toHaveBeenCalled();
     runtime.unmount();
   });
 });

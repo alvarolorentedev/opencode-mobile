@@ -10,7 +10,7 @@ import type { AgentOption, ModelOption } from '@/shared/contracts/model-options'
 
 import type { ChatPreferences } from '@/shared/preferences/opencode-preferences';
 
-import type { ConnectionState, DiffScope, FavoriteSession, SessionDeepLinkTarget, TranscriptRefreshMode } from '@/shared/contracts/domain';
+import type { ConnectionState, DiffScope, FavoriteSession, SessionDeepLinkTarget, TranscriptReadOptions } from '@/shared/contracts/domain';
 
 export type SessionActionsInput = {
   client: ScopedOpencodeClient;
@@ -52,9 +52,9 @@ export type SessionActionsInput = {
   bootstrapPromiseRef: { current: Promise<string | undefined> | null };
   bootstrapTokenRef: { current: object | undefined };
   refreshSessions: () => Promise<Session[]>;
-  refreshMessages: (sessionId: string, silent?: boolean, options?: { mode?: TranscriptRefreshMode }) => Promise<SessionMessageRecord[]>;
+  refreshMessages: (sessionId: string, silent?: boolean, options?: TranscriptReadOptions) => Promise<SessionMessageRecord[]>;
   beginHydration: (sessionId: string) => () => void;
-  refreshSessionDiff: (sessionId: string, silent?: boolean, messageId?: string) => Promise<FileDiff[]>;
+  refreshSessionDiff: (sessionId: string, silent?: boolean, messageId?: string, records?: SessionMessageRecord[]) => Promise<FileDiff[]>;
   refreshSessionTodos: (sessionId: string) => Promise<Todo[]>;
   refreshVcsDiff: (scope: 'uncommitted' | 'branch', silent?: boolean) => Promise<FileDiff[]>;
   refreshPendingInteractions: () => Promise<unknown>;

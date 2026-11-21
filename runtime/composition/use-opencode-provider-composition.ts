@@ -104,6 +104,7 @@ export function useOpencodeProviderComposition(input: WorkspaceRuntimeInput) {
     queueScope: workspaceKey({ connectionId: input.connection.id, projectPath: state.activeProjectPath || '' }),
     isCurrentClient,
     refreshMessages: transcriptRead.readMessages,
+    appendUserMessage: transcript.appendUserMessage,
     connected: state.connection.status === 'connected',
     online: network.online,
   });
@@ -202,7 +203,7 @@ export function useOpencodeProviderComposition(input: WorkspaceRuntimeInput) {
     ...project,
     client,
     isCurrentClient,
-    refreshMessages: inbox.refreshMessages,
+    markLocalSend: transcript.markLocalSend,
   });
 
   const { onInvalidated } = connectionRuntime;
@@ -242,6 +243,7 @@ export function useOpencodeProviderComposition(input: WorkspaceRuntimeInput) {
     const focusSessionIds = new Set<string>();
     if (state.currentSessionId) focusSessionIds.add(state.currentSessionId);
     if (conversationSessionId) focusSessionIds.add(conversationSessionId);
+    const transcriptSessionIds = new Set(focusSessionIds);
     for (const [sessionId, prompts] of Object.entries(inbox.pendingPromptsBySession)) {
       if (prompts.length > 0) focusSessionIds.add(sessionId);
     }
@@ -249,9 +251,14 @@ export function useOpencodeProviderComposition(input: WorkspaceRuntimeInput) {
       refreshSessions: project.refreshSessions,
       scheduleSessionRefresh: project.scheduleSessionRefresh,
       scheduleSessionsRefresh,
+      applyTranscriptEvent: transcript.applyTranscriptEvent,
+      liveTranscriptMessageId: transcript.liveTranscriptMessageId,
+      sendingSessionId: prompt.sendingState.active ? prompt.sendingState.sessionId : undefined,
+      isLocalSendRecent: transcript.isLocalSendRecent,
       refreshPendingInteractions: project.refreshPendingInteractions,
       refreshTerminals: terminal.refreshTerminals,
       focusSessionIds,
+      transcriptSessionIds,
       setSessions: state.setSessions,
       removeCatalogSession: catalog.removeSession,
       setSessionStatuses: state.setSessionStatuses,
@@ -296,6 +303,10 @@ export function useOpencodeProviderComposition(input: WorkspaceRuntimeInput) {
     refreshSessionStatuses: project.refreshSessionStatuses,
     refreshPendingInteractions: project.refreshPendingInteractions,
     refreshMessages: inbox.refreshMessages,
+    refreshLiveMessages: (sessionId) => {
+      const messageId = transcript.liveTranscriptMessageId(sessionId);
+      return messageId ? inbox.refreshMessages(sessionId, true, { messageId }) : Promise.resolve();
+    },
     refreshSessionDiff: project.refreshSessionDiff,
     refreshSessionTodos: project.refreshSessionTodos,
   });

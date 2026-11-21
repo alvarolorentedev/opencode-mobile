@@ -12,6 +12,15 @@ import type { TranscriptRefreshMode } from '@/shared/contracts/domain';
 
 export type SessionRefreshOptions = {
   messages?: boolean;
+  // Reconcile one assistant message instead of the newest page. Live V2 turns
+  // use this so the sent prompt and its attachment bytes are not re-read.
+  messageId?: string;
+  // Refresh only the server inbox for this session; do not read the transcript.
+  inboxOnly?: boolean;
+  // An inbox delivery: paint the delivered prompt from its local pending data
+  // instead of downloading the stored message.
+  delivered?: boolean;
+  inboxID?: string;
   // Overrides how a scheduled message refresh treats the held window. Only
   // server-side history rewrites (compaction/revert) pass 'replace'.
   messageMode?: TranscriptRefreshMode;
@@ -27,10 +36,24 @@ export type ProviderEventActions = {
   scheduleSessionsRefresh?: () => void;
   refreshPendingInteractions: () => Promise<unknown>;
   refreshTerminals: () => Promise<unknown>;
+  // Applies a live V2 stream event to the open transcript. Returning true means
+  // the event was consumed and no transcript read is needed.
+  applyTranscriptEvent?: (event: OpencodeEvent) => boolean;
+  // The assistant message a live turn is currently writing, if any.
+  liveTranscriptMessageId?: (sessionId: string) => string | undefined;
+  // The session whose prompt this client is submitting right now.
+  sendingSessionId?: string;
+  // True while a prompt this client admitted should still count as local. The
+  // server can emit execution.started after the admission response, so the
+  // in-flight send alone is not enough to suppress a redundant page read.
+  isLocalSendRecent?: (sessionId: string) => boolean;
   // Session ids whose transcript the user can currently see (active chat and
   // conversation mode). Part-level events refresh only these, so background
   // sessions are not re-downloaded on every streaming update.
   focusSessionIds?: Set<string>;
+  // Transcript actually visible on screen. Background sessions keep only their
+  // status row until they are opened, so their attachment bytes are not fetched.
+  transcriptSessionIds?: Set<string>;
   setSessions?: Dispatch<SetStateAction<Session[]>>;
   removeCatalogSession?: (sessionId: string) => void;
   setSessionStatuses: Dispatch<SetStateAction<Record<string, SessionStatus>>>;
@@ -53,8 +76,26 @@ export function handleProviderEvent(event: OpencodeEvent, actions: ProviderEvent
   const status = getEventSessionStatus(event);
   if (status) {
     actions.setSessionStatuses((current) => ({ ...current, [status.sessionID]: status.status }));
-    actions.scheduleSessionRefresh(status.sessionID, { sessions: true, messages: true, diff: true, todos: true, delayMs: status.status.type === 'idle' ? 50 : undefined });
-    if (status.status.type === 'idle') { void actions.refreshPendingInteractions().catch(() => undefined); }
+    const visible = !(actions.transcriptSessionIds ?? actions.focusSessionIds)
+      || (actions.transcriptSessionIds ?? actions.focusSessionIds)!.has(status.sessionID);
+    const idle = status.status.type === 'idle';
+    // A V2 live turn paints its assistant message from stream events. Only a
+    // completed, visible turn reconciles against the server, and then only that
+    // message. The exception is a turn this client did not submit (another
+    // client or a queued delivery), where the new prompt still has to be fetched.
+    const remoteStart = visible && !idle && event.type === 'session.execution.started'
+      && actions.sendingSessionId !== status.sessionID
+      && !actions.isLocalSendRecent?.(status.sessionID);
+    const messageId = idle && visible ? actions.liveTranscriptMessageId?.(status.sessionID) : undefined;
+    actions.scheduleSessionRefresh(status.sessionID, {
+      sessions: true,
+      ...(visible && (idle || remoteStart) ? { messages: true } : {}),
+      ...(messageId ? { messageId } : {}),
+      ...(visible ? { todos: true } : {}),
+      ...(idle && visible ? { diff: true } : {}),
+      delayMs: idle ? 50 : undefined,
+    });
+    if (idle) { void actions.refreshPendingInteractions().catch(() => undefined); }
     return;
   }
   if (type === 'command.executed') { actions.scheduleSessionRefresh(sessionID, { sessions: true, messages: true }); return; }
@@ -87,15 +128,26 @@ export function handleProviderEvent(event: OpencodeEvent, actions: ProviderEvent
   if (/^session\.inbox\./.test(type)) {
     // Inbox transitions are infrequent and are how the app discovers prompts
     // queued remotely, so always re-read them, even for background sessions.
-    if (sessionID) actions.scheduleSessionRefresh(sessionID, { messages: true });
+    // The transcript is not re-read: a delivery is painted from the pending
+    // prompt it just admitted.
+    if (sessionID) {
+      const inboxID = stringField(data.inboxID);
+      actions.scheduleSessionRefresh(sessionID, {
+        inboxOnly: true,
+        ...(type === 'session.inbox.delivered' ? { delivered: true } : {}),
+        ...(inboxID ? { inboxID } : {}),
+      });
+    }
     return;
   }
   if (/^session\.(step\.|text\.|reasoning\.|tool\.|message\.|synthetic|skill\.|shell\.|usage\.)/.test(type)) {
-    // Streaming updates only re-read the transcript the user can actually see.
-    // Background sessions refresh on status transitions and completion instead
-    // of once per part.
-    if (sessionID && (!actions.focusSessionIds || actions.focusSessionIds.has(sessionID))) {
-      actions.scheduleSessionRefresh(sessionID, { messages: true });
+    // Streaming updates only paint the transcript the user can actually see.
+    // Background sessions keep a status row until they are opened. Live events
+    // that cannot be applied (synthetic rows, shell records) fall back to a
+    // single page read.
+    const visible = actions.transcriptSessionIds ?? actions.focusSessionIds;
+    if (sessionID && (!visible || visible.has(sessionID))) {
+      if (!actions.applyTranscriptEvent?.(event)) actions.scheduleSessionRefresh(sessionID, { messages: true });
     }
     return;
   }

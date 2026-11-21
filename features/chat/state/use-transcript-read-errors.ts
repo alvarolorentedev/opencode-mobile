@@ -2,12 +2,12 @@ import { useCallback, useState } from 'react';
 
 import { getErrorMessage } from '@/shared/utilities/error-message';
 import type { SessionMessageRecord } from '@/shared/presentation/format';
-import type { TranscriptRefreshMode } from '@/shared/contracts/domain';
+import type { TranscriptReadOptions } from '@/shared/contracts/domain';
 
 type RefreshMessages = (
   sessionId: string,
   silent?: boolean,
-  options?: { mode?: TranscriptRefreshMode },
+  options?: TranscriptReadOptions,
 ) => Promise<SessionMessageRecord[]>;
 
 type ReadErrorsState = {

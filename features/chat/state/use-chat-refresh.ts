@@ -3,6 +3,7 @@ import { useCallback } from 'react';
 import { resolveDiffTurn } from '@/shared/presentation/transcript';
 
 import type { DiffScope } from '@/shared/contracts/domain';
+import type { SessionMessageRecord } from '@/shared/presentation/format';
 
 import { getSessionDiff as svcGetSessionDiff, getSessionTodos as svcGetSessionTodos } from '@/shared/protocol/services/session-service';
 
@@ -21,15 +22,22 @@ async function withDiffLoading<T>(silent: boolean, setLoading: (value: boolean) 
 export function useChatRefresh({ client, isCurrentClient, setIsRefreshingDiffs, setDiffsBySession, setVcsDiffsByScope, setTodosBySession, setDiffScopeBySession, setSelectedDiffMessageBySession, selectedDiffMessageBySessionRef, diffScopeBySessionRef, currentSessionIdRef, messagesBySessionRef }: ChatRefreshInput) {
 
   const refreshSessionDiff = useCallback(
-    async (sessionId: string, silent = false, messageId?: string) => withDiffLoading(silent, setIsRefreshingDiffs, async () => {
-      const messages = messagesBySessionRef.current[sessionId] ?? [];
+    async (sessionId: string, silent = false, messageId?: string, records?: SessionMessageRecord[]) => withDiffLoading(silent, setIsRefreshingDiffs, async () => {
+      const messages = records ?? messagesBySessionRef.current[sessionId] ?? [];
       const pinned = selectedDiffMessageBySessionRef.current[sessionId];
       // Resolve through the same selector the diff surface displays with so a
       // request can never ask the server for a different turn than the one the
       // overlay highlights.
       const targetMessageId = messageId ?? resolveDiffTurn(messages, pinned);
-      const data = await svcGetSessionDiff(client, sessionId, targetMessageId, messages);
+      // An empty held window cannot name its turn; let the adapter read the
+      // newest page instead of caching an empty diff forever.
+      const data = await svcGetSessionDiff(client, sessionId, targetMessageId, messages.length ? messages : undefined);
       if (!isCurrentClient(client)) {
+        return data;
+      }
+      // A session-wide refresh must not overwrite a turn the user selected
+      // while the request was in flight.
+      if (!messageId && selectedDiffMessageBySessionRef.current[sessionId] !== pinned) {
         return data;
       }
       setDiffsBySession((current) => ({

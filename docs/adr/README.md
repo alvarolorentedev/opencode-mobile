@@ -101,6 +101,7 @@ coverage, and documentation links.
 | [0047](0047-new-session-last-used-model.md) | New sessions start on the last picked model | Accepted |
 | [0048](0048-system-and-local-wake-detection.md) | Retain System and On-device wake detection | Accepted |
 | [0049](0049-bounded-mission-stats-snapshots.md) | Bounded Mission Control statistics snapshots | Accepted |
+| [0050](0050-live-v2-transcript-with-reconciliation.md) | Live V2 transcript with boundary reconciliation | Accepted |
 
 ## Template
 

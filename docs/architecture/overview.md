@@ -866,6 +866,14 @@ Recognized events update local state or schedule refreshes for:
 - capability/config, project-directory, VCS, worktree, MCP, and terminal changes
 - MCP authentication failures (`mcp.browser.open.failed`), surfaced as an in-chat approval alert
 
+A visible V2 transcript is the exception: text, reasoning, tool, step, retry and
+usage events are applied directly by `features/chat/model/live-transcript.ts`
+instead of scheduling a read. A finished turn reconciles only its assistant
+message (`session.message.get`); records the reducer cannot place (synthetic,
+shell, skill rows) still trigger a bounded page read. Events for background
+sessions only update their status row. See
+[ADR 0050](../adr/0050-live-v2-transcript-with-reconciliation.md).
+
 ### Safety Strategy: Polling Fallback
 
 The provider keeps a safety polling loop when any of the following is true:
@@ -879,14 +887,14 @@ While SSE is connected the loop runs every 10 seconds (15 seconds on a
 constrained link); without a stream it is the primary transport and runs every 5
 seconds (8 seconds constrained). Offline and background states pause the loop,
 and repeated failed passes double the interval up to 30 seconds. A submitted
-prompt also schedules a one-off transcript refresh 5 seconds after send, so a
-completion whose event is missed (for example from another project) still lands
-even with the slower connected cadence. On OpenCode 2 the safety poll reads only
-the active-session status set; full cursor-paged session lists are reserved for
+prompt also schedules a one-off title/diff/todos refresh 5 seconds after send;
+the transcript itself is not re-read because it is painted from live events and
+reconciled when the turn ends. On OpenCode 2 the safety poll reads only the
+active-session status set; full cursor-paged session lists are reserved for
 connect, reconnect, foreground return, library open, and session-list events.
-Polling refreshes current/conversation session content and pending interactions
-as needed. The `/permission` and `/question` list APIs recover requests missed
-by SSE.
+While the stream is connected the poll never reads transcripts; a reconnect or
+foreground return performs the authoritative page read. The `/permission` and
+`/question` list APIs recover requests missed by SSE.
 
 Event-driven refreshes are coalesced per domain. Session-list, capability,
 server-feature, and project-catalog bursts collapse into one trailing read
@@ -895,7 +903,9 @@ local list immediately, before the coalesced reconciliation lands.
 
 `permission.asked` and `question.asked` insert requests under their `sessionID`; reply and rejection events remove them. Opening or refreshing a session reconciles both maps with the server. Because subagents run in child sessions, a blocking request may carry a descendant `sessionID`; the active chat surfaces the full `parentID` subtree of the current/sending session so nested prompts are shown rather than dropped.
 
-This dual model is critical. The implementation does not trust SSE alone.
+Reads remain authoritative at boundaries: session open, reconnect, foreground
+return, history rewrites and turn completion. The implementation does not trust
+SSE across a reconnect, and the stream has no replay cursor.
 
 ## Screen Responsibilities
 

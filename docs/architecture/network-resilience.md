@@ -1,6 +1,6 @@
 # Network Resilience
 
-Related ADRs: [0004 SSE with polling fallback](../adr/0004-sse-with-polling-fallback.md), [0014 scoped server data and lifecycles](../adr/0014-server-data-and-explicit-lifecycles.md)
+Related ADRs: [0004 SSE with polling fallback](../adr/0004-sse-with-polling-fallback.md), [0014 scoped server data and lifecycles](../adr/0014-server-data-and-explicit-lifecycles.md), [0050 live V2 transcript with boundary reconciliation](../adr/0050-live-v2-transcript-with-reconciliation.md)
 
 The app targets real-world 4G as its normal remote-link floor and keeps 3G
 usable in a degraded mode. It does not assume that "connected" means the radio
@@ -228,13 +228,36 @@ response as uncertain:
 
 Prompt delivery uses the queue/reconcile rule above.
 
+## Live transcript
+
+The visible V2 transcript is painted from stream events, not from page polls.
+`features/chat/model/live-transcript.ts` maps text, reasoning, tool, step, retry
+and usage events into parts; `features/chat/state/use-live-transcript.ts` keeps
+them behind a 50 ms paint throttle and overlays them when a page read lands
+mid-turn. A prompt this client admits is appended locally from the submitted
+parts, so the user message and its attachment bytes are not fetched back.
+
+Reconciliation is boundary-only: one `session.message.get` for the active
+assistant message when the turn finishes, and a full newest-page read on session
+open, reconnect, foreground return, compaction/revert, or an event the reducer
+cannot place (synthetic, shell, skill rows). While SSE is connected the safety
+poll refreshes status, interactions, diff and todos but never transcripts. Inbox
+events read only the inbox. Events for background sessions are ignored.
+
+The stream has no replay cursor, so a missed turn-end or reconnect always
+performs the authoritative read. Stock servers store attachment bytes inline in
+their messages; this design avoids re-reading those bytes on every event, but a
+session open or reconnect still transfers them once. True deferred retrieval
+requires the server's experimental media-blob mode.
+
 ## Attachments
 
 `shared/protocol/opencode/attachment.ts` enforces the 10 MB per-file limit and re-encodes
 local images larger than 1 MB to a 2048 px-wide JPEG before Base64 encoding.
 Compression is best-effort; the original bytes remain valid if the native
 manipulator is unavailable. This avoids turning a 10 MB camera image into a
-13 MB JSON body on a cellular uplink.
+13 MB JSON body on a cellular uplink. The transcript cache measures inline media
+before serializing and drops an over-budget record instead of stringifying it.
 
 ## Terminal
 

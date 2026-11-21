@@ -13,6 +13,13 @@ export function submitLegacyPrompt(client: ScopedOpencodeClient, input: PromptIn
   return createSessionAdapter(client).submitPrompt(input);
 }
 
+// One message is the live-turn reconcile: it excludes the user prompt and any
+// attachment bytes it carries, unlike a newest-page read.
+export function getSessionMessage(client: ScopedOpencodeClient, sessionId: string, messageId: string) {
+  if (!client.api) throw new Error('Single-message reads require OpenCode 2.');
+  return client.api.session.message.get({ sessionID: sessionId, messageID: messageId });
+}
+
 export function getSessionInbox(client: ScopedOpencodeClient, sessionId: string) {
   return coalesceRead(client, `inbox:${sessionId}`, () => client.promptInbox!.list(sessionId));
 }

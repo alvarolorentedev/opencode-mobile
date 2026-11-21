@@ -113,6 +113,9 @@ the stale/empty-transcript behavior and is harder to validate:
   (`TAIL_SETTLE_FRAMES`) and restores offset on focus/foreground.
 
 Revisit only with render profiling evidence, and one mechanism at a time.
+The transcript cache now measures inline media before serializing and drops an
+over-budget record instead of re-stringifying the whole window; record equality
+inside a live page merge still uses `JSON.stringify`.
 
 ## 5. V2 non-message timeline records
 
@@ -394,3 +397,25 @@ Exit plan:
   and map the picker action to it with the same destructive confirmation and
   invalidation as the other project mutations.
 - Do not emulate archive by editing the canonical directory or deleting files.
+
+## 15. Inline prompt media and on-demand retrieval
+
+A V2 server stores prompt attachments inline in the user message
+(`FilePart.url` is the data URL), so a message read returns their bytes. The live
+transcript ([ADR 0050](../adr/0050-live-v2-transcript-with-reconciliation.md))
+no longer re-reads that message per event, but the bytes are still transferred
+when a session opens, on reconnect/foreground, and after a history rewrite.
+
+The client supports the server's experimental media mode only when the server
+enables it: `experimental.media_blob` stores media as blobs and returns
+`media:<hash>` refs, which `experimental.media.get` resolves. That flag is a
+server-side opt-in users control and is off in release builds; the app must not
+enable it on their behalf.
+
+Exit plan:
+
+- If media refs become available without a server flag, read messages and inbox
+  items with refs, resolve `media:` only when the user previews or downloads,
+  and keep inline bytes out of transcript state and the cache.
+- Keep the current live transcript and boundary reconciliation regardless: they
+  remove the recurring reads, not just the attachment variant.

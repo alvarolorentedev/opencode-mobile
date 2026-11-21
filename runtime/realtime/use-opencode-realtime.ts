@@ -12,7 +12,7 @@ import { telemetry } from '@/shared/observability/client';
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import type { OpencodeEvent } from '@/shared/protocol/opencode/events';
 import type { ConnectionFailureKind, ScopedOpencodeClient } from '@/shared/protocol/opencode/client';
-import type { TranscriptRefreshMode } from '@/shared/contracts/domain';
+import type { TranscriptReadOptions } from '@/shared/contracts/domain';
 
 type RealtimeActions = {
   subscribe?: typeof subscribeEvents;
@@ -23,7 +23,8 @@ type RealtimeActions = {
   refreshSessions: () => Promise<unknown>;
   refreshSessionStatuses?: () => Promise<unknown>;
   refreshPendingInteractions: () => Promise<unknown>;
-  refreshMessages: (sessionId: string, silent: boolean, options?: { mode?: TranscriptRefreshMode }) => Promise<unknown>;
+  refreshMessages: (sessionId: string, silent: boolean, options?: TranscriptReadOptions) => Promise<unknown>;
+  refreshLiveMessages?: (sessionId: string) => Promise<unknown>;
   refreshSessionDiff: (sessionId: string, silent: boolean) => Promise<unknown>;
   refreshSessionTodos: (sessionId: string) => Promise<unknown>;
 };
@@ -51,10 +52,10 @@ export function useOpencodeRealtime({ catalogClient, activeProjectPath, connecte
 }) {
   const [eventStreamStatus, setEventStreamStatus] = useState<'idle' | 'connecting' | 'connected' | 'error'>('idle');
   const statusRef = useRef(eventStreamStatus);
-  const latest = useRef({ ...actions, currentSessionId, conversationSessionId, pendingSessionIds, busy, constrained });
+  const latest = useRef({ ...actions, currentSessionId, conversationSessionId, pendingSessionIds, busy, constrained, streamConnected: false });
   const pollFailedRef = useRef(false);
   useLayoutEffect(() => {
-    latest.current = { ...actions, currentSessionId, conversationSessionId, pendingSessionIds, busy, constrained };
+    latest.current = { ...actions, currentSessionId, conversationSessionId, pendingSessionIds, busy, constrained, streamConnected: eventStreamStatus === 'connected' };
     statusRef.current = eventStreamStatus;
   });
   const reconcilerRef = useRef<ReturnType<typeof createReconciler> | null>(null);

@@ -33,14 +33,33 @@ function parseEnvelope(raw: string): Envelope {
   return value as Envelope;
 }
 
+// Measure a record without serializing multi-megabyte attachment payloads.
+function inlineChars(record: SessionMessageRecord) {
+  let chars = 0;
+  for (const part of record.parts) {
+    if (part.type === 'file') chars += part.url.length;
+    if (part.type === 'tool' && part.state.status === 'completed') {
+      for (const attachment of part.state.attachments ?? []) chars += attachment.url.length;
+    }
+  }
+  return chars;
+}
+
 function bounded(records: SessionMessageRecord[]) {
   const tail = records.slice(-MAX_RECORDS);
-  while (tail.length > 0) {
-    const serialized = JSON.stringify({ cachedAt: Date.now(), records: tail });
-    if (serialized.length <= MAX_CHARS) return tail;
-    tail.shift();
+  const kept: SessionMessageRecord[] = [];
+  let size = 0;
+  for (let index = tail.length - 1; index >= 0; index -= 1) {
+    const record = tail[index];
+    // Drop an inline-media record before serializing it: the live window still
+    // holds it, but a cache write must never stringify megabytes.
+    if (inlineChars(record) > MAX_CHARS) break;
+    const serialized = JSON.stringify(record);
+    if (size + serialized.length > MAX_CHARS) break;
+    kept.unshift(record);
+    size += serialized.length;
   }
-  return [];
+  return kept;
 }
 
 export async function hydrateTranscriptCache(

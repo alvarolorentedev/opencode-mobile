@@ -48,10 +48,17 @@ describe('handleProviderEvent', () => {
     expect(calls.refreshMcpServers).not.toHaveBeenCalled();
   });
 
-  it('refreshes the transcript tail on a part delta', () => {
+  it('refreshes the transcript tail on a part delta when it cannot be applied live', () => {
     const { actions, calls } = createActions();
     handleProviderEvent({ id: 'e', type: 'session.text.delta', data: { sessionID: 's1' } } as never, actions);
     expect(calls.scheduleSessionRefresh).toHaveBeenCalledWith('s1', { messages: true });
+  });
+
+  it('paints a part delta live without scheduling a transcript read', () => {
+    const { actions, calls } = createActions();
+    Object.assign(actions, { applyTranscriptEvent: () => true });
+    handleProviderEvent({ id: 'e', type: 'session.text.delta', data: { sessionID: 's1' } } as never, actions);
+    expect(calls.scheduleSessionRefresh).not.toHaveBeenCalled();
   });
 
   it('skips part updates for sessions outside the visible focus set', () => {
@@ -67,7 +74,24 @@ describe('handleProviderEvent', () => {
     const { actions, calls } = createActions();
     actions.focusSessionIds = new Set(['visible']);
     handleProviderEvent({ id: 'e', type: 'session.inbox.enqueued', data: { sessionID: 'background' } } as never, actions);
-    expect(calls.scheduleSessionRefresh).toHaveBeenCalledWith('background', { messages: true });
+    expect(calls.scheduleSessionRefresh).toHaveBeenCalledWith('background', { inboxOnly: true });
+  });
+
+  it('reconciles only the live message when a turn completes', () => {
+    const { actions, calls } = createActions();
+    Object.assign(actions, { liveTranscriptMessageId: () => 'a1' });
+    handleProviderEvent({ id: 'e', type: 'session.idle', data: { sessionID: 's1' } } as never, actions);
+    expect(calls.scheduleSessionRefresh).toHaveBeenCalledWith('s1', expect.objectContaining({ messages: true, messageId: 'a1' }));
+  });
+
+  it('fetches a remote turn prompt once and skips the local send', () => {
+    const { actions, calls } = createActions();
+    handleProviderEvent({ id: 'e', type: 'session.execution.started', data: { sessionID: 'remote' } } as never, actions);
+    expect(calls.scheduleSessionRefresh).toHaveBeenCalledWith('remote', expect.objectContaining({ messages: true }));
+    calls.scheduleSessionRefresh.mockClear();
+    Object.assign(actions, { sendingSessionId: 'local' });
+    handleProviderEvent({ id: 'e2', type: 'session.execution.started', data: { sessionID: 'local' } } as never, actions);
+    expect(calls.scheduleSessionRefresh).toHaveBeenCalledWith('local', expect.not.objectContaining({ messages: true }));
   });
 
   it('rebuilds the window when a session compacts or reverts', () => {

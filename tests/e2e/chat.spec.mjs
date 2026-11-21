@@ -549,6 +549,11 @@ test('completed progress stays compact and activity patches keep their turn afte
     await expect(page.getByText(/Finished: Review second turn/).first()).toBeVisible({ timeout: 20_000 });
     await page.getByTestId(/transcript-activity-/).last().click();
     await page.getByRole('button', { name: /1 file changed/ }).last().click();
+    // The default is the latest turn that recorded a change.
+    await expect(page.getByText('src/feature.ts', { exact: true })).toBeVisible();
+    // Earlier turns keep their own files behind the source picker.
+    await page.getByRole('button', { name: /Change files changed source/ }).click();
+    await page.getByTestId('diff-source-overlay').getByRole('button', { name: 'Turn 1' }).click();
     await expect(page.getByText('app/(tabs)/index.tsx', { exact: true })).toBeVisible();
     await expect(page.getByText('src/feature.ts', { exact: true })).toHaveCount(0);
   } finally { server.kill('SIGTERM'); }
