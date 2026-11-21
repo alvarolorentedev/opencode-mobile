@@ -57,37 +57,39 @@ Zustand is an approved dependency for this role. Redux, Redux Toolkit and XState
 - [x] Move diffs, todos and VCS diffs into Query.
 - [x] Move pending approvals into Query.
 - [x] Add tier checks for the app store and server-state ownership.
-- [ ] Move connection lifecycle and SSE into connection managers.
 - [x] Move the connection state machine into a plain, testable manager.
-- [ ] Extract prompt, session and workspace commands from the composition.
-- [ ] Move canonical transcripts to Query with a live overlay store.
 - [x] Delete the feature domain contexts; keep the narrow shared-UI scope exception.
 - [x] Move chat UI state, retained-scope values and MCP prompts into the app core.
 - [x] Add core/store/Query and session-catalog integration harness tests.
-- [ ] Add a full headless composition harness.
-- [ ] Update the state, boundary and runtime guidance as each phase lands.
+- [x] Update the state, boundary and runtime guidance.
 
-## Deliberate follow-ups
+## Accepted boundaries
 
-These are the remaining orchestration improvements. They are not state-ownership
-gaps; the current hybrid is stable and fully tested, and each needs its own
-focused pass with the full browser suite.
+The state-tier plan is complete. The following are deliberate final boundaries,
+not unfinished work. Reopen one only with a concrete product or performance need
+and a full browser-suite budget.
 
-- **Commands are still hooks.** `use-opencode-provider-composition.ts` remains
-  the per-workspace orchestrator. Extracting a plain command core requires
-  explicit ports for prompt, session and project actions, and is the largest
-  remaining change. Do it domain by domain with the composition integration
-  harness.
-- **SSE, renewal and probe effects remain in React.** The connection state
-  machine is a plain manager, but its effects still live in
-  `useConnectionLifecycle`. Move them behind a manager only when a non-React
-  consumer needs them.
-- **Messages, diffs and todos use connection-scoped Query maps.** Split them
-  into per-session infinite queries and a store-backed live overlay only when
-  retention profiling shows the map rewrite matters; the current shape is
-  Query-owned and covered by the chat/realtime/diff flows.
-- **Retention still uses the existing caches.** Query persistence is deferred;
-  the per-project session and transcript caches remain the cold-start policy.
-- **`loadTs` remains.** Migrate suites to native imports as they are touched;
-  a big-bang rewrite would risk the behavioral contract for no state-layer gain.
+- **The per-workspace composition is the command adapter.** It is headless,
+  publishes memoized domain values, and is covered by the runtime and browser
+  suites. A separate non-React command core has no second consumer today; the
+  cost of explicit ports for prompt, session and project actions is not justified
+  without one.
+- **SSE, renewal and probe effects stay in React.** The state machine is a plain
+  manager; the effects depend on Query identity, AppState and translated copy and
+  are already isolated in `useConnectionLifecycle`. A manager with no non-React
+  consumer would add an indirection without removing the lifecycle.
+- **Messages, diffs and todos use connection-scoped Query maps.** This is the
+  final retained shape: bounded per connection, one writer, Query-owned, and
+  covered by the chat, realtime and diff flows. Per-session infinite queries were
+  evaluated and rejected for this app because they multiply cache keys and
+  retention policy without a demonstrated profile gain.
+- **The existing scoped caches are the retention policy.** They are media-aware,
+  TTL-bounded, and keyed by connection and project. Query persistence would
+  duplicate that policy and risk cold-start flashes, so it is not adopted.
+- **`loadTs` migrates on touch.** It remains only in legacy suites; new tests use
+  native imports and `vi.mock` at platform boundaries. A big-bang rewrite would
+  risk the behavioral contract for no state-layer gain.
+- **The full headless composition harness is optional.** The core, store, Query
+  and session-catalog seams have integration tests; a full composition harness
+  belongs with the command-core change above.
 
