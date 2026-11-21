@@ -17,8 +17,9 @@ export function useSessionRuntimeState(input: WorkspaceRuntimeInput, connection:
   const settings = input.connection.settings;
   const setSettings = input.setSettings;
   const chatPreferences = input.preferences;
-  const { activeProjectPath, setActiveProjectPath, activeProjectPathRef, projectFileRequestRef } = useProjectRuntimeState(input.projectPath);
-  const { currentSessionId, setCurrentSessionId, isBootstrappingChat, setIsBootstrappingChat, activeSessionsVisible, setActiveSessionsVisible, currentSessionIdRef, pendingDeepLinkTargetRef, deepLinkOperationRef, bootstrapPromiseRef, bootstrapTokenRef, explicitSessionSelectionRef, locallyCreatedSessionsRef, suppressedPendingRequestIdsRef } = useSessionState(workspaceKey({ connectionId: input.connection.id, projectPath: input.projectPath ?? '' }));
+  const scopeKey = workspaceKey({ connectionId: input.connection.id, projectPath: input.projectPath ?? '' });
+  const { activeProjectPath, setActiveProjectPath, activeProjectPathRef, projectFileRequestRef } = useProjectRuntimeState(scopeKey, input.projectPath);
+  const { currentSessionId, setCurrentSessionId, isBootstrappingChat, setIsBootstrappingChat, activeSessionsVisible, setActiveSessionsVisible, currentSessionIdRef, pendingDeepLinkTargetRef, deepLinkOperationRef, bootstrapPromiseRef, bootstrapTokenRef, explicitSessionSelectionRef, locallyCreatedSessionsRef, suppressedPendingRequestIdsRef } = useSessionState(scopeKey);
   const { messagesBySession, setMessagesBySession, diffsBySession, setDiffsBySession, vcsDiffsByScope, setVcsDiffsByScope, diffScopeBySession, setDiffScopeBySession, selectedDiffMessageBySession, setSelectedDiffMessageBySession, todosBySession, setTodosBySession, isRefreshingMessages, setIsRefreshingMessages, isRefreshingDiffs, setIsRefreshingDiffs, diffScopeBySessionRef, selectedDiffMessageBySessionRef, messagesBySessionRef, busyNotificationsRef, promptSubmissionRef } = useChatRuntimeState();
   const { mcpAuthPrompt, setMcpAuthPrompt } = useExtensionPromptState();
 
@@ -46,7 +47,6 @@ export function useSessionRuntimeState(input: WorkspaceRuntimeInput, connection:
     settingsRef.current = settings;
     chatPreferencesRef.current = chatPreferences;
     connectionScopeRef.current = connectionScope;
-    activeProjectPathRef.current = activeProjectPath;
     connectionRef.current = connection;
     currentSessionIdRef.current = currentSessionId;
     diffScopeBySessionRef.current = diffScopeBySession;

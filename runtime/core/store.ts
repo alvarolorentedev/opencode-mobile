@@ -27,12 +27,14 @@ export type RegistryState = {
 };
 
 export type SelectionState = {
+  activeProjectPath?: string;
   currentSessionId?: string;
   isBootstrappingChat: boolean;
   activeSessionsVisible: boolean;
 };
 
 const EMPTY_SELECTION: SelectionState = {
+  activeProjectPath: undefined,
   currentSessionId: undefined,
   isBootstrappingChat: false,
   activeSessionsVisible: false,

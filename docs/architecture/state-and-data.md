@@ -147,7 +147,8 @@ Primary fields:
 
 Meaning:
 
-- `activeProjectPath` is the app-selected project context
+- `activeProjectPath` is the app-selected project context, stored per workspace
+  key in the app store alongside the selected session
 - `serverProjects` are raw projects returned by the server
 - `sessions` are the current project's sessions sorted newest-first. The list is
   a Query resource keyed by the project directory; native reads follow distinct
