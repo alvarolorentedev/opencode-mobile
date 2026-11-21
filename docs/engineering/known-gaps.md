@@ -26,12 +26,11 @@ Closed on 2026-10-18. The coupling hotspot was split without changing behavior:
   / `actions` namespaces instead of ~85 flat members, and `ChatView` consumes
   those namespaces directly.
 
-Remaining deferred piece: a selector-based subscription model. The workspace
-root now memoizes each overridden domain independently, exposes stable chat
-actions separately from the snapshot registry, and memoizes runtime components,
-so background publishes no longer invalidate unrelated domains. A selector-based
-model remains deferred until profiling shows the remaining context fan-out is
-material.
+The domain context fan-out is closed under ADR 0051: feature hooks select
+memoized domain values from `runtime/core/workspace-scope.ts`, and the
+per-workspace context provider tree is gone. The remaining orchestration
+coupling is the per-workspace composition itself; commands are still hooks.
+Selector work continues only where profiling shows a real fan-out cost.
 
 ## 2. Test infrastructure leftovers
 
@@ -187,17 +186,11 @@ dedicated wake-word engine. Consequences:
 
 ## 9. Workspace readiness and render-time state
 
-Two render-timing couplings remain in the workspace shell. They are not library
-gaps; they are internal coordination issues worth fixing before the flows grow.
+One render-timing coupling remains in the workspace shell.
 
-- **Workspace readiness polls React state.** `runtime/workspace/use-workspace-connections.ts`
-  uses `tick()` (a 25 ms `setTimeout`) inside `ensure()`, `connectedWorkspace()`,
-  and `navigate()` to wait for a retained `WorkspaceRuntime` to publish its first
-  snapshot. The wait is bounded at 20 seconds, but it couples navigation to render
-  cadence and can spin while a runtime is suspended or a connection is slow.
-  Replace it with a per-workspace readiness promise or a small event subscription
-  that resolves when the runtime publishes or the workspace is removed. Do not
-  add another shared store; the registry should remain the owner.
+- **Workspace readiness.** Closed on 2026-11-21: `ensure()`,
+  `connectedWorkspace()`, and `navigate()` use `createWorkspaceWaiters`, which
+  resolves on a committed publication or removal instead of polling React state.
 - **Connect pairing changes step during render.**
   `features/cloud-link/ui/connect-pairing.tsx` derives `step` from provider state,
   then calls `setStep(4)` or `setStep(3)` directly in the render body (the
