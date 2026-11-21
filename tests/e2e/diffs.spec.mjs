@@ -48,7 +48,8 @@ test('files changed follows the latest user turn', async ({ page, request }) => 
   await expect(lastLine).not.toBeInViewport();
   await firstLine.hover();
   await page.mouse.wheel(0, 500);
-  await expect(file).toBeInViewport();
+  // One scroll surface: the file header scrolls away with its diff.
+  await expect(file).not.toBeInViewport();
   await page.mouse.wheel(0, 2000);
   await expect(lastLine).toBeInViewport();
   await expect(followingFile).toBeInViewport();
