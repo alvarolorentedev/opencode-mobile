@@ -118,7 +118,7 @@ declared once, at the leaves.
 - The transcript renders the selected timeline detail: `Messages only` keeps message bubbles, attachments, and errors; `Reasoning` adds reasoning activity; `Everything` (the default) renders the full native timeline. Independent of that filter, a live non-expandable activity row appears while work is running and the transcript has no real activity row to carry the progress spinner. It shows `Sending…`, `Waiting for OpenCode…`, `OpenCode is working…`, or `OpenCode is retrying…`, coexists with the pending-prompt stack, and disappears when the session settles or a real activity row can show the spinner. Details are first-class activity rows (`features/chat/ui/cards/activity-group.tsx` + `features/chat/ui/cards/activity-item.tsx`): at full detail, contiguous reasoning, tool, and patch details merge into one two-level run whose content grows as streamed details arrive, and a message bubble breaks the run. The level-one header keeps the total tool-call count and lists every rendered type once, including `Thought` when reasoning is present, or `Thought · N` for a reasoning-only run; runs start collapsed, active work only shows the progress affordance, and an explicit manual toggle is the only thing that expands them. While an expanded run covers the viewport top, its level-one header stays pinned there until the run ends; tapping the pinned header collapses the run and returns the list to that run's header. Level-two rows: thoughts expand markdown; shells show the command collapsed and a selectable, copyable code block expanded; grep stays a one-line pattern plus match count; consecutive reads collapse to one non-expandable comma-separated filename list; edit/write/patch tools render per-file diff cards with `+N −N` and an expandable unified diff. Subagent calls render as top-level chips outside the run: the task description, the agent, and a running spinner or a settled check/error/cancel icon; tapping a chip opens the child session, and a completion notice updates it in place instead of adding a row. Background shell completion folds into the matching shell row by `shellID`; a native user-shell record suppresses its synthetic echo. Run rows use the assistant bubble width. V1-only subtask/step/agent details and the `step-finish` usage marker are never rendered.
 - A compaction record renders as a centered session divider (`features/chat/ui/cards/compaction-divider.tsx`) between message and activity rows, not as a bubble or activity run: `Session compaction started`, `Session compacted · 97.3K in · 858 out` when the summary usage is reported, or `Session compaction failed`. The divider stays visible at every timeline-detail setting because it explains a context boundary.
 - An assistant bubble's header row centers the `OpenCode` author label with its actions and timestamp. The model recorded on that message, plus the reasoning variant used for that reply when the server reports one, renders on a full-width line at the bottom of the bubble so it does not push the reply body down; it resolves from the model catalog and falls back to the raw model ID. The label makes auto-routed turns identifiable after the session model changes. User bubbles and messages without a recorded model (shell/compaction) show only the author label.
-- A centered changes chip above the composer shows file count and green additions/red deletions for the selected scope. It hides at zero files and omits line totals for filename-only patches. Tapping opens the Files changed overlay with diff accordions and a three-dot source button. The sheet opens at 55% of the viewport where safe areas permit. Its height button sits in the sheet header and switches between compact and tall sizes, and the list and expanded diff share one scroll surface; each file header stays pinned under the sheet header while its diff scrolls and is pushed away by the next file.
+- A centered changes chip above the composer shows file count and green additions/red deletions for the selected scope. It hides at zero files and omits line totals for filename-only patches. Tapping opens the Files changed overlay with diff accordions and a three-dot source button. The sheet opens at 55% of the viewport where safe areas permit. Its height button sits in the sheet header and switches between compact and tall sizes, and the list and expanded diff share one scroll surface.
 - Changes overlay scopes: `Turn` (per-turn snapshot diff, with a picker when multiple turns have diffs), `Uncommitted`, and `Branch` (VCS working tree / default-branch diffs)
 - displays starter prompts only when the selected session has no transcript content at all
 
@@ -133,8 +133,8 @@ declared once, at the leaves.
   agents sorted by label/ID. Server descriptions take precedence over localized
   built-in fallbacks. Loading/empty catalogs show feedback without a checked row;
   draft, keyboard, and Back behavior stay local to the composer
-- open the model picker from the selected model/reasoning summary, with a reasoning slider above model search
-- reflect the active session's model and variant; model or effort choices update the session immediately, and switching sessions restores each server-owned choice
+- open the model picker from the selected model/reasoning summary, with a reasoning slider above model search for the chosen model
+- reflect the active session's model and variant; the sheet stages model and effort choices and applies them together when dismissed, and switching sessions restores each server-owned choice
 - use OpenCode's agent/config defaults for sessions without an explicit model, except that a newly created session starts on the last model picked for that server when it is still available; model selection is available on OpenCode 2, which exposes `session.switchModel`
 - when a classifier is available, the picker exposes the Auto-routing switch;
   the trigger reads `Auto-routing` while it is enabled, and explicit model
@@ -201,7 +201,7 @@ type ChatComposerProps = {
 - typing `/` shows matching server commands with descriptions; typing `@` shows visible agents (including subagents), skills, project files, and references. Selecting a row fills the draft.
 - a leading `!` switches the primary action to a V2 session shell command
 - there is no dedicated composer palette button; the text triggers are the only entry point
-- model selection uses a searchable sheet grouped by provider; its reasoning slider shows server variants for the active session's OpenCode 2 model, including a synthetic Default, and stays hidden when that model has none
+- model selection uses a searchable sheet grouped by provider; choosing a model keeps the sheet open, and its reasoning slider shows that model's server variants, including a synthetic Default, hiding when it has none
 - the composer trigger includes the selected variant in its accessible name when the model provides variants
 
 ### `features/chat/ui/chat-prompt-input.tsx`
@@ -242,9 +242,9 @@ type ChatComposerProps = {
 - show an `Auto-routing` switch when a classifier is available; the switch is
   omitted when neither the on-device pack nor the OpenCode classifier can run
 - selecting an explicit model disables auto-routing through the composer
-- own only local modal visibility and search-query state
-- return the selected `ModelOption` to the composer, which persists it through the provider
-- render the shared numeric slider for the selected model's server variants
+- own local modal visibility, search-query state and the staged model/variant until dismissal
+- return the staged `ModelOption` and variant to the composer on dismissal; the composer persists them through the session model switch
+- render the shared numeric slider for the staged model's server variants without a per-step round trip
 - render the trigger with the local `ControlButton`, including slim sizing for the slim-interface preference
 - the transparent `Modal` sheet wraps its content in `GestureHandlerRootView` and dismisses on a downward header drag via the shared `useSwipeDismiss` helper, matching `OverlaySheet`
 
@@ -346,7 +346,7 @@ that workspace.
 
 Responsibility:
 
-- `SessionDiffHeader` renders the compact full-width file row with a left expansion chevron, filename, and green/red line totals; the Files changed overlay makes it a sticky scroll child so it stays pinned while its diff scrolls and is pushed away by the next file
+- `SessionDiffHeader` renders the compact full-width file row with a left expansion chevron, filename, and green/red line totals; the Files changed overlay renders it above its expanded body in the same scroll surface
 - `SessionDiffBody` renders the expanded preview, wrapping code within the sheet, using one old/new line-number gutter and existing collapsed-context blocks
 - show a preview-unavailable line when the server reported changes without exposing patch content, and a no-line-changes line when a patch produced no renderable hunks
 

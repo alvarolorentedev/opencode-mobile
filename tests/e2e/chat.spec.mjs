@@ -355,10 +355,14 @@ test('composer exposes agent selection without losing drafts', async ({ page, re
   await expect(prompt).toHaveValue('Keep this draft');
   await model.click();
   await picker.getByTestId('chat-model-picker-search').fill('deepseek');
+  await picker.getByRole('button', { name: /DeepSeek V4\.1 Flash Free/ }).click();
+  // Picking a model keeps the sheet open so its reasoning level stays reachable.
+  await expect(picker.getByRole('slider', { name: 'Reasoning', exact: true })).toBeVisible();
   const modelSwitch = page.waitForResponse((response) => response.request().method() === 'POST'
     && new URL(response.url()).pathname.endsWith('/model'));
-  await picker.getByRole('button', { name: /DeepSeek V4\.1 Flash Free/ }).click();
+  await page.keyboard.press('Escape');
   await modelSwitch;
+  await expect(picker).toHaveCount(0);
   await expect(model).toHaveAccessibleName(/DeepSeek V4\.1 Flash Free/);
   await agent.click();
   const agentPicker = page.getByTestId('chat-agent-picker');
@@ -421,34 +425,24 @@ test('model and variant choices persist on the session', async ({ page, request 
   page.on('request', (request) => {
     if (request.method() === 'POST' && new URL(request.url()).pathname.endsWith('/model')) modelSwitches.push(request);
   });
-  const selectedModelSwitch = page.waitForResponse((response) => response.request().method() === 'POST'
-    && new URL(response.url()).pathname.endsWith('/model'));
   await picker.getByRole('button', { name: /DeepSeek V4\.1 Flash Free/ }).click();
-  const selectedModelResponse = await selectedModelSwitch;
-  expect(selectedModelResponse.request().postDataJSON()).toEqual({ model: { id: 'deepseek-v4.1-flash-free', providerID: 'opencode' } });
-  await expect(model).toHaveAccessibleName('DeepSeek V4.1 Flash Free · OpenCode · Default');
-
-  await model.click();
+  // The sheet stages the model and its reasoning level, then commits once on dismissal.
   const variant = page.getByRole('slider', { name: 'Reasoning', exact: true });
   await expect(variant).toHaveAttribute('aria-valuemax', '3');
   await expect(variant).toHaveAttribute('aria-valuetext', 'Default');
   await variant.focus();
-  const lowSwitch = page.waitForResponse((response) => response.request().method() === 'POST'
-    && new URL(response.url()).pathname.endsWith('/model'));
   await variant.press('ArrowRight');
-  await lowSwitch;
   await expect(variant).toHaveAttribute('aria-valuetext', 'Low');
-  const highSwitch = page.waitForResponse((response) => response.request().method() === 'POST'
-    && new URL(response.url()).pathname.endsWith('/model'));
   await variant.press('ArrowRight');
-  await highSwitch;
-  await expect(variant).toHaveAttribute('aria-valuetext', 'High');
-  const maxSwitch = page.waitForResponse((response) => response.request().method() === 'POST'
-    && new URL(response.url()).pathname.endsWith('/model'));
   await variant.press('ArrowRight');
-  await maxSwitch;
   await expect(variant).toHaveAttribute('aria-valuetext', 'Max');
+  expect(modelSwitches).toHaveLength(0);
+  const selectedModelSwitch = page.waitForResponse((response) => response.request().method() === 'POST'
+    && new URL(response.url()).pathname.endsWith('/model'));
   await page.keyboard.press('Escape');
+  const selectedModelResponse = await selectedModelSwitch;
+  expect(selectedModelResponse.request().postDataJSON()).toEqual({ model: { id: 'deepseek-v4.1-flash-free', providerID: 'opencode', variant: 'max' } });
+  await expect(picker).toHaveCount(0);
   await expect(model).toHaveAccessibleName('DeepSeek V4.1 Flash Free · OpenCode · Max');
 
   const switchCountBeforePrompt = modelSwitches.length;
@@ -486,13 +480,13 @@ test('model and variant choices persist on the session', async ({ page, request 
   await model.click();
   const resetVariant = page.getByRole('slider', { name: 'Reasoning', exact: true });
   await resetVariant.focus();
+  await resetVariant.press('Home');
+  await expect(resetVariant).toHaveAttribute('aria-valuetext', 'Default');
   const defaultSwitch = page.waitForResponse((response) => response.request().method() === 'POST'
     && new URL(response.url()).pathname.endsWith('/model'));
-  await resetVariant.press('Home');
+  await page.keyboard.press('Escape');
   const defaultResponse = await defaultSwitch;
   expect(defaultResponse.request().postDataJSON()).toEqual({ model: { id: 'deepseek-v4.1-flash-free', providerID: 'opencode' } });
-  await expect(resetVariant).toHaveAttribute('aria-valuetext', 'Default');
-  await page.keyboard.press('Escape');
   const switchCountBeforeDefaultPrompt = modelSwitches.length;
   await sendPrompt(page, 'Use the default reasoning variant');
   await expect(page.getByText(/Finished: Use the default reasoning variant/).first()).toBeVisible({ timeout: 20_000 });

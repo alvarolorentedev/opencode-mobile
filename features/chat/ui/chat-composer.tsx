@@ -55,8 +55,7 @@ type ChatComposerProps = {
   selectedVariant?: string;
   selectedModelId?: string;
   selectedModelFallbackLabel?: string;
-  onModelSelect: (model: ModelOption) => void;
-  onModelVariantChange: (variant: string | undefined) => void;
+  onModelSelect: (model: ModelOption, variant?: string) => void;
   autoRoutingEnabled: boolean;
   autoRoutingAvailable: boolean;
   onAutoRoutingChange: (enabled: boolean) => void;
@@ -107,7 +106,6 @@ export function ChatComposer({
   selectedModelId,
   selectedModelFallbackLabel,
   onModelSelect,
-  onModelVariantChange,
   autoRoutingEnabled,
   autoRoutingAvailable,
   onAutoRoutingChange,
@@ -166,7 +164,6 @@ export function ChatComposer({
       reasoningLabel={reasoningLabel}
       selectedVariant={selectedVariant}
       fallbackLabel={selectedModelFallbackLabel}
-      onVariantChange={onModelVariantChange}
       disabled={visibleModels.length === 0 || !isV2}
       models={visibleModels}
       onSelect={onModelSelect}

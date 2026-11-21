@@ -286,6 +286,8 @@ test('saved connections keep sessions, caches, and routing settings separate', a
   await goToTab(page, 'Chat');
   await page.getByTestId('chat-model-picker-trigger').click();
   await page.getByTestId('chat-model-picker').getByRole('button', { name: /^Auto / }).click();
+  await page.keyboard.press('Escape');
+  await expect(page.getByTestId('chat-model-picker')).toHaveCount(0);
   await expect(page.getByTestId('chat-model-picker-trigger')).toHaveAccessibleName('Auto · OpenRouter');
 
   // Connection B is a separate process with separate server state but the same

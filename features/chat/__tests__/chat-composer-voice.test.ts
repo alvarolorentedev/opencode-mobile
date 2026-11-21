@@ -68,7 +68,6 @@ async function mount({ conversationActive = false, isSpeechInputAvailable = fals
     onAttach: vi.fn(),
     onDraftChange: vi.fn(),
     onModelSelect: vi.fn(),
-    onModelVariantChange: vi.fn(),
     onRemoveAttachment: vi.fn(),
     onSelectionChange: vi.fn(),
     onSend: vi.fn(),

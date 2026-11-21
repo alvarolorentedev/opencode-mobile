@@ -201,13 +201,9 @@ export function useChatViewController() {
       setSendFeedback(error instanceof Error ? error.message : t('chat:view.couldNotSend'));
     }
   }, [chatPreferences.autoModel, chatPreferences.recentModelIds, currentSessionId, ensureActiveSession, setSendFeedback, switchSessionModel, t, updateChatPreferences]);
-  const handleModelSelect = useCallback((model: ModelOption) => {
-    void setSessionModel(model);
+  const handleModelSelect = useCallback((model: ModelOption, variant?: string) => {
+    void setSessionModel(model, variant);
   }, [setSessionModel]);
-  const handleModelVariantChange = useCallback((variant: string | undefined) => {
-    const model = availableModels.find((item) => item.id === selectedModelId);
-    if (model) void setSessionModel(model, variant);
-  }, [availableModels, selectedModelId, setSessionModel]);
   // The provider scopes promptError to the active session tree, so a failing
   // subagent is already surfaced here; no local session gate is needed.
   const visiblePromptError = promptError?.message;
@@ -454,7 +450,6 @@ export function useChatViewController() {
       isV2, suggestions, suggestionsActive, suggestionsSearching, suggestionsError,
       shellMode, focusRequest,
       onModelSelect: handleModelSelect,
-      onModelVariantChange: handleModelVariantChange,
     },
     overlay: {
       approvals, hasFailedInput, sendErrorMessage,
@@ -466,7 +461,7 @@ export function useChatViewController() {
       forkSession, handleAbort, handleAttach, handleCancelPendingPrompt, handleCancelRevert,
       confirmation, handleConfirmStopConversation, handleCopyMessage,
       handleDraftChange, handleRevertMessage, handleSelectionChange: setSelection, handleSendPrompt,
-      handleSuggestionSelect, handleSpeakEntry, handleToggleRecording, handleModelSelect, handleModelVariantChange,
+      handleSuggestionSelect, handleSpeakEntry, handleToggleRecording, handleModelSelect,
       handleVoiceRecovery, recoverFailedInput, refreshDiffs, rejectQuestion, replyToPermission,
       replyToQuestion, selectDiffMessage, setAttachments, setAutoApprove, setChangesVisible,
       setCopiedMessageId, setDiffScope, setDraft, setExpandedDiffId, setIsUpdatingAutoApprove,

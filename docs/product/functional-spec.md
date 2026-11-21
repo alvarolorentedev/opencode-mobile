@@ -209,7 +209,7 @@ Behavior:
 - `Turn` is the default and shows the latest user turn that recorded a change; display and fetch resolve through the same transcript selector, so a session whose newest turn made no edits still reviews the last turn that did; the source overlay lists earlier turns when more than one user turn has a recorded diff
 - `Uncommitted` and `Branch` call `vcs.diff` with modes `git`/`working` and `branch` respectively and are project-scoped, not session-scoped: V1 scopes with the `directory` query parameter, V2 with `location[directory]`
 - top card shows the active scope title, line totals, and current status
-- `{ file, patch, additions, deletions }` diff objects render as expandable line previews that scroll together with the file list. Each file header stays pinned at the top of the list while its diff scrolls and is replaced by the next file header. Changing the sheet height keeps the current file open. Reopening the sheet restores its compact height.
+- `{ file, patch, additions, deletions }` diff objects render as expandable line previews that scroll together with the file list. Changing the sheet height keeps the current file open. Reopening the sheet restores its compact height.
 - when the selected turn has no structured turn diff, that turn's transcript patch details render as a plain changed-files list with a note that diff lines are unavailable; the list is scoped to the selected turn and never aggregates other turns
 - per-scope empty states: `No file changes yet.`, `No uncommitted changes.`, `No changes against the default branch.`
 - VCS scopes have no SSE event and are refreshed on demand (a scope change or a project file save while a VCS scope is active)
@@ -447,12 +447,12 @@ Behavior:
 - model choices are also filtered by the enabled-model list from Settings
 - the picker shows the provider alongside the selected model, groups results by provider, and searches provider/model names and IDs
 - the picker pins the currently selected model and the recently used models at the top; these sections hide while a search query is active
-- the picker reflects the active session's model and variant; selecting a model or reasoning level immediately updates that session through `session.switchModel` and records the model in the recent list
+- the picker reflects the active session's model and variant. Choosing a model keeps the sheet open so its reasoning level stays reachable; the staged model and variant are applied together through `session.switchModel` once the sheet is dismissed, and the chosen model is recorded in the recent list
 - when the session has no explicit model, the picker reflects the server's effective agent/config default. New sessions start on the last model picked for that server when it is still available; otherwise they keep the server default
 - legacy app-level model defaults are ignored; they are not copied into a session because they cannot be assigned safely across existing sessions
 - OpenCode 1 does not expose the supported session model-switch operation, so manual model and variant selection is available on OpenCode 2 only
 - discovered model metadata comes from nested attachment/input modality, tool-call, reasoning, status, and context/output limit capabilities
-- OpenCode 2 preserves server-reported model variant IDs, shows `Default` plus the active session's model variants, and stores the choice on the session; models without variants hide the selector
+- OpenCode 2 preserves server-reported model variant IDs, shows `Default` plus the chosen model's variants, and stores the choice on the session; models without variants hide the selector
 - commands and prompts use the session's stored model. Auto-routing may temporarily switch the session for a routed turn; the server records the resulting session model
 - on OpenCode 1, the existing Low/Default/High reasoning control continues to affect the generated system prompt; OpenCode 2 reasoning selection is a server model variant, not a prompt hint
 

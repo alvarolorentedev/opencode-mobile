@@ -91,6 +91,8 @@ test('OpenCode classifier routes simple and complex prompts and explicit models 
 
   await page.getByTestId('chat-model-picker-trigger').click();
   await page.getByTestId('chat-model-picker').getByRole('button', { name: /^GPT-4\.1 mini / }).last().click();
+  await page.keyboard.press('Escape');
+  await expect(page.getByTestId('chat-model-picker')).toHaveCount(0);
   await expect(page.getByTestId('chat-model-picker-trigger')).toHaveAccessibleName('GPT-4.1 mini · OpenAI');
 
   const classifiedBeforeExplicit = (await controlState(request)).classifierCalls;

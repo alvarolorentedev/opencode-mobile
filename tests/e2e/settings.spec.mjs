@@ -101,11 +101,15 @@ test('chat model picker searches and groups models by provider', async ({ page, 
   await expect(modelPicker.getByText('OpenAI', { exact: true })).not.toBeVisible();
   await expect(modelPicker.getByText('Selected', { exact: true })).not.toBeVisible();
   await modelPicker.getByRole('button', { name: /^Auto / }).click();
+  await page.keyboard.press('Escape');
+  await expect(page.getByTestId('chat-model-picker')).toHaveCount(0);
   await expect(page.getByTestId('chat-model-picker-trigger')).toHaveAccessibleName('Auto · OpenRouter');
 
   await page.getByTestId('chat-model-picker-trigger').click();
   await expect(page.getByTestId('chat-model-picker-search')).toHaveValue('');
   await modelPicker.getByRole('button', { name: /^GPT-4\.1 mini / }).click();
+  await page.keyboard.press('Escape');
+  await expect(page.getByTestId('chat-model-picker')).toHaveCount(0);
   await expect(page.getByTestId('chat-model-picker-trigger')).toContainText('GPT-4.1 mini');
 
   await page.getByTestId('chat-model-picker-trigger').click();

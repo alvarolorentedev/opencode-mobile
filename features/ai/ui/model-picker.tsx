@@ -4,7 +4,7 @@ import { cn } from '@/shared/ui/cn';
 import { OverlaySheet } from '@/shared/ui/overlay-sheet';
 import { withAlpha } from '@/shared/ui/theme/color';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Input } from '@/shared/ui/input';
 import { Keyboard, Pressable, SectionList, StyleSheet, Text, View } from 'react-native';
@@ -25,9 +25,8 @@ type ModelPickerProps = {
   compact?: boolean;
   reasoningLabel?: string;
   selectedVariant?: string;
-  onVariantChange?: (value: string | undefined) => void;
   models: ModelOption[];
-  onSelect: (model: ModelOption) => void;
+  onSelect: (model: ModelOption, variant?: string) => void;
   recentModelIds?: string[];
   selectedModelId?: string;
   slim?: boolean;
@@ -41,11 +40,19 @@ function getSelectedModelLabel(models: ModelOption[], selectedModelId: string | 
   return selected ? `${selected.label} · ${selected.providerLabel}` : fallback;
 }
 
-export function ModelPicker({ disabled = false, models, onSelect, recentModelIds, selectedModelId, slim = false, compact = false, reasoningLabel, selectedVariant, onVariantChange, autoRoutingEnabled = false, autoRoutingAvailable = false, onAutoRoutingChange, testID = 'chat-model-picker', fallbackLabel, inheritChoice }: ModelPickerProps) {
+export function ModelPicker({ disabled = false, models, onSelect, recentModelIds, selectedModelId, slim = false, compact = false, reasoningLabel, selectedVariant, autoRoutingEnabled = false, autoRoutingAvailable = false, onAutoRoutingChange, testID = 'chat-model-picker', fallbackLabel, inheritChoice }: ModelPickerProps) {
   const { t } = useTranslation();
   const palette = usePalette();
   const [visible, setVisible] = useState(false);
   const [query, setQuery] = useState('');
+  const [staged, setStagedState] = useState<{ modelId: string; variant?: string }>();
+  // Dismissal can arrive through the dialog and the backdrop at once; the ref
+  // makes the single commit idempotent.
+  const stagedRef = useRef<{ modelId: string; variant?: string } | undefined>(undefined);
+  const setStaged = (next: { modelId: string; variant?: string } | undefined) => {
+    stagedRef.current = next;
+    setStagedState(next);
+  };
   useUpdateBlocker(visible);
   const normalizedQuery = query.trim().toLocaleLowerCase();
   const matchingModels = useMemo(
@@ -81,36 +88,60 @@ export function ModelPicker({ disabled = false, models, onSelect, recentModelIds
     }
   }, [visible]);
 
-  const close = () => setVisible(false);
-  const select = (model: ModelOption) => {
-    close();
-    onSelect(model);
+  const close = () => {
+    const next = stagedRef.current;
+    setStaged(undefined);
+    setVisible(false);
+    if (!next) return;
+    const model = models.find((candidate) => candidate.id === next.modelId);
+    if (model && (model.id !== selectedModelId || next.variant !== selectedVariant)) {
+      onSelect(model, next.variant);
+    }
+  };
+  // Auto-routing and inheritance replace the staged choice instead of keeping it.
+  const discardAndClose = () => {
+    setStaged(undefined);
+    setVisible(false);
+  };
+  const open = () => {
+    setStaged(undefined);
+    setVisible(true);
   };
   const selected = models.find((model) => model.id === selectedModelId);
+  const stagedModel = staged?.modelId ? models.find((model) => model.id === staged.modelId) : undefined;
+  const activeModel = stagedModel ?? selected;
+  const activeModelId = activeModel?.id;
+  const activeVariant = stagedModel ? staged?.variant : selectedVariant;
   const selectedModelLabel = autoRoutingEnabled
     ? t('chat:modelPicker.autoRouting')
     : inheritChoice?.selected ? inheritChoice.label : getSelectedModelLabel(models, selectedModelId, fallbackLabel || t('chat:modelPicker.selectModel'));
   const selectedTriggerLabel = autoRoutingEnabled
     ? t('chat:modelPicker.autoRouting')
     : inheritChoice?.selected ? inheritChoice.label : selected?.label || fallbackLabel || t('chat:modelPicker.selectModel');
-  const variantIds = [undefined, ...(selected?.variants.map((variant) => variant.id) ?? [])];
-  const showVariantPicker = !autoRoutingEnabled && variantIds.length > 1 && onVariantChange;
+  // Staging until dismissal keeps the slider on its local value instead of
+  // chasing the session model's server round trip mid-drag.
+  const variantIds = [undefined, ...(activeModel?.variants.map((variant) => variant.id) ?? [])];
+  const showVariantPicker = !autoRoutingEnabled && variantIds.length > 1;
+  const variantIndex = Math.max(0, variantIds.findIndex((variant) => variant === activeVariant));
   const recentModels = useMemo(() => (recentModelIds ?? [])
     .map((id) => models.find((model) => model.id === id))
-    .filter((model): model is ModelOption => model !== undefined && model.id !== selectedModelId)
-    .slice(0, 3), [models, recentModelIds, selectedModelId]);
+    .filter((model): model is ModelOption => model !== undefined && model.id !== activeModelId)
+    .slice(0, 3), [activeModelId, models, recentModelIds]);
   const sections = useMemo(() => [
-    ...(!normalizedQuery && selected ? [{ key: 'selected', title: autoRoutingEnabled ? t('chat:modelPicker.defaultModel') : t('chat:modelPicker.selected'), providerID: undefined, data: [selected] }] : []),
+    ...(!normalizedQuery && activeModel ? [{ key: 'selected', title: autoRoutingEnabled ? t('chat:modelPicker.defaultModel') : t('chat:modelPicker.selected'), providerID: undefined, data: [activeModel] }] : []),
     ...(!normalizedQuery && recentModels.length > 0 ? [{ key: 'recent', title: t('chat:modelPicker.recent'), providerID: undefined, data: recentModels }] : []),
     ...providerGroups.map((group) => ({ key: `provider:${group.providerID}`, title: group.label, providerID: group.providerID, data: group.models })),
-  ], [autoRoutingEnabled, normalizedQuery, selected, recentModels, providerGroups, t]);
+  ], [autoRoutingEnabled, normalizedQuery, activeModel, recentModels, providerGroups, t]);
   const renderModelRow = (model: ModelOption, showProvider = false) => {
-    const isSelected = model.id === selectedModelId;
+    const isSelected = model.id === activeModelId;
     return (
       <Pressable
         key={model.id}
         accessibilityRole="button"
-        onPress={() => select(model)}
+        onPress={() => {
+          if (model.id === activeModelId) return;
+          setStaged(model.id === selectedModelId ? undefined : { modelId: model.id });
+        }}
         style={({ pressed }) => [
           styles.option,
           { backgroundColor: isSelected ? palette.background : palette.surface, borderColor: isSelected ? palette.tint : palette.border },
@@ -137,14 +168,14 @@ export function ModelPicker({ disabled = false, models, onSelect, recentModelIds
           accessibilityLabel={`${selectedModelLabel}${reasoningLabel ? ` · ${reasoningLabel}` : ''}`}
           accessibilityState={{ disabled: disabled || (models.length === 0 && !inheritChoice) }}
           disabled={disabled || (models.length === 0 && !inheritChoice)}
-          onPress={() => { Keyboard.dismiss(); setVisible(true); }}
+          onPress={() => { Keyboard.dismiss(); open(); }}
           style={({ pressed }) => [styles.summary, { opacity: disabled ? 0.45 : pressed ? 0.7 : 1 }]}>
           <Text maxFontSizeMultiplier={1.5} numberOfLines={1} className={cn("text-foreground")} style={[styles.summaryModel]}>{selectedTriggerLabel}</Text>
           {reasoningLabel ? <Text maxFontSizeMultiplier={1.5} numberOfLines={1} className={cn("text-foreground")} style={[styles.summaryReasoning]}>{reasoningLabel}</Text> : null}
         </Pressable>
       ) : (
         <Button variant={visible ? 'secondary' : 'outline'} disabled={disabled || (models.length === 0 && !inheritChoice)}
-          onPress={() => setVisible(true)} className={cn('flex-1 min-w-0', slim && 'px-2')}
+          onPress={open} className={cn('flex-1 min-w-0', slim && 'px-2')}
           testID={`${testID}-trigger`} accessibilityLabel={selectedModelLabel}>
           {renderProviderIcon(selected?.providerID, slim ? 14 : 16, palette.tint)}
           <UiText numberOfLines={1} maxFontSizeMultiplier={1.5}>{selectedModelLabel}</UiText>
@@ -152,7 +183,7 @@ export function ModelPicker({ disabled = false, models, onSelect, recentModelIds
       )}
       <OverlaySheet visible={visible} title={t('chat:modelPicker.chooseModel')} onClose={close} testID={testID} scrollable={false}>
               {inheritChoice ? <Pressable accessibilityRole="radio" accessibilityState={{ checked: inheritChoice.selected }}
-                onPress={() => { close(); inheritChoice.onSelect(); }} className="min-h-row flex-row items-center gap-3 rounded-control border border-border bg-background p-3 m-3">
+                onPress={() => { discardAndClose(); inheritChoice.onSelect(); }} className="min-h-row flex-row items-center gap-3 rounded-control border border-border bg-background p-3 m-3">
                 <View className="flex-1 gap-1"><UiText>{inheritChoice.label}</UiText><UiText variant="description" className="text-muted-foreground">{inheritChoice.description}</UiText></View>
                 {inheritChoice.selected ? <MaterialCommunityIcons name="check" size={20} color={palette.tint} /> : null}
               </Pressable> : null}
@@ -163,8 +194,8 @@ export function ModelPicker({ disabled = false, models, onSelect, recentModelIds
                   disabled={!autoRoutingAvailable}
                   onPress={() => {
                     if (!autoRoutingAvailable) return;
+                    discardAndClose();
                     onAutoRoutingChange(!autoRoutingEnabled);
-                    close();
                   }}
                   testID="chat-model-auto-routing"
                   style={({ pressed }) => [
@@ -195,9 +226,11 @@ export function ModelPicker({ disabled = false, models, onSelect, recentModelIds
                     minimum={0}
                     maximum={variantIds.length - 1}
                     step={1}
-                    value={Math.max(0, variantIds.findIndex((variant) => variant === selectedVariant))}
-                    valueLabel={reasoningLabel ?? getModelVariantLabel(selectedVariant, t)}
-                    onValueChange={(index) => onVariantChange?.(variantIds[index])}
+                    value={variantIndex}
+                    valueLabel={getModelVariantLabel(activeVariant, t)}
+                    onValueChange={(index) => {
+                      if (activeModel) setStaged({ modelId: activeModel.id, variant: variantIds[index] });
+                    }}
                     palette={palette}
                   />
                 </View>

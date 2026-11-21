@@ -44,8 +44,7 @@ export function AgentEditor({ row, readOnly = false, context, scope, onClose, sa
         <ModelPicker models={models} disabled={disabled || complexModel} testID="extension-agent-model-picker" selectedModelId={selected?.id}
           fallbackLabel={complexModel ? t('settings:extensions.editor.customModel') : values.model || undefined}
           inheritChoice={{ label: t('settings:extensions.editor.inheritModel'), description: t('settings:extensions.editor.inheritModelHint'), selected: !values.model && !complexModel, onSelect: () => setModel('') }}
-          onSelect={(model) => setModel(`${model.providerID}/${model.modelID}`)} selectedVariant={modelParts[1]}
-          onVariantChange={selected ? (variant) => setModel(`${selected.providerID}/${selected.modelID}${variant ? `#${variant}` : ''}`) : undefined} />
+          onSelect={(model, variant) => setModel(`${model.providerID}/${model.modelID}${variant ? `#${variant}` : ''}`)} selectedVariant={modelParts[1]} />
         {!models.length || complexModel ? <FieldDescription>{t(complexModel ? 'settings:extensions.editor.customModelHint' : 'settings:extensions.editor.noModels')}</FieldDescription> : null}
       </View></SettingTarget>
       <SettingsDisclosure id="extension-agent-permissions" title={`${t('settings:extensions.agents.permissions')} · ${t(values.permissions.trim() ? 'settings:extensions.editor.custom' : 'settings:extensions.editor.inherited')}`} attention={permissionsOpen}>

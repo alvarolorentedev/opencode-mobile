@@ -175,6 +175,8 @@ test('project extensions can be removed and leave no active entries', async ({ p
   await page.getByTestId('extension-agent-model-picker-search').fill('gpt-4.1-mini');
   await page.screenshot({ path: '/tmp/opencode-extension-model-picker.png' });
   await page.getByRole('button', { name: /GPT-4.1 mini/i }).click();
+  await page.keyboard.press('Escape');
+  await expect(page.getByTestId('extension-agent-model-picker')).toHaveCount(0);
   await page.getByRole('tab', { name: 'Instructions', exact: true }).click();
   await page.getByTestId('settings-extension-agent-instructions').fill('Temporary agent instructions.');
   await page.getByRole('tab', { name: 'Setup', exact: true }).click();
