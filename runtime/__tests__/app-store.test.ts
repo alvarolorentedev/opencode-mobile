@@ -41,4 +41,12 @@ describe('app store', () => {
     expect(store.getState().registry.focus).toEqual({ connectionId: 'c', projectPath: '/p' });
     expect(store.getState().registry.snapshots).toEqual({});
   });
+
+  it('scopes selection by workspace and preserves sibling scopes', () => {
+    const store = createAppStore(defaults);
+    store.getState().setSelection('["a","/one"]', { currentSessionId: 's1' });
+    store.getState().setSelection('["a","/two"]', (current) => ({ currentSessionId: 's2', activeSessionsVisible: !current.activeSessionsVisible }));
+    expect(store.getState().selection['["a","/one"]']).toMatchObject({ currentSessionId: 's1', isBootstrappingChat: false });
+    expect(store.getState().selection['["a","/two"]']).toMatchObject({ currentSessionId: 's2', activeSessionsVisible: true });
+  });
 });

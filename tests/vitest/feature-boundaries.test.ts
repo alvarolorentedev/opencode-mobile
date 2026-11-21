@@ -32,7 +32,7 @@ export function importViolations(from: string, target: string, symbols: string[]
       if (target !== 'runtime/ui.ts' || !uiException[from] || !symbols.length || symbols.some((name) => !uiException[from].includes(name))) problems.push('unauthorized shared runtime import');
     }
   }
-  if (a && target.startsWith('runtime/') && !['runtime/ui.ts', 'runtime/workspace.ts'].includes(target)) problems.push('runtime private import');
+  if (a && target.startsWith('runtime/') && !['runtime/ui.ts', 'runtime/workspace.ts', 'runtime/core.ts'].includes(target)) problems.push('runtime private import');
   if (isUi(from) && !typeOnly && target.startsWith('modules/')) problems.push('native module in presentation');
   if (isUi(from) && !typeOnly && (target.startsWith('shared/protocol/') || target.startsWith('shared/storage/') || target.startsWith('shared/server-data/'))) problems.push('IO in presentation');
   return problems;

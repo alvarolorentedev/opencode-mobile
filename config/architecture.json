@@ -75,6 +75,16 @@
     ]
   },
   "exports": {
+    "runtime/core.ts": [
+      "AppCore",
+      "AppCoreProvider",
+      "AppState",
+      "RegistryState",
+      "SelectionState",
+      "ShellState",
+      "useAppCore",
+      "useAppStore"
+    ],
     "features/updates/index.ts": [
       "UpdateBanner",
       "UpdateNotice",

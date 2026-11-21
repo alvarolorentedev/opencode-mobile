@@ -26,14 +26,28 @@ export type RegistryState = {
   snapshots: Record<string, WorkspaceSnapshot>;
 };
 
+export type SelectionState = {
+  currentSessionId?: string;
+  isBootstrappingChat: boolean;
+  activeSessionsVisible: boolean;
+};
+
+const EMPTY_SELECTION: SelectionState = {
+  currentSessionId: undefined,
+  isBootstrappingChat: false,
+  activeSessionsVisible: false,
+};
+
 export type AppState = {
   shell: ShellState;
   registry: RegistryState;
+  selection: Record<string, SelectionState>;
   setShellValue: <K extends keyof ShellState>(
     key: K,
     value: ShellState[K] | ((current: ShellState[K]) => ShellState[K]),
   ) => void;
   setRegistry: (patch: Partial<RegistryState> | ((current: RegistryState) => Partial<RegistryState>)) => void;
+  setSelection: (scopeKey: string, patch: Partial<SelectionState> | ((current: SelectionState) => Partial<SelectionState>)) => void;
 };
 
 export type AppStore = StoreApi<AppState>;
@@ -50,6 +64,7 @@ export function createAppStore(defaults: AppStoreDefaults): AppStore {
       hiddenProjects: {},
     },
     registry: { connections: [], ready: false, snapshots: {} },
+    selection: {},
     setShellValue: (key, value) => set((state) => ({
       shell: {
         ...state.shell,
@@ -61,5 +76,14 @@ export function createAppStore(defaults: AppStoreDefaults): AppStore {
     setRegistry: (patch) => set((state) => ({
       registry: { ...state.registry, ...(typeof patch === 'function' ? patch(state.registry) : patch) },
     })),
+    setSelection: (scopeKey, patch) => set((state) => {
+      const current = state.selection[scopeKey] ?? EMPTY_SELECTION;
+      return {
+        selection: {
+          ...state.selection,
+          [scopeKey]: { ...current, ...(typeof patch === 'function' ? patch(current) : patch) },
+        },
+      };
+    }),
   }));
 }

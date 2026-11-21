@@ -156,7 +156,9 @@ Meaning:
 - `sessionStatuses` is the connection-wide status map, also owned by Query. The
   connection catalog writes it; project views and the Chat Library select from
   it. Do not keep a per-project status copy.
-- `currentSessionId` is the selected/open session
+- `currentSessionId` is the selected/open session, stored per workspace key in
+  the app store so navigation does not wait for a React render. Selection
+  persists across tab switches for a retained workspace.
 - an explicit selection stays selected while the project session list catches up with a catalog row; once the list includes it, normal reconciliation handles later removal
 - opening a project with no explicit selection picks the newest session in the server list; nothing remembers the previous chat
 
