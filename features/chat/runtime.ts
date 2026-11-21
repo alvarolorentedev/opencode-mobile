@@ -3,6 +3,8 @@ export { migrateTranscriptCaches } from './services/transcript-cache';
 export { pruneProviderTranscripts } from './model/transcript-pruning';
 export { useChatRefresh } from './state/use-chat-refresh';
 export { useChatRuntimeState } from './state/use-chat-runtime-state';
+export { useDiffCatalog } from './state/use-diff-catalog';
+export type { DiffCatalog } from './state/use-diff-catalog';
 export { useMessageCatalog } from './state/use-message-catalog';
 export type { MessageCatalog } from './state/use-message-catalog';
 export type { MessagesBySession } from './services/queries';

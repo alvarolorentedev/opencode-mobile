@@ -2,6 +2,7 @@ import { useCallback, type Dispatch, type SetStateAction } from 'react';
 
 import type { useWorkspaceRuntimeState } from '@/runtime/workspace/use-workspace-runtime-state';
 import type { Session } from '@/shared/protocol/opencode/types';
+import type { FileDiff, Todo } from '@/shared/protocol/opencode/types';
 import type { ApprovalsCatalog } from '@/features/sessions/runtime';
 import type { MessagesBySession } from '@/features/chat/runtime';
 
@@ -11,6 +12,9 @@ type ResetInput = {
   resetTranscript: () => void;
   setSessions: Dispatch<SetStateAction<Session[]>>;
   setMessagesBySession: Dispatch<SetStateAction<MessagesBySession>>;
+  setDiffsBySession: Dispatch<SetStateAction<Record<string, FileDiff[]>>>;
+  setTodosBySession: Dispatch<SetStateAction<Record<string, Todo[]>>>;
+  setVcsDiffsByScope: Dispatch<SetStateAction<Record<'uncommitted' | 'branch', FileDiff[]>>>;
   setPendingPermissionsBySession: ApprovalsCatalog['setPendingPermissionsBySession'];
   setPendingQuestionsBySession: ApprovalsCatalog['setPendingQuestionsBySession'];
 };
@@ -25,6 +29,9 @@ export function useOpencodeProviderReset({
   resetTranscript,
   setSessions,
   setMessagesBySession,
+  setDiffsBySession,
+  setTodosBySession,
+  setVcsDiffsByScope,
   setPendingPermissionsBySession,
   setPendingQuestionsBySession,
 }: ResetInput) {
@@ -56,6 +63,9 @@ export function useOpencodeProviderReset({
     setCurrentSessionId(undefined);
     setSessions([]);
     setMessagesBySession({});
+    setDiffsBySession({});
+    setTodosBySession({});
+    setVcsDiffsByScope({ uncommitted: [], branch: [] });
     resetTranscript();
     setPendingPermissionsBySession({});
     setPendingQuestionsBySession({});
@@ -79,5 +89,8 @@ export function useOpencodeProviderReset({
     setPendingQuestionsBySession,
         setSessions,
         setMessagesBySession,
+        setDiffsBySession,
+        setTodosBySession,
+        setVcsDiffsByScope,
       ]);
 }

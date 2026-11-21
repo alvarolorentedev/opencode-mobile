@@ -21,7 +21,7 @@ import { useOpencodeProviderEffects } from '@/runtime/composition/use-opencode-p
 import { useOpencodeProviderReset } from '@/runtime/composition/use-opencode-provider-reset';
 import { useOpencodeRealtime } from '@/runtime/realtime/use-opencode-realtime';
 import { useProjectActions } from '@/runtime/composition/use-project-actions';
-import { useMessageCatalog , usePromptInbox , usePromptLifecycle , useTranscriptReadErrors , useTranscriptState } from '@/features/chat/runtime';
+import { useDiffCatalog , useMessageCatalog , usePromptInbox , usePromptLifecycle , useTranscriptReadErrors , useTranscriptState } from '@/features/chat/runtime';
 import { useTerminalState } from '@/features/terminal/runtime';
 import { useWorkspaceRuntimeState } from '@/runtime/workspace/use-workspace-runtime-state';
 import { useWorkspaceServerData } from '@/runtime/composition/use-workspace-server-data';
@@ -90,7 +90,8 @@ export function useOpencodeProviderComposition(input: WorkspaceRuntimeInput) {
   const sessionCatalog = useSessionCatalog(client);
   const approvalsCatalog = useApprovalsCatalog(client);
   const messageCatalog = useMessageCatalog(client);
-  const domain = { ...state, ...serverData, ...sessionCatalog, ...approvalsCatalog, ...messageCatalog };
+  const diffCatalog = useDiffCatalog(client);
+  const domain = { ...state, ...serverData, ...sessionCatalog, ...approvalsCatalog, ...messageCatalog, ...diffCatalog };
   const projects = useMemo(
     () => buildOpencodeProjects(serverData.serverProjects),
     [serverData.serverProjects],
@@ -173,6 +174,9 @@ export function useOpencodeProviderComposition(input: WorkspaceRuntimeInput) {
     resetTranscript,
     setSessions: sessionCatalog.setSessions,
     setMessagesBySession: messageCatalog.setMessagesBySession,
+    setDiffsBySession: diffCatalog.setDiffsBySession,
+    setTodosBySession: diffCatalog.setTodosBySession,
+    setVcsDiffsByScope: diffCatalog.setVcsDiffsByScope,
     setPendingPermissionsBySession: approvalsCatalog.setPendingPermissionsBySession,
     setPendingQuestionsBySession: approvalsCatalog.setPendingQuestionsBySession,
   });
@@ -271,8 +275,8 @@ export function useOpencodeProviderComposition(input: WorkspaceRuntimeInput) {
       setSessionStatuses: sessionCatalog.setSessionStatuses,
       explicitSessionSelectionRef: state.explicitSessionSelectionRef,
       setPromptError: prompt.setPromptError,
-      setDiffsBySession: state.setDiffsBySession,
-      setTodosBySession: state.setTodosBySession,
+      setDiffsBySession: diffCatalog.setDiffsBySession,
+      setTodosBySession: diffCatalog.setTodosBySession,
       setPendingPermissionsBySession: approvalsCatalog.setPendingPermissionsBySession,
       setPendingQuestionsBySession: approvalsCatalog.setPendingQuestionsBySession,
       setMcpAuthPrompt: state.setMcpAuthPrompt,
@@ -390,8 +394,8 @@ export function useOpencodeProviderComposition(input: WorkspaceRuntimeInput) {
     native: { settings: state.settings, catalogClient, contract: state.serverContract, isCurrentCatalogClient,
       connectionScope: state.connectionScope, currentSessionId: state.currentSessionId, sessions: sessionCatalog.sessions,
       activeSessions, todoRecordsBySession: transcript.todoRecordsBySession,
-      todosBySession: state.todosBySession, streamConnectedRef },
+      todosBySession: diffCatalog.todosBySession, streamConnectedRef },
   }), [state.activeSessionsVisible, input.connection.revision, input.connection.enabled, values, busy, suspend, catalogClient, catalog.sessions, catalog.statuses, project.loadProjectCatalog, approvalsCatalog.pendingPermissionsBySession,
     approvalsCatalog.pendingQuestionsBySession, state.settings, state.serverContract, isCurrentCatalogClient, state.connectionScope,
-    state.currentSessionId, sessionCatalog.sessions, activeSessions, transcript.todoRecordsBySession, state.todosBySession]);
+    state.currentSessionId, sessionCatalog.sessions, activeSessions, transcript.todoRecordsBySession, diffCatalog.todosBySession]);
 }

@@ -20,7 +20,7 @@ export function useSessionRuntimeState(input: WorkspaceRuntimeInput, connection:
   const scopeKey = workspaceKey({ connectionId: input.connection.id, projectPath: input.projectPath ?? '' });
   const { activeProjectPath, setActiveProjectPath, activeProjectPathRef, projectFileRequestRef } = useProjectRuntimeState(scopeKey, input.projectPath);
   const { currentSessionId, setCurrentSessionId, isBootstrappingChat, setIsBootstrappingChat, activeSessionsVisible, setActiveSessionsVisible, currentSessionIdRef, pendingDeepLinkTargetRef, deepLinkOperationRef, bootstrapPromiseRef, bootstrapTokenRef, explicitSessionSelectionRef, locallyCreatedSessionsRef, suppressedPendingRequestIdsRef } = useSessionState(scopeKey);
-  const { diffsBySession, setDiffsBySession, vcsDiffsByScope, setVcsDiffsByScope, diffScopeBySession, setDiffScopeBySession, selectedDiffMessageBySession, setSelectedDiffMessageBySession, todosBySession, setTodosBySession, isRefreshingMessages, setIsRefreshingMessages, isRefreshingDiffs, setIsRefreshingDiffs, diffScopeBySessionRef, selectedDiffMessageBySessionRef, busyNotificationsRef, promptSubmissionRef } = useChatRuntimeState();
+  const { diffScopeBySession, setDiffScopeBySession, selectedDiffMessageBySession, setSelectedDiffMessageBySession, isRefreshingMessages, setIsRefreshingMessages, isRefreshingDiffs, setIsRefreshingDiffs, diffScopeBySessionRef, selectedDiffMessageBySessionRef, busyNotificationsRef, promptSubmissionRef } = useChatRuntimeState();
   const { mcpAuthPrompt, setMcpAuthPrompt } = useExtensionPromptState();
 
   const connectionScope = useMemo(
@@ -59,11 +59,8 @@ export function useSessionRuntimeState(input: WorkspaceRuntimeInput, connection:
     serverContract,
     activeProjectPath, setActiveProjectPath,
     currentSessionId, setCurrentSessionId,
-    diffsBySession, setDiffsBySession,
-    vcsDiffsByScope, setVcsDiffsByScope,
     diffScopeBySession, setDiffScopeBySession,
     selectedDiffMessageBySession, setSelectedDiffMessageBySession,
-    todosBySession, setTodosBySession,
     mcpAuthPrompt, setMcpAuthPrompt,
     isRefreshingMessages, setIsRefreshingMessages,
     isRefreshingDiffs, setIsRefreshingDiffs,

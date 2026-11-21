@@ -292,6 +292,8 @@
       "pruneProviderTranscripts",
       "useChatRefresh",
       "useChatRuntimeState",
+      "useDiffCatalog",
+      "DiffCatalog",
       "useMessageCatalog",
       "MessageCatalog",
       "MessagesBySession",

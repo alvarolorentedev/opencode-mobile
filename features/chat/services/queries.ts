@@ -10,3 +10,15 @@ export type MessagesBySession = Record<string, SessionMessageRecord[]>;
 export function messagesKey(identity: QueryIdentity, client: ScopedOpencodeClient) {
   return [...connectionQueryKey(identity, client.__opencode.contract), 'messages'] as const;
 }
+
+export function diffsKey(identity: QueryIdentity, client: ScopedOpencodeClient) {
+  return [...connectionQueryKey(identity, client.__opencode.contract), 'diffs'] as const;
+}
+
+export function todosKey(identity: QueryIdentity, client: ScopedOpencodeClient) {
+  return [...connectionQueryKey(identity, client.__opencode.contract), 'todos'] as const;
+}
+
+export function vcsDiffsKey(identity: QueryIdentity, client: ScopedOpencodeClient) {
+  return [...connectionQueryKey(identity, client.__opencode.contract), 'vcs-diffs'] as const;
+}
