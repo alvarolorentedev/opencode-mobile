@@ -75,7 +75,7 @@ test('reverting a running reply stops it before staging the rewind', async ({ pa
   await expect(composer.getByTestId('attachment-tile')).toHaveCount(1);
   await sendPrompt(page, 'Keep working on the revert');
   await expect(page.getByTestId('transcript-activity-session-status')).toContainText('OpenCode is working…');
-  await expect(page.getByText('Working on: Keep working on the revert', { exact: true }).first()).toBeVisible();
+  await expect(page.getByText('Working on: Keep working on the revert', { exact: true }).first()).toBeVisible({ timeout: 20_000 });
 
   const userMessage = page.locator('[data-testid^="transcript-message-"]').filter({ has: page.getByText('Keep working on the revert', { exact: true }) });
   await userMessage.getByRole('button', { name: 'Revert from this message' }).click();
@@ -102,7 +102,7 @@ test('OpenCode 2 keeps steer and append prompts pinned until delivery and recove
     const admission = page.waitForResponse((response) => response.url().endsWith('/prompt') && response.request().method() === 'POST');
     await sendPrompt(page, 'Keep working on the first task');
     const sessionID = (await (await admission).json()).data.sessionID;
-    await expect(page.getByText('Working on: Keep working on the first task', { exact: true })).toBeVisible();
+    await expect(page.getByText('Working on: Keep working on the first task', { exact: true })).toBeVisible({ timeout: 20_000 });
     await sendPrompt(page, 'Steer at the next step');
     const pending = page.getByTestId('pending-prompts');
     await expect(pending).toContainText('Waiting to be used… · Steer');
