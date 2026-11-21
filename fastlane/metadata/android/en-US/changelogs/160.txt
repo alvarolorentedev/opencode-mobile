@@ -1,0 +1,2 @@
+- Diff file headers stay pinned while their diff scrolls in the Files changed sheet.
+- Scrolling over expanded diffs works on Android again.
