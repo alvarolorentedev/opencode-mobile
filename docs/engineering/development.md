@@ -121,7 +121,7 @@ Keep these at their reviewed version until the blocker clears:
 | `expo-iap` 5 | Purchases and restores need signed store sandbox acceptance. |
 | `react-native-android-widget` 0.22 | Pre-1.0 breaking changes must be verified against installed widget receivers on a device. |
 | `solid-js` 1.9 | The plugin GUI host hands Solid to third-party plugin modules, so a major is an ABI break, not an internal bump. |
-| `@opencode/client` 2.3.2, `@opencode/schema` 2.3.2, `@opencode-ai/sdk` 1.18.32 | Protocol surface: bump together, then run the contract suites, the fake-server self-test and the full browser E2E. |
+| `@opencode/client` 2.3.2, `@opencode/schema` 2.3.2, `@opencode-ai/sdk` 1.19.6 | Protocol surface: bump together, then run the contract suites, the fake-server self-test and the full browser E2E. |
 
 `npm audit` still reports advisories that have no safe fix here: Sherpa's
 installer `adm-zip`, Expo's CLI `glob`/`minimatch` line and the `zod` 3 copy that

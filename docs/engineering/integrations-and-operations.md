@@ -297,7 +297,7 @@ These support app settings, notification settings, battery settings, and provide
 
 ## OpenCode Compatibility
 
-The client is implemented against the current `@opencode-ai/sdk` 1.18.3 contract and uses generated SDK types rather than permissive legacy endpoint shims. It is latest-only support: older server shapes and removed endpoint forms are not compatibility targets.
+The client is implemented against the current `@opencode-ai/sdk` 1.19.6 contract and uses generated SDK types rather than permissive legacy endpoint shims. It is latest-only support: older server shapes and removed endpoint forms are not compatibility targets.
 
 ## App Configuration
 
