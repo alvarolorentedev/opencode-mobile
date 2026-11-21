@@ -178,7 +178,10 @@ Approvals are project-scoped Query data now: the refresh path writes one
 listed here because the action layer still calls the grouped maps "session
 caches"; there is no second React copy.
 
-These are keyed by session ID and held in memory.
+Canonical message windows are Query data too: one connection-scoped `messages`
+entry holds the per-session windows, and the transcript hook still calls the
+setter so the action layer keeps one boundary. Diffs and todos remain in memory
+until their Query migration.
 
 `diffsBySession` holds normalized `FileDiff` entries. Both contracts pass through `shared/protocol/opencode/diff.ts` before they are stored, so a v1 `before`/`after` pair arrives with a rebuilt unified `patch` and the viewer renders the same line preview for either contract.
 

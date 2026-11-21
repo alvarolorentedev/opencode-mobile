@@ -21,7 +21,7 @@ import { useOpencodeProviderEffects } from '@/runtime/composition/use-opencode-p
 import { useOpencodeProviderReset } from '@/runtime/composition/use-opencode-provider-reset';
 import { useOpencodeRealtime } from '@/runtime/realtime/use-opencode-realtime';
 import { useProjectActions } from '@/runtime/composition/use-project-actions';
-import { usePromptInbox , usePromptLifecycle , useTranscriptReadErrors , useTranscriptState } from '@/features/chat/runtime';
+import { useMessageCatalog , usePromptInbox , usePromptLifecycle , useTranscriptReadErrors , useTranscriptState } from '@/features/chat/runtime';
 import { useTerminalState } from '@/features/terminal/runtime';
 import { useWorkspaceRuntimeState } from '@/runtime/workspace/use-workspace-runtime-state';
 import { useWorkspaceServerData } from '@/runtime/composition/use-workspace-server-data';
@@ -89,7 +89,8 @@ export function useOpencodeProviderComposition(input: WorkspaceRuntimeInput) {
   const serverData = useWorkspaceServerData(client, state.connection.status === 'connected', isCurrentClient);
   const sessionCatalog = useSessionCatalog(client);
   const approvalsCatalog = useApprovalsCatalog(client);
-  const domain = { ...state, ...serverData, ...sessionCatalog, ...approvalsCatalog };
+  const messageCatalog = useMessageCatalog(client);
+  const domain = { ...state, ...serverData, ...sessionCatalog, ...approvalsCatalog, ...messageCatalog };
   const projects = useMemo(
     () => buildOpencodeProjects(serverData.serverProjects),
     [serverData.serverProjects],
@@ -171,6 +172,7 @@ export function useOpencodeProviderComposition(input: WorkspaceRuntimeInput) {
     resetTerminal,
     resetTranscript,
     setSessions: sessionCatalog.setSessions,
+    setMessagesBySession: messageCatalog.setMessagesBySession,
     setPendingPermissionsBySession: approvalsCatalog.setPendingPermissionsBySession,
     setPendingQuestionsBySession: approvalsCatalog.setPendingQuestionsBySession,
   });
@@ -229,7 +231,7 @@ export function useOpencodeProviderComposition(input: WorkspaceRuntimeInput) {
     currentSessionId: state.currentSessionId,
     setCurrentSessionId: state.setCurrentSessionId,
     sessionStatuses: sessionCatalog.sessionStatuses,
-    messagesBySession: state.messagesBySession,
+    messagesBySession: messageCatalog.messagesBySession,
     pendingPermissionsBySession: approvalsCatalog.pendingPermissionsBySession,
     pendingQuestionsBySession: approvalsCatalog.pendingQuestionsBySession,
     sendingState: prompt.sendingState,

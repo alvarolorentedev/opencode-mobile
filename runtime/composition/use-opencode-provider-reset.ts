@@ -3,12 +3,14 @@ import { useCallback, type Dispatch, type SetStateAction } from 'react';
 import type { useWorkspaceRuntimeState } from '@/runtime/workspace/use-workspace-runtime-state';
 import type { Session } from '@/shared/protocol/opencode/types';
 import type { ApprovalsCatalog } from '@/features/sessions/runtime';
+import type { MessagesBySession } from '@/features/chat/runtime';
 
 type ResetInput = {
   state: ReturnType<typeof useWorkspaceRuntimeState>;
   resetTerminal: () => void;
   resetTranscript: () => void;
   setSessions: Dispatch<SetStateAction<Session[]>>;
+  setMessagesBySession: Dispatch<SetStateAction<MessagesBySession>>;
   setPendingPermissionsBySession: ApprovalsCatalog['setPendingPermissionsBySession'];
   setPendingQuestionsBySession: ApprovalsCatalog['setPendingQuestionsBySession'];
 };
@@ -22,6 +24,7 @@ export function useOpencodeProviderReset({
   resetTerminal,
   resetTranscript,
   setSessions,
+  setMessagesBySession,
   setPendingPermissionsBySession,
   setPendingQuestionsBySession,
 }: ResetInput) {
@@ -52,6 +55,7 @@ export function useOpencodeProviderReset({
     locallyCreatedSessionsRef.current.clear();
     setCurrentSessionId(undefined);
     setSessions([]);
+    setMessagesBySession({});
     resetTranscript();
     setPendingPermissionsBySession({});
     setPendingQuestionsBySession({});
@@ -74,5 +78,6 @@ export function useOpencodeProviderReset({
     setPendingPermissionsBySession,
     setPendingQuestionsBySession,
         setSessions,
+        setMessagesBySession,
       ]);
 }

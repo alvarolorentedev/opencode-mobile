@@ -53,6 +53,7 @@ Zustand is an approved dependency for this role. Redux, Redux Toolkit and XState
 - [x] Move per-workspace session selection into the app store.
 - [x] Move the active project path into the app store selection.
 - [x] Move the presentation map into the app store.
+- [x] Move canonical message windows into Query.
 - [x] Move pending approvals into Query.
 - [x] Add tier checks for the app store and server-state ownership.
 - [ ] Add the cross-tier integration harness.

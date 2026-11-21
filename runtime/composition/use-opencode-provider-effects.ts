@@ -1,7 +1,8 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, type Dispatch, type SetStateAction } from 'react';
 
 import type { ScopedOpencodeClient } from '@/shared/protocol/opencode/client';
 import type { Session, SessionStatus } from '@/shared/protocol/opencode/types';
+import type { MessagesBySession } from '@/features/chat/runtime';
 import { pruneProviderTranscripts } from '@/features/chat/runtime';
 import type { useWorkspaceRuntimeState } from '@/runtime/workspace/use-workspace-runtime-state';
 
@@ -13,6 +14,7 @@ type ProviderEffectsInput = ReturnType<typeof useWorkspaceRuntimeState> & {
   sessions: Session[];
   sessionsRef: { current: Session[] };
   sessionStatuses: Record<string, SessionStatus>;
+  setMessagesBySession: Dispatch<SetStateAction<MessagesBySession>>;
   active: boolean;
   client: ScopedOpencodeClient;
   isCurrentClient: (candidate: object) => boolean;
