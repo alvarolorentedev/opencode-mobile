@@ -66,3 +66,15 @@ export function transcriptCacheKey(connectionScope: string, projectPath: string,
 export function capabilitiesCacheKey(connectionScope: string, projectPath: string) {
   return `opencode-mobile.capabilities.${connectionScope}.${projectPath}`;
 }
+
+// Last successful default-view Mission charts so a cold start paints instead
+// of reloading every aggregate. One entry per connection and chart; it stores
+// token/cost totals and daily step counts only. See
+// features/sessions/services/mission-stats-cache.ts.
+export function missionActivityCacheKey(connectionScope: string) {
+  return `opencode-mobile.mission-activity.${connectionScope}`;
+}
+
+export function missionContributionsCacheKey(connectionScope: string) {
+  return `opencode-mobile.mission-contributions.${connectionScope}`;
+}

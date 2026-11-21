@@ -10,6 +10,7 @@ import { HIDDEN_PROJECTS_MAX } from '@/shared/contracts/domain';
 import { defaultConnectionSettings, type OpencodeConnectionSettings } from '@/shared/protocol/opencode/client/types';
 import { getServerHostname } from '@/shared/contracts/server-url';
 import { clearCapabilitiesSnapshots } from '@/features/ai/runtime';
+import { clearMissionStatsCaches } from '@/features/sessions/runtime';
 import type { ChatPreferences } from '@/shared/preferences/opencode-preferences';
 import { createPersistenceWriter } from '@/shared/storage/persistence-hydration';
 import { findSessionForNavigation } from '@/shared/protocol/services/session-service';
@@ -435,7 +436,9 @@ export function useWorkspaceConnections(shell: WorkspaceShellState, hydrated: bo
     });
   }, [hiddenScope]);
   const removeConnection = useCallback(async (id: string) => {
+    const settings = records.current.find((entry) => entry.id === id)?.settings;
     await disconnect(id);
+    if (settings) void clearMissionStatsCaches(getConnectionScope(settings));
     change((current) => current.filter((entry) => entry.id !== id));
     for (const key of Object.keys(live.current)) if ((JSON.parse(key) as string[])[0] === id) forget(key);
   }, [change, disconnect, forget]);

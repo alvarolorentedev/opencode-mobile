@@ -5,7 +5,7 @@ import { getConnectionScope } from '@/shared/contracts/connection-scope';
 import { parsePendingNotificationSessions, serializePendingNotificationSessions } from '@/features/notifications/runtime';
 import { FAVORITE_SESSIONS_STORAGE_KEY, PENDING_NOTIFICATION_SESSIONS_STORAGE_KEY } from '@/shared/storage/keys';
 import { migrateCapabilitiesSnapshots } from '@/features/ai/runtime';
-import { parseFavoriteSessions, serializeFavoriteSessions , migrateConnectionSessionCaches } from '@/features/sessions/runtime';
+import { parseFavoriteSessions, serializeFavoriteSessions , migrateConnectionSessionCaches, migrateMissionStatsCaches } from '@/features/sessions/runtime';
 import { migrateTranscriptCaches } from '@/features/chat/runtime';
 
 export async function migrateConnectConnectionScope(previous: ConnectionProfile, next: ConnectionProfile) {
@@ -31,6 +31,7 @@ export async function migrateConnectConnectionScope(previous: ConnectionProfile,
       await AsyncStorage.setItem(PENDING_NOTIFICATION_SESSIONS_STORAGE_KEY, serializePendingNotificationSessions(pending));
     }
     await migrateConnectionSessionCaches(oldScope, newScope);
+    await migrateMissionStatsCaches(oldScope, newScope);
     await migrateTranscriptCaches(oldScope, newScope);
     await migrateCapabilitiesSnapshots(oldScope, newScope);
   } catch (reason) { await rollback(); throw reason; }

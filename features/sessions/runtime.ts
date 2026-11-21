@@ -1,3 +1,4 @@
+export { clearMissionStatsCaches } from './services/mission-stats-cache';
 export { collectDescendantSessionIds } from './model/session-utils';
 export { getActiveSessions } from './model/active-sessions';
 export { getCurrentPendingRequests } from './model/selectors';
@@ -7,6 +8,7 @@ export { librarySessions } from './model/workspace-library';
 export { MAX_ACTIVE_SESSIONS } from './state/use-active-sessions';
 export { mergeSessionStatuses } from './model/session-utils';
 export { migrateConnectionSessionCaches } from './services/session-cache';
+export { migrateMissionStatsCaches } from './services/mission-stats-cache';
 export { parseFavoriteSessions } from './services/favorites-storage';
 export { serializeFavoriteSessions } from './services/favorites-storage';
 export { useActiveSessions } from './state/use-active-sessions';

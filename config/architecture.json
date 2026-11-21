@@ -248,6 +248,7 @@
       "useConnectionRetry"
     ],
     "features/sessions/runtime.ts": [
+      "clearMissionStatsCaches",
       "collectDescendantSessionIds",
       "getActiveSessions",
       "getCurrentPendingRequests",
@@ -257,6 +258,7 @@
       "MAX_ACTIVE_SESSIONS",
       "mergeSessionStatuses",
       "migrateConnectionSessionCaches",
+      "migrateMissionStatsCaches",
       "parseFavoriteSessions",
       "serializeFavoriteSessions",
       "useActiveSessions",

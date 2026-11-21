@@ -7,11 +7,31 @@ export const MISSION_STATS_RANGES = [
 ] as const;
 export type MissionStatsHours = typeof MISSION_STATS_RANGES[number]['hours'];
 
+const MISSION_STATS_WINDOW_MS = 5 * 60 * 1000;
+const CONTRIBUTION_DAYS = 30;
+
+// Rounding up keeps the Query key stable between visits without hiding activity
+// from the current partial window. The range end may sit up to five minutes in
+// the future, which the server treats as an empty tail.
+export function missionStatsAlignedAt(now: number) {
+  return Math.ceil(now / MISSION_STATS_WINDOW_MS) * MISSION_STATS_WINDOW_MS;
+}
+
 export function missionStatsBuckets(hours: MissionStatsHours, to: number) {
   const count = MISSION_STATS_RANGES.find((range) => range.hours === hours)!.buckets;
   const interval = hours * 3_600_000 / count;
   const from = to - interval * count;
   return Array.from({ length: count }, (_, index) => ({ from: from + index * interval, to: from + (index + 1) * interval }));
+}
+
+export function missionContributionRange(now: number) {
+  const today = new Date(now);
+  today.setHours(0, 0, 0, 0);
+  const start = new Date(today);
+  start.setDate(start.getDate() - (CONTRIBUTION_DAYS - 1));
+  const tomorrow = new Date(today);
+  tomorrow.setDate(tomorrow.getDate() + 1);
+  return { from: start.getTime(), to: tomorrow.getTime(), endDate: today.getTime() };
 }
 
 export function sumMissionStats(rows: SessionStatsSeries[], bucketCount: number): SessionStatsSeries {

@@ -309,7 +309,10 @@ The usage chart shows tokens used or recorded USD cost. Ranges are 1h, 12h,
 which keeps a stable layout and shows a loading skeleton while it loads. A
 separate contributions card shows the last 30 days of daily activity steps as a
 compact full-width grid. The usage chart does not display server coverage
-counters.
+counters. The last successful all-projects default view is cached on the device
+for 24 hours, so reopening or relaunching Mission paints the charts immediately
+and reconciles them in the background; project-filtered, non-default ranges and
+pending approvals are not cached.
 
 The Android Mission Control widget shows dated counts and server coverage.
 Tapping its heading opens the dashboard. Tapping Needs attention opens that

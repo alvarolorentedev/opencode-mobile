@@ -749,6 +749,18 @@ contributes to the chart only when its buckets also succeed. Removing demand
 cancels remaining reads. Connection credential and project scopes partition
 results. See [ADR 0042](../adr/0042-mission-server-aggregates.md).
 
+The activity window is aligned to five minutes and the contribution range to
+local calendar days, so repeated visits reuse one Query key. Results stay fresh
+for five minutes and remain cached for thirty; a rolled window renders the
+previous chart while it reconciles instead of a skeleton. The last successful
+all-projects, 24-hour view is also kept per connection scope in
+`features/sessions/services/mission-stats-cache.ts` and hydrated into the Query
+cache on launch. Those snapshots contain only token/cost totals, up to eight
+activity buckets and up to 31 daily step rows; they expire after 24 hours,
+never include conversations, approvals or project identifiers, and are
+migrated with the connection scope or removed with the connection. See
+[ADR 0049](../adr/0049-bounded-mission-stats-snapshots.md).
+
 The stats reader also normalizes the server's daily `activity` steps and accepts
 the device timezone. The contributions card requests one 30-day range per server
 and merges the returned days by date into a compact grid. See

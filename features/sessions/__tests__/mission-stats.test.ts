@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { MISSION_STATS_RANGES, missionStatsBuckets, sumMissionActivity, sumMissionStats } from '@/features/sessions/model/mission-stats';
+import { missionContributionRange, missionStatsAlignedAt, missionStatsBuckets, MISSION_STATS_RANGES, sumMissionActivity, sumMissionStats } from '@/features/sessions/model/mission-stats';
 import type { ScopedOpencodeClient } from '@/shared/protocol/opencode/client';
 import { readSessionStats } from '@/shared/protocol/services/session-stats';
 import { sessionStatsOptions } from '@/shared/server-data/session-stats';
@@ -16,6 +16,23 @@ describe('Mission activity statistics', () => {
       expect(bucket.to - bucket.from).toBe(hours * 3_600_000 / buckets);
       if (index) expect(bucket.from).toBe(series[index - 1].to);
     });
+  });
+
+  it('aligns the activity window so repeated visits reuse one Query key', () => {
+    const now = 1_800_000_123_456;
+    const aligned = missionStatsAlignedAt(now);
+    expect(aligned).toBe(1_800_000_300_000);
+    expect(missionStatsAlignedAt(now + 100_000)).toBe(aligned);
+    expect(missionStatsBuckets(24, aligned).at(-1)?.to).toBe(aligned);
+  });
+
+  it('anchors the contribution range to local calendar days', () => {
+    const now = new Date(2026, 10, 21, 15, 30).getTime();
+    const range = missionContributionRange(now);
+    expect(range.endDate).toBe(new Date(2026, 10, 21).getTime());
+    expect(range.from).toBe(new Date(2026, 9, 23).getTime());
+    expect(range.to).toBe(new Date(2026, 10, 22).getTime());
+    expect(missionContributionRange(now + 60 * 60_000).to).toBe(range.to);
   });
 
   it('keeps distinct conversation totals separate from bucket counts', () => {
@@ -44,6 +61,18 @@ describe('Mission activity statistics', () => {
     });
     expect(stats).toHaveBeenCalledWith({ ...range, project: 'project', tools: 'none', timezone: 'Europe/Madrid' }, { signal });
     await expect(readSessionStats(client, range, 'project', signal)).rejects.toThrow('unavailable');
+  });
+
+  it('reuses an aligned stats window until an explicit refresh', () => {
+    const source = { identity: { connectionId: 'a', connectionScope: 'server', authRevision: 0 }, read: vi.fn() };
+    const aligned = missionStatsAlignedAt(1_800_000_123_456);
+    const first = sessionStatsOptions(source, undefined, missionStatsBuckets(24, aligned));
+    const repeated = sessionStatsOptions(source, undefined, missionStatsBuckets(24, missionStatsAlignedAt(1_800_000_200_000)));
+    const refreshed = sessionStatsOptions(source, undefined, missionStatsBuckets(24, aligned), 7);
+    expect(repeated.queryKey).toEqual(first.queryKey);
+    expect(refreshed.queryKey).not.toEqual(first.queryKey);
+    expect(first.staleTime).toBe(5 * 60_000);
+    expect(first.gcTime).toBe(30 * 60_000);
   });
 
   it('cancels remaining buckets when the query is canceled', async () => {
