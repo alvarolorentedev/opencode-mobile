@@ -59,7 +59,7 @@ export async function loadTs(relative, imports = {}, globals = {}) {
     // loadTs suites exercising the same hook code until they migrate.
     const coreListeners = new Set();
     const coreState = {
-      prompt: {}, chat: {}, selection: {},
+      prompt: {}, chat: {}, selection: {}, conversation: {},
       registry: { connections: [], ready: false, snapshots: {} },
       focusedValues: undefined, mcpAuthPrompt: undefined,
       setPrompt(scope, patch) {
@@ -84,6 +84,18 @@ export async function loadTs(relative, imports = {}, globals = {}) {
       setFocusedValues(values) { coreState.focusedValues = values; for (const listener of coreListeners) listener(); },
       setMcpAuthPrompt(value) { coreState.mcpAuthPrompt = typeof value === 'function' ? value(coreState.mcpAuthPrompt) : value; for (const listener of coreListeners) listener(); },
       setShellValue() {},
+      setConversationValue(scope, key, value) {
+        const current = coreState.conversation[scope] ?? { phase: 'off', readbackPhase: 'idle', turnSequence: 0, feedbackAction: 'none', wakeSensor: 'phrase' };
+        const next = typeof value === 'function' ? value(current[key]) : value;
+        if (Object.is(next, current[key])) return;
+        coreState.conversation = { ...coreState.conversation, [scope]: { ...current, [key]: next } };
+        for (const listener of coreListeners) listener();
+      },
+      clearConversation(scope) {
+        if (!coreState.conversation[scope]) return;
+        delete coreState.conversation[scope];
+        for (const listener of coreListeners) listener();
+      },
     };
     const coreStore = { getState: () => coreState, setState: (next) => { Object.assign(coreState, typeof next === 'function' ? next(coreState) : next); for (const listener of coreListeners) listener(); }, subscribe: (listener) => { coreListeners.add(listener); return () => coreListeners.delete(listener); } };
     const useCoreStore = (selector) => {

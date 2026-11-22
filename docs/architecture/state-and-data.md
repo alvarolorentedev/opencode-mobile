@@ -368,6 +368,11 @@ Primary fields:
 - `conversationFeedbackAction`
 - `conversationLatestHeardText`
 
+The app store owns these fields, the turn sequence and the wake sensor for
+each workspace. Native recognition and playback callbacks read the current
+input and readback phases directly from the store. The device session is cleared
+when its workspace runtime unmounts.
+
 Input and readback are independent. Submitting a turn immediately returns input
 to `armed`, so a steer or queued command can arrive while the assistant is
 working. A separate readback watcher waits for the settled assistant reply and

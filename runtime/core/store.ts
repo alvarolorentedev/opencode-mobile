@@ -6,6 +6,8 @@ import type { ChatPreferences } from '@/shared/preferences/opencode-preferences'
 import type { FavoriteSession, HiddenProjectsByConnection } from '@/shared/contracts/domain';
 import type { ConnectionRecord, WorkspaceTarget } from '@/shared/contracts/workspace';
 import type { WorkspaceSnapshot } from '@/runtime/workspace/workspace-types';
+import type { ConversationInputPhase, ConversationReadbackPhase } from '@/features/voice/index';
+import type { VoiceRecoveryAction } from '@/shared/platform/voice/speech-errors';
 
 // Device-local state only. Server facts belong to TanStack Query; anything in
 // this store is a user or device decision. See docs/architecture/state-and-data.md.
@@ -53,6 +55,27 @@ export type PromptOutbox = {
   bySession: Record<string, { prompt: PendingPrompt; queued?: { input: PromptInput; sequence: number } }[]>;
 };
 
+type ConversationRuntimeState = {
+  phase: ConversationInputPhase;
+  readbackPhase: ConversationReadbackPhase;
+  turnSequence: number;
+  sessionId?: string;
+  queuedPrompt?: string;
+  pendingTurn?: string;
+  feedback?: string;
+  feedbackAction: VoiceRecoveryAction;
+  latestHeardText?: string;
+  wakeSensor: 'phrase' | 'local';
+};
+
+const EMPTY_CONVERSATION: ConversationRuntimeState = {
+  phase: 'off',
+  readbackPhase: 'idle',
+  turnSequence: 0,
+  feedbackAction: 'none',
+  wakeSensor: 'phrase',
+};
+
 const EMPTY_CHAT: ChatUiState = {
   diffScopeBySession: {},
   selectedDiffMessageBySession: {},
@@ -76,6 +99,7 @@ export type AppState = {
   selection: Record<string, SelectionState>;
   chat: Record<string, ChatUiState>;
   prompt: Record<string, PromptUiState>;
+  conversation: Record<string, ConversationRuntimeState | undefined>;
   presentation: Map<string, unknown>;
   mcpAuthPrompt?: { mcpName: string; url: string };
   focusedValues?: import('@/runtime/workspace/workspace-types').WorkspaceValues;
@@ -90,6 +114,10 @@ export type AppState = {
   setChat: (scopeKey: string, patch: Partial<ChatUiState> | ((current: ChatUiState) => Partial<ChatUiState>)) => void;
   setPrompt: (scopeKey: string, patch: Partial<PromptUiState> | ((current: PromptUiState) => Partial<PromptUiState>)) => void;
   clearPromptOutboxes: (connectionId: string) => void;
+  setConversationValue: <K extends keyof ConversationRuntimeState>(scopeKey: string, key: K,
+    change: ConversationRuntimeState[K] | ((current: ConversationRuntimeState[K]) => ConversationRuntimeState[K]),
+  ) => void;
+  clearConversation: (scopeKey: string) => void;
 };
 
 export type AppStore = StoreApi<AppState>;
@@ -109,6 +137,7 @@ export function createAppStore(defaults: AppStoreDefaults): AppStore {
     selection: {},
     chat: {},
     prompt: {},
+    conversation: {},
     mcpAuthPrompt: undefined,
     // Mutated in place; the hook only needs the stable map identity.
     presentation: new Map<string, unknown>(),
@@ -161,5 +190,17 @@ export function createAppStore(defaults: AppStoreDefaults): AppStore {
           ? { ...value, outbox: { sequence: value.outbox.sequence, bySession: {} } } : value,
       ])),
     })),
+    setConversationValue: (scopeKey, key, change) => set((state) => {
+      const current = state.conversation[scopeKey] ?? EMPTY_CONVERSATION;
+      const value = typeof change === 'function' ? change(current[key]) : change;
+      if (Object.is(current[key], value)) return state;
+      return { conversation: { ...state.conversation, [scopeKey]: { ...current, [key]: value } } };
+    }),
+    clearConversation: (scopeKey) => set((state) => {
+      if (!state.conversation[scopeKey]) return state;
+      const conversation = { ...state.conversation };
+      delete conversation[scopeKey];
+      return { conversation };
+    }),
   }));
 }

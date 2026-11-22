@@ -1,4 +1,4 @@
-import { useCallback, type Dispatch, type SetStateAction } from 'react';
+import { useCallback, useRef, type Dispatch, type SetStateAction } from 'react';
 
 import type { TranscriptEntry } from '@/shared/presentation/format';
 import type { PendingPermissionRequest, PendingQuestionRequest } from '@/shared/protocol/opencode/client';
@@ -18,8 +18,7 @@ export function useConversationSessionControl({
   connectionStatus,
   conversationCancelRequestedRef,
   conversationListeningRestartTimeoutRef,
-  conversationPhase,
-  conversationPhaseRef,
+  getConversationPhase,
   conversationSessionId,
   conversationStartingRef,
   conversationSubmittingRef,
@@ -51,8 +50,7 @@ export function useConversationSessionControl({
   connectionStatus: ConnectionState['status'];
   conversationCancelRequestedRef: { current: boolean };
   conversationListeningRestartTimeoutRef: { current: ReturnType<typeof setTimeout> | undefined };
-  conversationPhase: ConversationInputPhase;
-  conversationPhaseRef: { current: ConversationInputPhase };
+  getConversationPhase: () => ConversationInputPhase;
   conversationSessionId?: string;
   conversationStartingRef: { current: boolean };
   conversationSubmittingRef: { current: boolean };
@@ -77,7 +75,10 @@ export function useConversationSessionControl({
   stopLocalWakeRef: { current: () => Promise<void> };
   stopSpeaking: () => Promise<void>;
 }) {
+  const stoppingRef = useRef(false);
   const stopConversationMode = useCallback(async () => {
+    if (stoppingRef.current) return;
+    stoppingRef.current = true;
     cancelConfirmation();
     clearPendingConversationResult();
     conversationCancelRequestedRef.current = true;
@@ -89,25 +90,27 @@ export function useConversationSessionControl({
     }
 
     conversationSubmittingRef.current = false;
-    conversationPhaseRef.current = 'off';
+    setConversationPhase('off');
     setReadbackPhase('idle');
     abortSpeechInput();
-    await stopLocal;
-    await stopSpeaking().catch(() => undefined);
-    await stopWorkingSoundAsync().catch(() => undefined);
-    setPendingConversationTurn(undefined);
-    setQueuedConversationPrompt(undefined);
-    setConversationLatestHeardText(undefined);
-    setConversationPhase('off');
-    setConversationSessionId(undefined);
-    setConversationWakeSensor('phrase');
+    try {
+      await stopLocal;
+      await stopSpeaking().catch(() => undefined);
+      await stopWorkingSoundAsync().catch(() => undefined);
+    } finally {
+      setPendingConversationTurn(undefined);
+      setQueuedConversationPrompt(undefined);
+      setConversationLatestHeardText(undefined);
+      setConversationSessionId(undefined);
+      setConversationWakeSensor('phrase');
+      stoppingRef.current = false;
+    }
   }, [
     abortSpeechInput,
     cancelConfirmation,
     clearPendingConversationResult,
     conversationCancelRequestedRef,
     conversationListeningRestartTimeoutRef,
-    conversationPhaseRef,
     conversationSubmittingRef,
     localWakeModeActiveRef,
     setConversationLatestHeardText,
@@ -122,8 +125,9 @@ export function useConversationSessionControl({
   ]);
 
   const toggleConversationMode = useCallback(async () => {
+    if (stoppingRef.current) return;
     if (conversationStartingRef.current && !localWakeModeActiveRef.current) return;
-    if (conversationPhase !== 'off') {
+    if (getConversationPhase() !== 'off') {
       await stopConversationMode();
       return;
     }
@@ -183,7 +187,7 @@ export function useConversationSessionControl({
     abortSpeechInput,
     assistantReplyBaselineIdRef,
     connectionStatus,
-    conversationPhase,
+    getConversationPhase,
     conversationStartingRef,
     currentSessionId,
     ensureActiveSession,

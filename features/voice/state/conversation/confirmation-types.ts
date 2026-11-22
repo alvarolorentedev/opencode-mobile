@@ -27,7 +27,6 @@ export type PendingConfirmation = {
 export type ConfirmationOptions = {
   chatPreferences: ChatPreferences;
   connectionStatus: ConnectionState['status'];
-  conversationPhaseRef: { current: ConversationInputPhase };
   conversationSessionId?: string;
   rearmConversation: () => Promise<void>;
   retryCommand: () => Promise<boolean>;

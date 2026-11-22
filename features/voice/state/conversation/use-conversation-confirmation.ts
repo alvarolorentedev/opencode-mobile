@@ -16,7 +16,6 @@ import { useLatest } from '@/features/voice/state/conversation/use-latest';
 export function useConversationConfirmation({
   chatPreferences,
   connectionStatus,
-  conversationPhaseRef,
   conversationSessionId,
   rearmConversation,
   retryCommand,
@@ -43,7 +42,6 @@ export function useConversationConfirmation({
   const retryTimerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const sessionIdRef = useRef(conversationSessionId);
   const connectionStatusRef = useRef(connectionStatus);
-  const phaseRef = useLatest(conversationPhaseRef);
   const rearmRef = useLatest(rearmConversation);
   const retryCommandRef = useLatest(retryCommand);
   const startLocalRef = useLatest(startLocalConfirmation);
@@ -264,7 +262,6 @@ export function useConversationConfirmation({
       setPending(record);
       setSpeaking(false);
     }
-    phaseRef.current.current = 'confirming';
     setConversationPhase('confirming');
     setConversationLatestHeardText(trimmed);
     applyConversationFeedback(setConversationFeedback, setConversationFeedbackAction, undefined);
@@ -279,7 +276,7 @@ export function useConversationConfirmation({
       await speakPrompt(record);
     })();
     return true;
-  }, [chatPreferences.confirmVoiceCommands, clearTimers, isCurrent, phaseRef, setConversationFeedback, setConversationFeedbackAction, setConversationLatestHeardText, setConversationPhase, speakPrompt, stopCapture]);
+  }, [chatPreferences.confirmVoiceCommands, clearTimers, isCurrent, setConversationFeedback, setConversationFeedbackAction, setConversationLatestHeardText, setConversationPhase, speakPrompt, stopCapture]);
   const confirm = useCallback((text?: string) => {
     const current = pendingRef.current;
     if (!current) {

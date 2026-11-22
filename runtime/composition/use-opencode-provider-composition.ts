@@ -230,6 +230,7 @@ export function useOpencodeProviderComposition(input: WorkspaceRuntimeInput) {
     updateSettings: (patch: Partial<typeof state.settings>) => input.setSettings((current) => ({ ...current, ...patch })),
     switchConnection: input.switchConnection, connectSetup: input.connectSetup, connectionProfiles: input.connectionProfiles, servicesValue: input.servicesValue };
   const { conversation, clearConversationFeedback, toggleConversationMode } = useConversationState({
+    scopeKey: state.scopeKey,
     connection: state.connection,
     chatPreferences: state.chatPreferences,
     currentSessionId: state.currentSessionId,

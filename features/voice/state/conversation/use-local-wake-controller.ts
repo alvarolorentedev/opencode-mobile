@@ -15,7 +15,7 @@ import type { ConversationInputPhase } from '@/features/voice/model/types';
 export function useLocalWakeController({
   commandModel,
   commandLanguage,
-  conversationPhaseRef,
+  getConversationPhase,
   localSpeakerThreshold,
   localSpeakerVerification,
   localWakeModeActiveRef,
@@ -38,7 +38,7 @@ export function useLocalWakeController({
 }: {
   commandModel: LocalCommandModelId;
   commandLanguage?: string;
-  conversationPhaseRef: { current: ConversationInputPhase };
+  getConversationPhase: () => ConversationInputPhase;
   localSpeakerThreshold: number;
   localSpeakerVerification: boolean;
   localWakeModeActiveRef: { current: boolean };
@@ -66,32 +66,31 @@ export function useLocalWakeController({
 
   const rearmWake = useCallback((delayMs = 350) => {
     setTimeout(() => {
-      if (localWakeModeActiveRef.current && conversationPhaseRef.current === 'armed') {
+      if (localWakeModeActiveRef.current && getConversationPhase() === 'armed') {
         void startLocalWakeRef.current();
       }
     }, delayMs);
-  }, [conversationPhaseRef, localWakeModeActiveRef, startLocalWakeRef]);
+  }, [getConversationPhase, localWakeModeActiveRef, startLocalWakeRef]);
 
   const rearmCommand = useCallback((delayMs = 350) => {
     setTimeout(() => {
-      if (localWakeModeActiveRef.current && conversationPhaseRef.current === 'listening') {
+      if (localWakeModeActiveRef.current && getConversationPhase() === 'listening') {
         void startCommandRef.current();
       }
     }, delayMs);
-  }, [conversationPhaseRef, localWakeModeActiveRef]);
+  }, [getConversationPhase, localWakeModeActiveRef]);
 
   const command = useLocalCommandCapture({
     commandModel,
     language: commandLanguage,
     onCommand: (text) => submitLocalCommand(text),
     onError: (message) => {
-      if (!localWakeModeActiveRef.current || conversationPhaseRef.current === 'off') {
+      if (!localWakeModeActiveRef.current || getConversationPhase() === 'off') {
         return;
       }
       if (wakePhraseRequired) recordWakeDiagnostic('local', 'command-capture-failed');
       applyConversationFeedback(setConversationFeedback, setConversationFeedbackAction, message);
       if (!wakePhraseRequired) {
-        conversationPhaseRef.current = 'listening';
         setConversationPhase('listening');
         setConversationLatestHeardText(undefined);
         void stopCommandRef.current().catch(() => undefined);
@@ -99,13 +98,12 @@ export function useLocalWakeController({
         return;
       }
       void stopCommandRef.current().catch(() => undefined);
-      conversationPhaseRef.current = 'armed';
       setConversationPhase('armed');
       setConversationLatestHeardText(undefined);
       rearmWake(500);
     },
     onNoCommand: () => {
-      if (!localWakeModeActiveRef.current || conversationPhaseRef.current === 'off') {
+      if (!localWakeModeActiveRef.current || getConversationPhase() === 'off') {
         return;
       }
       if (wakePhraseRequired) recordWakeDiagnostic('local', 'command-not-heard');
@@ -115,19 +113,17 @@ export function useLocalWakeController({
         'I did not catch a command in your voice. Try again.',
       );
       if (!wakePhraseRequired) {
-        conversationPhaseRef.current = 'listening';
         setConversationPhase('listening');
         setConversationLatestHeardText(undefined);
         rearmCommand(300);
         return;
       }
-      conversationPhaseRef.current = 'armed';
       setConversationPhase('armed');
       setConversationLatestHeardText(undefined);
       rearmWake(300);
     },
     onPartialCommand: (text) => {
-      if (conversationPhaseRef.current === 'listening') {
+      if (getConversationPhase() === 'listening') {
         setConversationLatestHeardText(text);
       }
     },
@@ -180,18 +176,16 @@ export function useLocalWakeController({
   ]);
 
   const handleWake = useCallback(async (initialSamples?: Float32Array) => {
-    if (!wakePhraseRequired || !localWakeModeActiveRef.current || conversationPhaseRef.current !== 'armed') {
+    if (!wakePhraseRequired || !localWakeModeActiveRef.current || getConversationPhase() !== 'armed') {
       return;
     }
     playWakePhraseCue();
     applyConversationFeedback(setConversationFeedback, setConversationFeedbackAction, undefined);
-    conversationPhaseRef.current = 'listening';
     setConversationPhase('listening');
     setConversationLatestHeardText(undefined);
     const started = await startCommandRef.current(initialSamples);
-    if (!started && localWakeModeActiveRef.current && conversationPhaseRef.current === 'listening') {
+    if (!started && localWakeModeActiveRef.current && getConversationPhase() === 'listening') {
       recordWakeDiagnostic('local', 'command-start-failed');
-      conversationPhaseRef.current = 'armed';
       setConversationPhase('armed');
       applyConversationFeedback(
         setConversationFeedback,
@@ -201,29 +195,28 @@ export function useLocalWakeController({
       void stopCommandRef.current().catch(() => undefined);
       rearmWake(300);
     }
-  }, [conversationPhaseRef, localWakeModeActiveRef, rearmWake, setConversationFeedback, setConversationFeedbackAction, setConversationLatestHeardText, setConversationPhase, wakePhraseRequired]);
+  }, [getConversationPhase, localWakeModeActiveRef, rearmWake, setConversationFeedback, setConversationFeedbackAction, setConversationLatestHeardText, setConversationPhase, wakePhraseRequired]);
 
   const localWake = useLocalWakeWord({
     commandModel,
     language: commandLanguage,
     onError: (message) => {
-      if (conversationPhaseRef.current === 'off') {
+      if (getConversationPhase() === 'off') {
         return;
       }
       applyConversationFeedback(setConversationFeedback, setConversationFeedbackAction, message);
-      if (conversationPhaseRef.current === 'listening') {
+      if (getConversationPhase() === 'listening') {
         void stopCommandRef.current().catch(() => undefined);
         void stopConfirmationRef.current().catch(() => undefined);
-        conversationPhaseRef.current = 'armed';
         setConversationPhase('armed');
         setConversationLatestHeardText(undefined);
       }
-      if (conversationPhaseRef.current === 'armed') {
+      if (getConversationPhase() === 'armed') {
         rearmWake(500);
       }
     },
     onRejected: () => {
-      if (conversationPhaseRef.current === 'off') {
+      if (getConversationPhase() === 'off') {
         return;
       }
       applyConversationFeedback(
@@ -231,7 +224,7 @@ export function useLocalWakeController({
         setConversationFeedbackAction,
         'Voice did not match the enrolled voice. Try again.',
       );
-      if (conversationPhaseRef.current !== 'armed') {
+      if (getConversationPhase() !== 'armed') {
         return;
       }
       // Normal rejection keeps the wake detector live; this only re-arms if

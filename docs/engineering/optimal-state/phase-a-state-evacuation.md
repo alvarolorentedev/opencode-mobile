@@ -1,6 +1,6 @@
 # Phase A — State Evacuation
 
-Status: **in progress**. A1 and A2 are complete. A3–A7 remain.
+Status: **in progress**. A1–A3 are complete. A4–A7 remain.
 
 Goal: remove every piece of domain data from the per-workspace React runtime so
 the runtime can be deleted in Phase E without losing retained state.
@@ -30,23 +30,15 @@ app store owns local admission entries and offline inputs. Queue length is
 derived from the outbox. The hook retains request revisions and the flush lock.
 Cancellation invalidates reads that started before the server confirmed it.
 
-## Remaining work
-
 ### A3 — Conversation
 
-Current: `features/voice/state/use-conversation-state.ts` owns ten state values:
-phase, readback phase, turn sequence, session id, queued/pending turn, feedback,
-feedback action, latest heard text and wake sensor.
+The [conversation runtime state](../../architecture/state-and-data.md#conversation-state)
+is scoped to its workspace in the app store. Input and readback callbacks read
+the latest phases directly. The workspace retains the recognizer, audio and
+timer lifecycles. The final Phase A audit covers the nested confirmation and
+readback queues.
 
-Target:
-- Add a scope-keyed conversation slice to the store.
-- Keep recognizer/audio handles and timers in refs.
-- The hook reads selectors and writes through store setters/commands only.
-
-Acceptance:
-- No conversation state in `useState`.
-- Voice unit suites, onboarding voice and settings voice pass.
-- `npm run impact -- features/voice/state/use-conversation-state.ts` suites pass.
+## Remaining work
 
 ### A4 — Terminal
 

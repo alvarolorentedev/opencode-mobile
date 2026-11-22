@@ -50,6 +50,18 @@ describe('app store', () => {
     expect(store.getState().selection['["a","/two"]']).toMatchObject({ currentSessionId: 's2', activeSessionsVisible: true });
   });
 
+  it('retains independent conversation turns and clears only the disposed workspace', () => {
+    const { getState } = createAppStore(defaults);
+    const actions = getState();
+    actions.setConversationValue('one', 'phase', 'listening');
+    actions.setConversationValue('one', 'turnSequence', (value) => value + 1);
+    actions.setConversationValue('two', 'phase', 'armed');
+    expect(getState().conversation.one).toMatchObject({ phase: 'listening', readbackPhase: 'idle', turnSequence: 1 });
+    actions.clearConversation('one');
+    expect(getState().conversation.one).toBeUndefined();
+    expect(getState().conversation.two).toMatchObject({ phase: 'armed', turnSequence: 0 });
+  });
+
   it('clears removed connection outboxes while preserving sibling connections and local IDs', () => {
     const store = createAppStore(defaults);
     const first = '["a","/one",""]';

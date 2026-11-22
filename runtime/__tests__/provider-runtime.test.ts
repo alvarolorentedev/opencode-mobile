@@ -603,6 +603,7 @@ const chatPreferences = {
   confirmVoiceCommands: false,
 };
 voiceRuntime.mount(conversation.useConversationState, {
+  scopeKey: 'voice-test-workspace',
   connection: { status: 'connected', message: 'ready' }, chatPreferences, currentSessionId: 's', setCurrentSessionId: () => {},
   sessionStatuses: { s: { type: 'busy' } }, messagesBySession: {}, pendingPermissionsBySession: {}, pendingQuestionsBySession: {},
   sendingState: { active: false }, ensureActiveSession: async () => 's', sendPrompt: async (_sessionId: any, prompt: any) => { sends++; lastPrompt = prompt; await sendGate.promise; return true; },

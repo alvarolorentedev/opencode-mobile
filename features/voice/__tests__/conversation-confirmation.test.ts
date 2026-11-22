@@ -55,7 +55,6 @@ async function confirmationHarness(overrides: Partial<ChatPreferences> = {}) {
   runtime.mount(hook.useConversationConfirmation, {
     chatPreferences: preferences,
     connectionStatus: 'connected',
-    conversationPhaseRef: phaseRef,
     conversationSessionId: 'session-1',
     rearmConversation,
     retryCommand,
