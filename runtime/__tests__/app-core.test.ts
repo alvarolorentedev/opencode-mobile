@@ -88,9 +88,8 @@ function connectedProject(core: ReturnType<typeof newCore>, connectionId: string
   const createSession = vi.fn(async () => created);
   const openDeepLinkSession = vi.fn(async (_link: unknown, _signal: AbortSignal) => ({ ok: true }));
   const snapshot = {
-    enabled: true, catalogSessions: [{ id: 'rendered', directory: projectPath }], suspend: vi.fn(),
+    enabled: true, boundDirectory: projectPath || undefined, catalogSessions: [{ id: 'rendered', directory: projectPath }], suspend: vi.fn(),
     values: {
-      projectsValue: { activeProjectPath: projectPath },
       conversationValue: { conversation: { active: false } },
       currentSessionValue: { openSession, openDeepLinkSession, createSession },
       sessionLibraryValue: { sessions: [] },

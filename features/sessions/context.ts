@@ -1,16 +1,22 @@
 import type { WorkspaceTarget } from '@/shared/contracts/workspace';
 import { useCallback, useMemo } from 'react';
-import { hashKey } from '@tanstack/react-query';
+import { hashKey, useQuery } from '@tanstack/react-query';
 
 import { useAppCore, useAppStore, useProjectScope, useWorkspaceConnectionSettings, useWorkspaceDomainValue } from '@/runtime/core';
 import { getConnectionScope } from '@/shared/contracts/connection-scope';
 import { mcpOptions } from '@/shared/server-data/diagnostics';
+import { projectSessionsOptions } from './services/queries';
 import { usePermissionRulesState } from './state/use-permission-rules-state';
 
 export function useCurrentSession() {
   const value = useWorkspaceDomainValue((values) => values.currentSessionValue, 'useCurrentSession');
+  const { identity, client, scopeKey } = useProjectScope();
+  const currentSessionId = useAppStore((state) => state.selection[scopeKey]?.currentSessionId);
+  const { data: sessions } = useQuery(projectSessionsOptions(identity, client));
+  const activeSession = currentSessionId ? sessions?.find(({ id }) => id === currentSessionId) : undefined;
   const { openSession: openDeepLinkSession } = useAppCore().commands.connection;
-  return useMemo(() => ({ ...value, openDeepLinkSession }), [openDeepLinkSession, value]);
+  return useMemo(() => ({ ...value, currentSessionId, activeSession, openDeepLinkSession }),
+    [activeSession, currentSessionId, openDeepLinkSession, value]);
 }
 
 export function useSessionLibrary() {

@@ -22,8 +22,9 @@ export function createWorkspaceCommands({ store, connections, queryClient }: Pic
 
   function resume() {
     waiters.resume();
-    unsubscribe ??= store.subscribe(({ registry: current }, { registry: previous }) => {
-      if (current.connections !== previous.connections || current.snapshots !== previous.snapshots) waiters.notify();
+    unsubscribe ??= store.subscribe((current, previous) => {
+      if (current.registry.connections !== previous.registry.connections || current.registry.snapshots !== previous.registry.snapshots
+        || current.selection !== previous.selection) waiters.notify();
     });
     stopConnectionStatus ??= connections.subscribeState(waiters.notify);
   }
@@ -61,23 +62,31 @@ export function createWorkspaceCommands({ store, connections, queryClient }: Pic
     setRegistry({ connections });
   }
 
-  function matches(target: WorkspaceTarget, key: string, snapshot: WorkspaceSnapshot) {
+  function matches(target: WorkspaceTarget, key: string) {
     const [id, project] = JSON.parse(key) as [string, string];
     return id === target.connectionId
-      && (project === target.projectPath || snapshot.values.projectsValue.activeProjectPath === target.projectPath);
+      && (project === target.projectPath || store.getState().selection[key]?.activeProjectPath === target.projectPath);
   }
   function resolveKey(target: WorkspaceTarget) {
     const exact = workspaceKey(target);
     const { snapshots } = registry();
-    return snapshots[exact] ? exact : Object.entries(snapshots).find(([key, snapshot]) => matches(target, key, snapshot))?.[0] ?? exact;
+    return snapshots[exact] ? exact : Object.keys(snapshots).find((key) => matches(target, key)) ?? exact;
   }
-  function isCurrentProjection(entry: ConnectionRecord | undefined, snapshot: WorkspaceSnapshot | undefined) {
-    return snapshot && entry && snapshot.enabled === entry.enabled && (snapshot.revision ?? 0) === (entry.revision ?? 0);
+  function directoryForKey(key: string) {
+    const [, directory] = JSON.parse(key) as [string, string];
+    return store.getState().selection[key]?.activeProjectPath ?? (directory || undefined);
+  }
+  function projectPath(target: WorkspaceTarget) {
+    return directoryForKey(resolveKey(target));
+  }
+  function isCurrentProjection(key: string, entry: ConnectionRecord | undefined, snapshot: WorkspaceSnapshot | undefined) {
+    return snapshot && entry && snapshot.enabled === entry.enabled && (snapshot.revision ?? 0) === (entry.revision ?? 0)
+      && snapshot.boundDirectory === directoryForKey(key);
   }
   function commitFocus(target: WorkspaceTarget, snapshots = registry().snapshots) {
     const forgotten = focusRequest?.forgottenKey;
     focusRequest = undefined;
-    if (forgotten && snapshots[forgotten] && !matches(target, forgotten, snapshots[forgotten])) {
+    if (forgotten && snapshots[forgotten] && !matches(target, forgotten)) {
       snapshots = { ...snapshots };
       delete snapshots[forgotten];
     }
@@ -87,7 +96,8 @@ export function createWorkspaceCommands({ store, connections, queryClient }: Pic
     if (persist) canPersist = true;
     const { snapshots, focus, connections } = registry();
     const entry = connections.find((record) => record.id === target.connectionId);
-    if (focus && snapshots[resolveKey(focus)] && !isCurrentProjection(entry, snapshots[resolveKey(target)])) {
+    const key = resolveKey(target);
+    if (focus && snapshots[resolveKey(focus)] && !isCurrentProjection(key, entry, snapshots[key])) {
       focusRequest = { target, forgottenKey: focusRequest?.forgottenKey };
       return;
     }
@@ -98,8 +108,8 @@ export function createWorkspaceCommands({ store, connections, queryClient }: Pic
     if (snapshots[key] === snapshot) return;
     const next = { ...snapshots, [key]: snapshot };
     const target = focusRequest?.target;
-    if (target && matches(target, key, snapshot)
-      && isCurrentProjection(connections.find((entry) => entry.id === target.connectionId), snapshot)) {
+    if (target && matches(target, key)
+      && isCurrentProjection(key, connections.find((entry) => entry.id === target.connectionId), snapshot)) {
       commitFocus(target, next);
       return;
     }
@@ -122,8 +132,9 @@ export function createWorkspaceCommands({ store, connections, queryClient }: Pic
   function readWorkspace(target: WorkspaceTarget) {
     const entry = registry().connections.find((record) => record.id === target.connectionId);
     if (!entry) throw new Error('This server is no longer available.');
-    const snapshot = registry().snapshots[resolveKey(target)];
-    return isCurrentProjection(entry, snapshot) ? snapshot : undefined;
+    const key = resolveKey(target);
+    const snapshot = registry().snapshots[key];
+    return isCurrentProjection(key, entry, snapshot) ? snapshot : undefined;
   }
   async function ensure(target: WorkspaceTarget, options?: ReadinessOptions) {
     if (!registry().snapshots[resolveKey(target)]) {
@@ -174,7 +185,7 @@ export function createWorkspaceCommands({ store, connections, queryClient }: Pic
       const current = readWorkspace(target);
       const connection = connections.get(target.connectionId)?.getState().connection;
       if (connection?.status === 'error') throw new Error(connection.message);
-      if (connection?.status === 'connected' && (!options?.waitForProject || current?.values.projectsValue.activeProjectPath)) return current;
+      if (connection?.status === 'connected' && (!options?.waitForProject || projectPath(target))) return current;
     }, options?.signal);
   }
 
@@ -183,8 +194,8 @@ export function createWorkspaceCommands({ store, connections, queryClient }: Pic
     const conversation = focus && snapshots[resolveKey(focus)]?.values.conversationValue;
     if (conversation?.conversation.active) await conversation.toggleConversationMode();
   }
-  function selectWorkspace(target: WorkspaceTarget, snapshot: WorkspaceSnapshot) {
-    select({ connectionId: target.connectionId, projectPath: target.projectPath || snapshot.values.projectsValue.activeProjectPath || '' });
+  function selectWorkspace(target: WorkspaceTarget) {
+    select({ connectionId: target.connectionId, projectPath: target.projectPath || projectPath(target) || '' });
   }
 
   async function navigate(target: SessionTarget) {
@@ -211,16 +222,16 @@ export function createWorkspaceCommands({ store, connections, queryClient }: Pic
     check();
     await next.values.currentSessionValue.openSession(target.sessionId);
     check();
-    selectWorkspace(target, next);
+    selectWorkspace(target);
     controller.abort();
   }
   async function activate(target: WorkspaceTarget) {
     const controller = beginNavigation();
     const { signal } = controller;
     await pauseConversation();
-    const next = await connectedWorkspace(target, { signal });
+    await connectedWorkspace(target, { signal });
     if (signal.aborted) throw new Error('This navigation was cancelled.');
-    selectWorkspace(target, next);
+    selectWorkspace(target);
     controller.abort();
   }
   async function openExternalSession(target: SessionTarget, externalSignal?: AbortSignal) {
@@ -232,7 +243,7 @@ export function createWorkspaceCommands({ store, connections, queryClient }: Pic
       await pauseConversation();
       let next = await connectedWorkspace(target, { signal });
       check();
-      if (!target.projectPath && !next.values.projectsValue.activeProjectPath) {
+      if (!target.projectPath && !projectPath(target)) {
         // The probe may settle before the default project publishes readiness.
         const catalog = await next.loadProjectCatalog(true);
         check();
@@ -244,7 +255,7 @@ export function createWorkspaceCommands({ store, connections, queryClient }: Pic
       const opened = await next.values.currentSessionValue.openDeepLinkSession({ sessionId: target.sessionId, projectPath: target.projectPath || undefined }, signal);
       if (!opened.ok) throw new Error(opened.error);
       check();
-      selectWorkspace(target, next);
+      selectWorkspace(target);
     } finally {
       controller.abort();
     }

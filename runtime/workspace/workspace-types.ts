@@ -39,7 +39,7 @@ export type ProjectBindingInput = {
 };
 
 export type WorkspaceSnapshot = {
-  libraryVisible: boolean;
+  boundDirectory?: string;
   revision?: number;
   enabled: boolean;
   values: WorkspaceValues;
@@ -49,16 +49,16 @@ export type WorkspaceSnapshot = {
   catalogSessions: Session[];
   catalogStatuses: Record<string, SessionStatus>;
   loadProjectCatalog: ReturnType<typeof useProjectCatalogActions>['loadProjectCatalog'];
-  native: Omit<Parameters<typeof useWidgetState>[0], 'hydrated' | 'connected' | 'showPreviews' | 'language'> & {
+  native: Omit<Parameters<typeof useWidgetState>[0], 'hydrated' | 'connected' | 'showPreviews' | 'language' | 'currentSessionId'> & {
     activeSessions: ActiveSessionItem[];
   };
 };
 
 export type WorkspaceValues = {
   capabilitiesValue: CapabilitiesContextValue;
-  projectsValue: Pick<ProjectsContextValue, 'activeProjectPath' | 'addProject' | 'refreshProjectCatalog' | 'refreshProjectStatus'>;
+  projectsValue: Pick<ProjectsContextValue, 'addProject' | 'refreshProjectCatalog' | 'refreshProjectStatus'>;
   projectFilesValue: ProjectFilesContextValue;
-  currentSessionValue: CurrentSessionContextValue;
+  currentSessionValue: Omit<CurrentSessionContextValue, 'currentSessionId' | 'activeSession'>;
   sessionLibraryValue: SessionLibraryContextValue;
   chatValue: ChatContextValue;
   conversationValue: ConversationContextValue;

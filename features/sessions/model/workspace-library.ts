@@ -5,6 +5,8 @@ import { sessionKey } from '@/shared/contracts/workspace';
 import { getConnectionScope } from '@/shared/contracts/connection-scope';
 
 type ConnectionStates = ReadonlyMap<string, { connection: { status: string } }>;
+type SessionSelection = { activeProjectPath?: string; currentSessionId?: string };
+type ProjectSessions = { runtime: WorkspaceSnapshot; projectPath?: string; currentSessionId?: string };
 
 export type LibrarySession = WorkspaceTarget & {
   sessionId: string; session: Session; status: SessionStatus; serverName: string; preview?: string;
@@ -13,33 +15,35 @@ export type LibrarySession = WorkspaceTarget & {
 export function connectedConnections(connections: ConnectionRecord[], lifecycles: ConnectionStates) {
   return connections.filter((entry) => entry.enabled && lifecycles.get(entry.id)?.connection.status === 'connected');
 }
-export function librarySessions(connections: ConnectionRecord[], snapshots: Record<string, WorkspaceSnapshot>, lifecycles: ConnectionStates, focus?: WorkspaceTarget) {
+export function librarySessions(connections: ConnectionRecord[], snapshots: Record<string, WorkspaceSnapshot>, lifecycles: ConnectionStates,
+  selections: Record<string, SessionSelection>, focus?: WorkspaceTarget) {
   const rows = new Map<string, LibrarySession>();
-  const runtimesByConnection = new Map<string, WorkspaceSnapshot[]>();
+  const projectsByConnection = new Map<string, ProjectSessions[]>();
   for (const [key, runtime] of Object.entries(snapshots)) {
-    const [connectionId] = JSON.parse(key) as [string, string];
-    const list = runtimesByConnection.get(connectionId);
-    if (list) list.push(runtime);
-    else runtimesByConnection.set(connectionId, [runtime]);
+    const [connectionId, directory] = JSON.parse(key) as [string, string];
+    const project = { runtime, projectPath: selections[key]?.activeProjectPath ?? (directory || undefined), currentSessionId: selections[key]?.currentSessionId };
+    const list = projectsByConnection.get(connectionId);
+    if (list) list.push(project);
+    else projectsByConnection.set(connectionId, [project]);
   }
   const servers = connectedConnections(connections, lifecycles);
   const nameCounts = new Map<string, number>();
   for (const entry of servers) nameCounts.set(entry.name, (nameCounts.get(entry.name) ?? 0) + 1);
   for (const entry of servers) {
-    const runtimes = runtimesByConnection.get(entry.id) ?? [];
-    const primary = runtimes[0];
+    const projects = projectsByConnection.get(entry.id) ?? [];
+    const primary = projects[0]?.runtime;
     if (!primary) continue;
     const label = (nameCounts.get(entry.name) ?? 0) > 1
       ? `${entry.name} · ${new URL(entry.settings.serverUrl).host}`
       : entry.name;
     const scope = getConnectionScope(entry.settings);
-    const localByProject = new Map<string, WorkspaceSnapshot>();
+    const localByProject = new Map<string, ProjectSessions>();
     const liveSessionsByProject = new Map<string, Map<string, Session>>();
     const catalogByIdAndDirectory = new Map<string, Session>();
-    for (const runtime of runtimes) {
-      const projectPath = runtime.values.projectsValue.activeProjectPath;
+    for (const project of projects) {
+      const { runtime, projectPath } = project;
       if (projectPath && !localByProject.has(projectPath)) {
-        localByProject.set(projectPath, runtime);
+        localByProject.set(projectPath, project);
         const live = runtime.values.sessionLibraryValue.sessions;
         const liveById = new Map<string, Session>();
         for (const session of live) {
@@ -56,21 +60,21 @@ export function librarySessions(connections: ConnectionRecord[], snapshots: Reco
     const favoriteKeys = new Set(primary.values.sessionLibraryValue.favoriteSessions
       .filter((favorite) => favorite.connectionScope === scope)
       .map((favorite) => `${favorite.projectPath}\u0000${favorite.sessionId}`));
-    for (const runtime of runtimes) {
+    for (const { runtime, projectPath: directory } of projects) {
       for (const session of [...runtime.catalogSessions, ...runtime.values.sessionLibraryValue.sessions]) {
-        const projectPath = session.directory || runtime.values.projectsValue.activeProjectPath;
+        const projectPath = session.directory || directory;
         if (!projectPath || session.time.archived) continue;
         const target = { connectionId: entry.id, projectPath, sessionId: session.id };
         const key = sessionKey(target);
         const local = localByProject.get(projectPath);
-        const live = local?.values.sessionLibraryValue;
+        const live = local?.runtime.values.sessionLibraryValue;
         rows.set(key, {
           ...target,
           session: liveSessionsByProject.get(projectPath)?.get(session.id) ?? session,
           serverName: label,
           status: live?.sessionStatuses[session.id] ?? runtime.catalogStatuses[session.id] ?? { type: 'idle' },
           preview: live?.sessionPreviewById[session.id],
-          current: focus?.connectionId === entry.id && (!focus.projectPath || focus.projectPath === projectPath) && local?.values.currentSessionValue.currentSessionId === session.id,
+          current: focus?.connectionId === entry.id && (!focus.projectPath || focus.projectPath === projectPath) && local?.currentSessionId === session.id,
           favorite: favoriteKeys.has(`${projectPath}\u0000${session.id}`),
         });
       }

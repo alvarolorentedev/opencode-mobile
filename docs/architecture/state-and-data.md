@@ -42,6 +42,12 @@ Project headers and pickers derive their rows from the scoped location,
 connection catalog, worktree and VCS Query entries. The app store supplies
 the selected directory and the connection manager supplies its lifecycle.
 
+Navigation, the share picker and Chat Library read project and session
+selection from the app store. Session presentation selects the active row
+from the scoped Query list, and library polling reads visibility from the store.
+Navigation waits for the action binding to match the selected directory and
+credential revision before opening a session.
+
 Session selection and startup bootstrap use the scoped app-core command in
 `runtime/core/commands/session-navigation.ts`. Explicit selection commits
 before transcript hydration and cancels any in-flight bootstrap for that

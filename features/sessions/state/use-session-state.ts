@@ -21,7 +21,6 @@ export function useSessionState(scopeKey: string) {
     write((current) => ({ currentSessionId: typeof value === 'function' ? value(current.currentSessionId) : value }));
   }, [write]);
   const isBootstrappingChat = selection.isBootstrappingChat;
-  const activeSessionsVisible = selection.activeSessionsVisible;
   const setActiveSessionsVisible = useCallback<Dispatch<SetStateAction<boolean>>>((value) => {
     write((current) => ({ activeSessionsVisible: typeof value === 'function' ? value(current.activeSessionsVisible) : value }));
   }, [write]);
@@ -40,5 +39,5 @@ export function useSessionState(scopeKey: string) {
     set current(explicitSessionId: string | undefined) { write({ explicitSessionId }); },
   }), [scopeKey, store, write]);
 
-  return { currentSessionId, setCurrentSessionId, isBootstrappingChat, activeSessionsVisible, setActiveSessionsVisible, currentSessionIdRef, pendingDeepLinkTargetRef, deepLinkOperationRef, explicitSessionSelectionRef };
+  return { currentSessionId, setCurrentSessionId, isBootstrappingChat, setActiveSessionsVisible, currentSessionIdRef, pendingDeepLinkTargetRef, deepLinkOperationRef, explicitSessionSelectionRef };
 }

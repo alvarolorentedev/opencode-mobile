@@ -30,14 +30,14 @@ export function useSessionPresentation({
     () => ({ list: activeSessions, refresh: refreshActiveSessions, setVisible: setActiveSessionsVisible }),
     [activeSessions, refreshActiveSessions, setActiveSessionsVisible],
   );
-  const currentSessionValue = useMemo<CurrentSessionContextValue>(
-    () => ({ currentSessionId, activeSession, activeSessions: activeSessionsValue, ensureActiveSession, openDeepLinkSession, openSession, createSession }),
-    [currentSessionId, activeSession, activeSessionsValue, ensureActiveSession, openDeepLinkSession, openSession, createSession],
+  const currentSessionValue = useMemo(
+    () => ({ activeSessions: activeSessionsValue, ensureActiveSession, openDeepLinkSession, openSession, createSession }),
+    [activeSessionsValue, ensureActiveSession, openDeepLinkSession, openSession, createSession],
   );
   const sessionLibraryValue = useMemo<SessionLibraryContextValue>(
     () => ({ sessions, sessionStatuses, favoriteSessions, toggleFavoriteSession, isFavoriteSession, clearFavoriteSession, sessionPreviewById, refreshSessions, deleteSession, renameSession, forkSession, revertSession, unrevertSession, openSessionInProject }),
     [sessions, sessionStatuses, favoriteSessions, toggleFavoriteSession, isFavoriteSession, clearFavoriteSession, sessionPreviewById, refreshSessions, deleteSession, renameSession, forkSession, revertSession, unrevertSession, openSessionInProject],
   );
 
-  return { currentSessionValue, sessionLibraryValue };
+  return { activeSession, currentSessionValue, sessionLibraryValue };
 }

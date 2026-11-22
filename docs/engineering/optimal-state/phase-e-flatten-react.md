@@ -46,6 +46,8 @@ Start only after Phase D is complete and green.
   guarded client when creating a chat in a new checkout.
 - Project headers and pickers read catalog, location, worktree and VCS data
   from Query. The remaining project projection still supplies action handles.
+- Navigation, sharing and the Chat Library read selected directories and
+  sessions from the app store. The active session row comes from Query.
 - `runtime/core/workspace-selectors.ts` selects the retained project projection.
 - [ADR 0052](../../adr/0052-explicit-overlay-dependencies.md) records explicit
   portal targets and update blocker callbacks. Shared controls use shared imports.

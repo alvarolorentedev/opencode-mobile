@@ -4,7 +4,7 @@ import type { ProjectFile } from '@/shared/protocol/opencode/project-file';
 
 import type { ProjectFilesContextValue, ProjectsContextValue } from '../model/types';
 
-type ProjectPresentationInput = Pick<ProjectsContextValue, 'activeProjectPath' | 'addProject' | 'refreshProjectCatalog'> &
+type ProjectPresentationInput = Pick<ProjectsContextValue, 'addProject' | 'refreshProjectCatalog'> &
   Omit<ProjectFilesContextValue, 'projectFile'> & {
     refreshServerFeatures: ProjectsContextValue['refreshProjectStatus'];
     selectedProjectFile?: ProjectFile;
@@ -15,14 +15,14 @@ type ProjectPresentationInput = Pick<ProjectsContextValue, 'activeProjectPath' |
   };
 
 export function useProjectPresentation({
-  activeProjectPath, addProject, refreshProjectCatalog,
+  addProject, refreshProjectCatalog,
   refreshServerFeatures, selectedProjectFile, openProjectFile, saveProjectFile, closeProjectFile, downloadProjectFile,
   browser, projectFileStatuses, vcsInfo, worktrees, refreshWorktrees, removeWorktree,
 }: ProjectPresentationInput) {
   const projectsValue = useMemo(() => ({
-    activeProjectPath, addProject, refreshProjectCatalog,
+    addProject, refreshProjectCatalog,
     refreshProjectStatus: refreshServerFeatures,
-  }), [activeProjectPath, addProject, refreshProjectCatalog, refreshServerFeatures]);
+  }), [addProject, refreshProjectCatalog, refreshServerFeatures]);
 
   const projectFile = useMemo(() => ({
     selected: selectedProjectFile, open: openProjectFile, save: saveProjectFile, close: closeProjectFile, download: downloadProjectFile,

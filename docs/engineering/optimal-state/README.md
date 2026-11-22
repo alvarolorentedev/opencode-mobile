@@ -288,10 +288,16 @@ npm run validate:commit
   chat with the exact root client and opens the returned checkout. The commit
   gate passed with 1,283 tests and one existing skip. All 56 focused tests and
   37 browser flows across Projects, Sessions, diffs and multi-server passed.
-- E14. Project headers and pickers read the catalog, location, worktree and VCS
+- E14, `ec4c22e7`. Project headers and pickers read the catalog, location, worktree and VCS
   Query entries directly. The commit gate passed with 1,283 tests and one
   existing skip. All 56 focused tests and 84 browser flows across Projects,
   Onboarding, Terminal, multi-server, Settings, Extensions, Chat and Sessions passed.
+- E15. Navigation, sharing, the library and widgets read the project and session
+  selection from the app store. Navigation waits for a binding at the selected
+  directory and credential revision. The commit gate passed with 1,283 tests
+  and one existing skip. All 79 focused tests passed. The full 185-flow browser
+  run passed before the final directory binding adjustment. All 32 Sessions,
+  Settings, multi-server and share flows passed on the final build.
 
 ## Loop protocol
 

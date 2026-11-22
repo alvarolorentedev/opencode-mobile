@@ -9,7 +9,7 @@ import { useWorkspaces } from '@/runtime/workspace/workspace-context';
 import { useAppCore, useConnectionLifecycles } from '@/runtime/core';
 import type { WorkspaceSnapshot } from '@/runtime/workspace/workspace-types';
 
-export function WorkspaceNative({ runtime, preferences, ready, busy, active = true }: { runtime: WorkspaceSnapshot; preferences: ChatPreferences; ready: boolean; busy: boolean; active?: boolean }) {
+export function WorkspaceNative({ runtime, currentSessionId, preferences, ready, busy, active = true }: { runtime: WorkspaceSnapshot; currentSessionId?: string; preferences: ChatPreferences; ready: boolean; busy: boolean; active?: boolean }) {
   const registry = useWorkspaces();
   const { connections } = useAppCore();
   const lifecycles = useConnectionLifecycles();
@@ -21,7 +21,7 @@ export function WorkspaceNative({ runtime, preferences, ready, busy, active = tr
   })).values()].sort((a, b) => Number(b.status.type !== 'idle') - Number(a.status.type !== 'idle') || b.updatedAt - a.updatedAt), [lifecycles, registry.snapshots]);
   useNativeSurfaces({ ready, connected: active && [...lifecycles.values()].some(({ connection }) => connection.status === 'connected'), connectionScope: runtime.native.connectionScope,
     language: preferences.language, activeSessions });
-  const widgets = useWidgetState({ ...runtime.native, hydrated: ready, connected,
+  const widgets = useWidgetState({ ...runtime.native, currentSessionId, hydrated: ready, connected,
     showPreviews: preferences.showWidgetPreviews !== false, language: preferences.language });
   const { handleWidgetEvent } = widgets;
   useEffect(() => {

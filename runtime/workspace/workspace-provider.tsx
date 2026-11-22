@@ -57,6 +57,7 @@ export function WorkspaceProvider({ children }: PropsWithChildren) {
   const profiles = useAppStore((state) => state.shell.profiles);
   const setProfiles = useCallback((value: SetStateAction<ConnectionProfile[]>) => core.store.getState().setShellValue('profiles', value), [core]);
   const registryState = useAppStore((state) => state.registry);
+  const selections = useAppStore((state) => state.selection);
   const lifecycles = useConnectionLifecycles();
   const manager = useWorkspaceConnections(isHydrated, {
     registry: registryState,
@@ -82,7 +83,9 @@ export function WorkspaceProvider({ children }: PropsWithChildren) {
     .map(({ id, authRevision }) => [id, authRevision, mission.servers.find((server) => server.id === id)?.authorized === false]));
   useMissionWidget(mission, missionWidgetScope, isHydrated && manager.ready, shell.chatPreferences.language);
   const fileClipboard = useFileClipboard(connections);
-  const current = focus ? snapshots[resolveKey(focus)] : undefined;
+  const focusedKey = focus && resolveKey(focus);
+  const current = focusedKey ? snapshots[focusedKey] : undefined;
+  const selection = focusedKey ? selections[focusedKey] : undefined;
   const focusedSettings = current?.native.settings;
   const settings = focusedSettings ?? shell.settings;
   const focusedPreferences = connections.find(({ id }) => id === focus?.connectionId)?.preferences;
@@ -136,13 +139,13 @@ export function WorkspaceProvider({ children }: PropsWithChildren) {
   const refreshTargets = useCallback(async () => {
     await Promise.all(Object.values(catalogs).map((catalog) => catalog.refresh()));
   }, [catalogs]);
-  const shareTargets = useMemo(() => librarySessions(connections, snapshots, lifecycles, focus)
+  const shareTargets = useMemo(() => librarySessions(connections, snapshots, lifecycles, selections, focus)
     .filter((row) => !shell.chatPreferences.hideSubagentChats || !row.session.parentID)
     .map((row) => ({ connectionScope: getConnectionScope(connections.find((entry) => entry.id === row.connectionId)!.settings),
-      projectPath: row.projectPath, sessionId: row.sessionId, title: `${row.serverName} · ${row.session.title}` })), [connections, snapshots, lifecycles, focus, shell.chatPreferences.hideSubagentChats]);
+      projectPath: row.projectPath, sessionId: row.sessionId, title: `${row.serverName} · ${row.session.title}` })), [connections, snapshots, lifecycles, selections, focus, shell.chatPreferences.hideSubagentChats]);
   const sharedInput = useShareState({ hydrated: isHydrated, connectionScope: getConnectionScope(settings),
-    projectPath: focus ? current?.values.projectsValue.activeProjectPath : undefined,
-    currentSessionId: focus ? current?.values.currentSessionValue.currentSessionId : undefined,
+    projectPath: selection?.activeProjectPath ?? (focus?.projectPath || undefined),
+    currentSessionId: selection?.currentSessionId,
     availableTargets: shareTargets,
     createAt: async (target) => {
       const entry = connections.find((item) => getConnectionScope(item.settings) === target.connectionScope);
@@ -178,7 +181,7 @@ export function WorkspaceProvider({ children }: PropsWithChildren) {
   useConnectionDemand(readTarget?.connectionId);
   return <VoiceSetupTestContext.Provider value={voiceSetupTest}>
     <WorkspaceContext.Provider value={registry}>
-    {connections.map((entry) => <ConnectionCatalog key={entry.id} entry={entry} demanded={readTarget?.connectionId === entry.id} online={network.online} libraryVisible={pathname === '/' && focus?.connectionId === entry.id && Boolean(current?.libraryVisible)} missionVisible={pathname === MISSION_PATH} onCatalog={publishCatalog} />)}
+    {connections.map((entry) => <ConnectionCatalog key={entry.id} entry={entry} demanded={readTarget?.connectionId === entry.id} online={network.online} libraryVisible={pathname === '/' && focus?.connectionId === entry.id && Boolean(selection?.activeSessionsVisible)} missionVisible={pathname === MISSION_PATH} onCatalog={publishCatalog} />)}
     {connections.flatMap((entry) => entry.projects.map((path, index) => {
         const key = workspaceKey({ connectionId: entry.id, projectPath: path });
         const visible = focus?.connectionId === entry.id && (focus.projectPath === path || current === snapshots[key]);
@@ -189,7 +192,7 @@ export function WorkspaceProvider({ children }: PropsWithChildren) {
           updateSettings={updateWorkspaceSettings} updatePreferences={manager.updatePreferences} publish={manager.publish} forget={manager.forget} />;
     }))}
     {current ? <UpdatesContext.Provider value={updates}>
-      <WorkspaceNative runtime={current} preferences={shell.chatPreferences} ready={isHydrated} active={Boolean(focus)} busy={Object.values(snapshots).some((runtime) => runtime.busy)} />
+      <WorkspaceNative runtime={current} currentSessionId={selection?.currentSessionId} preferences={shell.chatPreferences} ready={isHydrated} active={Boolean(focus)} busy={Object.values(snapshots).some((runtime) => runtime.busy)} />
       {children}
     </UpdatesContext.Provider> : <View style={{ flex: 1, backgroundColor: '#101212', alignItems: 'center', justifyContent: 'center' }}><ActivityIndicator color="#C3CECB" /></View>}
     </WorkspaceContext.Provider>

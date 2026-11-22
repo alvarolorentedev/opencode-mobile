@@ -40,14 +40,14 @@ describe('multi-server contracts', () => {
   });
     const connection = (id: string) => ({ id, name: id, enabled: true, settings: { serverUrl: `http://${id}`, username: '' } });
     const session = (id: string, updated: number) => ({ id, directory: '/same', title: id, time: { updated } });
-    const snapshot = (id: string, sessions: any[], current?: string) => ({ catalogSessions: sessions, catalogStatuses: { busy: { type: 'busy' } }, values: {
-      projectsValue: { activeProjectPath: '/same' }, currentSessionValue: { currentSessionId: current },
+    const snapshot = (sessions: any[]) => ({ catalogSessions: sessions, catalogStatuses: { busy: { type: 'busy' } }, values: {
       sessionLibraryValue: { sessions, sessionStatuses: {}, favoriteSessions: [], sessionPreviewById: {} },
     } });
     const rows = librarySessions([connection('a'), connection('b')], {
-      '["a","/same"]': snapshot('a', [session('same', 3), session('idle', 1)], 'same'),
-      '["b","/same"]': snapshot('b', [session('same', 9), session('busy', 2)]),
-    }, new Map(['a', 'b'].map((id) => [id, { connection: { status: 'connected' } }])), { connectionId: 'a', projectPath: '/same' });
+      '["a",""]': snapshot([session('same', 3), session('idle', 1)]),
+      '["b","/same"]': snapshot([session('same', 9), session('busy', 2)]),
+    }, new Map(['a', 'b'].map((id) => [id, { connection: { status: 'connected' } }])),
+    { '["a",""]': { activeProjectPath: '/same', currentSessionId: 'same' } }, { connectionId: 'a', projectPath: '/same' });
     expect(rows.map((row: any) => [row.connectionId, row.sessionId])).toEqual([['a', 'same'], ['b', 'busy'], ['b', 'same'], ['a', 'idle']]);
     expect(rows.filter((row: any) => row.current)).toHaveLength(1);
   });
@@ -60,7 +60,6 @@ describe('multi-server contracts', () => {
     const connection = (id: string, enabled = true) => ({ id, name: id, enabled, settings: { serverUrl: `http://${id}`, username: '' } });
     const session = (id: string) => ({ id, directory: '/same', title: id, time: { updated: 1 } });
     const snapshot = (sessions: any[], favoriteSessions: any[] = []) => ({ catalogSessions: sessions, catalogStatuses: {}, values: {
-      projectsValue: { activeProjectPath: '/same' }, currentSessionValue: { currentSessionId: undefined },
       sessionLibraryValue: { sessions, sessionStatuses: {}, favoriteSessions, sessionPreviewById: {} },
     } });
     const favorite = (connectionScope: string) => ({ connectionScope, projectPath: '/favorite', sessionId: 'f', title: 'f', favoritedAt: 1 });
@@ -74,7 +73,7 @@ describe('multi-server contracts', () => {
     const lifecycles = new Map(Object.entries({ disabled: 'connected', connected: 'connected', connecting: 'connecting', errored: 'error' })
       .map(([id, status]) => [id, { connection: { status } }]));
     expect(connectedConnections(connections, lifecycles).map((entry: any) => entry.id)).toEqual(['connected']);
-    expect(librarySessions(connections, snapshots, lifecycles).map((row: any) => [row.connectionId, row.sessionId]).sort())
+    expect(librarySessions(connections, snapshots, lifecycles, {}).map((row: any) => [row.connectionId, row.sessionId]).sort())
       .toEqual([['connected', 'f'], ['connected', 'kept']]);
   });
   it('keeps unrelated workspace domains stable when only chat data changes', async () => {
@@ -82,7 +81,9 @@ describe('multi-server contracts', () => {
     let current: Record<string, unknown>;
     const settings = { serverUrl: 'http://a', username: '', password: '', directory: '' };
     const store = createAppStore({ settings, chatPreferences: {} as never, controlPlaneUrl: '' });
+    const scopeKey = '["http://a:","/repo"]';
     store.getState().setRegistry({ ready: true });
+    store.getState().setSelection(scopeKey, { currentSessionId: 's' });
     store.getState().setShellValue('onboardingVersion', CURRENT_ONBOARDING_VERSION);
     const commands = {
       connection: { retry: vi.fn(), openSession: vi.fn(), openSessionInProject: vi.fn() },
@@ -91,6 +92,7 @@ describe('multi-server contracts', () => {
     const connectionControls = { connectionProfiles: [], connectSetup: {}, services: {} };
     const lifecycle = { connection: { status: 'connected' }, contract: 'v2' };
     const projectInventory = { activeProjectPath: '/repo', projects: [] };
+    const projectSessions = [{ id: 's' }];
     const { useConnection, useProjects, useCurrentSession, useSessionLibrary, useOnboarding, useChat } = await loadTs([
       'features/connections/context.ts', 'features/projects/context.ts', 'features/sessions/context.ts',
       'features/onboarding/context.ts', 'features/chat/context.ts',
@@ -104,10 +106,13 @@ describe('multi-server contracts', () => {
         useActiveWorkspaceTarget: () => ({ connectionId: 'http://a:', projectPath: '/repo' }),
         useConnectionLifecycle: () => lifecycle,
         useWorkspaceConnectionSettings: () => settings,
+        useProjectScope: () => ({ scopeKey }),
       },
+      '@tanstack/react-query': { useQuery: () => ({ data: projectSessions }) },
       '@/runtime/workspace': { useWorkspaces: () => ({ connectionControls }) },
       '@/shared/protocol/opencode/capabilities': { getServerCapabilities: () => ({ contract: 'v2' }) },
       './state/use-project-inventory': { useProjectInventory: () => projectInventory },
+      './services/queries': { projectSessionsOptions: () => ({}) },
       '@/shared/contracts/connection-scope': identity,
       './state/use-server-pending-interactions': {},
       './state/use-permission-rules-state': {},
@@ -115,8 +120,8 @@ describe('multi-server contracts', () => {
       './state/use-workspace-diagnostics': {},
     });
     const base = {
-      projectsValue: { activeProjectPath: '/repo', projects: [], selectProject: () => {} },
-      currentSessionValue: { currentSessionId: 's', openDeepLinkSession: async () => ({ ok: true }) },
+      projectsValue: { addProject: async () => '/repo' },
+      currentSessionValue: { openDeepLinkSession: async () => ({ ok: true }) },
       sessionLibraryValue: { openSessionInProject: async () => {} },
       chatValue: { currentMessages: [] },
     };
@@ -326,14 +331,14 @@ it('keeps lifecycle decisions current without resetting retained runtimes', asyn
   }, driver.globals);
   const connected = { status: 'connected', message: 'Connected' };
   const manager = { getState: () => ({ connection: connected }), connect: async () => connected } as unknown as NonNullable<ReturnType<TestConnections['get']>>;
-  mountWorkspaceConnections(driver, useWorkspaceConnections, createWorkspaceCommands, createConnectionCommands, shell,
+  const store = mountWorkspaceConnections(driver, useWorkspaceConnections, createWorkspaceCommands, createConnectionCommands, shell,
     { get: () => manager, subscribeState: () => () => {} });
   const isEnabled = driver.value.isEnabled;
   await driver.settle();
   expect(isEnabled('a')).toBe(true);
-  const snapshot = (id: string, path: string) => ({ enabled: true, native: { settings: driver.value.connections.find((entry: any) => entry.id === id).settings },
+  const snapshot = (id: string, directory: string) => ({ enabled: true, boundDirectory: directory || undefined, native: { settings: driver.value.connections.find((entry: any) => entry.id === id).settings },
     loadProjectCatalog: vi.fn(async () => ({ currentProjectPath: '/repo', serverProjects: [] })),
-    catalogSessions: [], suspend: vi.fn(), values: { sessionLibraryValue: { sessions: [], refreshSessions: vi.fn(async () => []) }, currentSessionValue: { openSession: vi.fn(async () => {}), openDeepLinkSession: vi.fn(async () => ({ ok: true })) }, projectsValue: { activeProjectPath: path }, conversationValue: { conversation: { active: true }, toggleConversationMode: vi.fn(async () => {}) } } });
+    catalogSessions: [], suspend: vi.fn(), values: { sessionLibraryValue: { sessions: [], refreshSessions: vi.fn(async () => []) }, currentSessionValue: { openSession: vi.fn(async () => {}), openDeepLinkSession: vi.fn(async () => ({ ok: true })) }, conversationValue: { conversation: { active: true }, toggleConversationMode: vi.fn(async () => {}) } } });
   const original = snapshot('a', '/repo'), other = snapshot('a', '/other'), b = snapshot('b', '/repo');
   driver.value.publish('["a","/repo"]', original); driver.value.publish('["a","/other"]', other); driver.value.publish('["b","/repo"]', b); driver.flush();
   original.catalogSessions = [{ id: 'collision', directory: '/repo' }] as never[];
@@ -357,6 +362,10 @@ it('keeps lifecycle decisions current without resetting retained runtimes', asyn
   expect(unscoped.loadProjectCatalog).toHaveBeenCalledWith(true);
   expect(unscoped.values.currentSessionValue.openDeepLinkSession).not.toHaveBeenCalled();
   expect(driver.value.connections.find((entry: any) => entry.id === 'b').projects).toEqual(['']);
+  store.getState().setSelection('["b",""]', { activeProjectPath: '/repo' });
+  driver.value.publish('["b",""]', { ...unscoped });
+  await driver.settle();
+  expect(unscoped.values.currentSessionValue.openDeepLinkSession).not.toHaveBeenCalled();
   driver.value.publish('["b",""]', b); driver.flush();
   await opening;
   expect(b.values.currentSessionValue.openDeepLinkSession).toHaveBeenCalledWith({ sessionId: 'default-project', projectPath: undefined }, expect.any(AbortSignal));
@@ -476,8 +485,9 @@ it('moves chat focus to a connected server when the focused server fails', async
   const store = mountWorkspaceConnections(driver, useWorkspaceConnections, createWorkspaceCommands, createConnectionCommands, shell, connections);
   await driver.settle();
   store.getState().setSelection('["a",""]', { activeProjectPath: '/repo' });
-  const snapshot = (id: string) => ({ enabled: true, native: { settings: entries.find((entry) => entry.id === id)!.settings }, suspend: vi.fn(),
-    values: { projectsValue: { activeProjectPath: '/repo' }, conversationValue: { conversation: { active: false }, toggleConversationMode: vi.fn(async () => {}) } } });
+  store.getState().setSelection('["b",""]', { activeProjectPath: '/repo' });
+  const snapshot = (id: string) => ({ enabled: true, boundDirectory: '/repo', native: { settings: entries.find((entry) => entry.id === id)!.settings }, suspend: vi.fn(),
+    values: { conversationValue: { conversation: { active: false }, toggleConversationMode: vi.fn(async () => {}) } } });
   driver.value.publish('["a","/repo"]', snapshot('a'));
   driver.value.publish('["b",""]', snapshot('b'));
   await driver.settle();
