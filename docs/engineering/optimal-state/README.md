@@ -421,10 +421,15 @@ npm run validate:commit
   The test measures renewal and reconnect timers through the manager's
   injected clock. The share screen uses real scope selectors and React effects.
 
-- F10. Transcript virtualization, activity rows, conversation animations,
+- F10, `178aa827`. Transcript virtualization, activity rows, conversation animations,
   connection forms and agent preference reconciliation now exercise real
   component or hook lifecycles. The connection form uses React Hook Form
   and the production Zod resolver.
+
+- F11. Speech recognizer ownership, voice command confirmation and app update
+  safety now exercise real React lifecycles and explicit native boundaries.
+  Timer tests advance a controlled clock, and store update checks use the
+  actual Android and Apple adapters.
 
 ## Loop protocol
 
