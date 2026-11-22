@@ -2,7 +2,7 @@ import type { Session } from '@/shared/protocol/opencode/types';
 import type { useWorkspaceConnections } from '@/runtime/workspace/use-workspace-connections';
 import type { NewWorktreeChatResult, NewWorktreeChatTarget, WorkspaceCatalog, WorkspaceTarget } from '@/shared/contracts/workspace';
 import type { SharedInput } from '@/features/sharing/index';
-import { createContext, useContext, useEffect, useMemo, useState } from 'react';
+import { createContext, useContext, useMemo } from 'react';
 import type { MissionOverview } from '@/features/sessions/runtime';
 import { useAppCore, useAppStore } from '@/runtime/core/context';
 import { useWorkspaceDomainValue } from '@/runtime/core/workspace-selectors';
@@ -44,19 +44,13 @@ export function useWorkspacePresentation() {
 export function useWorkspacePreferences(target?: WorkspaceTarget) {
   return useWorkspaceDomainValue((values) => values.preferencesValue, 'useWorkspacePreferences', target);
 }
-export function useRetainedWorkspaceTarget(target?: WorkspaceTarget) {
-  const { ensure, resolveKey, snapshots, focus, retainedFocus } = useWorkspaces();
-  const requestedKey = target && resolveKey(target);
-  const [retainedTarget, setRetainedTarget] = useState(target);
-  const effective = requestedKey && snapshots[requestedKey] ? target : retainedTarget ?? focus ?? retainedFocus;
-  const resolvedKey = effective ? resolveKey(effective) : undefined;
-  useEffect(() => {
-    if (!target) return;
-    const controller = new AbortController();
-    void ensure(target, { signal: controller.signal }).then(() => setRetainedTarget(target)).catch(() => undefined);
-    return () => controller.abort();
-  }, [target, ensure]);
-  const availableKey = resolvedKey && snapshots[resolvedKey] ? resolvedKey : undefined;
+export function useResolvedWorkspaceTarget(target?: WorkspaceTarget) {
+  const { resolveKey } = useAppCore().commands.workspace;
+  const availableKey = useAppStore(({ registry: { focus, snapshots } }) => {
+    const requested = target ?? focus;
+    const key = requested && resolveKey(requested);
+    return key && snapshots[key] ? key : undefined;
+  });
   return useMemo(() => {
     if (!availableKey) return undefined;
     const [connectionId, projectPath] = JSON.parse(availableKey) as [string, string];

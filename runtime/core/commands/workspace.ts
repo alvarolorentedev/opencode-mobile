@@ -11,6 +11,7 @@ export function createWorkspaceCommands({ store }: Pick<CommandContext, 'store'>
   const waiters = createWorkspaceWaiters();
   let unsubscribe: (() => void) | undefined;
   let navigation: AbortController | undefined;
+  let focusRequest: { target: WorkspaceTarget; forgottenKey?: string } | undefined;
   let canPersist = true;
   const registry = () => store.getState().registry;
   const { setRegistry } = store.getState();
@@ -65,29 +66,59 @@ export function createWorkspaceCommands({ store }: Pick<CommandContext, 'store'>
     const { snapshots } = registry();
     return snapshots[exact] ? exact : Object.entries(snapshots).find(([key, snapshot]) => matches(target, key, snapshot))?.[0] ?? exact;
   }
+  function isCurrentProjection(entry: ConnectionRecord | undefined, snapshot: WorkspaceSnapshot | undefined) {
+    return snapshot && entry && snapshot.enabled === entry.enabled && (snapshot.revision ?? 0) === (entry.revision ?? 0);
+  }
+  function commitFocus(target: WorkspaceTarget, snapshots = registry().snapshots) {
+    const forgotten = focusRequest?.forgottenKey;
+    focusRequest = undefined;
+    if (forgotten && snapshots[forgotten] && !matches(target, forgotten, snapshots[forgotten])) {
+      snapshots = { ...snapshots };
+      delete snapshots[forgotten];
+    }
+    setRegistry({ focus: target, snapshots });
+  }
   function select(target: WorkspaceTarget, persist = true) {
     if (persist) canPersist = true;
-    const db = registry();
-    const retained = Object.entries(db.snapshots).some(([key, snapshot]) => matches(target, key, snapshot));
-    setRegistry({ focus: target, retainedFocus: retained ? target : db.retainedFocus });
+    const { snapshots, focus, connections } = registry();
+    const entry = connections.find((record) => record.id === target.connectionId);
+    if (focus && snapshots[resolveKey(focus)] && !isCurrentProjection(entry, snapshots[resolveKey(target)])) {
+      focusRequest = { target, forgottenKey: focusRequest?.forgottenKey };
+      return;
+    }
+    commitFocus(target);
   }
   function publish(key: string, snapshot: WorkspaceSnapshot) {
-    const { snapshots, focus, retainedFocus } = registry();
+    const { snapshots, connections } = registry();
     if (snapshots[key] === snapshot) return;
-    const retain = focus && matches(focus, key, snapshot) && workspaceKey(focus) !== (retainedFocus && workspaceKey(retainedFocus));
-    setRegistry({ snapshots: { ...snapshots, [key]: snapshot }, ...(retain ? { retainedFocus: focus } : {}) });
+    const next = { ...snapshots, [key]: snapshot };
+    const target = focusRequest?.target;
+    if (target && matches(target, key, snapshot)
+      && isCurrentProjection(connections.find((entry) => entry.id === target.connectionId), snapshot)) {
+      commitFocus(target, next);
+      return;
+    }
+    setRegistry({ snapshots: next });
   }
   function forget(key: string) {
-    const snapshots = { ...registry().snapshots };
-    delete snapshots[key];
-    setRegistry({ snapshots });
+    const { snapshots, focus } = registry();
+    if (!(key in snapshots)) return;
+    // An endpoint edit can unmount the old branch before the replacement
+    // commits. Retain the displayed projection through that layout commit.
+    if (focusRequest && focus && resolveKey(focus) === key) {
+      focusRequest.forgottenKey = key;
+      return;
+    }
+    const next = { ...snapshots };
+    delete next[key];
+    setRegistry({ snapshots: next });
   }
 
   function readWorkspace(target: WorkspaceTarget) {
     const entry = registry().connections.find((record) => record.id === target.connectionId);
     if (!entry) throw new Error('This server is no longer available.');
     const snapshot = registry().snapshots[resolveKey(target)];
-    return snapshot && snapshot.enabled === entry.enabled && (snapshot.revision ?? 0) === (entry.revision ?? 0) ? snapshot : undefined;
+    return isCurrentProjection(entry, snapshot) ? snapshot : undefined;
   }
   async function ensure(target: WorkspaceTarget, options?: ReadinessOptions) {
     if (!registry().snapshots[resolveKey(target)]) {
@@ -229,7 +260,7 @@ export function createWorkspaceCommands({ store }: Pick<CommandContext, 'store'>
   resume();
   return {
     resume,
-    dispose() { cancelNavigation(); unsubscribe?.(); unsubscribe = undefined; waiters.dispose(); },
+    dispose() { cancelNavigation(); unsubscribe?.(); unsubscribe = undefined; focusRequest = undefined; waiters.dispose(); },
     cancelNavigation, pauseConversation,
     isPersistenceAllowed: () => canPersist,
     setPersistenceAllowed: (allowed: boolean) => { canPersist = allowed; },

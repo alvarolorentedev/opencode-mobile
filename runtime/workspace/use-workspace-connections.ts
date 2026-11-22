@@ -11,7 +11,7 @@ type WorkspaceRegistryAccess = {
 
 export function useWorkspaceConnections(hydrated: boolean, { registry, commands, hiddenProjects }: WorkspaceRegistryAccess) {
   const { workspace, connection } = commands;
-  const { connections, focus, retainedFocus, ready, snapshots } = registry;
+  const { connections, focus, ready, snapshots } = registry;
   useEffect(() => { workspace.resume(); return workspace.dispose; }, [workspace]);
   useEffect(() => {
     if (!hydrated) return;
@@ -25,7 +25,7 @@ export function useWorkspaceConnections(hydrated: boolean, { registry, commands,
   const { isEnabled, connectedWorkspace, change, select, publish, forget, ensure, resolveKey, activate, navigate, openExternalSession } = workspace;
   const { hideProject, restoreProject, removeConnection, switchConnection, connectSavedProfile, disconnect, retry, updateSettings, updatePreferences } = connection;
   return {
-    isEnabled, hideProject, restoreProject, hiddenProjects, connectedWorkspace, removeConnection, connections, focus, retainedFocus,
+    isEnabled, hideProject, restoreProject, hiddenProjects, connectedWorkspace, removeConnection, connections, focus,
     snapshots, ready, change, select, publish, forget, ensure, resolveKey, activate, navigate, openExternalSession, switchConnection,
     connectSavedProfile, disconnect, retry, updateSettings, updatePreferences,
   };

@@ -1353,6 +1353,12 @@ Enabled and recent catalog models, agent mode, auto-routing tiers, and auto-appr
 
 Chat focus, terminal target and Settings inspection target are independent composite references. The presentation map holds composer text/attachments, failed input, editor baseline/current text and transcript offsets. Hidden dirty drafts and PTYs participate in update blocking. Removing a connection names unsaved drafts in its confirmation. Drafts are intentionally not written to disk.
 
+When a server URL edit replaces the displayed connection, the workspace
+command keeps the prior projection available until the new connection revision
+publishes. It changes focus and retires the prior projection in the same store
+update. Terminal and Settings wait for their independent targets before
+changing the selected pane.
+
 The registry holds the recent healthy connection IDs used for failover, as well
 as the terminal and Settings inspection targets. The app store holds profile
 metadata and the per-connection file clipboard. Async chat and project actions

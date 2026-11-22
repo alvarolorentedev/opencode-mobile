@@ -215,11 +215,16 @@ npm run validate:commit
   consumes app-wide share receipts. The commit gate passed with 1,280 tests
   and one existing skip. The 60 focused Vitest cases, web export, and all 55
   share, chat, multi-server, project, session and terminal browser flows passed.
-- E native terminal. Simulator creation exposed an Expo DOM ref whose methods
+- E native terminal, `2138e63b`. Simulator creation exposed an Expo DOM ref whose methods
   were unavailable while the setup sheet was closing. The corrected build
   created the terminal and retained its output and single WebSocket connection
   across tab switches. The commit gate passed with 1,280 tests and one existing
   skip, and all 12 Terminal and multi-server browser flows passed.
+- E2b. A server URL edit changes focus and retires the previous project
+  projection in one store update. The Settings and Terminal panes resolve their
+  own ready keys. The commit gate passed with 1,281 tests and one existing
+  skip. The 26 focused Vitest cases, web export and all 104 connection,
+  Settings, multi-server, project, session and Terminal browser flows passed.
 
 ## Loop protocol
 

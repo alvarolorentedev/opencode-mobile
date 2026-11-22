@@ -119,6 +119,30 @@ describe('app core', () => {
     core.commands.workspace.dispose();
   });
 
+  it('switches focus and retires the previous projection together when an endpoint changes', () => {
+    const core = newCore();
+    const previous = connectedProject(core, getConnectionUiScope(settings), '/repo').target;
+    core.commands.workspace.select(previous);
+    const nextSettings = { ...settings, serverUrl: 'https://changed.example.test' };
+    const next = { connectionId: getConnectionUiScope(nextSettings), projectPath: '' };
+
+    core.commands.connection.updateSettings(previous.connectionId, nextSettings);
+    core.commands.workspace.forget(workspaceKey(previous));
+    expect(core.store.getState().registry.focus).toEqual(previous);
+    expect(core.store.getState().registry.snapshots[workspaceKey(previous)]).toBeDefined();
+
+    connectedProject(core, next.connectionId, next.projectPath);
+    // A publication from before the edit cannot commit the new selection.
+    expect(core.store.getState().registry.focus).toEqual(previous);
+    const nextKey = workspaceKey(next);
+    const staged = core.store.getState().registry.snapshots[nextKey];
+    core.commands.workspace.publish(nextKey, { ...staged, enabled: false });
+    expect(core.store.getState().registry.focus).toEqual(next);
+    expect(core.store.getState().registry.snapshots[workspaceKey(previous)]).toBeUndefined();
+    expect(core.store.getState().registry.snapshots[nextKey]).toBeDefined();
+    core.commands.workspace.dispose();
+  });
+
   it('uses the current workspace selection for events and drops a superseded transport', () => {
     const core = newCore();
     const workspaceKey = '["server","/repo"]';

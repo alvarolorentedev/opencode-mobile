@@ -20,9 +20,9 @@ Start only after Phase D is complete and green.
   registry access and the app-level share view. Workspace actions bind directly
   to the core.
 - The root still mounts `runtime/workspace/retained-project.tsx` for each
-  project. The registry retains project projections and `retainedFocus`.
-  The focused selector reads the same project projection as an explicit
-  target.
+  project. The registry retains project projections. Focus changes when the
+  requested projection is ready, including when a server URL edit replaces
+  the connection identity.
 - `runtime/core/workspace-selectors.ts` selects the retained project projection.
 - [ADR 0052](../../adr/0052-explicit-overlay-dependencies.md) records explicit
   portal targets and update blocker callbacks. Shared controls use shared imports.

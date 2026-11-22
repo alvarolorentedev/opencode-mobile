@@ -66,7 +66,7 @@ export function WorkspaceProvider({ children }: PropsWithChildren) {
   useWorkspaceAutoApprove(manager);
   const { updateSettings: updateWorkspaceSettings, change, removeConnection: removeWorkspaceConnection, connectedWorkspace, isEnabled } = manager;
   const { setFavoriteSessions, setSettings, setChatPreferences, setHiddenProjects } = shell;
-  const { connections, focus, retainedFocus, snapshots, resolveKey, switchConnection, disconnect } = manager;
+  const { connections, focus, snapshots, resolveKey, switchConnection, disconnect } = manager;
   const catalogs = useMemo(() => {
     const current: Record<string, WorkspaceCatalog> = {};
     for (const { id, revision } of connections) {
@@ -80,8 +80,7 @@ export function WorkspaceProvider({ children }: PropsWithChildren) {
     .map(({ id, authRevision }) => [id, authRevision, mission.servers.find((server) => server.id === id)?.authorized === false]));
   useMissionWidget(mission, missionWidgetScope, isHydrated && manager.ready, shell.chatPreferences.language);
   const fileClipboard = useFileClipboard(connections);
-  const selectedRuntime = focus ? snapshots[resolveKey(focus)] : undefined;
-  const current = selectedRuntime ?? (retainedFocus ? snapshots[resolveKey(retainedFocus)] : undefined);
+  const current = focus ? snapshots[resolveKey(focus)] : undefined;
   const settings = current?.values.connectionValue.settings ?? shell.settings;
   const settingsConnectionId = focus?.connectionId
     ?? (current ? getConnectionUiScope(current.values.connectionValue.settings) : undefined);
@@ -177,7 +176,7 @@ export function WorkspaceProvider({ children }: PropsWithChildren) {
   return <VoiceSetupTestContext.Provider value={voiceSetupTest}>
     <WorkspaceContext.Provider value={registry}>
     {connections.map((entry) => <ServerDataScope key={entry.id} connection={entry} active={readTarget?.connectionId === entry.id}>
-      <ConnectionCatalog entry={entry} online={network.online} libraryVisible={pathname === '/' && focus?.connectionId === entry.id && Boolean(selectedRuntime?.libraryVisible)} missionVisible={pathname === MISSION_PATH} onCatalog={publishCatalog} />
+      <ConnectionCatalog entry={entry} online={network.online} libraryVisible={pathname === '/' && focus?.connectionId === entry.id && Boolean(current?.libraryVisible)} missionVisible={pathname === MISSION_PATH} onCatalog={publishCatalog} />
     </ServerDataScope>)}
     {connections.flatMap((entry) => entry.projects.map((path, index) => {
         const key = workspaceKey({ connectionId: entry.id, projectPath: path });

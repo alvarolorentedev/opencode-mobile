@@ -11,7 +11,7 @@ import { ActivityIndicator, Platform, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Fonts } from '@/shared/ui/theme/theme';
-import { useRetainedWorkspaceTarget, useWorkspacePreferences, useWorkspaces } from '@/runtime/workspace';
+import { useResolvedWorkspaceTarget, useWorkspacePreferences, useWorkspaces } from '@/runtime/workspace';
 import { ServerContextPicker } from '@/features/settings/ui/server-context-picker';
 import { getConnectionUiScope } from '@/shared/contracts/connection-scope';
 import { useNotificationSetup } from '@/features/notifications/index';
@@ -35,7 +35,7 @@ import { buildSettingsSections } from '@/features/settings/ui/settings-section-r
 
 export default function SettingsScreen() {
   const { inspectionTarget, focus } = useWorkspaces();
-  const target = useRetainedWorkspaceTarget(inspectionTarget ?? focus);
+  const target = useResolvedWorkspaceTarget(inspectionTarget ?? focus);
   return target ? <SettingsContent target={target} />
     : <View className="flex-1 items-center justify-center"><ActivityIndicator /></View>;
 }

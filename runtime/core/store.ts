@@ -30,7 +30,6 @@ export type ShellState = {
 export type RegistryState = {
   connections: ConnectionRecord[];
   focus?: WorkspaceTarget;
-  retainedFocus?: WorkspaceTarget;
   terminalTarget?: WorkspaceTarget;
   inspectionTarget?: WorkspaceTarget;
   lastHealthyConnectionId?: string;

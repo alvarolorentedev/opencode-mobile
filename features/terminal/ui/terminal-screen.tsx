@@ -18,7 +18,7 @@ import { Fonts } from '@/shared/ui/theme/theme';
 import { RetainedTerminals } from '@/features/terminal/ui/retained-terminals';
 import { NewTerminalSheet } from '@/features/terminal/ui/new-terminal-sheet';
 import { useWorkspaceTerminals } from '@/features/terminal/ui/use-workspace-terminals';
-import { useRetainedWorkspaceTarget, useWorkspacePreferences, useWorkspaces } from '@/runtime/workspace';
+import { useResolvedWorkspaceTarget, useWorkspacePreferences, useWorkspaces } from '@/runtime/workspace';
 import type { WorkspaceTarget } from '@/shared/contracts/workspace';
 import { SwipeRow } from '@/shared/ui/swipe-row';
 import { useUpdateBlocker } from '@/features/updates/context';
@@ -29,7 +29,7 @@ import { useTerminal } from '@/features/terminal/context';
 
 export default function TerminalScreen() {
   const { terminalTarget, focus } = useWorkspaces();
-  const target = useRetainedWorkspaceTarget(terminalTarget ?? focus);
+  const target = useResolvedWorkspaceTarget(terminalTarget ?? focus);
   return target ? <TerminalContent target={target} />
     : <View className="flex-1 items-center justify-center"><ActivityIndicator /></View>;
 }
