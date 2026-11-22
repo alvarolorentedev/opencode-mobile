@@ -21,8 +21,17 @@ export function controlledClock(now?: number) {
     if (id != null) deadlines.delete(id as ReturnType<typeof setTimeout>);
     cancel(id);
   });
-  onTestFinished(() => { scheduleSpy.mockRestore(); cancelSpy.mockRestore(); vi.useRealTimers(); });
+  let restored = false;
+  function restore() {
+    if (restored) return;
+    restored = true;
+    scheduleSpy.mockRestore();
+    cancelSpy.mockRestore();
+    vi.useRealTimers();
+  }
+  onTestFinished(restore);
   return {
+    restore,
     countTimers: (delay: number) => [...deadlines.values()].filter((value) => value === delay).length,
     advance: (delay: number) => act(async () => { await vi.advanceTimersByTimeAsync(delay); }),
   };

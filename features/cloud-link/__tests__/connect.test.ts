@@ -1,5 +1,6 @@
 // @vitest-environment happy-dom
 
+import { cloudLinkPlatform as device } from '../../../tests/helpers/cloud-link-platform';
 import assert from 'node:assert/strict';
 import { Buffer } from 'node:buffer';
 import { focusManager, QueryClient, QueryClientProvider } from '@tanstack/react-query';
@@ -17,7 +18,6 @@ import * as storeApi from '@/shared/platform/billing/connect-store';
 import * as http from '@/shared/protocol/cloud-link/connect';
 import { getConnectionError } from '@/shared/protocol/opencode/client/errors';
 import * as storage from '@/shared/storage/cloud-link';
-import { CONNECTION_PROFILES_STORAGE_KEY } from '@/shared/storage/keys';
 import { deferred, settleReact } from '../../../tests/helpers/controlled-clock';
 import { renderHook } from '../../../tests/helpers/render-hook';
 
@@ -25,64 +25,13 @@ type BuildProbe = {
   commands: { command: string; args: string[]; env: NodeJS.ProcessEnv }[];
   writes: string[];
 };
-const device = vi.hoisted(() => ({
-  config: {} as any, os: 'ios',
-  secrets: new Map<string, string>(),
-  preferences: new Map<string, string>(),
-  failSecureWrite: false,
-  subscriptionEvents: undefined as string[] | undefined,
-  onSaveProfile: undefined as (() => void) | undefined,
-  appState: undefined as ((listener: (state: string) => void) => void) | undefined,
-  billing: {} as Record<string, (...args: any[]) => any>,
-  build: undefined as BuildProbe | undefined,
-}));
+const build = vi.hoisted(() => ({ probe: undefined as BuildProbe | undefined }));
 
-vi.mock('expo-constants', () => ({ default: { get expoConfig() { return device.config; } } }));
-vi.mock('react-native', () => ({
-  Platform: { get OS() { return device.os; } },
-  AppState: { currentState: 'active', addEventListener: (_event: string, listener: (state: string) => void) => {
-    device.appState?.(listener);
-    return { remove() {} };
-  } },
-}));
-vi.mock('expo/fetch', () => ({ fetch: (...args: Parameters<typeof fetch>) => globalThis.fetch(...args) }));
-vi.mock('expo-crypto', async () => ({ randomUUID: (await import('node:crypto')).randomUUID }));
-vi.mock('expo-localization', () => ({ getLocales: () => [{ languageTag: 'en-US' }] }));
-vi.mock('expo-application', () => ({
-  ApplicationReleaseType: { APP_STORE: 'app-store' },
-  getIosApplicationReleaseTypeAsync: async () => 'app-store',
-  getInstallReferrerAsync: async () => '',
-}));
-vi.mock('expo-file-system', () => ({}));
-vi.mock('expo-secure-store', () => ({
-  WHEN_UNLOCKED_THIS_DEVICE_ONLY: 1,
-  AFTER_FIRST_UNLOCK_THIS_DEVICE_ONLY: 2,
-  getItemAsync: async (key: string) => device.secrets.get(key) ?? null,
-  setItemAsync: async (key: string, value: string) => {
-    if (device.failSecureWrite) throw new Error('secure write failed');
-    device.subscriptionEvents?.push('secure');
-    device.secrets.set(key, value);
-  },
-  deleteItemAsync: async (key: string) => { device.secrets.delete(key); },
-}));
-vi.mock('@react-native-async-storage/async-storage', () => ({ default: {
-  getItem: async (key: string) => device.preferences.get(key) ?? null,
-  setItem: async (key: string, value: string) => {
-    device.preferences.set(key, value);
-    if (key === CONNECTION_PROFILES_STORAGE_KEY) device.onSaveProfile?.();
-  },
-  removeItem: async (key: string) => { device.preferences.delete(key); },
-} }));
-vi.mock('expo-iap', () => Object.fromEntries([
-  'initConnection', 'endConnection', 'fetchProducts', 'requestPurchase', 'getAvailablePurchases',
-  'restorePurchases', 'deepLinkToSubscriptions', 'finishTransaction', 'getTransactionJwsIOS',
-  'isEligibleForIntroOfferIOS', 'getPendingTransactionsIOS', 'purchaseUpdatedListener', 'purchaseErrorListener',
-].map((name) => [name, (...args: any[]) => device.billing[name](...args)])));
 vi.mock('node:child_process', async (original) => {
   const actual = await original<typeof import('node:child_process')>();
   return { ...actual, spawnSync: (command: string, args: string[], options: { env?: NodeJS.ProcessEnv }) => {
-    assert.ok(device.build, 'Build commands must run inside the process fixture.');
-    device.build.commands.push({ command, args, env: options?.env ?? process.env });
+    assert.ok(build.probe, 'Build commands must run inside the process fixture.');
+    build.probe.commands.push({ command, args, env: options?.env ?? process.env });
     return { status: 0, stdout: 'Alias name: test\n' };
   } };
 });
@@ -96,7 +45,7 @@ vi.mock('node:fs', async (original) => {
     statSync: () => ({ size: 128 }),
     readFileSync: (_path: string, encoding?: string) => encoding === 'utf8'
       ? 'reactNativeArchitectures=arm64-v8a\nAsyncStorage_db_size_in_MB=64\n' : Buffer.alloc(128),
-    appendFileSync: (_path: string, data: unknown) => { device.build?.writes.push(String(data)); },
+    appendFileSync: (_path: string, data: unknown) => { build.probe?.writes.push(String(data)); },
     writeFileSync() {},
   } };
 });
@@ -430,7 +379,7 @@ assert.ok(production.plugins!.includes('@siteed/sherpa-onnx.rn'), 'Production ke
 for (const variant of ['development', 'production']) {
   const commands: BuildProbe['commands'] = [];
   const writes: string[] = [];
-  device.build = { commands, writes };
+  build.probe = { commands, writes };
   const listeners = new Map(['exit', 'SIGINT', 'SIGTERM'].map((event) => [event, process.listeners(event)]));
   vi.stubEnv('EXPO_APP_VARIANT', variant === 'development' ? 'production' : 'development');
   vi.stubEnv('OPENCODE_BUILD_FLAVOR', 'production');
@@ -452,7 +401,7 @@ for (const variant of ['development', 'production']) {
     exit.mockRestore();
     log.mockRestore();
     vi.unstubAllEnvs();
-    device.build = undefined;
+    build.probe = undefined;
   }
   const nativeCommands = commands.filter(({ command }) => command === 'npx' || command === './gradlew');
   assert.deepEqual(nativeCommands.map(({ command }) => command), ['npx', './gradlew']);

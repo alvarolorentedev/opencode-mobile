@@ -1,10 +1,38 @@
-import { uiImports, textContent } from '../../../tests/helpers/ui.mjs';
+// @vitest-environment happy-dom
+
+import '../../../tests/helpers/native-primitives';
+import { act } from 'react';
 import { beforeEach, expect, it, vi } from 'vitest';
 import { createRequire } from 'node:module';
-import { deferred, hookRuntime, loadTs } from '../../../tests/helpers/runtime.mjs';
+
+import type { SharedInput } from '@/features/sharing/state/use-share-state';
+import Screen from '@/features/sharing/ui/share-screen';
+import { UpdateBlockingSheet } from '@/features/updates/index';
+import { getConnectionScope } from '@/shared/contracts/connection-scope';
+import { Button } from '@/shared/ui/button';
+import { connectionViewProbe } from '../../../tests/helpers/connection-view-probe';
+import { deferred, settleReact } from '../../../tests/helpers/controlled-clock';
+import { renderHook } from '../../../tests/helpers/render-hook';
+import { textContent } from '../../../tests/helpers/ui.mjs';
+
+const route = vi.hoisted(() => ({ receipt: '1', router: { dismissTo: vi.fn() } }));
+vi.mock('expo-router', () => ({
+  useRouter: () => route.router, usePathname: () => '/share', useLocalSearchParams: () => ({ receipt: route.receipt }),
+}));
+vi.mock('react-native', async () => (await import('../../../tests/helpers/native-view-platform')).nativeViewPlatform({ platform: 'android' }));
+vi.mock('expo-constants', () => ({ default: {} }));
+vi.mock('expo-localization', () => ({ getLocales: () => [] }));
+vi.mock('expo/fetch', () => ({}));
+vi.mock('expo-crypto', () => ({}));
+vi.mock('expo-file-system', () => ({}));
+vi.mock('expo-secure-store', () => ({}));
+vi.mock('@react-native-async-storage/async-storage', () => ({ default: {} }));
+vi.mock('react-i18next', async (original) => ({
+  ...await original<typeof import('react-i18next')>(),
+  useTranslation: () => ({ t: (key: string) => key, i18n: { language: 'en' } }),
+}));
 
 type Element = { type: any; props: any };
-const element = (type: any, props: any) => ({ type, props });
 const find = (root: Element, test: (node: Element) => boolean): Element | undefined => {
   if (!root || typeof root !== 'object') return;
   if (test(root)) return root;
@@ -13,55 +41,48 @@ const find = (root: Element, test: (node: Element) => boolean): Element | undefi
   }
 };
 const label = textContent;
-let runtime: ReturnType<typeof hookRuntime>;
-let shared: any;
-let receipt: string;
-let dismissTo: ReturnType<typeof vi.fn>;
+const settings = { serverUrl: 'https://server.test', username: '', password: '', directory: '' };
+const connectionScope = getConnectionScope(settings);
+let runtime: ReturnType<typeof renderHook<object, ReturnType<typeof Screen>>>;
+type ShareFixture = SharedInput & { addToChat: ReturnType<typeof vi.fn<SharedInput['addToChat']>> };
+let shared: ShareFixture;
+
 async function mount() {
-  const { default: Screen } = await loadTs('features/sharing/ui/share-screen.tsx', {
-    ...uiImports,
-    react: runtime.react,
-    'react/jsx-runtime': { jsx: element, jsxs: element, Fragment: 'Fragment' },
-    'expo-router': { useRouter: () => ({ dismissTo }), useLocalSearchParams: () => ({ receipt }) },
-    'react-i18next': { useTranslation: () => ({ t: (key: string) => key }) },
-    'react-native': { StyleSheet: { create: (value: unknown) => value }, ScrollView: 'ScrollView', Text: 'NativeText', View: 'View' },
-    'react-native-safe-area-context': { useSafeAreaInsets: () => ({ top: 0 }) },
-    "@/features/sharing/ui/attachment-strip": { AttachmentStrip: 'Attachments' },
-    "@/features/projects/ui/project-picker": { ProjectPicker: 'ProjectPicker' },
-    "@/features/updates/index": { ...uiImports['@/features/updates/index'], UpdateBlockingSheet: 'Sheet' },
-    "@/shared/ui/theme/theme": { Colors: { light: { background: '#fff', surface: '#fff', text: '#111', muted: '#666', tint: '#080', warning: '#a60', danger: '#f00' } }, Fonts: {} },
-    "@/shared/ui/theme/use-color-scheme": { useColorScheme: () => 'light' },
-    "@/shared/ui/theme/use-palette": { usePalette: () => ({ background: '#fff', surface: '#fff', text: '#111', muted: '#666', tint: '#080', warning: '#a60', danger: '#f00' }) },
-    "@/shared/contracts/connection-scope": { getConnectionScope: () => 's' },
-    "@/features/connections/context": { useConnection: () => ({ connection: { status: 'connected' }, settings: { serverUrl: 'https://server' } }) },
-    "@/features/projects/context": { useProjects: () => ({ activeProject: { path: '/repo', label: 'repo' }, projects: [], addProject() {}, selectProject() {} }) },
-    "@/runtime/workspace": {
-      useSharedInput: () => shared,
-      useBootState: () => ({ isHydrated: true, onboardingCompleted: true }),
-    }
-  }, runtime.globals);
-  runtime.mount(Screen, {}); await runtime.settle();
+  const id = 'share-server';
+  const Shell = connectionViewProbe({} as never, true, {
+    sharedInput: shared,
+    initialize: (store) => store.getState().setRegistry({
+      connections: [{ id, name: 'Server', enabled: true, settings, projects: ['/repo'], preferences: {} }],
+      focus: { connectionId: id, projectPath: '/repo' },
+    }),
+  });
+  runtime = renderHook(() => Screen(), {}, Shell);
+  await settleReact();
 }
-const button = (text: string) => find(runtime.value, (node) => node.type === 'Button' && label(node) === text)!;
+
+const button = (text: string) => find(runtime.result.current, (node) => node.type === Button && label(node) === text)!;
 beforeEach(() => {
-  runtime = hookRuntime(); receipt = '1'; dismissTo = vi.fn();
-  shared = { pending: { text: 'hello', attachments: [{ uri: 'file:///photo.png' }], skipped: [] },
-    target: { sessionId: 'current', projectPath: '/repo', connectionScope: 's' },
-    targets: [{ sessionId: 'current', projectPath: '/repo', connectionScope: 's', title: 'Current' }, { sessionId: 'other', projectPath: '/other', connectionScope: 's', title: 'Other' }],
+  route.receipt = '1';
+  route.router.dismissTo.mockReset();
+  shared = {
+    pending: { text: 'hello', attachments: [{ uri: 'file:///photo.png' }], skipped: [] },
+    target: { sessionId: 'current', projectPath: '/repo', connectionScope },
+    targets: [{ sessionId: 'current', projectPath: '/repo', connectionScope, title: 'Current' }, { sessionId: 'other', projectPath: '/other', connectionScope, title: 'Other' }],
     resolving: false, busy: false, targetsLoading: false, refreshShared: vi.fn(async () => {}), refreshTargets: vi.fn(async () => {}),
-    addToChat: vi.fn(async () => false), clearShared: vi.fn(), selectTarget: vi.fn() };
+    addToChat: vi.fn(async () => false), clearShared: vi.fn(), selectTarget: vi.fn(), consumeShared: vi.fn(() => null),
+  };
 });
 it('only navigates after a successful provider handoff and wires Change to an existing destination', async () => {
-  const waiting = deferred(); shared.addToChat.mockReturnValue(waiting.promise);
+  const waiting = deferred<boolean>(); shared.addToChat.mockReturnValue(waiting.promise);
   await mount();
-  button('share:change').props.onPress(); runtime.flush();
-  expect(find(runtime.value, (node) => node.type === 'Sheet')?.props.visible).toBe(true);
-  button('Other · other').props.onPress(); runtime.flush();
+  act(() => button('share:change').props.onPress());
+  expect(find(runtime.result.current, (node) => node.type === UpdateBlockingSheet)?.props.visible).toBe(true);
+  act(() => button('Other · other').props.onPress());
   expect(shared.selectTarget).toHaveBeenCalledWith(shared.targets[1]);
-  button('share:addToChat').props.onPress(); await runtime.settle();
-  expect(dismissTo).not.toHaveBeenCalled();
-  waiting.resolve(true); await runtime.settle();
-  expect(dismissTo).toHaveBeenCalledWith('/(tabs)');
+  act(() => button('share:addToChat').props.onPress()); await settleReact();
+  expect(route.router.dismissTo).not.toHaveBeenCalled();
+  await act(async () => { waiting.resolve(true); });
+  expect(route.router.dismissTo).toHaveBeenCalledWith('/(tabs)');
   runtime.unmount();
 });
 it('refreshes repeated native receipt routes and keeps rejected-only shares visible without Add', async () => {
@@ -69,11 +90,11 @@ it('refreshes repeated native receipt routes and keeps rejected-only shares visi
   await mount();
   expect(button('share:addToChat').props.disabled).toBe(true);
   expect(shared.refreshShared).toHaveBeenCalledOnce();
-  receipt = '2'; runtime.update({}); await runtime.settle();
+  route.receipt = '2'; runtime.rerender({}); await settleReact();
   expect(shared.refreshShared).toHaveBeenCalledTimes(2);
   button('share:discard').props.onPress();
   expect(shared.clearShared).toHaveBeenCalledOnce();
-  expect(dismissTo).toHaveBeenCalledWith('/(tabs)');
+  expect(route.router.dismissTo).toHaveBeenCalledWith('/(tabs)');
   runtime.unmount();
 });
 

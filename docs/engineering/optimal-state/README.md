@@ -409,12 +409,17 @@ npm run validate:commit
   timers with platform fakes. All 83 focused cases retained their executed
   test identities and passed.
 
-- F8. Cloud Link store recovery, credential storage, terminal upgrades,
+- F8, `f7609622`. Cloud Link store recovery, credential storage, terminal upgrades,
   Android build-script argument checks and incoming QR flows use normal
   imports. Native billing, secure storage and subprocess calls stay at the
   test boundary. The old data-URL loader is deleted. Connection protocol tests
   now cover the real SDK and redirect-aware transport. All 39 migrated cases
   retained their identities, and both fake-server contracts passed self-test.
+
+- F9. Connection-manager recovery exercises the native OpenCode client, live
+  connection manager, Cloud Link reducer, Query cache and persisted profiles.
+  The test measures renewal and reconnect timers through the manager's
+  injected clock. The share screen uses real scope selectors and React effects.
 
 ## Loop protocol
 
