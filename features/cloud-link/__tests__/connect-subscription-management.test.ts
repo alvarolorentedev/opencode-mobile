@@ -1,15 +1,12 @@
 import { describe, expect, it, vi } from 'vitest';
 
-import { loadTs } from '../../../tests/helpers/runtime.mjs';
-
 async function store(platform: string, packageName: string | undefined = 'app.getopencode.mobile.dev', enabled = true) {
   const deepLinkToSubscriptions = vi.fn(async () => {});
-  const { openConnectSubscriptionManagement } = await loadTs('shared/platform/billing/connect-store.ts', {
-    'expo-constants': { __esModule: true, default: { expoConfig: { android: { package: packageName } } } },
-    'react-native': { Platform: { OS: platform } },
-    'expo-iap': { deepLinkToSubscriptions },
-    "@/shared/contracts/cloud-link": { isConnectEnabled: () => enabled, getConnectStore: () => platform === 'ios' ? 'apple' : 'google' }
-  }, { Error });
+  vi.resetModules();
+  vi.doMock('expo-constants', () => ({ default: { expoConfig: { android: { package: packageName }, extra: { foss: !enabled } } } }));
+  vi.doMock('react-native', () => ({ Platform: { OS: platform } }));
+  vi.doMock('expo-iap', () => ({ deepLinkToSubscriptions }));
+  const { openConnectSubscriptionManagement } = await import('@/shared/platform/billing/connect-store');
   return { openConnectSubscriptionManagement, deepLinkToSubscriptions };
 }
 

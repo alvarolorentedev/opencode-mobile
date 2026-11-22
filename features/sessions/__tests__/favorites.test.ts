@@ -1,51 +1,14 @@
-import { moduleSourceUri } from '../../../tests/helpers/module-source.mjs';
 import assert from 'node:assert/strict';
-import { readFile } from 'node:fs/promises';
-import path from 'node:path';
-import { fileURLToPath, pathToFileURL } from 'node:url';
-import ts from 'typescript';
 import { describe, it } from 'vitest';
 
-// Transpile TS and import via data URIs, rewriting the `@/` alias. The limit
-// comes from the session model and scopes come from the connection helper.
-//
-// Migrated from the standalone tests/favorites.test.mjs Node script.
+import { FAVORITE_SESSIONS_MAX as MAX, type FavoriteSession } from '@/features/sessions/model/types';
+import { parseFavoriteSessions, serializeFavoriteSessions } from '@/features/sessions/services/favorites-storage';
+import { getConnectionScope } from '@/shared/contracts/connection-scope';
+
 describe('favorite session storage', () => {
   it('validates, scopes, caps, and strips secrets from persisted favorites', async () => {
-    const here = path.dirname(fileURLToPath(import.meta.url));
-    const root = path.join(here, '..', '..', '..');
-
-    async function transpileToDataUri(relativePath: string, replacements: [RegExp, string][] = []) {
-      return moduleSourceUri(root, relativePath, [...replacements,]);
-    }
-
-    const base64Uri = `data:text/javascript,${encodeURIComponent(
-      `import { base64 } from ${JSON.stringify(pathToFileURL(path.join(root, 'node_modules/@scure/base/lib/index.js')).href)}; export { base64 };`,
-    )}`;
-    const zodUri = `data:text/javascript,${encodeURIComponent(
-      `import { z } from ${JSON.stringify(pathToFileURL(path.join(root, 'node_modules/zod/index.cjs')).href)}; export { z };`,
-    )}`;
-    const connectionScopeUri = await transpileToDataUri('shared/contracts/connection-scope.ts', [
-      [/from '@scure\/base'/g, `from "${base64Uri}"`],
-    ]);
-    const { getConnectionScope } = await import(connectionScopeUri);
-
     const scopeA = getConnectionScope({ serverUrl: 'https://a.example', username: 'alice' });
     const scopeB = getConnectionScope({ serverUrl: 'https://b.example', username: 'alice' });
-
-    const sessionTypesUri = await transpileToDataUri('features/sessions/model/types.ts');
-    const favoritesSource = await readFile(path.join(root, 'features/sessions/services/favorites-storage.ts'), 'utf8');
-    const favoritesTranspiled = ts.transpileModule(favoritesSource, {
-      compilerOptions: { module: ts.ModuleKind.ESNext, target: ts.ScriptTarget.ES2020 },
-    }).outputText;
-    const favoritesUri = `data:text/javascript,${encodeURIComponent(
-      favoritesTranspiled
-        .replace(/from '@\/features\/sessions\/model\/types'/g, `from "${sessionTypesUri}"`)
-        .replace(/from 'zod'/g, `from "${zodUri}"`),
-    )}`;
-
-    const { parseFavoriteSessions, serializeFavoriteSessions } = await import(favoritesUri);
-    const { FAVORITE_SESSIONS_MAX: MAX } = await import(sessionTypesUri);
 
     // 1. Valid hydration maps to the explicit model and strips unknown/legacy
     // fields such as `projectLabel`.
@@ -151,7 +114,7 @@ describe('favorite session storage', () => {
 
       // Legacy entries cannot be serialized back either.
       assert.deepEqual(JSON.parse(serializeFavoriteSessions([
-        { sessionId: 'old', projectPath: '/work/a', favoritedAt: 1 },
+        { sessionId: 'old', projectPath: '/work/a', favoritedAt: 1 } as FavoriteSession,
       ])), []);
     }
   });

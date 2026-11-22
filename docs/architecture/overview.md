@@ -394,7 +394,7 @@ The completion version, preference schema and first-run migration are unchanged.
   Pure selection of the active-session group (running-first ordering, recent tail
   capped at four, subagent filtering). The Chat Library de-duplicates
   these IDs out of the current-project Chat list.
-- `features/chat/state/use-transcript-state.ts`
+- `features/chat/services/transcript-lifecycle.ts`
   Paginated transcript state machine: one newest 200-record window on open,
   scroll-up history paging in 200-record batches without a cap, a single newest
   20-record tail merge with anchor-aware placement, a read generation that

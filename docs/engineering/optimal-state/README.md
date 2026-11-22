@@ -374,11 +374,16 @@ npm run validate:commit
   persistence writer and restores them if secure profile save fails. The
   commit gate passed with 1,289 tests and one existing skip, plus 12 focused
   tests, docs and 122 affected browser flows.
-- F2. The first native-import batch covers platform services, preferences,
+- F2, `333009d9`. The first native-import batch covers platform services, preferences,
   storage, transcript reads and the committed React transcript view. The
   Vitest collection retained every prior test identity and added four
   fast-check properties for connection transitions, session statuses and
   transcript merging and ordering. All 25 affected browser flows passed.
+- F3. Prompt inbox recovery and transcript paging tests use the production
+  controllers, Zustand store and Query cache. The obsolete React controller
+  hooks are deleted. Catalog, notification, favorite and native voice service
+  tests import their modules through Vitest. All 34 affected browser flows
+  passed.
 
 ## Loop protocol
 

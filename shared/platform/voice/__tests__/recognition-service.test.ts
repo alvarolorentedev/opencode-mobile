@@ -1,13 +1,19 @@
 import assert from 'node:assert/strict';
-import { it } from 'vitest';
+import { it, vi } from 'vitest';
 
-import { loadTs } from '../../../../tests/helpers/runtime.mjs';
+import * as services from '@/shared/platform/voice/recognition-service';
+
+const native = vi.hoisted(() => ({
+  Platform: { OS: 'android', Version: 34 as number | string },
+  ExpoSpeechRecognitionModule: {
+    getSpeechRecognitionServices: vi.fn(),
+    getDefaultRecognitionService: vi.fn(),
+  },
+}));
+vi.mock('react-native', () => ({ Platform: native.Platform }));
+vi.mock('expo-speech-recognition', () => ({ ExpoSpeechRecognitionModule: native.ExpoSpeechRecognitionModule }));
 
 it('selects Android compatibility and Google-recognizer recovery attempts', async () => {
-  const module = await loadTs('shared/platform/voice/recognition-service.ts', {
-    'react-native': { Platform: { OS: 'android', Version: 34 } },
-    'expo-speech-recognition': { ExpoSpeechRecognitionModule: {} },
-  });
   const bixby = 'com.samsung.android.bixby.agent';
   const base = {
     apiLevel: 34,
@@ -16,14 +22,14 @@ it('selects Android compatibility and Google-recognizer recovery attempts', asyn
     services: [bixby, 'com.google.android.tts', 'com.google.android.googlequicksearchbox'],
   };
 
-  assert.equal(module.nextStartAttempt({}, { ...base, platform: 'ios' }), undefined);
-  assert.deepEqual(JSON.parse(JSON.stringify(module.nextStartAttempt({}, base))), { compatibility: true, forceNetwork: true });
+  assert.equal(services.nextStartAttempt({}, { ...base, platform: 'ios' }), undefined);
+  assert.deepEqual(JSON.parse(JSON.stringify(services.nextStartAttempt({}, base))), { compatibility: true, forceNetwork: true });
   assert.deepEqual(
-    JSON.parse(JSON.stringify(module.nextStartAttempt({ compatibility: true }, base))),
+    JSON.parse(JSON.stringify(services.nextStartAttempt({ compatibility: true }, base))),
     { compatibility: true, forceNetwork: true, servicePackage: 'com.google.android.tts' },
   );
   assert.equal(
-    module.nextStartAttempt({ compatibility: true, servicePackage: 'com.google.android.tts' }, base),
+    services.nextStartAttempt({ compatibility: true, servicePackage: 'com.google.android.tts' }, base),
     undefined,
     'each recovery stage runs once',
   );
@@ -31,46 +37,30 @@ it('selects Android compatibility and Google-recognizer recovery attempts', asyn
   // The default service is never retried, and API 33+ prefers the modern
   // Speech Recognition & Synthesis package.
   assert.equal(
-    module.preferredGoogleRecognitionPackage({ apiLevel: 34, defaultService: 'com.google.android.tts', services: base.services }),
+    services.preferredGoogleRecognitionPackage({ apiLevel: 34, defaultService: 'com.google.android.tts', services: base.services }),
     'com.google.android.googlequicksearchbox',
   );
   assert.equal(
-    module.preferredGoogleRecognitionPackage({ apiLevel: 30, defaultService: bixby, services: [bixby, 'com.google.android.googlequicksearchbox'] }),
+    services.preferredGoogleRecognitionPackage({ apiLevel: 30, defaultService: bixby, services: [bixby, 'com.google.android.googlequicksearchbox'] }),
     'com.google.android.googlequicksearchbox',
   );
-  assert.equal(module.preferredGoogleRecognitionPackage({ apiLevel: 34, defaultService: bixby, services: [bixby] }), undefined);
+  assert.equal(services.preferredGoogleRecognitionPackage({ apiLevel: 34, defaultService: bixby, services: [bixby] }), undefined);
 });
 
 it('reads recognition services defensively', async () => {
-  const available = await loadTs('shared/platform/voice/recognition-service.ts', {
-    'react-native': { Platform: { OS: 'android', Version: 35 } },
-    'expo-speech-recognition': {
-      ExpoSpeechRecognitionModule: {
-        getSpeechRecognitionServices: () => ['com.google.android.tts'],
-        getDefaultRecognitionService: () => ({ packageName: 'com.google.android.tts' }),
-      },
-    },
-  });
-  assert.deepEqual(JSON.parse(JSON.stringify(available.readRecognitionServices())), {
+  native.Platform.Version = 35;
+  native.ExpoSpeechRecognitionModule.getSpeechRecognitionServices.mockReturnValue(['com.google.android.tts']);
+  native.ExpoSpeechRecognitionModule.getDefaultRecognitionService.mockReturnValue({ packageName: 'com.google.android.tts' });
+  assert.deepEqual(JSON.parse(JSON.stringify(services.readRecognitionServices())), {
     apiLevel: 35,
     defaultService: 'com.google.android.tts',
     services: ['com.google.android.tts'],
   });
 
-  const broken = await loadTs('shared/platform/voice/recognition-service.ts', {
-    'react-native': { Platform: { OS: 'android', Version: 35 } },
-    'expo-speech-recognition': {
-      ExpoSpeechRecognitionModule: {
-        getSpeechRecognitionServices: () => { throw new Error('not visible'); },
-        getDefaultRecognitionService: () => { throw new Error('not visible'); },
-      },
-    },
-  });
-  assert.deepEqual(JSON.parse(JSON.stringify(broken.readRecognitionServices())), { apiLevel: 35, services: [] });
+  native.ExpoSpeechRecognitionModule.getSpeechRecognitionServices.mockImplementation(() => { throw new Error('not visible'); });
+  native.ExpoSpeechRecognitionModule.getDefaultRecognitionService.mockImplementation(() => { throw new Error('not visible'); });
+  assert.deepEqual(JSON.parse(JSON.stringify(services.readRecognitionServices())), { apiLevel: 35, services: [] });
 
-  const ios = await loadTs('shared/platform/voice/recognition-service.ts', {
-    'react-native': { Platform: { OS: 'ios', Version: '18.0' } },
-    'expo-speech-recognition': { ExpoSpeechRecognitionModule: {} },
-  });
-  assert.deepEqual(JSON.parse(JSON.stringify(ios.readRecognitionServices())), { apiLevel: 0, services: [] });
+  Object.assign(native.Platform, { OS: 'ios', Version: '18.0' });
+  assert.deepEqual(JSON.parse(JSON.stringify(services.readRecognitionServices())), { apiLevel: 0, services: [] });
 });

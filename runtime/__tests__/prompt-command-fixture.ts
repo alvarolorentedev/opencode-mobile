@@ -5,7 +5,6 @@ import type { createPromptCommands as CreatePromptCommands } from '@/runtime/cor
 import { createAppStore, type AppState, type AppStore } from '@/runtime/core/store';
 import { createServerQueryClient } from '@/shared/server-data/query-client';
 
-import { queryRuntime } from '../../tests/helpers/query-runtime.mjs';
 import { loadTs, type hookRuntime } from '../../tests/helpers/runtime.mjs';
 
 type Runtime = ReturnType<typeof hookRuntime>;
@@ -46,20 +45,4 @@ export async function loadPromptLifecycle(runtime: Runtime, imports: Record<stri
     ...imports, ...coreImports(runtime, store, prompt),
   }, runtime.globals);
   return { usePromptLifecycle, store };
-}
-
-export async function createFixtureInbox(runtime: Runtime, imports: Record<string, unknown>) {
-  const store = createStore();
-  const query = queryRuntime(runtime.react);
-  const inbox = await loadTs('features/chat/services/prompt-inbox-commands.ts', imports, runtime.globals);
-  const prompt = await commandsFor(store, query.useQueryClient() as unknown as QueryClient, inbox, runtime.globals);
-  return { store, query, inbox, prompt };
-}
-
-export async function loadPromptInbox(runtime: Runtime, imports: Record<string, unknown>) {
-  const { store, query, inbox, prompt } = await createFixtureInbox(runtime, imports);
-  return loadTs('features/chat/state/use-prompt-inbox.ts', {
-    ...imports, ...coreImports(runtime, store, prompt), '@tanstack/react-query': query,
-    '../services/prompt-inbox-commands': inbox,
-  }, runtime.globals);
 }

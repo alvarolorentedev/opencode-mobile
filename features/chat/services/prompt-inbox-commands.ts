@@ -25,6 +25,15 @@ export function readPendingPromptSessionIds(cache: QueryClient, identity: QueryI
     ...Object.keys(outbox?.bySession ?? {}).filter((id) => outbox?.bySession[id].length)])];
 }
 
+export function mergePromptOutbox(prompts: PromptSnapshot['prompts'], outbox: PromptOutbox) {
+  if (outbox === EMPTY_OUTBOX) return prompts;
+  const next = { ...prompts };
+  for (const [sessionId, local] of Object.entries(outbox.bySession)) {
+    next[sessionId] = mergePrompts(prompts[sessionId] ?? [], local);
+  }
+  return next;
+}
+
 export function mergePrompts(server: PendingPrompt[], local: PromptOutbox['bySession'][string]) {
   return [...local.map(({ prompt }) => prompt), ...server].sort((a, b) => a.createdAt - b.createdAt);
 }

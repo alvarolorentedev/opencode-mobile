@@ -1,15 +1,30 @@
-import { describe, expect, it, vi } from 'vitest';
+import { describe, expect, it, onTestFinished, vi } from 'vitest';
 
 import * as format from '@/shared/presentation/format';
-import * as transcript from '@/shared/presentation/transcript';
-import * as usage from '@/shared/presentation/usage';
-import { pruneByKeepIds } from '@/shared/utilities/prune';
-import { recordSessionUsageAndTodos } from '@/features/chat/model/session-ledger';
-import { createAppStore, type AppState } from '@/runtime/core/store';
-import { hookRuntime, loadTs } from '../../../tests/helpers/runtime.mjs';
-import { queryRuntime } from '../../../tests/helpers/query-runtime.mjs';
+import { createProjectTranscript } from '@/features/chat/services/project-transcript';
+import { transcriptAccess } from '@/features/chat/services/transcript-queries';
+import { createAppStore } from '@/runtime/core/store';
+import type { ScopedOpencodeClient } from '@/shared/protocol/opencode/client';
+import { createServerQueryClient } from '@/shared/server-data/query-client';
 
+const transport = vi.hoisted(() => ({
+  messages: (..._args: unknown[]): unknown => undefined,
+  message: (..._args: unknown[]): unknown => undefined,
+}));
+
+vi.mock('@/shared/protocol/services/session-service', async (original) => ({
+  ...await original<typeof import('@/shared/protocol/services/session-service')>(),
+  getSessionMessages: (...args: unknown[]) => transport.messages(...args),
+  getSessionMessage: (...args: unknown[]) => transport.message(...args),
+}));
 vi.mock('@/shared/i18n/index', () => ({ getFormatLocale: () => 'en' }));
+vi.mock('react-native', () => ({ Platform: { OS: 'web' } }));
+vi.mock('expo-constants', () => ({ default: { expoConfig: { extra: {} } } }));
+vi.mock('@react-native-async-storage/async-storage', () => ({ default: { getItem: async () => null } }));
+vi.mock('expo/fetch', () => ({}));
+vi.mock('expo-crypto', () => ({}));
+vi.mock('expo-secure-store', () => ({}));
+vi.mock('expo-file-system', () => ({}));
 
 type Message = {
   info: { id: string; role: 'assistant' | 'user'; time: { created: number } };
@@ -38,64 +53,32 @@ function deferred<T>() {
 
 const page = (records: Message[], hasMore = false, nextBefore = hasMore ? 'cursor' : undefined) => ({ records, hasMore, nextBefore });
 
-async function mountTranscript(
+function mountTranscript(
   initial: Record<string, Message[]>,
-  getSessionMessages: ReturnType<typeof vi.fn>,
-  getSessionMessage: ReturnType<typeof vi.fn> = vi.fn(async () => undefined),
+  getSessionMessages: (...args: any[]) => unknown,
+  getSessionMessage: (...args: any[]) => unknown = vi.fn(async () => undefined),
 ) {
-  const runtime = hookRuntime();
-  const store = createAppStore({ settings: { serverUrl: 'http://server.test', username: '', password: '', directory: '/repo' }, chatPreferences: {} as never, controlPlaneUrl: '' });
-  const client = { __opencode: { contract: 'v2', directory: '/repo' } };
-  const actions = { applyEvent: () => false, activeMessageId: () => undefined, clearMessage: () => {}, clearSession: () => {}, deferReconcileToPage: () => {}, overlay: (_sessionId: string, records: Message[]) => records, adopt: () => {}, appendUserMessage: () => {}, hasLocalUsers: () => false, isLocalSendRecent: () => false, reset: () => {}, prune: () => {} };
-  const query = queryRuntime(runtime.react);
+  const store = createAppStore({ settings: { serverUrl: 'http://server.test', username: '', password: '', directory: '/repo' },
+    chatPreferences: {} as never, controlPlaneUrl: '' });
+  const client = { __opencode: { contract: 'v2', directory: '/repo' } } as ScopedOpencodeClient;
+  const queryClient = createServerQueryClient();
   const identity = { connectionId: 'test', connectionScope: 'scope', authRevision: 0 };
-  const { useTranscriptState, transcriptAccess } = await loadTs([
-    'features/chat/state/use-transcript-state.ts', 'features/chat/services/transcript-queries.ts',
-  ], {
-    react: runtime.react,
-    '@tanstack/react-query': query,
-    '@/shared/protocol/opencode/client': { withReadSignal: (value: object) => value },
-    '@/runtime/core': {
-      useAppCore: () => ({ store }),
-      useAppStore<T>(select: (state: AppState) => T) {
-        const [, update] = runtime.react.useState(0);
-        runtime.react.useEffect(() => store.subscribe(() => update((version: number) => version + 1)), []);
-        return select(store.getState());
-      },
-    },
-    '@/shared/presentation/format': format,
-    '@/shared/presentation/transcript': transcript,
-    '@/shared/presentation/usage': usage,
-    "@/shared/utilities/prune": { pruneByKeepIds },
-    "@/shared/protocol/services/session-service": { getSessionMessages, getSessionMessage, TRANSCRIPT_PAGE_LIMIT: 20, MAX_MESSAGE_PAGE_LIMIT: 200 },
-    "@/shared/protocol/opencode/contracts/session-adapter": { MAX_MESSAGE_PAGE_LIMIT: 200 },
-    "@/features/chat/model/session-ledger": { recordSessionUsageAndTodos },
-    '@/features/chat/state/use-live-transcript': { useLiveTranscript: ({ messagesBySession, readCanonicalSession }: {
-      messagesBySession: Record<string, Message[]>;
-      readCanonicalSession: (id: string) => Message[];
-    }) => ({ actions, displayedMessages: messagesBySession, readDisplayedSession: readCanonicalSession }) },
-    "@/shared/protocol/opencode/v2/mappers": { toMessageRecord: (message: { __record?: unknown }) => message.__record },
-    "@/shared/protocol/opencode/in-flight": { coalesceRead: (_client: unknown, _key: string, read: () => unknown) => read() },
-    "@/features/chat/services/transcript-cache": { hydrateTranscriptCache: async () => {} }
+  const scopeKey = 'transcript-test-workspace';
+  const access = transcriptAccess(queryClient, identity, client);
+  transport.messages = getSessionMessages;
+  transport.message = getSessionMessage;
+  for (const [id, records] of Object.entries(initial)) access.restore(id, records as format.SessionMessageRecord[]);
+  const value = createProjectTranscript({ store, queryClient, clock: Date.now }, {
+    client, identity, scopeKey, activeProjectPath: '/repo', isCurrentClient: (candidate) => candidate === client,
   });
-  const access = transcriptAccess(query.useQueryClient(), identity, client);
-  const isCurrentClient = () => true;
-  for (const [id, records] of Object.entries(initial)) access.restore(id, records);
-  function useHarness() {
-    const [, setIsRefreshingMessages] = runtime.react.useState(false);
-    return useTranscriptState({
-      identity,
-      scopeKey: 'transcript-test-workspace',
-      client,
-      isCurrentClient,
-      currentSessionId: 's',
-      connectionScope: 'scope',
-      activeProjectPath: '/repo',
-      setIsRefreshingMessages,
-    });
-  }
-  const value = runtime.mount(useHarness, {});
-  return { runtime, value, client };
+  value.hydrate('s', () => true);
+  onTestFinished(() => { value.dispose(); queryClient.clear(); });
+
+  return { value, client, view: {
+    messages: () => value.readDisplayedSession('s'),
+    window: () => access.window('s'),
+    hydrating: () => store.getState().transcriptUi[scopeKey]?.hydratingSessionIds.s,
+  } };
 }
 
 const ids = (records: Message[]) => records.map((item) => item.info.id);
@@ -103,25 +86,24 @@ const ids = (records: Message[]) => records.map((item) => item.info.id);
 describe('transcript refresh policy', () => {
   it('cold load downloads one newest window with a single read', async () => {
     const getSessionMessages = vi.fn(async (_client: unknown, _id: string, _options?: { before?: string }) => page([textRecord('a'), textRecord('b')]));
-    const { runtime, value } = await mountTranscript({}, getSessionMessages);
+    const { view, value } = await mountTranscript({}, getSessionMessages);
     await value.refreshMessages('s');
-    runtime.flush();
-    expect(ids(runtime.value.messagesBySession.s)).toEqual(['a', 'b']);
+    expect(ids(view.messages())).toEqual(['a', 'b']);
     expect(getSessionMessages).toHaveBeenCalledTimes(1);
     expect(getSessionMessages.mock.calls[0][2]).toEqual({ limit: 200, fresh: true });
   });
 
   it('reconciles one live message without re-reading the newest page', async () => {
     const getSessionMessages = vi.fn(async () => page([textRecord('a'), textRecord('b')]));
-    const live = textRecord('b', 'streamed reply');
-    const getSessionMessage = vi.fn(async () => ({ __record: live }));
-    const { runtime, value, client } = await mountTranscript({ s: [userRecord('u'), textRecord('b', 'partial')] }, getSessionMessages, getSessionMessage);
+    const getSessionMessage = vi.fn(async () => ({ id: 'b', type: 'assistant', time: { created: 1 },
+      content: [{ type: 'text', text: 'streamed reply' }] }));
+    const { view, value, client } = await mountTranscript({ s: [userRecord('u'), textRecord('b', 'partial')] }, getSessionMessages, getSessionMessage);
     await value.refreshMessages('s', true, { messageId: 'b' });
-    runtime.flush();
     expect(getSessionMessages).not.toHaveBeenCalled();
     expect(getSessionMessage).toHaveBeenCalledWith(client, 's', 'b');
-    expect(runtime.value.messagesBySession.s.find((record: Message) => record.info.id === 'b')?.parts[0].text).toBe('streamed reply');
-    expect(runtime.value.messagesBySession.s[0].info.id).toBe('u');
+    const latest = view.messages().find((record) => record.info.id === 'b')?.parts[0];
+    expect(latest?.type === 'text' ? latest.text : undefined).toBe('streamed reply');
+    expect(view.messages()[0].info.id).toBe('u');
   });
 
   it('keeps an unchanged large user record by identity on merge', () => {
@@ -137,10 +119,9 @@ describe('transcript refresh policy', () => {
 
   it('tail merge appends new records without dropping the held window', async () => {
     const getSessionMessages = vi.fn(async (_client: unknown, _id: string, _options?: { before?: string }) => page([toolRecord('b'), toolRecord('c')]));
-    const { runtime, value } = await mountTranscript({ s: [toolRecord('a'), toolRecord('b')] }, getSessionMessages);
+    const { view, value } = await mountTranscript({ s: [toolRecord('a'), toolRecord('b')] }, getSessionMessages);
     await value.refreshMessages('s');
-    runtime.flush();
-    expect(ids(runtime.value.messagesBySession.s)).toEqual(['a', 'b', 'c']);
+    expect(ids(view.messages())).toEqual(['a', 'b', 'c']);
     // Reconcile is a single newest-page fetch, never a backfill scan.
     expect(getSessionMessages).toHaveBeenCalledTimes(1);
     expect(getSessionMessages.mock.calls[0][2]).toEqual({ limit: 20 });
@@ -149,12 +130,11 @@ describe('transcript refresh policy', () => {
   it('tail merge keeps older loaded history beyond the initial window', async () => {
     const held = Array.from({ length: 300 }, (_value, index) => textRecord(`h${index}`));
     const getSessionMessages = vi.fn(async (_client: unknown, _id: string, _options?: { before?: string }) => page([textRecord('h299'), textRecord('new')]));
-    const { runtime, value } = await mountTranscript({ s: held }, getSessionMessages);
+    const { view, value } = await mountTranscript({ s: held }, getSessionMessages);
     await value.refreshMessages('s');
-    runtime.flush();
-    expect(runtime.value.messagesBySession.s).toHaveLength(301);
-    expect(runtime.value.messagesBySession.s[0].info.id).toBe('h0');
-    expect(runtime.value.messagesBySession.s.at(-1)?.info.id).toBe('new');
+    expect(view.messages()).toHaveLength(301);
+    expect(view.messages()[0].info.id).toBe('h0');
+    expect(view.messages().at(-1)?.info.id).toBe('new');
     expect(getSessionMessages).toHaveBeenCalledTimes(1);
     expect(getSessionMessages.mock.calls[0][2]).toEqual({ limit: 20 });
   });
@@ -167,18 +147,16 @@ describe('transcript refresh policy', () => {
       }
       return page([textRecord('a')], false);
     });
-    const { runtime, value } = await mountTranscript({ s: [textRecord('b'), textRecord('c')] }, getSessionMessages);
+    const { view, value } = await mountTranscript({ s: [textRecord('b'), textRecord('c')] }, getSessionMessages);
     await value.refreshMessages('s', true);
-    runtime.flush();
-    expect(runtime.value.messageWindows.s).toEqual({ nextBefore: 'older-cursor', hasMore: true });
-    expect(ids(runtime.value.messagesBySession.s)).toEqual(['b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k']);
+    expect(view.window()).toEqual({ nextBefore: 'older-cursor', hasMore: true });
+    expect(ids(view.messages())).toEqual(['b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k']);
 
     await value.loadOlderMessages('s');
-    runtime.flush();
     expect(getSessionMessages.mock.calls[0][2]).toEqual({ limit: 20 });
     expect(getSessionMessages.mock.calls[1][2]).toEqual({ limit: 200, before: 'older-cursor' });
-    expect(ids(runtime.value.messagesBySession.s)).toEqual(['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k']);
-    expect(runtime.value.messageWindows.s.hasMore).toBe(false);
+    expect(ids(view.messages())).toEqual(['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k']);
+    expect(view.window()!.hasMore).toBe(false);
   });
 
   it('repairs a missing window with one read, then pages on the next scroll', async () => {
@@ -188,65 +166,57 @@ describe('transcript refresh policy', () => {
       }
       return page([textRecord('a')], false);
     });
-    const { runtime, value } = await mountTranscript({ s: [textRecord('c')] }, getSessionMessages);
+    const { view, value } = await mountTranscript({ s: [textRecord('c')] }, getSessionMessages);
     await value.loadOlderMessages('s');
-    runtime.flush();
     // The repair is one newest-window read; it does not chain an older page.
     expect(getSessionMessages).toHaveBeenCalledTimes(1);
     expect(getSessionMessages.mock.calls[0][2]).toEqual({ limit: 200, fresh: true });
-    expect(ids(runtime.value.messagesBySession.s)).toEqual(['b', 'c']);
-    expect(runtime.value.messageWindows.s).toEqual({ nextBefore: 'older-cursor', hasMore: true });
+    expect(ids(view.messages())).toEqual(['b', 'c']);
+    expect(view.window()).toEqual({ nextBefore: 'older-cursor', hasMore: true });
 
     await value.loadOlderMessages('s');
-    runtime.flush();
     expect(getSessionMessages).toHaveBeenCalledTimes(2);
     expect(getSessionMessages.mock.calls[1][2]).toEqual({ limit: 200, before: 'older-cursor' });
-    expect(ids(runtime.value.messagesBySession.s)).toEqual(['a', 'b', 'c']);
-    expect(runtime.value.messageWindows.s.hasMore).toBe(false);
+    expect(ids(view.messages())).toEqual(['a', 'b', 'c']);
+    expect(view.window()!.hasMore).toBe(false);
   });
 
   it('keeps held records for a deferred or empty tail page', async () => {
     const held = [toolRecord('a')];
     const getSessionMessages = vi.fn(async () => page([]));
-    const { runtime, value } = await mountTranscript({ s: held }, getSessionMessages);
+    const { view, value } = await mountTranscript({ s: held }, getSessionMessages);
     await value.refreshMessages('s');
-    runtime.flush();
-    expect(runtime.value.messagesBySession.s).toBe(held);
+    expect(view.messages()).toBe(held);
   });
 
   it('never hydrates the empty state for a silent background refresh', async () => {
     const gate = deferred<ReturnType<typeof page>>();
     const getSessionMessages = vi.fn(() => gate.promise);
-    const { runtime, value } = await mountTranscript({}, getSessionMessages);
+    const { view, value } = await mountTranscript({}, getSessionMessages);
 
     const silent = value.refreshMessages('s', true);
-    runtime.flush();
-    expect(runtime.value.hydratingSessionIds.s).not.toBe(true);
+    expect(view.hydrating()).not.toBe(true);
 
     gate.resolve(page([]));
     await silent;
-    runtime.flush();
-    expect(runtime.value.hydratingSessionIds.s).not.toBe(true);
+    expect(view.hydrating()).not.toBe(true);
 
     // An explicit open still owns the skeleton until its read settles.
     const explicitGate = deferred<ReturnType<typeof page>>();
     getSessionMessages.mockImplementationOnce(() => explicitGate.promise);
     const explicit = value.refreshMessages('s');
-    runtime.flush();
-    expect(runtime.value.hydratingSessionIds.s).toBe(true);
+    expect(view.hydrating()).toBe(true);
 
     explicitGate.resolve(page([]));
     await explicit;
-    runtime.flush();
-    expect(runtime.value.hydratingSessionIds.s).toBe(false);
+    expect(view.hydrating()).toBe(false);
   });
 
   it('adopts the fetched page when a burst does not overlap the held window', async () => {
     const getSessionMessages = vi.fn(async (_client: unknown, _id: string, _options?: { before?: string }) => page([textRecord('x'), textRecord('y')]));
-    const { runtime, value } = await mountTranscript({ s: [toolRecord('a'), toolRecord('b')] }, getSessionMessages);
+    const { view, value } = await mountTranscript({ s: [toolRecord('a'), toolRecord('b')] }, getSessionMessages);
     await value.refreshMessages('s');
-    runtime.flush();
-    expect(ids(runtime.value.messagesBySession.s)).toEqual(['x', 'y']);
+    expect(ids(view.messages())).toEqual(['x', 'y']);
     expect(getSessionMessages).toHaveBeenCalledTimes(1);
     expect(getSessionMessages.mock.calls[0][2]).toEqual({ limit: 20 });
   });
@@ -259,33 +229,29 @@ describe('transcript refresh policy', () => {
       }
       return page(history.slice(0, 20), false);
     });
-    const { runtime, value } = await mountTranscript({}, getSessionMessages);
+    const { view, value } = await mountTranscript({}, getSessionMessages);
     await value.refreshMessages('s');
-    runtime.flush();
     expect(getSessionMessages).toHaveBeenCalledTimes(1);
     expect(getSessionMessages.mock.calls[0][2]).toEqual({ limit: 200, fresh: true });
-    expect(runtime.value.messagesBySession.s).toHaveLength(300);
+    expect(view.messages()).toHaveLength(300);
 
     await value.loadOlderMessages('s');
-    runtime.flush();
     expect(getSessionMessages).toHaveBeenCalledTimes(2);
     expect(getSessionMessages.mock.calls[1][2]).toEqual({ limit: 200, before: 'cursor-300' });
-    expect(runtime.value.messagesBySession.s).toHaveLength(320);
-    expect(runtime.value.messagesBySession.s[0].info.id).toBe('m0');
-    expect(runtime.value.messagesBySession.s.at(-1)?.info.id).toBe('m319');
-    expect(runtime.value.messageWindows.s.hasMore).toBe(false);
+    expect(view.messages()).toHaveLength(320);
+    expect(view.messages()[0].info.id).toBe('m0');
+    expect(view.messages().at(-1)?.info.id).toBe('m319');
+    expect(view.window()!.hasMore).toBe(false);
 
     await value.loadOlderMessages('s');
-    runtime.flush();
     expect(getSessionMessages).toHaveBeenCalledTimes(2);
   });
 
   it('replace discards the held window for a server-side rewrite', async () => {
     const getSessionMessages = vi.fn(async (_client: unknown, _id: string, _options?: { before?: string }) => page([textRecord('z')]));
-    const { runtime, value } = await mountTranscript({ s: [toolRecord('a'), toolRecord('b')] }, getSessionMessages);
+    const { view, value } = await mountTranscript({ s: [toolRecord('a'), toolRecord('b')] }, getSessionMessages);
     await value.refreshMessages('s', true, { mode: 'replace' });
-    runtime.flush();
-    expect(ids(runtime.value.messagesBySession.s)).toEqual(['z']);
+    expect(ids(view.messages())).toEqual(['z']);
     expect(getSessionMessages).toHaveBeenCalledTimes(1);
     expect(getSessionMessages.mock.calls[0][2]).toEqual({ limit: 200, fresh: true });
   });
@@ -296,7 +262,7 @@ describe('transcript refresh policy', () => {
     const responses = [older.promise, newer.promise];
     let call = 0;
     const getSessionMessages = vi.fn(async () => responses[call++]);
-    const { runtime, value } = await mountTranscript(
+    const { view, value } = await mountTranscript(
       { s: [userRecord('u1', 'plan ux improvements')] },
       getSessionMessages,
     );
@@ -307,15 +273,13 @@ describe('transcript refresh policy', () => {
     // The newer page no longer contains the initial prompt.
     newer.resolve(page([textRecord('a1'), textRecord('a2')]));
     await newerRefresh;
-    runtime.flush();
-    expect(ids(runtime.value.messagesBySession.s)).toEqual(['a1', 'a2']);
+    expect(ids(view.messages())).toEqual(['a1', 'a2']);
 
     // The late page still has it; it must be inserted before a1, not appended
     // below the assistant reply.
     older.resolve(page([userRecord('u1', 'plan ux improvements'), textRecord('a1')]));
     await olderRefresh;
-    runtime.flush();
-    expect(ids(runtime.value.messagesBySession.s)).toEqual(['u1', 'a1', 'a2']);
+    expect(ids(view.messages())).toEqual(['u1', 'a1', 'a2']);
   });
 
   it('does not replace a newer window with a stale non-overlapping page', async () => {
@@ -324,20 +288,18 @@ describe('transcript refresh policy', () => {
     const responses = [older.promise, newer.promise];
     let call = 0;
     const getSessionMessages = vi.fn(async () => responses[call++]);
-    const { runtime, value } = await mountTranscript({ s: [textRecord('a1')] }, getSessionMessages);
+    const { view, value } = await mountTranscript({ s: [textRecord('a1')] }, getSessionMessages);
 
     const olderRefresh = value.refreshMessages('s');
     const newerRefresh = value.refreshMessages('s');
 
     newer.resolve(page([textRecord('c1'), textRecord('c2')]));
     await newerRefresh;
-    runtime.flush();
-    expect(ids(runtime.value.messagesBySession.s)).toEqual(['c1', 'c2']);
+    expect(ids(view.messages())).toEqual(['c1', 'c2']);
 
     older.resolve(page([textRecord('b1')]));
     await olderRefresh;
-    runtime.flush();
-    expect(ids(runtime.value.messagesBySession.s)).toEqual(['c1', 'c2']);
+    expect(ids(view.messages())).toEqual(['c1', 'c2']);
   });
 
   it('drops a tail response that started before a window rewrite', async () => {
@@ -346,19 +308,17 @@ describe('transcript refresh policy', () => {
     const responses = [tail.promise, rewrite.promise];
     let call = 0;
     const getSessionMessages = vi.fn(async () => responses[call++]);
-    const { runtime, value } = await mountTranscript({ s: [textRecord('a1')] }, getSessionMessages);
+    const { view, value } = await mountTranscript({ s: [textRecord('a1')] }, getSessionMessages);
 
     const tailRefresh = value.refreshMessages('s');
     const rewriteRefresh = value.refreshMessages('s', true, { mode: 'replace' });
 
     rewrite.resolve(page([textRecord('z1')]));
     await rewriteRefresh;
-    runtime.flush();
-    expect(ids(runtime.value.messagesBySession.s)).toEqual(['z1']);
+    expect(ids(view.messages())).toEqual(['z1']);
 
     tail.resolve(page([textRecord('a1'), textRecord('a2')]));
     await tailRefresh;
-    runtime.flush();
-    expect(ids(runtime.value.messagesBySession.s)).toEqual(['z1']);
+    expect(ids(view.messages())).toEqual(['z1']);
   });
 });
