@@ -55,17 +55,8 @@ export function useWorkspaceServerData(identity: QueryIdentity, client: ScopedOp
     await cache.invalidateQueries({ predicate: (query) => query.queryKey[0] === 'opencode' && query.queryKey[1] === identity.connectionId
       && ['capabilities', 'configuration', 'agents', 'skills', 'references', 'extension-inspection'].includes(String(query.queryKey[7])), refetchType: demanded ? 'active' : 'none' });
   }, [cache, client, demanded, identity, isCurrent]);
-  const refreshServerFeatures = useCallback(async () => {
-    if (!isCurrent(client) || !client.__opencode.directory) return;
-    if (!demanded) { await cache.invalidateQueries({ queryKey: capabilitiesOptions(identity, client).queryKey.slice(0, -1), refetchType: 'none' }); return; }
-    await Promise.all([
-      cache.fetchQuery({ ...commandsOptions(identity, client), staleTime: 0 }),
-      cache.fetchQuery(fileStatusOptions(identity, client)),
-      cache.fetchQuery(vcsInfoOptions(identity, client)),
-    ]);
-  }, [cache, client, demanded, identity, isCurrent]);
   return {
-    capabilities, refreshChatCapabilities, refreshServerFeatures,
+    capabilities, refreshChatCapabilities,
     currentConfig: capabilities?.config, availableProviders: capabilities?.providers ?? EMPTY,
     providerAuthMethodsById: capabilities?.providerAuthMethodsById ?? EMPTY_METHODS,
     availableModels: capabilities?.models ?? EMPTY, availableAgents: capabilities?.agents ?? EMPTY,

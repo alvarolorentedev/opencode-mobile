@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { QueryClient } from '@tanstack/react-query';
+import { QueryClient, queryOptions } from '@tanstack/react-query';
 import { projectQueryKey } from '@/shared/server-data/keys';
 import { readFile } from 'node:fs/promises';
 import { runInNewContext } from 'node:vm';
@@ -173,19 +173,19 @@ let projectCatalog: any = {
   serverProjects: [{ id: 'project-1', worktree: '/workspace/main-clone', time: { created: 1 } }],
 };
 let knownProjectLocation = false;
-const projectCatalogHook = await loadTs('features/projects/state/use-project-catalog-actions.ts', {
-    react: { useCallback: (fn: any) => fn, useEffect: () => {}, useRef: (current: any) => ({ current }) },
-    "@/shared/protocol/opencode/client": { buildClient: () => ({}) },
-    "@/features/sessions/services/session-cache": { hydrateSessionCache: () => {} },
-    "@/shared/protocol/services/session-service": { listServerProjects: async () => projectCatalog.serverProjects, readCatalogLocation: async () => projectCatalog, combineProjectCatalog: () => projectCatalog, resolveProjectLocation: async () => ({ worktree: '/workspace/added' }), isKnownProjectLocation: async () => knownProjectLocation }
-  });
+let heldProjectLocation: (() => Promise<boolean>) | undefined;
+const { createProjectCatalogActions } = await loadTs('features/projects/services/project-catalog-actions.ts', {
+    '@tanstack/react-query': { queryOptions },
+    "@/shared/protocol/opencode/client": { buildClient: () => ({}), withReadSignal: (client: unknown) => client },
+    "@/shared/observability/client": { telemetry: { markStartup: () => undefined } },
+    "@/shared/protocol/services/session-service": { listServerProjects: async () => projectCatalog.serverProjects, readCatalogLocation: async () => projectCatalog, combineProjectCatalog: () => projectCatalog, resolveProjectLocation: async () => ({ worktree: '/workspace/added' }), isKnownProjectLocation: async () => heldProjectLocation ? heldProjectLocation() : knownProjectLocation }
+  }, { process: { env: {} } });
 function makeProjectCatalogActions(activePath: any, isCurrent = () => true) {
   const state: any = { activePath, cleared: 0 };
   const activeProjectPathRef = { current: activePath };
   const scopeGenerationRef = { current: 0 };
-  state.actions = projectCatalogHook.useProjectCatalogActions({
-    identity, queryActive: true,
-    hydrateSessionCache: () => {},
+  state.actions = createProjectCatalogActions(new QueryClient({ defaultOptions: { queries: { gcTime: Infinity } } }), {
+    identity,
     client: { __opencode: { contract: 'v2' } },
     catalogClient: { __opencode: { contract: 'v2' } },
     isCurrentClient: isCurrent,
@@ -193,8 +193,6 @@ function makeProjectCatalogActions(activePath: any, isCurrent = () => true) {
     activeProjectPathRef,
     setActiveProjectPath: (path: any) => { state.activePath = path; activeProjectPathRef.current = path; },
     clearProjectState: () => { state.cleared++; },
-    connectionScope: 'scope', connectionScopeRef: { current: 'scope' }, isHydrated: false,
-    setSessions: () => {}, setSessionStatuses: () => {},
     scopeGenerationRef, serverContract: 'v2', settingsRef: { current: {} },
   });
   state.scopeGenerationRef = scopeGenerationRef;
@@ -223,6 +221,16 @@ projectCatalog = { ...projectCatalog, currentProjectPath: '/workspace/main-clone
 const staleProjectResponse = makeProjectCatalogActions('/workspace/other-clone', () => false);
 await staleProjectResponse.actions.refreshProjectCatalog();
 assert.equal(staleProjectResponse.activePath, '/workspace/other-clone', 'stale catalog responses leave the active project alone');
+const validatingProject = makeProjectCatalogActions('/workspace/other-clone');
+const validationStarted = deferred<void>(), validationResult = deferred<boolean>();
+heldProjectLocation = () => { validationStarted.resolve(undefined); return validationResult.promise; };
+const delayedRefresh = validatingProject.actions.refreshProjectCatalog();
+await validationStarted.promise;
+validatingProject.scopeGenerationRef.current++;
+validationResult.resolve(false);
+await delayedRefresh;
+heldProjectLocation = undefined;
+assert.equal(validatingProject.activePath, '/workspace/other-clone', 'late location validation leaves the newer generation alone');
 const addedWorktree = makeProjectCatalogActions('/workspace/main-clone', () => true);
 assert.equal(await addedWorktree.actions.addProject('/worktrees/task'), '/worktrees/task');
 assert.equal(addedWorktree.activePath, '/worktrees/task', 'adding a directory selects the requested worktree rather than its owning project root');

@@ -49,7 +49,6 @@ export function useSessionRuntimeState(input: ProjectBindingInput, connection: C
   const settingsRef = useMemo(() => ({
     get current() { return store.getState().registry.connections.find((entry) => entry.id === connectionId)?.settings ?? settings; },
   }), [connectionId, settings, store]);
-  const connectionScopeRef = useMemo(() => ({ get current() { return getConnectionScope(settingsRef.current); } }), [settingsRef]);
   const scopeGenerationRef = useRef(0);
   const serverGenerationRef = useRef(0);
   const clientGenerationRef = useRef(new WeakMap<object, number>());
@@ -67,7 +66,6 @@ export function useSessionRuntimeState(input: ProjectBindingInput, connection: C
     isBootstrappingChat, cancelBootstrap,
     connectionScope,
     settingsRef,
-    connectionScopeRef,
     activeProjectPathRef,
     currentSessionIdRef,
     pendingDeepLinkTargetRef,

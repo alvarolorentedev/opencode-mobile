@@ -46,7 +46,7 @@ export type WorkspaceSnapshot = {
 
 export type WorkspaceValues = {
   capabilitiesValue: CapabilitiesContextValue;
-  projectsValue: Pick<ProjectsContextValue, 'addProject' | 'refreshProjectCatalog' | 'refreshProjectStatus'>;
+  projectsValue: Pick<ProjectsContextValue, 'addProject' | 'refreshProjectCatalog'>;
   chatValue: ChatContextValue;
   conversationValue: ConversationContextValue;
 };

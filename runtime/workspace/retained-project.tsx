@@ -297,8 +297,7 @@ export const RetainedProject = memo(function RetainedProject({ defaults, updateS
 
   const capabilitiesValue = useCapabilitiesPresentation(serverData, capabilities);
   const { addProject, refreshProjectCatalog } = project;
-  const { refreshServerFeatures: refreshProjectStatus } = serverData;
-  const projectsValue = useMemo(() => ({ addProject, refreshProjectCatalog, refreshProjectStatus }), [addProject, refreshProjectCatalog, refreshProjectStatus]);
+  const projectsValue = useMemo(() => ({ addProject, refreshProjectCatalog }), [addProject, refreshProjectCatalog]);
   const conversationValue = useMemo<WorkspaceValues['conversationValue']>(() => ({
     conversation, clearConversationFeedback, toggleConversationMode,
   }), [conversation, clearConversationFeedback, toggleConversationMode]);

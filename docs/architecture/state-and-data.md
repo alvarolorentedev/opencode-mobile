@@ -49,6 +49,9 @@ change or the connection is disabled.
 The Projects screen reads file and VCS results from its scoped Query entries.
 Browser and preview state belong to the scoped client, and each file open
 has a request token. Clipboard writes invalidate reads for detached roots.
+Catalog location and add-project actions run in the Projects service. A change
+to the workspace generation invalidates an outstanding location result. File
+and project status refreshes bind directly to the scoped Query keys.
 
 Navigation, the share picker and Chat Library read project and session
 selection from the app store. Session presentation selects the active row
@@ -62,8 +65,7 @@ Chat and plugin session views select the scoped lists from Query. Library
 edits call the scoped session commands and favorites update the app store
 using the owning connection scope.
 The workspace picker and library enumerate the same connected project
-partitions. The library and share picker observe cached project lists without
-starting background reads.
+partitions. The library and share picker passively observe cached project lists.
 Session opening and creation bind directly to the core commands. The library
 sets its visibility on the selected workspace so connection catalog polling
 runs while the library is open and the route is foregrounded.

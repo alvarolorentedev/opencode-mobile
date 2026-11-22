@@ -16,7 +16,6 @@ export type ProjectActionsInput = {
   scopeKey: string;
   connectionId: string;
   connected: boolean;
-  refreshServerFeatures: () => Promise<void>;
   client: ScopedOpencodeClient;
   catalogClient: ScopedOpencodeClient;
   isCurrentClient: (candidate: object) => boolean;
@@ -26,7 +25,6 @@ export type ProjectActionsInput = {
   activeProjectPathRef: { current: string | undefined };
   clearProjectState: () => void;
   connectionScope: string;
-  connectionScopeRef: { current: string };
   isHydrated: boolean;
   setIsRefreshingDiffs: Dispatch<SetStateAction<boolean>>;
   setDiffsBySession: Dispatch<SetStateAction<Record<string, FileDiff[]>>>;
@@ -48,13 +46,13 @@ export type ProjectActionsInput = {
 // inputs above are the composition contracts used by the provider wiring; these
 // aliases keep sub-hooks from silently depending on unrelated setters and refs.
 export type ProjectCatalogInput = Pick<ProjectActionsInput,
-  'identity' | 'queryActive' | 'connected' | 'client' | 'catalogClient' | 'isCurrentClient' | 'isCurrentCatalogClient' | 'activeProjectPath' |
-  'setActiveProjectPath' | 'activeProjectPathRef' | 'clearProjectState' |
-  'connectionScope' | 'connectionScopeRef' | 'isHydrated' | 'scopeGenerationRef' | 'serverContract' | 'settingsRef'>;
+  'identity' | 'client' | 'catalogClient' | 'isCurrentClient' | 'isCurrentCatalogClient' | 'setActiveProjectPath' |
+  'activeProjectPathRef' | 'clearProjectState' | 'scopeGenerationRef' | 'serverContract' | 'settingsRef'>;
 
 export type ProjectFileInput = Pick<ProjectActionsInput,
-  'identity' | 'queryActive' | 'scopeKey' | 'connectionId' | 'connected' | 'client' | 'isCurrentClient' | 'refreshServerFeatures'> & {
+  'identity' | 'queryActive' | 'scopeKey' | 'connectionId' | 'connected' | 'client' | 'isCurrentClient'> & {
   settings: OpencodeConnectionSettings;
   fileClipboard: import('@/features/projects/state/use-file-clipboard').FileClipboard;
+  refreshServerFeatures: () => Promise<void>;
   refreshVcsDiff: (scope: 'uncommitted' | 'branch', silent?: boolean) => Promise<unknown>;
 };

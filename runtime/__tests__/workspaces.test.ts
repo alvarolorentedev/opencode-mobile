@@ -97,6 +97,7 @@ describe('multi-server contracts', () => {
     const connectionControls = { connectionProfiles: [], connectSetup: {}, services: {} };
     const lifecycle = { connection: { status: 'connected' }, contract: 'v2' };
     const projectInventory = { project: { activeProjectPath: '/repo', projects: [] } };
+    const projectScope = { scopeKey, directory: '/repo', identity: { connectionId: 'http://a:', connectionScope: 'http://a:' } };
     const projectSessions = [{ id: 's' }];
     const sessionCatalog = { sessions: projectSessions, sessionStatuses: {} };
     const { useConnection, useProjects, useCurrentSession, useSessionLibrary, useOnboarding, useChat } = await loadTs([
@@ -112,7 +113,7 @@ describe('multi-server contracts', () => {
         useActiveWorkspaceTarget: () => ({ connectionId: 'http://a:', projectPath: '/repo' }),
         useConnectionLifecycle: () => lifecycle,
         useWorkspaceConnectionSettings: () => settings,
-        useProjectScope: () => ({ scopeKey, directory: '/repo', identity: { connectionId: 'http://a:', connectionScope: 'http://a:' } }),
+        useProjectScope: () => projectScope,
       },
       '@tanstack/react-query': { useQuery: () => ({ data: projectSessions }) },
       '@/runtime/workspace': { useWorkspaces: () => ({ connectionControls }) },
@@ -121,6 +122,7 @@ describe('multi-server contracts', () => {
       './state/use-project-file-actions': {},
       './state/use-file-clipboard': {},
       './services/queries/status': {},
+      './services/project-status-refresh': {},
       './services/queries': { projectSessionsOptions: () => ({}) },
       './state/use-session-catalog': { useSessionCatalog: () => sessionCatalog },
       '@/shared/contracts/connection-scope': identity,
