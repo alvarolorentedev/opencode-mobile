@@ -99,10 +99,14 @@ npm run validate:commit
   focused lifecycle and Cloud Link recovery tests, docs, web export and all 72
   connection, realtime, network resilience and multi-server browser tests
   passed, including live renewal across panel reopening.
-- B2. The commit gate reported 1,258 passing tests and one existing skip.
+- B2, `ef2c2c1a`. The commit gate reported 1,258 passing tests and one existing skip.
   The 19 focused tests, docs, web export and all 68 Cloud Link, manual
   connection and multi-server browser tests passed. The registry test covers
   revision changes, credential partitions, disable, removal and teardown.
+- B3a. The commit gate reported 1,259 passing tests and one existing skip.
+  The 11 focused tests, docs, web export and all 60 Cloud Link, manual
+  connection and network resilience browser tests passed. The retry policy
+  suite verifies the attempt budget, the radio settling delay and cancellation.
 
 ## Loop protocol
 

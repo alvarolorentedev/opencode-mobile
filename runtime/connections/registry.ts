@@ -31,6 +31,9 @@ export function createConnectionRegistry({ store, queryClient }: { store: AppSto
   const listeners = new Set<() => void>();
   const foregroundListeners = new Set<(active: boolean) => void>();
   let foregroundActive = true;
+  let activeId: string | undefined;
+  let queryForeground = true;
+  let online = true;
   let unsubscribed: (() => void) | undefined;
   let configuration: Configuration | undefined;
   const foreground = {
@@ -48,6 +51,7 @@ export function createConnectionRegistry({ store, queryClient }: { store: AppSto
     if (slot.input) slot.manager.setInput({ ...slot.input, entry: { ...slot.input.entry, enabled: false } });
     slot.stopConnection?.();
     slot.manager.syncConnection();
+    slot.manager.dispose();
   }
 
   function sync(records: ConnectionRecord[]) {
@@ -73,6 +77,7 @@ export function createConnectionRegistry({ store, queryClient }: { store: AppSto
       const next: ConnectionInput = { ...environment, entry, identity };
       slot.input = next;
       slot.manager.setInput(next);
+      slot.manager.setDemand(queryForeground && activeId === entry.id, online);
       if (previous && (previous.identity.connectionScope !== identity.connectionScope || previous.identity.authRevision !== identity.authRevision)) {
         const old = previous.entry.settings;
         const current = entry.settings;
@@ -109,6 +114,12 @@ export function createConnectionRegistry({ store, queryClient }: { store: AppSto
       if (foregroundActive === active) return;
       foregroundActive = active;
       for (const listener of foregroundListeners) listener(active);
+    },
+    setDemand(connectionId: string | undefined, nextOnline: boolean, nextQueryForeground: boolean) {
+      activeId = connectionId;
+      online = nextOnline;
+      queryForeground = nextQueryForeground;
+      for (const [id, { manager }] of slots) manager.setDemand(queryForeground && activeId === id, online);
     },
     dispose() {
       unsubscribed?.();

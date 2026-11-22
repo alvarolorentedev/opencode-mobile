@@ -13,6 +13,7 @@ import { buildClient, classifyConnectionFailure, detectServerContract, getCertif
 import type { QueryIdentity } from '@/shared/server-data/keys';
 
 import { createConnectionLifecycle } from './connection-lifecycle';
+import { createConnectionRetry } from './retry';
 
 export type ConnectionInput = {
   entry: ConnectionRecord;
@@ -57,8 +58,23 @@ export function createConnection({ queryClient, foreground, clock = systemClock 
   let preparedUpdate: { revision: number; settings: OpencodeConnectionSettings } | undefined;
   let countedContract: ServerContract | undefined;
   let renewed = '';
+  let active = false;
+  let online = true;
+  let refreshingStale = false;
 
   const connectionState = () => lifecycle.getState().connection;
+  const retry = createConnectionRetry(connect, clock);
+  const updateActivity = () => {
+    const state = connectionState();
+    retry.update(state, active && Boolean(input?.entry.enabled) && !input?.entry.settings.connect, online);
+    const entry = input?.entry;
+    const refresh = entry?.enabled === true && active && online && state.status === 'connected';
+    if (entry && refresh && !refreshingStale) {
+      void queryClient.refetchQueries({ queryKey: ['opencode', entry.id], stale: true, type: 'active' }, { cancelRefetch: false });
+    }
+    refreshingStale = refresh;
+  };
+  const stopActivity = lifecycle.subscribe(updateActivity);
   const invalidateWorkflows = () => { for (const listener of invalidations) listener(); };
   const clearPartition = (id: string) => {
     void queryClient.cancelQueries({ queryKey: ['opencode', id] });
@@ -233,7 +249,14 @@ export function createConnection({ queryClient, foreground, clock = systemClock 
   return {
     getState: lifecycle.getState,
     subscribe: lifecycle.subscribe,
-    setInput: (next: ConnectionInput) => { input = next; },
+    setInput: (next: ConnectionInput) => { input = next; updateActivity(); },
+    setDemand(nextActive: boolean, nextOnline: boolean) {
+      active = nextActive;
+      online = nextOnline;
+      updateActivity();
+    },
+    retry,
+    dispose() { stopActivity(); retry.dispose(); },
     onInvalidated: (listener: () => void) => { invalidations.add(listener); return () => { invalidations.delete(listener); }; },
     connect,
     syncConnection,

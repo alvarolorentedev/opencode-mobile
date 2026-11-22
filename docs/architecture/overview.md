@@ -340,7 +340,7 @@ The completion version, preference schema and first-run migration are unchanged.
 - `shared/network/use-network-status.ts` and `shared/network/network-status.ts`
   Normalized online/offline, link type, metered and constrained state. Offline
   pauses retries; online restarts the stream and runs a critical reconcile.
-- `features/connections/state/use-connection-retry.ts`
+- `runtime/connections/retry.ts`
   Bounded, foreground-only retry for retryable connect failures (1/2/5/10/20s),
   with immediate recovery after an offline→online transition.
 - `features/chat/services/transcript-cache.ts`

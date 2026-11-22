@@ -1,8 +1,9 @@
 # Phase B — Connection Manager
 
 Status: **in progress**. The plain managers own probe and credential renewal.
-The app-core registry owns their lifetimes and credential partitions. Reconnect
-retry, SSE, status refresh and polling wiring remain.
+The app-core registry owns their lifetimes and credential partitions. Managers
+schedule direct reconnect retry and demand-driven stale Query refresh. SSE,
+event invalidation and polling wiring remain.
 
 Goal: move probe, credential renewal, SSE, polling, status refresh and event
 dispatch out of React. One plain-TS manager per connection, started and stopped

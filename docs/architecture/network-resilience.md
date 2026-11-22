@@ -171,8 +171,8 @@ Query partition on revision changes, and disposes it on disable or removal.
 A prepared rotation rekeys the in-flight attempt so reopening a panel cannot
 launch a second probe.
 
-`features/connections/state/use-connection-retry.ts` retries retryable connect failures while
-the workspace is visible and online:
+`runtime/connections/retry.ts` schedules retryable connect failures for the
+demanded connection while the app is foregrounded and online:
 
 - 1/2/5/10/20 s, bounded to five attempts;
 - a 500 ms retry after an offline→online transition;

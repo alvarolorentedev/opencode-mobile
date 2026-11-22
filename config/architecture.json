@@ -263,8 +263,7 @@
     ],
     "features/connections/runtime.ts": [
       "connectionTransition",
-      "useConnectionProfiles",
-      "useConnectionRetry"
+      "useConnectionProfiles"
     ],
     "features/sessions/runtime.ts": [
       "clearMissionStatsCaches",

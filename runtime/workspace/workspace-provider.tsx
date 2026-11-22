@@ -5,7 +5,7 @@ import { loadConnectionProfiles } from '@/shared/storage/connection-profiles';
 import { getConnectionScope, getConnectionUiScope } from '@/shared/contracts/connection-scope';
 import { HIDDEN_PROJECTS_MAX } from '@/shared/contracts/domain';
 import { defaultConnectionSettings } from '@/shared/protocol/opencode/client';
-import { ConnectionRuntime, useConnectionRegistryBinding } from '@/runtime/connections/connection-runtime';
+import { ConnectionRuntime, useConnectionDemand, useConnectionRegistryBinding } from '@/runtime/connections/connection-runtime';
 import { CURRENT_ONBOARDING_VERSION, isOnboardingComplete } from '@/features/onboarding/runtime';
 import { defaultChatPreferences } from '@/shared/preferences/opencode-preferences';
 import type { ConnectionContextValue } from '@/features/connections/index';
@@ -259,6 +259,7 @@ export function WorkspaceProvider({ children }: PropsWithChildren) {
   }, [focusedValues, setFocusedValues]);
   const readTarget = pathname === '/service' ? undefined : pathname === '/settings' ? inspectionTarget ?? focus
     : pathname === '/terminal' ? terminalTarget ?? focus : focus;
+  useConnectionDemand(readTarget?.connectionId, network.online);
   const workspaceActions = useMemo(() => ({ createChat, createChatInWorktree, focus }), [createChat, createChatInWorktree, focus]);
   return <VoiceSetupTestContext.Provider value={voiceSetupTest}>
     <WorkspaceActionsContext.Provider value={workspaceActions}>

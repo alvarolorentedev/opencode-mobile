@@ -5,8 +5,8 @@ import { createContext, useCallback, useContext, useEffect, useLayoutEffect, use
 import { useTranslation } from 'react-i18next';
 import type { TFunction } from 'i18next';
 import { AppState } from 'react-native';
-import { useConnectionRetry } from '@/features/connections/runtime';
 import { createConnection } from '@/runtime/connections/create-connection';
+import { NO_RETRY } from '@/runtime/connections/retry';
 import { useAppCore } from '@/runtime/core';
 import type { ConnectionLifecycle } from '@/features/connections/index';
 import { projectsOptions } from '@/features/projects/runtime';
@@ -31,6 +31,7 @@ function connectionTranslator(t: TFunction) {
 
 const IDLE: ConnectionLifecycle = { phase: 'idle', operation: 0, connection: { status: 'idle', message: 'Disconnected' }, contract: 'v2' };
 const readIdle = () => IDLE;
+const readNoRetry = () => NO_RETRY;
 const noSubscription = () => () => {};
 const noAuthFailure = () => {};
 
@@ -48,14 +49,19 @@ export function useConnectionRegistryBinding(setup: ConnectSetup, updateSettings
   }, [connections, hydrated, phase, prepareSettings, t, updateSettings]);
 }
 
-function useManagedConnection(entry: ConnectionRecord, online: boolean) {
+export function useConnectionDemand(activeId: string | undefined, online: boolean) {
   const { connections } = useAppCore();
-  const active = useQueryActivity();
+  const foreground = useQueryForeground();
+  useLayoutEffect(() => { connections.setDemand(activeId, online, foreground); }, [activeId, connections, foreground, online]);
+}
+
+function useManagedConnection(entry: ConnectionRecord) {
+  const { connections } = useAppCore();
   const managerForThisId = useCallback(() => connections.get(entry.id), [connections, entry.id]);
   const manager = useSyncExternalStore(connections.subscribe, managerForThisId, managerForThisId);
   const state = useSyncExternalStore(manager?.subscribe ?? noSubscription, manager?.getState ?? readIdle, readIdle);
   const connect = useCallback(() => managerForThisId()?.connect() ?? Promise.resolve(IDLE.connection), [managerForThisId]);
-  const reconnect = useConnectionRetry({ active, paused: Boolean(entry.settings.connect), status: state.connection.status, kind: state.connection.kind, online, connect });
+  const reconnect = useSyncExternalStore(manager?.retry.subscribe ?? noSubscription, manager?.retry.getSnapshot ?? readNoRetry, readNoRetry);
   return useMemo(() => ({
     connection: entry.enabled ? state.connection : IDLE.connection,
     serverContract: state.contract,
@@ -94,15 +100,10 @@ export function ConnectionRuntime({ entry, online, onCatalog, libraryVisible, mi
     resources.forEach((resource) => pending.add(resource)); dirty.current.set(directory, pending); flush();
   });
   }, [entry.events, flush]);
-  const lifecycle = useManagedConnection(entry, online);
+  const lifecycle = useManagedConnection(entry);
   const identity = useQueryIdentity();
   const active = useQueryActivity();
   const catalogClient = useMemo(() => buildClient({ ...entry.settings, directory: '' }, lifecycle.serverContract), [entry.settings, lifecycle.serverContract]);
-  useEffect(() => {
-    if (active && online && lifecycle.connection.status === 'connected') {
-      void cache.refetchQueries({ queryKey: ['opencode', entry.id], stale: true, type: 'active' }, { cancelRefetch: false });
-    }
-  }, [active, cache, entry.id, online, lifecycle.connection.status]);
   const current = useRef(catalogClient);
   useLayoutEffect(() => { current.current = catalogClient; });
   const isCurrentCatalogClient = useCallback((client: object) => entry.enabled && client === current.current, [entry.enabled]);

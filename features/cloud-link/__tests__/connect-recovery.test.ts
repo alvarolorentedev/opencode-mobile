@@ -130,9 +130,13 @@ async function fixture({ expired = false, missing = false, storedSession = true,
   imports['@/shared/contracts/server-url'] = imports['@/shared/protocol/opencode/client'];
   const lifecycleModel = await loadTs('features/connections/model/connection-lifecycle.ts');
   const lifecycleManager = await loadTs('runtime/connections/connection-lifecycle.ts', { '@/features/connections/runtime': lifecycleModel });
+  const retry = await loadTs('runtime/connections/retry.ts', {
+    '@/shared/protocol/opencode/client/errors': { isRetryableConnectionFailure: () => true },
+  }, globals);
   const { createConnection } = await loadTs('runtime/connections/create-connection.ts', {
     ...imports,
     './connection-lifecycle': lifecycleManager,
+    './retry': retry,
     "@/shared/protocol/services/session-service": { listServerProjects: async () => { catalogs++; if (catalogFailure) throw new Error(typeof catalogFailure === 'string' ? catalogFailure : 'offline'); return []; }, readCatalogLocation: async () => ({ currentProjectPath: '/fixture', serverRootPath: '/fixture', project: { id: 'p', worktree: '/fixture' } }), combineProjectCatalog: (_: any, serverProjects: any, location: any) => ({ ...location, serverProjects }) }
   }, globals);
   const manager = createConnection({
