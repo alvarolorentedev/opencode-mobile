@@ -1,5 +1,6 @@
-import { useCallback, useMemo, useRef, useState } from 'react';
+import { useCallback, useMemo } from 'react';
 
+import { useAppCore, useAppStore } from '@/runtime/core';
 import { getErrorMessage } from '@/shared/utilities/error-message';
 import type { OpencodeConnectionSettings, ScopedOpencodeClient } from '@/shared/protocol/opencode/client';
 import type { ExtensionAgentDraft, ExtensionAgentRow, ExtensionCommandDraft, ExtensionCommandRow, ExtensionScope, ExtensionSkillDraft, ExtensionSkillRow, ExtensionSnapshot } from '@/shared/protocol/opencode/extensions/types';
@@ -15,12 +16,14 @@ import { removeAgent, removeCommand, saveAgent, saveCommand } from '@/features/e
 import { useQueries, useQueryClient } from '@tanstack/react-query';
 
 type ExtensionsInput = {
+  scopeKey: string;
   client: ScopedOpencodeClient;
   isCurrentClient: (candidate: object) => boolean;
   settings: OpencodeConnectionSettings;
 };
 
 export function useExtensionsState({
+  scopeKey,
   client,
   isCurrentClient,
   settings,
@@ -28,7 +31,12 @@ export function useExtensionsState({
   const cache = useQueryClient();
   const identity = useQueryIdentity();
   const active = useQueryActivity();
-  const [requested, setRequested] = useState(false);
+  const { store } = useAppCore();
+  const requested = useAppStore((state) => state.workspaceUi[scopeKey]?.extensionsRequested ?? false);
+  const busy = useAppStore((state) => state.workspaceUi[scopeKey]?.extensionMutation?.name);
+  const error = useAppStore((state) => state.workspaceUi[scopeKey]?.extensionError);
+  const selectedPluginId = useAppStore((state) => state.workspaceUi[scopeKey]?.selectedPluginId);
+  const selectPlugin = useCallback((id?: string) => store.getState().setWorkspaceUi(scopeKey, { selectedPluginId: id }), [scopeKey, store]);
   const subscribed = active && requested;
   const [configuration] = useQueries({ queries: [configurationOptions(identity, client)].filter(() => subscribed) });
   const [skills] = useQueries({ queries: [skillsOptions(identity, client)].filter(() => subscribed) });
@@ -50,15 +58,9 @@ export function useExtensionsState({
     version: plugin.source.type === 'package' ? plugin.source.version : undefined,
     source: plugin.source,
   })), [plugins?.data]);
-  const [busy, setBusy] = useState<string>();
-  const [error, setError] = useState<string>();
-  // The chosen GUI plugin is presentation memory for this workspace runtime. It
-  // survives chat navigation but resets when the app relaunches.
-  const [selectedPluginId, setSelectedPluginId] = useState<string>();
-  const busyRef = useRef<string | undefined>(undefined);
   const refresh = useCallback(async () => {
     if (client.__opencode.contract !== 'v2' || !isCurrentClient(client) || !active) return;
-    setRequested(true);
+    store.getState().setWorkspaceUi(scopeKey, { extensionsRequested: true });
     await Promise.all([
       cache.fetchQuery({ ...configurationOptions(identity, client), staleTime: 0 }),
       cache.fetchQuery({ ...skillsOptions(identity, client), staleTime: 0 }),
@@ -66,14 +68,13 @@ export function useExtensionsState({
       cache.fetchQuery(mcpOptions(identity, client)),
     ]);
     await cache.fetchQuery(extensionInspectionOptions(identity, client));
-  }, [active, cache, client, identity, isCurrentClient]);
+  }, [active, cache, client, identity, isCurrentClient, scopeKey, store]);
   const run = useCallback(async (key: string, action: (current: ExtensionSnapshot) => Promise<void>) => {
-    if (busyRef.current) throw new Error('Another extension change is already in progress.');
+    if (store.getState().workspaceUi[scopeKey]?.extensionMutation) throw new Error('Another extension change is already in progress.');
     const current = snapshot;
     if (!current) throw new Error('Refresh extensions before making a change.');
-    busyRef.current = key;
-    setBusy(key);
-    setError(undefined);
+    const mutation = { name: key };
+    store.getState().setWorkspaceUi(scopeKey, { extensionMutation: mutation, extensionError: undefined });
     try {
       await cache.cancelQueries({ queryKey: ['opencode', identity.connectionId] });
       await action(current);
@@ -81,13 +82,16 @@ export function useExtensionsState({
       await cache.invalidateQueries({ predicate: (query) => query.queryKey[0] === 'opencode' && query.queryKey[1] === identity.connectionId
         && ['capabilities', 'configuration', 'agents', 'skills', 'references', 'commands', 'plugins', 'mcp', 'extension-inspection'].includes(String(query.queryKey[7])) });
     } catch (failure) {
-      if (isCurrentClient(client)) setError(getErrorMessage(failure));
+      if (isCurrentClient(client) && store.getState().workspaceUi[scopeKey]?.extensionMutation === mutation) {
+        store.getState().setWorkspaceUi(scopeKey, { extensionError: getErrorMessage(failure) });
+      }
       throw failure;
     } finally {
-      busyRef.current = undefined;
-      setBusy(undefined);
+      if (store.getState().workspaceUi[scopeKey]?.extensionMutation === mutation) {
+        store.getState().setWorkspaceUi(scopeKey, { extensionMutation: undefined });
+      }
     }
-  }, [cache, client, identity, isCurrentClient, snapshot]);
+  }, [cache, client, identity, isCurrentClient, scopeKey, snapshot, store]);
 
   const extensions = useMemo(() => ({
     snapshot,
@@ -108,12 +112,12 @@ export function useExtensionsState({
     pluginGui: {
       plugins: guiPlugins,
       selectedPluginId,
-      selectPlugin: setSelectedPluginId,
+      selectPlugin,
       load: async () => {
         if (client.__opencode.contract !== 'v2') return;
         // Subscribe even before the workspace is active: the launcher mounts
         // once, and the query must exist when the connection becomes current.
-        setRequested(true);
+        store.getState().setWorkspaceUi(scopeKey, { extensionsRequested: true });
         if (!isCurrentClient(client) || !active) return;
         // Force a fresh list so a pre-install cached result cannot hide the
         // button for the default stale window after returning from Settings.
@@ -160,7 +164,7 @@ export function useExtensionsState({
       run('remove-skill', (current) => removeSkill(client, current, scope, row)),
     restoreBackup: (scope: ExtensionScope) =>
       run('restore-backup', (current) => restoreConfig(client, current, scope)),
-  }), [busy, client, error, guiPlugins, selectedPluginId, inspection?.isFetching, inspection?.error, configuration?.isFetching, configuration?.error, skills?.isFetching, plugins?.isFetching, active, cache, identity, isCurrentClient, refresh, run, settings, snapshot]);
+  }), [busy, client, error, guiPlugins, selectedPluginId, selectPlugin, inspection?.isFetching, inspection?.error, configuration?.isFetching, configuration?.error, skills?.isFetching, plugins?.isFetching, active, cache, identity, isCurrentClient, refresh, run, scopeKey, settings, snapshot, store]);
 
   return { extensions };
 }

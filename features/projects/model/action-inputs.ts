@@ -11,6 +11,7 @@ import type { SessionRefreshOptions } from '@/shared/protocol/opencode/event-dis
 import type { DiffScope, TranscriptReadOptions } from '@/shared/contracts/domain';
 
 export type ProjectActionsInput = {
+  scopeKey: string;
   fileClipboard?: import('@/features/projects/state/use-file-clipboard').FileClipboard;
   connectionId: string;
   connected: boolean;
@@ -62,7 +63,7 @@ export type ProjectCatalogInput = Pick<ProjectActionsInput,
   'setSessionStatuses' | 'scopeGenerationRef' | 'serverContract' | 'settingsRef'>;
 
 export type ProjectFileInput = Pick<ProjectActionsInput,
-  'fileClipboard' | 'connectionId' | 'connected' | 'client' | 'isCurrentClient' | 'activeProjectPath' |
+  'scopeKey' | 'fileClipboard' | 'connectionId' | 'connected' | 'client' | 'isCurrentClient' | 'activeProjectPath' |
   'projectFileRequestRef' | 'currentSessionIdRef' |
   'diffScopeBySessionRef' | 'settingsRef' | 'refreshServerFeatures'> & {
   refreshVcsDiff: (scope: 'uncommitted' | 'branch', silent?: boolean) => Promise<unknown>;

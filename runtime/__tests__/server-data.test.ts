@@ -30,7 +30,7 @@ describe('server query ownership', () => {
     expect(new Set([a, b, rotated].map((key) => JSON.stringify(key))).size).toBe(3);
     expect(connectionQueryKey(identity, 'v1')).not.toEqual(connectionQueryKey(identity, 'v2'));
   });
-  it('renews only the owning partition and preserves timestamps without stale data winning', () => {
+  it('renews only the owning partition and preserves timestamps without stale data winning', async () => {
     const cache = createServerQueryClient();
     const next = { ...identity, connectionScope: 'renewed-user', authRevision: 1 };
     const other = { ...identity, connectionId: 'machine-b' };
@@ -39,11 +39,15 @@ describe('server query ownership', () => {
     cache.setQueryData(projectQueryKey(identity, client, 'configuration'), { model: 'old' }, { updatedAt: 123 });
     cache.setQueryData(projectQueryKey(other, client, 'capabilities'), ['other']);
     cache.setQueryData(projectQueryKey(next, client, 'configuration'), { model: 'fresh' }, { updatedAt: 456 });
+    const probeKey = projectQueryKey(identity, client, 'classifier-probe', 'provider', 'model');
+    await cache.fetchQuery({ queryKey: probeKey, queryFn: async () => 'auth', meta: { retainOnCredentialRenewal: false } });
     replaceQueryPartition(cache, identity, next, true);
     expect(cache.getQueryState(projectQueryKey(next, client, 'capabilities'))?.dataUpdatedAt).toBe(123);
     expect(cache.getQueryData(projectQueryKey(next, client, 'configuration'))).toEqual({ model: 'fresh' });
     expect(cache.getQueryData(projectQueryKey(other, client, 'capabilities'))).toEqual(['other']);
     expect(cache.getQueryData(key)).toBeUndefined();
+    expect(cache.getQueryData(probeKey)).toBeUndefined();
+    expect(cache.getQueryData(projectQueryKey(next, client, 'classifier-probe', 'provider', 'model'))).toBeUndefined();
     replaceQueryPartition(cache, next, { ...next, authRevision: 2 }, false);
     expect(cache.getQueryData(projectQueryKey({ ...next, authRevision: 2 }, client, 'capabilities'))).toBeUndefined();
     cache.clear();

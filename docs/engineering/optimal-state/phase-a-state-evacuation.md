@@ -1,6 +1,6 @@
 # Phase A — State Evacuation
 
-Status: **in progress**. A1–A5 are complete. A6–A7 remain.
+Status: **in progress**. A1–A6 are complete. A7 remains.
 
 Goal: remove every piece of domain data from the per-workspace React runtime so
 the runtime can be deleted in Phase E without losing retained state.
@@ -54,25 +54,14 @@ local admission. React presents the combined transcript with the existing
 50 ms stream cadence. Phase D replaces the connection-wide canonical window
 with per-session infinite queries and verifies the cold-start path.
 
-## Remaining work
-
 ### A6 — Extensions, MCP, projects and capabilities
 
-Files:
-- `features/extensions/state/use-extensions-state.ts`
-- `features/extensions/state/use-mcp-state.ts`
-- `features/projects/state/use-project-browser.ts`
-- `features/projects/state/use-project-file-actions.ts`
-- `features/ai/state/use-capabilities-actions.ts`
+Workspace device state covers extension requests, mutations and plugin
+selection, MCP and diagnostics demand, file browser and preview selection, and
+the current classifier probe. Query still owns server catalogs and now caches
+classifier outcomes by project, credential generation and model.
 
-Target:
-- Server catalogs go to Query; selection, busy, error, requested and probe
-  status flags go to a scope-keyed store slice.
-- Keep file handles, timers and request counters as refs.
-
-Acceptance:
-- No domain data in `useState` for these hooks.
-- Settings, extensions, projects and chat E2E pass.
+## Remaining work
 
 ### A7 — Delete the remaining per-workspace state
 

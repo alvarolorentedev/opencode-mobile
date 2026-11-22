@@ -1,6 +1,7 @@
 import { completeProviderAuthorization, getProviders, removeProviderCredentials, setProviderCredentialsForClient, startProviderAuthorization } from '@/features/ai/services/capabilities-service';
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type Dispatch, type SetStateAction } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, type Dispatch, type SetStateAction } from 'react';
 
+import { useAppCore, useAppStore } from '@/runtime/core';
 import { getLocalAutoModelStatus } from '@/features/ai/model/auto-model/models';
 import { normalizeAutoModelPreferences } from '@/shared/preferences/auto-model';
 import type { ScopedOpencodeClient } from '@/shared/protocol/opencode/client';
@@ -11,11 +12,16 @@ import type { ModelOption } from '@/shared/contracts/model-options';
 import { getConfiguredProviderIds, getInitialMode, getVisibleModels, reconcileEnabledModelIds } from '@/features/ai/model/opencode-model-selection';
 import type { ChatPreferences } from '@/shared/preferences/opencode-preferences';
 import type { ProviderOption } from '@/features/ai/model/types';
-import { useQueryClient } from '@tanstack/react-query';
+import { skipToken, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useQueryIdentity } from '@/shared/server-data/client';
-import { probeServerClassifier, type ServerClassifierStatus } from '@/features/ai/services/model-routing-service';
+import { projectQueryKey } from '@/shared/server-data/keys';
+import { CLASSIFIER_PROBE_STALE_MS, probeServerClassifier, type ServerClassifierStatus } from '@/features/ai/services/model-routing-service';
+
+const CLASSIFIER_QUERY_META = { retainOnCredentialRenewal: false };
+type ClassifierResult = Awaited<ReturnType<typeof probeServerClassifier>>;
 
 type CapabilitiesActionsInput = {
+  scopeKey: string;
   isHydrated: boolean;
   client: ScopedOpencodeClient;
   activeProjectPath?: string;
@@ -31,6 +37,7 @@ type CapabilitiesActionsInput = {
 };
 
 export function useCapabilitiesActions({
+  scopeKey,
   isHydrated,
   client,
   activeProjectPath,
@@ -44,25 +51,24 @@ export function useCapabilitiesActions({
 }: CapabilitiesActionsInput) {
   const identity = useQueryIdentity();
   const cache = useQueryClient();
+  const { store } = useAppCore();
   const connectionScope = JSON.stringify([identity.connectionId, identity.connectionScope, identity.authRevision, activeProjectPath]);
-  const [serverProbe, setServerProbe] = useState<{ client: ScopedOpencodeClient; scope: string; status: ServerClassifierStatus }>(() => ({
-    client,
-    scope: connectionScope,
-    status: 'unknown',
-  }));
-  const [localStatus, setLocalStatus] = useState(() => getLocalAutoModelStatus());
+  const probeOwner = useMemo(() => Symbol(`${scopeKey}:${connectionScope}:${client.__opencode.contract}`), [client, connectionScope, scopeKey]);
+  const savedProbe = useAppStore((state) => state.workspaceUi[scopeKey]?.classifierProbe);
+  const probe = savedProbe?.owner === probeOwner ? savedProbe : undefined;
+  const localReady = useAppStore((state) => state.localClassifierReady);
+  const probeResult = useQuery<ClassifierResult>({
+    queryKey: projectQueryKey(identity, client, 'classifier-probe', probe?.model?.providerId, probe?.model?.modelId),
+    queryFn: skipToken,
+    meta: CLASSIFIER_QUERY_META,
+  });
   const probedClassifierRef = useRef<string | undefined>(undefined);
+  const probeRequest = useRef(0);
   const visibleModels = useMemo(
     () => getVisibleModels(availableModels, availableProviders.filter((provider) => provider.configured), chatPreferences.enabledModelIds),
     [availableModels, availableProviders, chatPreferences.enabledModelIds],
   );
-  const serverClassifierStatus = serverProbe.client === client && serverProbe.scope === connectionScope
-    ? serverProbe.status
-    : 'unknown';
-  const localReady = localStatus === 'ready';
-  const setServerClassifierStatus = useCallback((status: ServerClassifierStatus) => {
-    setServerProbe({ client, scope: connectionScope, status });
-  }, [client, connectionScope]);
+  const serverClassifierStatus: ServerClassifierStatus = probe?.status ?? probeResult.data?.status ?? 'unknown';
 
   const requireClient = useCallback(async () => {
     if (!isCurrentClient(client)) throw new Error('Connect this server before changing its providers.');
@@ -71,46 +77,61 @@ export function useCapabilitiesActions({
   }, [cache, client, identity.connectionId, isCurrentClient]);
 
   const checkServerClassifier = useCallback(async (modelId?: string) => {
+    const request = ++probeRequest.current;
     const classifierModelId = modelId ?? getClassifierModelId(chatPreferences.autoModel, visibleModels);
     const model = classifierModelId
       ? visibleModels.find((candidate) => candidate.id === classifierModelId)
       : undefined;
     if (!model) {
-      setServerClassifierStatus('unavailable');
+      store.getState().setWorkspaceUi(scopeKey, { classifierProbe: { owner: probeOwner, status: 'unavailable' } });
       return 'unavailable' as const;
     }
     if (client.__opencode.contract !== 'v2' || !client.api?.generate || !isCurrentClient(client)) {
-      setServerClassifierStatus('unsupported');
+      store.getState().setWorkspaceUi(scopeKey, { classifierProbe: { owner: probeOwner, status: 'unsupported' } });
       return 'unsupported' as const;
     }
 
-    setServerClassifierStatus('checking');
-    const status = await probeServerClassifier({
-      client,
-      connectionScope,
-      modelID: model.modelID,
-      providerID: model.providerID,
-    });
-    if (!isCurrentClient(client)) {
+    const selection = { providerId: model.providerID, modelId: model.modelID };
+    store.getState().setWorkspaceUi(scopeKey, { classifierProbe: { owner: probeOwner, model: selection, status: 'checking' } });
+    let result: ClassifierResult;
+    try {
+      result = await cache.fetchQuery<ClassifierResult>({
+        queryKey: projectQueryKey(identity, client, 'classifier-probe', model.providerID, model.modelID),
+        queryFn: () => probeServerClassifier({ client, modelID: model.modelID, providerID: model.providerID }),
+        staleTime: (query) => query.state.data?.cacheable ? CLASSIFIER_PROBE_STALE_MS : 0,
+        networkMode: 'always',
+        meta: CLASSIFIER_QUERY_META,
+      });
+    } catch {
+      if (isCurrentClient(client) && probeRequest.current === request && store.getState().workspaceUi[scopeKey]?.classifierProbe?.owner === probeOwner) {
+        store.getState().setWorkspaceUi(scopeKey, { classifierProbe: { owner: probeOwner, status: 'unavailable' } });
+      }
       return 'unavailable' as const;
     }
-    setServerClassifierStatus(status);
+    if (!isCurrentClient(client) || probeRequest.current !== request || store.getState().workspaceUi[scopeKey]?.classifierProbe?.owner !== probeOwner) return 'unavailable' as const;
+    store.getState().setWorkspaceUi(scopeKey, { classifierProbe: { owner: probeOwner, model: selection } });
     probedClassifierRef.current = `${connectionScope}:${model.id}`;
-    return status;
-  }, [chatPreferences.autoModel, client, connectionScope, isCurrentClient, setServerClassifierStatus, visibleModels]);
+    return result.status;
+  }, [cache, chatPreferences.autoModel, client, connectionScope, identity, isCurrentClient, probeOwner, scopeKey, store, visibleModels]);
 
   const resetServerClassifier = useCallback(() => {
     probedClassifierRef.current = undefined;
-    setServerClassifierStatus('unknown');
-  }, [setServerClassifierStatus]);
+    probeRequest.current++;
+    store.getState().setWorkspaceUi(scopeKey, { classifierProbe: undefined });
+  }, [scopeKey, store]);
 
   const refreshAvailability = useCallback(() => {
-    setLocalStatus(getLocalAutoModelStatus());
-  }, []);
+    store.getState().setLocalClassifierReady(getLocalAutoModelStatus() === 'ready');
+  }, [store]);
+
+  useLayoutEffect(() => {
+    if (store.getState().localClassifierReady === undefined) refreshAvailability();
+  }, [refreshAvailability, store]);
 
   useLayoutEffect(() => {
     probedClassifierRef.current = undefined;
-  }, [client, connectionScope]);
+    probeRequest.current++;
+  }, [probeOwner]);
 
   // Availability is derived for the UI and the send-time guards. It must never
   // rewrite the persisted routing choice: an unreadable pack, a slow catalog or
@@ -285,7 +306,7 @@ export function useCapabilitiesActions({
   );
 
   const modelRouting = useMemo(() => ({
-    available: chatPreferences.autoModel.classifier === 'local' ? localReady : serverClassifierStatus === 'available',
+    available: chatPreferences.autoModel.classifier === 'local' ? localReady === true : serverClassifierStatus === 'available',
     serverStatus: serverClassifierStatus,
     checkServerClassifier,
     resetServerClassifier,

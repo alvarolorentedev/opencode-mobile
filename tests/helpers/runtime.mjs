@@ -59,7 +59,7 @@ export async function loadTs(relative, imports = {}, globals = {}) {
     // loadTs suites exercising the same hook code until they migrate.
     const coreListeners = new Set();
     const coreState = {
-      prompt: {}, chat: {}, selection: {}, conversation: {},
+      prompt: {}, chat: {}, selection: {}, conversation: {}, workspaceUi: {},
       registry: { connections: [], ready: false, snapshots: {} },
       focusedValues: undefined, mcpAuthPrompt: undefined,
       setPrompt(scope, patch) {
@@ -94,6 +94,17 @@ export async function loadTs(relative, imports = {}, globals = {}) {
       clearConversation(scope) {
         if (!coreState.conversation[scope]) return;
         delete coreState.conversation[scope];
+        for (const listener of coreListeners) listener();
+      },
+      setWorkspaceUi(scope, patch) {
+        const current = coreState.workspaceUi[scope];
+        if (Object.entries(patch).every(([key, value]) => current?.[key] === value)) return;
+        coreState.workspaceUi = { ...coreState.workspaceUi, [scope]: { ...current, ...patch } };
+        for (const listener of coreListeners) listener();
+      },
+      setLocalClassifierReady(ready) {
+        if (coreState.localClassifierReady === ready) return;
+        coreState.localClassifierReady = ready;
         for (const listener of coreListeners) listener();
       },
     };

@@ -78,7 +78,8 @@ contract, 'project', directory, resource, ...parameters]`; connection-wide reads
 use `'server', resource` after the contract. Credentials never appear in keys.
 Credential changes cancel/remove the old partition. Same-machine Cloud Link
 renewal copies only existing data with original timestamps into the replacement
-partition, retaining stable presentation and workflow identity.
+partition, retaining stable presentation and workflow identity. Model classifier
+probes are specific to the credential generation and run again after renewal.
 
 The default freshness is 60 seconds and unused data is collected after five
 minutes; previews use zero retention. Commands use zero freshness so every
@@ -321,6 +322,12 @@ offline connection, a pending probe, or a missing pack never rewrites the stored
 `browser`, selected file content, worktree inventory/owning project identity, and MCP status/config are server-derived and not persisted. Text edits remain local to `FilePreview` until the provider compares the current server content with the original editor baseline, writes through native v2 `file.write` (or a v1 VCS patch), and verifies the saved text. Failed comparison, write or verification retains the draft. Listing, search and file-open commits check the current client identity and request order; saves check client identity before writing and only update the selected file if that selection is still current. Identical directory paths on different servers do not make a response current.
 
 The Extensions snapshot is also server-derived and not persisted. It is keyed to the client and project that produced it, so a connection or project switch immediately hides the previous snapshot. Writes are serialized by the provider. Config mutations read the raw JSONC, create a backup, write a same-directory temporary file, verify its bytes and the server-reloaded document, and atomically rename it over the target; a failed replace or server load restores the backup. Global config reads and atomic moves use fixed shell commands with validated absolute paths, while project files use the normal file API. No config contents are stored locally or logged. Removed skills move to `.opencode-mobile-trash` under their scope rather than being deleted.
+
+The app store retains each workspace's file and directory selection, requested
+surfaces, extension write status and selected GUI plugin. File data and extension
+catalogs stay in Query. The store tracks the selected classifier probe and its
+pending state, and Query holds the result for the credential and model that
+produced it. Local classifier readiness is app-wide device state.
 
 ## Terminal State
 

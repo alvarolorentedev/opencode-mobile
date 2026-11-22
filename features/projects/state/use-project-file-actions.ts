@@ -1,5 +1,6 @@
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useMemo } from 'react';
 
+import { useAppCore, useAppStore } from '@/runtime/core';
 import { getRequestHeaders, withReadSignal } from '@/shared/protocol/opencode/client';
 import { getServerBase } from '@/shared/contracts/server-url';
 import { projectPath } from '@/shared/protocol/opencode/project';
@@ -19,6 +20,7 @@ import { useProjectEntryActions } from '@/features/projects/state/use-project-en
 import { useQueries, useQueryClient } from '@tanstack/react-query';
 
 export function useProjectFileActions({
+  scopeKey,
   fileClipboard, connectionId, connected,
   client,
   isCurrentClient,
@@ -32,17 +34,19 @@ export function useProjectFileActions({
   const cache = useQueryClient();
   const identity = useQueryIdentity();
   const active = useQueryActivity();
-  const [selectedPath, setSelectedPath] = useState<{ client: object; path: string }>();
-  const path = selectedPath?.client === client ? selectedPath.path : undefined;
+  const { store } = useAppCore();
+  const owner = useMemo(() => Symbol(client.__opencode.directory), [client]);
+  const selectedPath = useAppStore((state) => state.workspaceUi[scopeKey]?.preview);
+  const path = selectedPath?.owner === owner ? selectedPath.path : undefined;
   const previewKey = projectQueryKey(identity, client, 'preview', path);
-  const [diagnosticsRequested, setDiagnosticsRequested] = useState(false);
+  const diagnosticsRequested = useAppStore((state) => state.workspaceUi[scopeKey]?.diagnosticsRequested ?? false);
   const [preview] = useQueries({ queries: [{ queryKey: previewKey, enabled: false, gcTime: 0,
     queryFn: ({ signal }: { signal: AbortSignal }) => readProjectFile(withReadSignal(client, signal), path!) }].filter(() => active) });
   const [health] = useQueries({ queries: [{ ...healthOptions(identity, client), enabled: diagnosticsRequested }].filter(() => active) });
   const [diagnosticMcp] = useQueries({ queries: [{ ...mcpOptions(identity, client), enabled: diagnosticsRequested }].filter(() => active) });
   const diagnostics = useMemo<Diagnostics | undefined>(() => health?.data ? { health: health?.data, mcp: diagnosticMcp?.error
     ? { available: false, error: diagnosticMcp?.error.message } : { available: true, data: diagnosticMcp?.data ?? {} } } : undefined, [health?.data, diagnosticMcp?.data, diagnosticMcp?.error]);
-  const directoryBrowser = useProjectBrowser({ client, isCurrentClient });
+  const directoryBrowser = useProjectBrowser({ scopeKey, client, isCurrentClient });
   const setSelectedProjectFile = useCallback((file: import('@/shared/protocol/opencode/project-file').ProjectFile) => {
     cache.setQueryData(projectQueryKey(identity, client, 'preview', file.path), file);
   }, [cache, client, identity]);
@@ -65,27 +69,29 @@ export function useProjectFileActions({
 
   const refreshDiagnostics = useCallback(async () => {
     if (!active) return;
-    setDiagnosticsRequested(true);
+    store.getState().setWorkspaceUi(scopeKey, { diagnosticsRequested: true });
     await Promise.allSettled([cache.fetchQuery(healthOptions(identity, client)), cache.fetchQuery(mcpOptions(identity, client))]);
-  }, [active, cache, client, identity]);
+  }, [active, cache, client, identity, scopeKey, store]);
 
   const openProjectFile = useCallback(async (path: string) => {
     path = projectPath(path, client.__opencode.directory || '');
     const request = ++projectFileRequestRef.current;
     const key = projectQueryKey(identity, client, 'preview', path);
-    setSelectedPath({ client, path });
+    store.getState().setWorkspaceUi(scopeKey, { preview: { owner, path } });
     await cache.fetchQuery({ queryKey: key, gcTime: 0, staleTime: 0, queryFn: ({ signal }) => readProjectFile(withReadSignal(client, signal), path) });
     if (!isCurrentClient(client) || request !== projectFileRequestRef.current) throw new Error('File selection was superseded.');
-  }, [cache, client, identity, isCurrentClient, projectFileRequestRef]);
+  }, [cache, client, identity, isCurrentClient, owner, projectFileRequestRef, scopeKey, store]);
 
   const closeProjectFile = useCallback(() => {
     // Invalidate an in-flight open so closing cannot be undone when its read
     // resolves after the preview has already gone away.
     projectFileRequestRef.current += 1;
-    setSelectedPath(undefined);
+    if (store.getState().workspaceUi[scopeKey]?.preview?.owner === owner) {
+      store.getState().setWorkspaceUi(scopeKey, { preview: undefined });
+    }
     void cache.cancelQueries({ queryKey: projectQueryKey(identity, client, 'preview') });
     cache.removeQueries({ queryKey: projectQueryKey(identity, client, 'preview') });
-  }, [cache, client, identity, projectFileRequestRef]);
+  }, [cache, client, identity, owner, projectFileRequestRef, scopeKey, store]);
 
   const downloadProjectFile = useCallback(async (path: string, signal?: AbortSignal) => {
     path = projectPath(path, client.__opencode.directory || '');

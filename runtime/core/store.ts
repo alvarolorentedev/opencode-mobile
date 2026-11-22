@@ -102,6 +102,22 @@ type TranscriptLiveBuffer = {
 
 const EMPTY_TRANSCRIPT_UI: TranscriptUiState = { loadingOlderBySession: {}, hydratingSessionIds: {}, paintRevision: 0 };
 
+type WorkspaceUiState = {
+  extensionsRequested?: boolean;
+  extensionMutation?: { name: string };
+  extensionError?: string;
+  selectedPluginId?: string;
+  mcpRequested?: boolean;
+  browser?: { owner: symbol; path: string; query?: string };
+  preview?: { owner: symbol; path: string };
+  diagnosticsRequested?: boolean;
+  classifierProbe?: {
+    owner: symbol;
+    model?: { providerId: string; modelId: string };
+    status?: 'checking' | 'unsupported' | 'unavailable';
+  };
+};
+
 const EMPTY_CHAT: ChatUiState = {
   diffScopeBySession: {},
   selectedDiffMessageBySession: {},
@@ -129,6 +145,8 @@ export type AppState = {
   terminal: Record<string, TerminalDeviceState | undefined>;
   transcriptUi: Record<string, TranscriptUiState | undefined>;
   transcriptLive: Map<string, TranscriptLiveBuffer>;
+  workspaceUi: Record<string, WorkspaceUiState | undefined>;
+  localClassifierReady?: boolean;
   presentation: Map<string, unknown>;
   mcpAuthPrompt?: { mcpName: string; url: string };
   focusedValues?: import('@/runtime/workspace/workspace-types').WorkspaceValues;
@@ -149,6 +167,9 @@ export type AppState = {
   clearConversation: (scopeKey: string) => void;
   setTerminalState: (scopeKey: string, patch: Partial<TerminalDeviceState> | ((current: TerminalDeviceState) => Partial<TerminalDeviceState>)) => void;
   setTranscriptUi: (scopeKey: string, patch: Partial<TranscriptUiState> | ((current: TranscriptUiState) => Partial<TranscriptUiState>)) => void;
+  setWorkspaceUi: (scopeKey: string, patch: Partial<WorkspaceUiState>) => void;
+  clearWorkspaceUi: (connectionId: string) => void;
+  setLocalClassifierReady: (ready: boolean) => void;
 };
 
 export type AppStore = StoreApi<AppState>;
@@ -172,6 +193,7 @@ export function createAppStore(defaults: AppStoreDefaults): AppStore {
     terminal: {},
     transcriptUi: {},
     transcriptLive: new Map(),
+    workspaceUi: {},
     mcpAuthPrompt: undefined,
     // Mutated in place; the hook only needs the stable map identity.
     presentation: new Map<string, unknown>(),
@@ -246,5 +268,14 @@ export function createAppStore(defaults: AppStoreDefaults): AppStore {
       const value = typeof patch === 'function' ? patch(current) : patch;
       return { transcriptUi: { ...state.transcriptUi, [scopeKey]: { ...current, ...value } } };
     }),
+    setWorkspaceUi: (scopeKey, patch) => set((state) => {
+      const current = state.workspaceUi[scopeKey];
+      if (Object.entries(patch).every(([key, value]) => current?.[key as keyof WorkspaceUiState] === value)) return state;
+      return { workspaceUi: { ...state.workspaceUi, [scopeKey]: { ...current, ...patch } } };
+    }),
+    clearWorkspaceUi: (connectionId) => set((state) => ({
+      workspaceUi: Object.fromEntries(Object.entries(state.workspaceUi).filter(([key]) => (JSON.parse(key) as string[])[0] !== connectionId)),
+    })),
+    setLocalClassifierReady: (ready) => set((state) => state.localClassifierReady === ready ? state : { localClassifierReady: ready }),
   }));
 }

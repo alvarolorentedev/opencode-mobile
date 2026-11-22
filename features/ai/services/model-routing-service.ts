@@ -4,15 +4,14 @@ import { type ModelComplexity } from '@/shared/preferences/auto-model';
 
 export type ServerClassifierStatus = 'unknown' | 'checking' | 'available' | 'unsupported' | 'unavailable' | 'auth';
 
-type ProbeCacheEntry = {
+type ClassifierProbeResult = {
   status: Exclude<ServerClassifierStatus, 'unknown' | 'checking'>;
-  expiresAt: number;
+  cacheable: boolean;
 };
 
-const PROBE_CACHE_MS = 5 * 60_000;
+export const CLASSIFIER_PROBE_STALE_MS = 5 * 60_000;
 const PROBE_TIMEOUT_MS = 5_000;
 const CLASSIFY_TIMEOUT_MS = 6_000;
-const probeCache = new Map<string, ProbeCacheEntry>();
 
 function withTimeout<T>(promise: Promise<T>, timeoutMs: number): Promise<T | undefined> {
   return new Promise((resolve) => {
@@ -69,47 +68,13 @@ function probeStatusForError(error: unknown): Exclude<ServerClassifierStatus, 'u
   return 'unavailable';
 }
 
-function cacheKey(connectionScope: string, providerID: string, modelID: string) {
-  return `${connectionScope}\u0000${providerID}\u0000${modelID}`;
-}
-
-export function getCachedServerClassifierStatus(
-  connectionScope: string,
-  providerID: string,
-  modelID: string,
-): Exclude<ServerClassifierStatus, 'unknown' | 'checking'> | undefined {
-  const entry = probeCache.get(cacheKey(connectionScope, providerID, modelID));
-  if (!entry) {
-    return undefined;
-  }
-  if (entry.expiresAt <= Date.now()) {
-    probeCache.delete(cacheKey(connectionScope, providerID, modelID));
-    return undefined;
-  }
-  return entry.status;
-}
-
-export function resetServerClassifierProbeCache() {
-  probeCache.clear();
-}
-
 export async function probeServerClassifier(input: {
   client: ScopedOpencodeClient;
-  connectionScope: string;
   modelID: string;
   providerID: string;
-}): Promise<Exclude<ServerClassifierStatus, 'unknown' | 'checking'>> {
-  const key = cacheKey(input.connectionScope, input.providerID, input.modelID);
-  const cached = getCachedServerClassifierStatus(input.connectionScope, input.providerID, input.modelID);
-  if (cached) {
-    return cached;
-  }
-
+}): Promise<ClassifierProbeResult> {
   const generate = input.client.api?.generate;
-  if (!generate) {
-    probeCache.set(key, { status: 'unsupported', expiresAt: Date.now() + PROBE_CACHE_MS });
-    return 'unsupported';
-  }
+  if (!generate) return { status: 'unsupported', cacheable: true };
 
   const prompt = buildAutoModelClassifierPrompt({ prompt: 'What is 2 + 2?' });
   try {
@@ -121,16 +86,12 @@ export async function probeServerClassifier(input: {
       PROBE_TIMEOUT_MS,
     );
     const status = result && parseAutoModelTier(result.text) ? 'available' : 'unavailable';
-    probeCache.set(key, { status, expiresAt: Date.now() + PROBE_CACHE_MS });
-    return status;
+    return { status, cacheable: true };
   } catch (error) {
     const status = probeStatusForError(error);
     // Only permanent/endpoint-level results are cached. Transient transport
     // failures should be retryable without waiting for a TTL.
-    if (status === 'unsupported' || status === 'auth') {
-      probeCache.set(key, { status, expiresAt: Date.now() + PROBE_CACHE_MS });
-    }
-    return status;
+    return { status, cacheable: status === 'unsupported' || status === 'auth' };
   }
 }
 

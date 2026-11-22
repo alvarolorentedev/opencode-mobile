@@ -48,7 +48,7 @@ async function load(active: () => boolean) {
     },
     '@/shared/utilities/error-message': { getErrorMessage: (error: unknown) => String(error) },
   });
-  driver.mount(() => useExtensionsState({ client, isCurrentClient: () => true, settings }), {});
+  driver.mount(() => useExtensionsState({ scopeKey: 'extensions-test-workspace', client, isCurrentClient: () => true, settings }), {});
   return { driver, plugins };
 }
 

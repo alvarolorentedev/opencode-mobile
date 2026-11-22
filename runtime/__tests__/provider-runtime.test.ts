@@ -63,7 +63,8 @@ const fileGate = deferred(), saveGate = deferred();
 const context: any = {
   cache: new QueryClient({ defaultOptions: { queries: { retry: false, gcTime: Infinity } } }),
   identity: { connectionId: 'test', connectionScope: 'scope', authRevision: 0 }, projectQueryKey, withReadSignal: (client: any) => client,
-  setSelectedPath: () => {},
+  scopeKey: 'preview-test-workspace', owner: Symbol(),
+  store: createAppStore({ settings: { serverUrl: 'http://server', username: '', password: '', directory: '/repo' }, chatPreferences: {} as never, controlPlaneUrl: '' }),
   client, useCallback: (fn: any) => fn, projectSearchRequestRef: { current: 0 }, projectFileRequestRef: { current: 0 },
   activeProjectPathRef: { current: '/repo' }, isCurrentClient: (candidate: any) => candidate === active,
   currentSessionIdRef: {}, diffScopeBySessionRef: { current: {} },
@@ -106,7 +107,7 @@ const browserHook = await loadTs('features/projects/state/use-project-browser.ts
     '@/shared/protocol/opencode/project': projectProtocol,
     "@/features/projects/services/project-service": { findFiles: context.findFiles, listFiles: (_: any, path: any) => { const gate = deferred(); directoryReads.set(path, gate); return gate.promise; } }
   });
-browserRuntime.mount(browserHook.useProjectBrowser, { client, isCurrentClient: (candidate: any) => candidate === active });
+browserRuntime.mount(browserHook.useProjectBrowser, { scopeKey: 'browser-test-workspace', client, isCurrentClient: (candidate: any) => candidate === active });
 const searchFiles = (query: any) => browserRuntime.value.search(query);
 
 const first = searchFiles('first'), last = searchFiles('last');
@@ -192,6 +193,7 @@ fileReads.get('selection-first').resolve({ type: 'text', content: 'obsolete sele
 await assert.rejects(olderFile, /superseded/);
 selected = context.cache.getQueryData(projectQueryKey(context.identity, client as any, 'preview', 'selection-last'));
 assert.equal(selected.path, 'selection-last');
+assert.equal(context.store.getState().workspaceUi[context.scopeKey]?.preview?.path, 'selection-last');
 const staleSearch = searchFiles('old-server');
 const staleDirectory = browserRuntime.value.openDirectory('old-server');
 const staleFile = actions.openProjectFile('old-server');

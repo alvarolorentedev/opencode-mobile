@@ -106,6 +106,7 @@ export function WorkspaceProvider({ children }: PropsWithChildren) {
   const removeConnection = useCallback(async (id: string) => {
     await removeWorkspaceConnection(id);
     core.store.getState().clearPromptOutboxes(id);
+    core.store.getState().clearWorkspaceUi(id);
     clearWorkspacePresentation(presentation, id);
     setCatalogs((current) => {
       if (!(id in current)) return current;

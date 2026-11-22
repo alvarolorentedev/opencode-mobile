@@ -191,6 +191,7 @@ export function useOpencodeProviderComposition(input: WorkspaceRuntimeInput) {
   // one refresh instead of starting overlapping reads.
   const scheduleSessionsRefresh = useCoalescedRefresh(() => project.refreshSessions(), 150);
   const extensions = useExtensionsState({
+    scopeKey: state.scopeKey,
     client,
     isCurrentClient,
     settings: state.settings,

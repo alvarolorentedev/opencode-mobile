@@ -22,6 +22,7 @@ async function capabilitiesHarness() {
   const write = vi.fn((update: (value: typeof preferences) => typeof preferences) => { preferences = update(preferences); });
   const client = { __opencode: { contract: 'v2' } };
   runtime.mount(useCapabilitiesActions, {
+    scopeKey: 'capabilities-test-workspace',
     client, isCurrentClient: (candidate: unknown) => candidate === client, isHydrated: false,
     activeProjectPath: '/a', availableProviders: [], availableModels: [], chatPreferences: preferences,
     capabilities: { agents: [build, plan], models: [], providers: [], connected: [], config: { default_agent: 'plan' } },

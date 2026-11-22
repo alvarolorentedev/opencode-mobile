@@ -1,6 +1,7 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo } from 'react';
 import type { McpContextValue } from '@/features/extensions/model/types';
 
+import { useAppCore, useAppStore } from '@/runtime/core';
 import type { ScopedOpencodeClient } from '@/shared/protocol/opencode/client';
 import type { McpLocalConfig, McpRemoteConfig } from '@/shared/protocol/opencode/types';
 import { useQueryActivity, useQueryIdentity } from '@/shared/server-data/client';
@@ -11,22 +12,25 @@ import { useQueries, useQueryClient } from '@tanstack/react-query';
 const EMPTY_STATUSES: Record<string, import('@/shared/protocol/opencode/types').McpStatus> = {};
 // Status shares the same query as diagnostics and extension discovery.
 export function useMcpState({
+  scopeKey,
   client,
   isCurrentClient,
 }: {
+  scopeKey: string;
   client: ScopedOpencodeClient;
   isCurrentClient: (candidate: object) => boolean;
 }) {
   const identity = useQueryIdentity();
   const cache = useQueryClient();
   const active = useQueryActivity();
-  const [requested, setRequested] = useState(false);
+  const { store } = useAppCore();
+  const requested = useAppStore((state) => state.workspaceUi[scopeKey]?.mcpRequested ?? false);
   const [query] = useQueries({ queries: [{ ...mcpOptions(identity, client), enabled: active && requested, subscribed: active && requested }].filter(() => active && requested) });
   const refreshMcpServers = useCallback(async () => {
-    setRequested(true);
+    store.getState().setWorkspaceUi(scopeKey, { mcpRequested: true });
     await cache.invalidateQueries({ queryKey: mcpOptions(identity, client).queryKey, refetchType: 'none' });
     if (active && isCurrentClient(client)) await cache.fetchQuery(mcpOptions(identity, client));
-  }, [active, cache, client, identity, isCurrentClient]);
+  }, [active, cache, client, identity, isCurrentClient, scopeKey, store]);
   const refreshChatCapabilities = useCallback(() => cache.invalidateQueries({ predicate: (query) => query.queryKey[0] === 'opencode' && query.queryKey[1] === identity.connectionId && ['capabilities', 'configuration', 'skills', 'references', 'extension-inspection'].includes(String(query.queryKey[7])) }), [cache, identity]);
   const addMcpServer = useCallback(async (name: string, config: McpLocalConfig | McpRemoteConfig) => {
     await svcAddMcpServer(client, name.trim(), config);
