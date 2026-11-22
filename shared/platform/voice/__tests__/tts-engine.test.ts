@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { describe, it } from 'vitest';
+import { describe, it, vi } from 'vitest';
 
 import { loadTs } from '../../../../tests/helpers/runtime.mjs';
 
@@ -43,9 +43,8 @@ describe('local speech playback', () => {
     });
 
     assert.equal(await result, true);
-    await new Promise((resolve) => setTimeout(resolve, 120));
+    await vi.waitFor(() => assert.equal(done, 1), { timeout: 5_000 });
     assert.equal(started, 1);
-    assert.equal(done, 1);
     assert.deepEqual(deleted, ['/tmp/opencode-tts-0.wav', '/tmp/opencode-tts-1.wav']);
   });
 

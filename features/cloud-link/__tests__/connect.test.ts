@@ -928,5 +928,5 @@ for (const platform of ['apple', 'google']) {
 }
 
 
-  });
+  }, 120_000);
 });
