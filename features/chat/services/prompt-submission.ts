@@ -1,4 +1,5 @@
-import { getEffectiveSessionModel, getInitialMode, getSelectedModelParts } from '@/features/ai/runtime';
+import type { ProviderOption } from '@/features/ai/index';
+import { getEffectiveSessionModel, getInitialMode, getSelectedModelParts, routePrompt } from '@/features/ai/runtime';
 import { clearPendingTaskFinishedNotification, pendingNotificationKey, trackPendingTaskFinishedNotification } from '@/features/notifications/runtime';
 import { buildSystemPrompt } from '@/features/chat/model/system-prompt';
 import { getConnectionScope, getConnectionUiScope } from '@/shared/contracts/connection-scope';
@@ -10,7 +11,7 @@ import { prepareAttachment } from '@/shared/protocol/opencode/attachment';
 import type { OpencodeConnectionSettings, ScopedOpencodeClient } from '@/shared/protocol/opencode/client';
 import type { SessionRefreshOptions } from '@/shared/protocol/opencode/event-dispatch';
 import type { PendingPrompt, PromptContextItem, PromptDelivery, PromptInput } from '@/shared/protocol/opencode/prompt-inbox';
-import type { Config, FilePartInput, Session, TextPartInput } from '@/shared/protocol/opencode/types';
+import type { Config, FilePartInput, Session, SessionStatus, TextPartInput } from '@/shared/protocol/opencode/types';
 import { interruptSession, switchSessionModel as switchSessionModelService } from '@/shared/protocol/services/session-service';
 
 export type PromptSubmission = { active: true; sessionId: string; requestedAt: number; owner: string };
@@ -25,11 +26,11 @@ export type PromptCommandInput = {
   availableAgents: AgentOption[];
   currentConfig?: Config;
   availableModels: ModelOption[];
+  availableProviders: ProviderOption[];
+  sessionStatuses: Record<string, SessionStatus>;
+  messagesBySession: Record<string, SessionMessageRecord[]>;
   chatPreferences: ChatPreferences;
   readSettings: () => OpencodeConnectionSettings;
-  busyNotifications: () => Set<string>;
-  routePrompt: (input: { sessionId: string; prompt: string; attachments?: { mime?: string; filename?: string }[] }) =>
-    Promise<{ model: ModelOption; sameAsCurrent: boolean; variant?: string } | undefined>;
   refreshSessions: () => Promise<unknown>;
   markLocalSend: (sessionId: string) => void;
   refreshSessionDiff: (sessionId: string, silent?: boolean, messageId?: string, records?: SessionMessageRecord[]) => Promise<unknown>;
@@ -45,12 +46,13 @@ type PromptOperations = {
   finish: (submission: PromptSubmission) => void;
   setError: (error: { message: string; occurredAt: number; sessionId?: string }) => void;
   clearDiffPin: (sessionId: string) => void;
+  clearBusyNotification: (key: string) => void;
   clock: () => number;
 };
 
 export function createPromptSubmissionActions({
   submitPrompt, client, isCurrentClient, activeProjectPath, connectionScope, sessions, availableAgents,
-  currentConfig, availableModels, chatPreferences, readSettings, busyNotifications, routePrompt, refreshSessions,
+  currentConfig, availableModels, availableProviders, chatPreferences, readSettings, sessionStatuses, messagesBySession, refreshSessions,
   markLocalSend, refreshSessionDiff, refreshSessionTodos, scheduleSessionRefresh,
 }: PromptCommandInput, operations: PromptOperations) {
   async function sendPrompt(
@@ -88,8 +90,11 @@ export function createPromptSubmissionActions({
     try {
       const agent = getInitialMode(availableAgents, currentConfig, chatPreferences.mode);
       if (!agent) throw new Error(i18n.t('chat:composer.noEligibleAgent'));
-      const routingPromise = routePrompt({ sessionId, prompt: trimmedPrompt, attachments }).catch(() => undefined);
-      busyNotifications().delete(trackingKey);
+      const routingPromise = routePrompt({ sessionId, prompt: trimmedPrompt, attachments }, {
+        client, isCurrentClient, currentConfig, availableModels, availableProviders, availableAgents, chatPreferences,
+        sessions, sessionStatuses, messagesBySession,
+      }).catch(() => undefined);
+      operations.clearBusyNotification(trackingKey);
       if (activeProjectPath) {
         await trackPendingTaskFinishedNotification({
           sessionId,
@@ -218,7 +223,7 @@ export function createPromptSubmissionActions({
   async function abortSession(sessionId: string) {
     const submission = operations.latest();
     const trackingKey = pendingNotificationKey(connectionScope, sessionId);
-    busyNotifications().delete(trackingKey);
+    operations.clearBusyNotification(trackingKey);
     const requestedAt = submission?.sessionId === sessionId && submission.owner === getConnectionUiScope(readSettings()) ? submission.requestedAt : undefined;
     await clearPendingTaskFinishedNotification(connectionScope, sessionId, requestedAt).catch(() => undefined);
     await interruptSession(client, sessionId);

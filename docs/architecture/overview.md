@@ -248,7 +248,7 @@ The completion version, preference schema and first-run migration are unchanged.
 - `features/ai/model/opencode-auto-model.ts`
   Pure auto-routing rules: tier suggestions, explicit/automatic resolution,
   attachment/context compatibility, and the long-chat cache guard.
-- `features/ai/state/use-prompt-routing.ts`
+- `features/ai/services/prompt-routing.ts`
   Send-time classifier selection and tier resolution. Requires a real
   on-device or OpenCode classifier; it never falls back to heuristics.
 - `features/ai/services/model-routing-service.ts`
@@ -293,8 +293,9 @@ The completion version, preference schema and first-run migration are unchanged.
   Prompt submission, cancellation and session-model switches. Classification
   starts alongside attachment preparation. The normal default model remains
   available when the classifier provides no selection.
-- `features/chat/state/use-prompt-lifecycle.ts`
-  React bindings for prompt commands and task-completion notification tracking.
+- `features/chat/services/prompt-settlement.ts`
+  Confirms completion before clearing a pending task and notifying. The prompt
+  lifecycle hook supplies the active project and aborts superseded reads.
 - `features/chat/services/prompt-inbox-commands.ts`
   OpenCode 2 prompt admission, outbox retry, cancellation and delivery
   reconciliation. The inbox hook binds reachability and selects pending rows.

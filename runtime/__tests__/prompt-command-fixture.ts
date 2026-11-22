@@ -34,8 +34,8 @@ function coreImports(runtime: Runtime, store: AppStore, prompt: ReturnType<typeo
 }
 
 export async function fixturePromptCommands(store: AppStore, imports: Record<string, unknown>, globals?: Record<string, unknown>) {
-  const submission = await loadTs('features/chat/services/prompt-submission.ts', imports, globals);
-  return commandsFor(store, createServerQueryClient(), submission, globals);
+  const chat = await loadTs(['features/chat/services/prompt-submission.ts', 'features/chat/services/prompt-settlement.ts'], imports, globals);
+  return commandsFor(store, createServerQueryClient(), chat, globals);
 }
 
 export async function loadPromptLifecycle(runtime: Runtime, imports: Record<string, unknown>) {

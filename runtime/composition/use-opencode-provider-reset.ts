@@ -39,7 +39,6 @@ export function useOpencodeProviderReset({
 }: ResetInput) {
   const {
     cancelBootstrap,
-    busyNotificationsRef,
     sessionRefreshTimeoutsRef,
     sessionRefreshOptionsRef,
     explicitSessionSelectionRef,
@@ -49,7 +48,6 @@ export function useOpencodeProviderReset({
 
   return useCallback(() => {
     cancelBootstrap();
-    busyNotificationsRef.current.clear();
     Object.values(sessionRefreshTimeoutsRef.current).forEach((timeout) => clearTimeout(timeout));
     sessionRefreshTimeoutsRef.current = {};
     sessionRefreshOptionsRef.current = {};
@@ -70,7 +68,6 @@ export function useOpencodeProviderReset({
     resetTerminal,
     resetTranscript,
     cancelBootstrap,
-    busyNotificationsRef,
     sessionRefreshOptionsRef,
     sessionRefreshTimeoutsRef,
     explicitSessionSelectionRef,

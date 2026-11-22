@@ -372,7 +372,7 @@ describe('non-blocking prompt reconciliation', () => {
     "@/features/notifications/model/notification-pending": { pendingNotificationKey: (scope: string, id: string) => `${scope}:${id}` },
     "@/shared/contracts/connection-scope": { getConnectionScope: () => 'scope', getConnectionUiScope: () => 'scope' },
     "@/shared/protocol/opencode/attachment": { prepareAttachment: async (att: unknown) => att },
-    "@/features/ai/state/use-prompt-routing": { usePromptRouting: () => async () => undefined }
+    "@/features/ai/services/prompt-routing": { routePrompt: async () => undefined }
   });
     const submitPrompt = vi.fn(async () => ({ id: 'u1', sessionId: 's', createdAt: 1, text: 'Hello', attachments: [], delivery: 'steer', state: 'waiting' }));
     const markLocalSend = vi.fn();
@@ -391,7 +391,6 @@ describe('non-blocking prompt reconciliation', () => {
       availableModels: [],
       chatPreferences: { ...preferences.defaultChatPreferences, mode: 'summary' },
       settingsRef: { current: { serverUrl: 'http://server', username: '' } },
-      busyNotificationsRef: { current: new Set() },
       refreshSessions: vi.fn(async () => [{ id: 's', title: 'chat' }]),
       markLocalSend,
       refreshSessionDiff,

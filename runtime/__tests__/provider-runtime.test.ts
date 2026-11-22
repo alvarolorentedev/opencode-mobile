@@ -273,7 +273,7 @@ const promptCommands = await fixturePromptCommands(context.store, {
   '@/shared/i18n/index': {},
 });
 const promptActions = promptCommands.workspace(context.scopeKey).actions({
-  ...context, readSettings: () => context.settingsRef.current, busyNotifications: () => new Set(),
+  ...context, readSettings: () => context.settingsRef.current,
 });
 await promptActions.abortSession('s');
 assert.equal(aborted, true, 'notification storage failure must not prevent aborting server work');

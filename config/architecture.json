@@ -217,7 +217,7 @@
       "migrateCapabilitiesSnapshots",
       "persistCapabilitiesSnapshot",
       "useCapabilitiesActions",
-      "usePromptRouting"
+      "routePrompt"
     ],
     "features/ai/index.ts": [
       "AiSettingsPanel",
@@ -303,6 +303,7 @@
     ],
     "features/chat/runtime.ts": [
       "createPromptInboxCommands",
+      "reconcilePromptSettlement",
       "createPromptSubmissionActions",
       "EMPTY_OUTBOX",
       "forgetSessionContent",

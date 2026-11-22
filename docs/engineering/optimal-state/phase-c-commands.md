@@ -9,9 +9,10 @@ Permission and question replies now run as plain session commands. Permission
 reconciliation reads pending mutations in the same Query partition as the
 project's approvals. Session list, status and approval refreshes also run
 through these commands. Sending, aborting, inbox admission and reconnect
-recovery use app-core prompt commands. The inbox adapter supplies the active
-transport and reachability. Prompt routing, settlement, connection commands
-and event dispatch remain.
+recovery use app-core prompt commands. Model routing runs when the command
+submits a prompt. Task settlement uses the same workspace command owner and
+checks the credential after the server read. The retained project still
+supplies command bindings. Connection commands and event dispatch remain.
 
 Explicit session opening and automatic bootstrap share the app-core selection
 command. It reads the project session catalog and supersedes pending bootstrap

@@ -149,11 +149,16 @@ npm run validate:commit
   checks passed with 1,267 tests and one existing skip. The 45 focused
   tests, docs, web export and all 55 chat, auto-model, network, multi-server,
   realtime, interactions and diffs browser tests passed.
-- C3b. App-core prompt commands now own inbox admission, cancellation and
+- C3b, `18b07c5e`. App-core prompt commands own inbox admission, cancellation and
   reconnect recovery. The commit gate passed with 1,268 tests and one existing
   skip. The 63 focused tests, docs, web export and all 92 chat, Cloud Link,
   network, realtime and multi-server browser tests passed. The focused race
   check rotates credentials during admission and verifies no stale Query write.
+- C3c. Prompt routing and task settlement run in plain commands. The commit
+  gate passed with 1,270 tests and one existing skip. The 90 focused tests,
+  docs, web export and 60 chat, auto-model, settings, onboarding, network and
+  multi-server browser tests passed. Settlement tests cover credential changes
+  and the fast completion path after observing a busy status.
 
 ## Loop protocol
 

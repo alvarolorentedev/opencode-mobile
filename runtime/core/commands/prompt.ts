@@ -1,4 +1,4 @@
-import { createPromptInboxCommands, createPromptSubmissionActions, EMPTY_OUTBOX, type PromptCommandInput, type PromptSubmission } from '@/features/chat/runtime';
+import { createPromptInboxCommands, createPromptSubmissionActions, EMPTY_OUTBOX, reconcilePromptSettlement, type PromptCommandInput, type PromptSubmission } from '@/features/chat/runtime';
 import type { CommandContext } from '@/runtime/core/commands/context';
 import type { PromptUiState } from '@/runtime/core/store';
 
@@ -10,14 +10,13 @@ export function createPromptCommands({ store, clock, queryClient }: Pick<Command
   const { setPrompt, setChat } = store.getState();
 
   function workspace(scopeKey: string) {
-    function setSendingState(value: Update<PromptUiState['sending']>) {
-      setPrompt(scopeKey, (current) => ({ sending: typeof value === 'function' ? value(current.sending) : value }));
-    }
+    const busyNotifications = new Set<string>();
+    const readSending = () => store.getState().prompt[scopeKey]?.sending;
     function setPromptError(value: Update<PromptUiState['error']>) {
       setPrompt(scopeKey, (current) => ({ error: typeof value === 'function' ? value(current.error) : value }));
     }
     function finish(submission: PromptSubmission) {
-      if (store.getState().prompt[scopeKey]?.sending === submission) setSendingState({ active: false });
+      if (readSending() === submission) setPrompt(scopeKey, { sending: { active: false } });
     }
     const operations = {
       begin(sessionId: string, owner: string): PromptSubmission | undefined {
@@ -37,6 +36,7 @@ export function createPromptCommands({ store, clock, queryClient }: Pick<Command
       },
       finish,
       setError: setPromptError,
+      clearBusyNotification: (key: string) => busyNotifications.delete(key),
       clearDiffPin(sessionId: string) {
         setChat(scopeKey, (current) => ({ selectedDiffMessageBySession: { ...current.selectedDiffMessageBySession, [sessionId]: undefined } }));
       },
@@ -44,10 +44,18 @@ export function createPromptCommands({ store, clock, queryClient }: Pick<Command
     };
     return {
       actions: (input: PromptCommandInput) => createPromptSubmissionActions(input, operations),
-      setSendingState,
+      reconcileSettlement: (input: Parameters<typeof reconcilePromptSettlement>[0], signal: AbortSignal) =>
+        reconcilePromptSettlement(input, {
+          busyNotifications, clock, signal,
+          isSending: (sessionId) => {
+            const sending = readSending();
+            return Boolean(sending?.active && sending.sessionId === sessionId);
+          },
+        }),
       setPromptError,
       clearPromptError: () => setPromptError(undefined),
-      dispose() {
+      reset() {
+        busyNotifications.clear();
         const submission = submissions.get(scopeKey)?.latest;
         submissions.delete(scopeKey);
         if (submission) finish(submission);

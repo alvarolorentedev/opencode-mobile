@@ -241,12 +241,12 @@ export function useOpencodeProviderComposition(input: WorkspaceRuntimeInput) {
   });
 
   const { onInvalidated } = connectionRuntime;
-  const { setSendingState } = prompt;
+  const { resetPrompt } = prompt;
   useLayoutEffect(() => onInvalidated(() => {
     scopeGenerationRef.current++;
     clearProjectState();
-    setSendingState({ active: false });
-  }), [clearProjectState, onInvalidated, setSendingState, scopeGenerationRef]);
+    resetPrompt();
+  }), [clearProjectState, onInvalidated, resetPrompt, scopeGenerationRef]);
   const linkActions = useConnectionLinkActions({ client, isCurrentClient, connectionScope: state.connectionScope,
     connection: state.connection, activeProjectPath: state.activeProjectPath, openSession: sessionNavigation.openSession, connect: connectionRuntime.connect });
   const connectionActions = { ...connectionRuntime, ...linkActions,

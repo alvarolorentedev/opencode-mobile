@@ -157,7 +157,7 @@ describe('prompt submission ownership', () => {
     "@/shared/protocol/services/session-service": { interruptSession: async () => {}, readSessionSettlement: async () => ({ state: 'finished' }) },
     "@/features/notifications/model/notification-pending": { pendingNotificationKey: (scope: string, id: string) => `${scope}:${id}` },
     "@/shared/protocol/opencode/attachment": { prepareAttachment: async (att: unknown) => att },
-    "@/features/ai/state/use-prompt-routing": { usePromptRouting: () => async () => undefined }
+    "@/features/ai/services/prompt-routing": { routePrompt: async () => undefined }
   });
     const client = {}, currentClient = { current: client };
     const scopeKey = 'submission-scope';
@@ -165,7 +165,7 @@ describe('prompt submission ownership', () => {
     const settings = { serverUrl: 'http://server', username: '' };
     const input = { scopeKey, client, isCurrentClient: (candidate: object) => candidate === currentClient.current, activeProjectPath: '/repo', connectionScope: scopes.getConnectionScope(settings),
       sessions: [{ id: 's', title: 'chat' }], sessionStatuses: {}, availableAgents: [{ id: 'build', label: 'Build', mode: 'primary' }], availableModels: [], chatPreferences: preferences.defaultChatPreferences,
-      settingsRef: { current: settings }, busyNotificationsRef: { current: new Set() },
+      settingsRef: { current: settings },
       refreshSessions: refresh, markLocalSend: vi.fn(),
       refreshSessionDiff: refresh, refreshSessionTodos: refresh, scheduleSessionRefresh: vi.fn(), summarizeSessionTitle: vi.fn(),
       submitPrompt: vi.fn().mockReturnValueOnce(a.promise).mockReturnValueOnce(b.promise),

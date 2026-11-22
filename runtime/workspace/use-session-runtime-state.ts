@@ -38,8 +38,6 @@ export function useSessionRuntimeState(input: WorkspaceRuntimeInput, connection:
       readPinnedDiffMessage: (sessionId: string) => store.getState().chat[scopeKey]?.selectedDiffMessageBySession[sessionId],
     };
   }, [scopeKey, store]);
-  // This latch coordinates completion notifications with activity.
-  const busyNotificationsRef = useRef(new Set<string>());
   const { mcpAuthPrompt, setMcpAuthPrompt } = useExtensionPromptState();
 
   const connectionScope = useMemo(
@@ -81,7 +79,6 @@ export function useSessionRuntimeState(input: WorkspaceRuntimeInput, connection:
     clientGenerationRef,
     sessionRefreshTimeoutsRef,
     sessionRefreshOptionsRef,
-    busyNotificationsRef,
     explicitSessionSelectionRef,
     projectFileRequestRef,
   };
