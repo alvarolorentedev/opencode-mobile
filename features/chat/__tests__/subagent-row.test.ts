@@ -1,12 +1,25 @@
-import { uiImports, textContent } from '../../../tests/helpers/ui.mjs';
+// @vitest-environment happy-dom
+
+import '../../../tests/helpers/native-primitives';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { describe, expect, it, vi } from 'vitest';
 
-import { hookRuntime, loadTs } from '../../../tests/helpers/runtime.mjs';
+import { SubagentRow } from '@/features/chat/ui/cards/subagent-row';
 import type { SubagentDetail } from '@/shared/presentation/transcript';
+import { Icon } from '@/shared/ui/icon';
+import { Spinner } from '@/shared/ui/spinner';
+import { Colors } from '@/shared/ui/theme/theme';
+import { textContent } from '../../../tests/helpers/ui.mjs';
+
+import { renderHook } from '../../../tests/helpers/render-hook';
+
+vi.mock('react-native', async () => (await import('../../../tests/helpers/native-view-platform')).nativeViewPlatform({ platform: 'android' }));
+vi.mock('@expo/vector-icons', () => ({ MaterialCommunityIcons: 'MaterialCommunityIcons' }));
+vi.mock('react-i18next', () => ({ useTranslation: () => ({ t: translate }) }));
 
 type Element = { type: unknown; props: Record<string, unknown> & { children?: unknown; onPress?: () => void } };
 
-function find(node: unknown, type: string, out: Element[] = []) {
+function find(node: unknown, type: unknown, out: Element[] = []) {
   if (!node || typeof node !== 'object') return out;
   if (Array.isArray(node)) {
     node.forEach((child) => find(child, type, out));
@@ -28,7 +41,7 @@ function translate(key: string) {
   return key;
 }
 
-const palette = { tint: '#0af', danger: '#f00', muted: '#888', surface: '#111', surfaceAlt: '#222', border: '#333' };
+const palette = { ...Colors.light, tint: '#0af', danger: '#f00', muted: '#888', surface: '#111', surfaceAlt: '#222', border: '#333' };
 
 const detail = (overrides: Partial<SubagentDetail> = {}): SubagentDetail => ({
   id: 's1',
@@ -40,26 +53,16 @@ const detail = (overrides: Partial<SubagentDetail> = {}): SubagentDetail => ({
   ...overrides,
 });
 
-async function mount(detailValue: SubagentDetail, onPress = vi.fn()) {
-  const runtime = hookRuntime();
-  const element = (type: unknown, props: unknown) => ({ type, props });
-  const { SubagentRow } = await loadTs('features/chat/ui/cards/subagent-row.tsx', {
-    ...uiImports,
-    'react/jsx-runtime': { jsx: element, jsxs: element, Fragment: 'Fragment' },
-    'react-i18next': { useTranslation: () => ({ t: translate }) },
-    'react-native': { Pressable: 'Pressable', StyleSheet: { create: (value: unknown) => value }, View: 'View' },
-    '@expo/vector-icons': { MaterialCommunityIcons: 'Icon' },
-    '@/shared/ui/theme/theme': { Colors: { light: {} } },
-  }, runtime.globals);
-  runtime.mount(SubagentRow, { detail: detailValue, onPress, palette });
+function mount(detailValue: SubagentDetail, onPress = vi.fn()) {
+  const runtime = renderHook(SubagentRow, { detail: detailValue, onPress, palette });
   return { runtime, onPress };
 }
 
 describe('subagent row', () => {
   it('renders a running chip and opens the child chat', async () => {
-    const { runtime, onPress } = await mount(detail());
-    const button = find(runtime.value, 'Pressable')[0];
-    expect(find(runtime.value, 'ActivityIndicator')).toHaveLength(1);
+    const { runtime, onPress } = mount(detail());
+    const button = find(runtime.result.current, 'Pressable')[0];
+    expect(find(runtime.result.current, Spinner)).toHaveLength(1);
     expect(button.props.accessibilityState).toEqual({ busy: true });
     expect(button.props.accessibilityLabel).toBe('Audit chat rendering, explore. Working. Open subagent chat');
     expect(textContent(button)).toContain('Audit chat rendering');
@@ -69,14 +72,14 @@ describe('subagent row', () => {
   });
 
   it('replaces the spinner with the settled status icon', async () => {
-    const { runtime } = await mount(detail({ status: 'completed' }));
-    expect(find(runtime.value, 'ActivityIndicator')).toHaveLength(0);
-    expect(find(runtime.value, 'Icon').map((node) => node.props.name)).toContain('check-circle-outline');
-    expect(find(runtime.value, 'Icon').map((node) => node.props.name)).toContain('chevron-right');
+    const { runtime } = mount(detail({ status: 'completed' }));
+    expect(find(runtime.result.current, Spinner)).toHaveLength(0);
+    expect(find(runtime.result.current, Icon).concat(find(runtime.result.current, MaterialCommunityIcons)).map((node) => node.props.name)).toContain('check-circle-outline');
+    expect(find(runtime.result.current, Icon).concat(find(runtime.result.current, MaterialCommunityIcons)).map((node) => node.props.name)).toContain('chevron-right');
   });
 
   it('uses the localized subagent label when the notice has no description', async () => {
-    const { runtime } = await mount(detail({ description: undefined, agent: undefined }));
-    expect(textContent(runtime.value)).toContain('Subagent');
+    const { runtime } = mount(detail({ description: undefined, agent: undefined }));
+    expect(textContent(runtime.result.current)).toContain('Subagent');
   });
 });

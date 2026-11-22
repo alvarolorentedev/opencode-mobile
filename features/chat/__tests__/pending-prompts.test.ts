@@ -1,6 +1,26 @@
-import { uiImports } from '../../../tests/helpers/ui.mjs';
+// @vitest-environment happy-dom
+
+import '../../../tests/helpers/native-primitives';
 import { describe, expect, it, vi } from 'vitest';
-import { hookRuntime, loadTs } from '../../../tests/helpers/runtime.mjs';
+
+import { PendingPrompts } from '@/features/chat/ui/pending-prompts';
+
+import { renderHook } from '../../../tests/helpers/render-hook';
+
+vi.mock('react-native', async () => (await import('../../../tests/helpers/native-view-platform')).nativeViewPlatform({ platform: 'android' }));
+vi.mock('react-i18next', async (original) => ({
+  ...await original<typeof import('react-i18next')>(),
+  useTranslation: () => ({ t: (key: string) => key }),
+}));
+vi.mock('expo-router', () => ({ usePathname: () => '/' }));
+vi.mock('expo-image', () => ({ Image: 'Image' }));
+vi.mock('expo-constants', () => ({ default: {} }));
+vi.mock('expo-localization', () => ({ getLocales: () => [] }));
+vi.mock('expo/fetch', () => ({}));
+vi.mock('expo-crypto', () => ({}));
+vi.mock('expo-file-system', () => ({}));
+vi.mock('expo-secure-store', () => ({}));
+vi.mock('@react-native-async-storage/async-storage', () => ({ default: {} }));
 
 type Element = { type: unknown; props: Record<string, any> };
 
@@ -28,25 +48,12 @@ const prompt = (id: string, state: 'sending' | 'waiting') => ({
   state,
 });
 
-async function mountPendingPrompts(props: {
+function mountPendingPrompts(props: {
   cancelingId?: string;
-  onCancel: (value: ReturnType<typeof prompt>) => void;
+  onCancel: Parameters<typeof PendingPrompts>[0]['onCancel'];
   prompts: ReturnType<typeof prompt>[];
 }) {
-  const runtime = hookRuntime();
-  const element = (type: unknown, props: unknown) => ({ type, props });
-  const { PendingPrompts } = await loadTs('features/chat/ui/pending-prompts.tsx', {
-    ...uiImports,
-    react: runtime.react,
-    'react/jsx-runtime': { jsx: element, jsxs: element, Fragment: 'Fragment' },
-    'react-i18next': { useTranslation: () => ({ t: (key: string) => key }) },
-    'react-native': { ScrollView: 'ScrollView', StyleSheet: { create: (styles: unknown) => styles }, View: 'View' },
-    "@/features/sharing/ui/attachment-strip": { AttachmentStrip: 'AttachmentStrip' },
-    "@/shared/ui/theme/theme": { Colors: { light: {} } },
-    "@/shared/ui/theme/use-color-scheme": { useColorScheme: () => 'light' },
-    "@/shared/ui/theme/use-palette": { usePalette: () => ({}) }
-  }, runtime.globals);
-  return runtime.mount(PendingPrompts, props);
+  return renderHook(PendingPrompts, props).result.current;
 }
 
 describe('pending prompts', () => {
@@ -54,7 +61,7 @@ describe('pending prompts', () => {
     const waiting = prompt('m1', 'waiting');
     const sending = prompt('m2', 'sending');
     const onCancel = vi.fn();
-    const tree = await mountPendingPrompts({ prompts: [waiting, sending], onCancel });
+    const tree = mountPendingPrompts({ prompts: [waiting, sending], onCancel });
 
     const waitingClose = findElement(tree, (element) => element.props.testID === 'pending-prompt-cancel-m1');
     expect(waitingClose?.props.disabled).toBe(false);
@@ -66,7 +73,7 @@ describe('pending prompts', () => {
   });
 
   it('replaces the close action with progress while cancellation is in flight', async () => {
-    const tree = await mountPendingPrompts({ cancelingId: 'm1', prompts: [prompt('m1', 'waiting')], onCancel: vi.fn() });
+    const tree = mountPendingPrompts({ cancelingId: 'm1', prompts: [prompt('m1', 'waiting')], onCancel: vi.fn() });
     expect(findElement(tree, (element) => element.props.testID === 'pending-prompt-cancel-m1')).toBeUndefined();
   });
 });

@@ -1,3 +1,7 @@
+import testArt from '@/assets/images/voice-input-test.png';
+import profileArt from '@/assets/images/voice-input-profile.png';
+import downloadArt from '@/assets/images/voice-input-download.png';
+import introArt from '@/assets/images/voice-input-intro.png';
 import { UpdateBlockingSettingSelectField as SettingSelectField } from '@/features/updates/index';
 import { cn } from '@/shared/ui/cn';
 import { Progress } from '@/shared/ui/progress';
@@ -22,12 +26,7 @@ import type { LocalVoiceState } from '@/features/voice/ui/use-voice-setup';
 import { voiceLanguageOptions } from '@/features/voice/ui/voice-language';
 import { VoiceFlowScreen } from '@/features/voice/ui/voice-flow-screen';
 
-const art = [
-  require('@/assets/images/voice-input-intro.png'),
-  require('@/assets/images/voice-input-download.png'),
-  require('@/assets/images/voice-input-profile.png'),
-  require('@/assets/images/voice-input-test.png'),
-];
+const art = [introArt, downloadArt, profileArt, testArt];
 
 export function VoiceInputSetup({ chatPreferences: prefs, initialStep = 1, localVoice, onClose, onDone, onOpenSettings, palette, test, updateChatPreferences }: {
   chatPreferences: ChatPreferences; initialStep?: number; localVoice: LocalVoiceState;

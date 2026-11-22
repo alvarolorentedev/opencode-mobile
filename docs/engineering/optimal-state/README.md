@@ -390,10 +390,18 @@ npm run validate:commit
   the existing TSX voice settings suite. Its two cases passed, giving
   1,295 passing tests and one existing skip. Storybook, FOSS preparation and
   47 affected browser flows passed.
-- F5. Connection profile retirement, scoped credential storage, native mod
+- F5, `40911cf9`. Connection profile retirement, scoped credential storage, native mod
   idempotence, session catalog and Mission stats now run through normal
   imports. The Mission hydration case reads and writes the real persisted
   record through the platform storage fixture.
+
+- F6. Connection method selection, camera permissions and pairing recovery,
+  chat diff recycling, queued prompts, agent suggestions, subagent status,
+  project file virtualization and voice settings now exercise the production
+  components with React. Voice setup illustrations use static Metro imports.
+  Model-download retry tests use the native file boundary and Vitest timers.
+  All 44 focused cases, the static gate and 27 onboarding and settings browser
+  flows passed.
 
 ## Loop protocol
 
