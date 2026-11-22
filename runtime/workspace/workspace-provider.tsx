@@ -30,7 +30,7 @@ import { useMissionWidget } from '@/features/widgets/runtime';
 import { clearWorkspacePresentation, hasWorkspaceDrafts } from '@/runtime/presentation/workspace-presentation';
 import { RetainedProject } from '@/runtime/workspace/retained-project';
 import { workspaceKey, type ConnectionRecord, type WorkspaceCatalog } from '@/shared/contracts/workspace';
-import { useCallback, useEffect, useMemo, useState, type PropsWithChildren, type SetStateAction } from 'react';
+import { useCallback, useEffect, useMemo, useState, useSyncExternalStore, type PropsWithChildren, type SetStateAction } from 'react';
 import { usePathname } from 'expo-router';
 import { ActivityIndicator, View } from 'react-native';
 
@@ -67,7 +67,8 @@ export function WorkspaceProvider({ children }: PropsWithChildren) {
   useEffect(() => core.events.observeMcpStatus(), [core]);
   const { updateSettings: updateWorkspaceSettings, change, removeConnection: removeWorkspaceConnection, connectedWorkspace, isEnabled } = manager;
   const { setFavoriteSessions, setSettings, setChatPreferences, setHiddenProjects } = shell;
-  const { connections, focus, snapshots, resolveKey, switchConnection, disconnect } = manager;
+  const { connections, focus, resolveKey, switchConnection, disconnect } = manager;
+  const busy = useSyncExternalStore(core.connections.subscribeProjects, core.connections.isUpdateBlocked, core.connections.isUpdateBlocked);
   const catalogs = useMemo(() => {
     const current: Record<string, WorkspaceCatalog> = {};
     for (const { id, revision } of connections) {
@@ -82,10 +83,9 @@ export function WorkspaceProvider({ children }: PropsWithChildren) {
   useMissionWidget(mission, missionWidgetScope, isHydrated && manager.ready, shell.chatPreferences.language);
   const fileClipboardBusy = useAppStore((state) => Object.values(state.fileClipboard.busy).some(Boolean));
   const focusedKey = focus && resolveKey(focus);
-  const current = focusedKey ? snapshots[focusedKey] : undefined;
   const selection = useAppStore((state) => focusedKey ? state.selection[focusedKey] : undefined);
   const focusedEntry = connections.find(({ id }) => id === focus?.connectionId);
-  const focusedSettings = current && focusedEntry?.settings;
+  const focusedSettings = focusedEntry?.settings;
   const settings = focusedSettings ?? shell.settings;
   const focusedPreferences = focusedEntry?.preferences;
   const settingsConnectionId = focus?.connectionId;
@@ -162,7 +162,7 @@ export function WorkspaceProvider({ children }: PropsWithChildren) {
     terminalTarget: connections.some((entry) => entry.id === terminalTarget?.connectionId) ? terminalTarget : undefined, selectTerminalTarget,
     inspectionTarget: connections.some((entry) => entry.id === inspectionTarget?.connectionId) ? inspectionTarget : undefined, inspect, sharedInput, connectionControls, catalogs, mission }), [manager, removeConnection, connections, terminalTarget, selectTerminalTarget, inspectionTarget, inspect, sharedInput, connectionControls, catalogs, mission]);
   const updates = useAppUpdates({ initialized: isHydrated && shell.onboardingVersion >= CURRENT_ONBOARDING_VERSION && !shell.onboardingActive,
-    blocked: fileClipboardBusy || Object.values(snapshots).some((runtime) => runtime.busy) || connectSetup.busy || hasWorkspaceDrafts(presentation) });
+    blocked: fileClipboardBusy || busy || connectSetup.busy || hasWorkspaceDrafts(presentation) });
   useEffect(() => {
     if (!focusedSettings) return;
     setSettings(focusedSettings);
@@ -173,22 +173,23 @@ export function WorkspaceProvider({ children }: PropsWithChildren) {
     });
   }, [focusedSettings, focusedPreferences, setSettings, setChatPreferences]);
   const readTarget = workspaceReadTarget(pathname, registryState);
+  const demandedKey = readTarget && resolveKey(readTarget);
   useConnectionDemand(readTarget?.connectionId);
   return <VoiceSetupTestContext.Provider value={voiceSetupTest}>
     <WorkspaceContext.Provider value={registry}>
     {connections.map((entry) => <ConnectionCatalog key={entry.id} entry={entry} demanded={readTarget?.connectionId === entry.id} online={network.online} libraryVisible={pathname === '/' && focus?.connectionId === entry.id && Boolean(selection?.activeSessionsVisible)} missionVisible={pathname === MISSION_PATH} onCatalog={publishCatalog} />)}
     {connections.flatMap((entry) => entry.projects.map((path, index) => {
         const key = workspaceKey({ connectionId: entry.id, projectPath: path });
-        const visible = focus?.connectionId === entry.id && (focus.projectPath === path || current === snapshots[key]);
-        const demanded = readTarget?.connectionId === entry.id && (readTarget.projectPath === path || readTarget === focus && visible);
+        const visible = key === focusedKey;
+        const demanded = key === demandedKey;
         return <RetainedProject key={key} demanded={demanded}
           connection={entry} catalog={catalogs[entry.id]} projectPath={path || undefined} network={network} defaults={shell.chatPreferences} isHydrated={isHydrated}
           visible={visible} isConnectionOwner={index === 0}
-          updateSettings={updateWorkspaceSettings} updatePreferences={manager.updatePreferences} publish={manager.publish} forget={manager.forget} />;
+          updateSettings={updateWorkspaceSettings} updatePreferences={manager.updatePreferences} />;
     }))}
-    {current ? <UpdatesContext.Provider value={updates}>
+    {manager.ready && focus ? <UpdatesContext.Provider value={updates}>
       <WorkspaceConversation />
-      <WorkspaceNative catalogs={catalogs} preferences={shell.chatPreferences} ready={isHydrated} busy={Object.values(snapshots).some((runtime) => runtime.busy)} />
+      <WorkspaceNative catalogs={catalogs} preferences={shell.chatPreferences} ready={isHydrated} busy={busy} />
       {children}
     </UpdatesContext.Provider> : <View style={{ flex: 1, backgroundColor: '#101212', alignItems: 'center', justifyContent: 'center' }}><ActivityIndicator color="#C3CECB" /></View>}
     </WorkspaceContext.Provider>

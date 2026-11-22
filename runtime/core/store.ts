@@ -7,7 +7,6 @@ import type { ChatPreferences } from '@/shared/preferences/opencode-preferences'
 import type { FavoriteSession, SessionDeepLinkTarget } from '@/features/sessions/index';
 import type { DiffScope, HiddenProjectsByConnection } from '@/features/projects/index';
 import type { ConnectionRecord, WorkspaceTarget } from '@/shared/contracts/workspace';
-import type { WorkspaceSnapshot } from '@/runtime/workspace/workspace-types';
 import type { ConversationInputPhase, ConversationReadbackPhase } from '@/features/voice/index';
 import type { PendingConfirmation } from '@/features/voice/runtime';
 import type { FileClipboardEntry } from '@/features/projects/runtime';
@@ -37,7 +36,6 @@ export type RegistryState = {
   lastHealthyConnectionId?: string;
   previousHealthyConnectionId?: string;
   ready: boolean;
-  snapshots: Record<string, WorkspaceSnapshot>;
 };
 
 export type SelectionState = {
@@ -122,7 +120,8 @@ type WorkspaceUiState = {
   preview?: { owner: symbol; path: string; request: symbol };
   diagnosticsRequested?: boolean;
   classifierProbe?: {
-    owner: symbol;
+    owner: string;
+    request?: symbol;
     model?: { providerId: string; modelId: string };
     status?: 'checking' | 'unsupported' | 'unavailable';
   };
@@ -205,7 +204,7 @@ export function createAppStore(defaults: AppStoreDefaults): AppStore {
       hiddenProjects: {},
       profiles: [],
     },
-    registry: { connections: [], ready: false, snapshots: {} },
+    registry: { connections: [], ready: false },
     network: DEFAULT_NETWORK_STATUS,
     setNetwork: (network) => set({ network }),
     selection: {},

@@ -21,7 +21,7 @@ and [feature boundaries](../docs/architecture/feature-boundaries.md).
   `connection-runtime.tsx` adapts lifecycle snapshots and projects the catalog
   alongside the retained project adapters.
 - `runtime/workspace/retained-project.tsx`: binds scoped feature subscriptions
-  and publishes the retained project views.
+  and registers project commands with the connection's realtime manager.
 - `runtime/composition/`: app entrypoint and project lifecycle adapters.
 - `runtime/persistence/`: app hydration/write-back and cross-domain credential-scope migration.
 - `runtime/realtime/`: SSE plus polling reconciliation and coalescing.

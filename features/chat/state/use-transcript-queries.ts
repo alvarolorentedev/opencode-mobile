@@ -9,6 +9,7 @@ import { transcriptPrefix } from '../services/queries';
 import { transcriptAccess, transcriptRecords, transcriptWindow, type TranscriptData } from '../services/transcript-queries';
 
 const EMPTY: Record<string, SessionMessageRecord[]> = {};
+const INACTIVE = { subscribe: () => () => {}, getSnapshot: () => EMPTY };
 const RECENT_SESSION_LIMIT = 3;
 
 function observeRecentTranscripts(cache: QueryClient, identity: QueryIdentity, client: ScopedOpencodeClient, currentSessionId?: string, conversationSessionId?: string) {
@@ -45,7 +46,7 @@ function observeRecentTranscripts(cache: QueryClient, identity: QueryIdentity, c
   };
 }
 
-export function useTranscriptQueries(identity: QueryIdentity, client: ScopedOpencodeClient, currentSessionId?: string, conversationSessionId?: string) {
+export function useTranscriptQueries(identity: QueryIdentity, client: ScopedOpencodeClient, currentSessionId?: string, conversationSessionId?: string, observeRecent = true) {
   const cache = useQueryClient();
   const access = useMemo(() => transcriptAccess(cache, identity, client), [cache, client, identity]);
 
@@ -54,8 +55,8 @@ export function useTranscriptQueries(identity: QueryIdentity, client: ScopedOpen
   const { data } = useInfiniteQuery({
     ...access.options(currentSessionId ?? ''), enabled: false, notifyOnChangeProps: ['data'],
   });
-  const recent = useMemo(() => observeRecentTranscripts(cache, identity, client, currentSessionId, conversationSessionId),
-    [cache, client, conversationSessionId, currentSessionId, identity]);
+  const recent = useMemo(() => observeRecent ? observeRecentTranscripts(cache, identity, client, currentSessionId, conversationSessionId) : INACTIVE,
+    [cache, client, conversationSessionId, currentSessionId, identity, observeRecent]);
   const recentMessages = useSyncExternalStore(recent.subscribe, recent.getSnapshot, recent.getSnapshot);
   const messagesBySession = useMemo(() =>
     currentSessionId && data ? { ...recentMessages, [currentSessionId]: transcriptRecords(data) } : recentMessages,

@@ -349,10 +349,16 @@ npm run validate:commit
   scoped commands, with classifier readiness still provided by the retained
   project. The commit gate passed with 1,286 tests and one existing skip.
   All 294 focused tests and 65 affected browser flows passed.
-- E27. The Chat view reads scoped queries, transcript overlays and device state
+- E27, `6f92b1bf`. The Chat view reads scoped queries, transcript overlays and device state
   directly. A single native conversation controller transfers ownership when
   focus changes. The commit gate passed with 1,287 tests and one existing skip.
   All 262 focused tests and the full 185-flow browser suite passed.
+- E28. The app store no longer contains workspace snapshots. Connection managers
+  publish readiness for their own realtime bindings. Classifier state and
+  library previews are read from their owners. After fixing the catalog reader
+  and a file-action dismissal race, all 185 browser flows passed. The commit
+  gate passed with 1,288 tests and one existing skip. All 332 focused tests
+  and the Storybook build passed.
 
 ## Loop protocol
 

@@ -16,3 +16,4 @@ export { useTranscriptReadErrors } from './state/use-transcript-read-errors';
 export { useTranscriptState } from './state/use-transcript-state';
 export type { ChatCommands } from './model/types';
 export { useChatCommands, useChatTranscript } from './state/use-scoped-chat';
+export { cachedTranscriptView } from './services/cached-transcript-view';

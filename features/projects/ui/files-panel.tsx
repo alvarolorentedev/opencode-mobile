@@ -48,10 +48,11 @@ export function FilesPanel({ statuses, browser, projectLabel, onOpen, header, co
   const show = (entry: ProjectFileEntry, mode: 'actions' | 'rename') => {
     actions?.clearFeedback(); setSelection({ entry, mode });
   };
+  const closeSelection = () => setSelection((current) => current === selection ? undefined : current);
   async function paste(path: string) {
     const expected = await actions.inspectPaste(path);
     if (!expected) return;
-    const run = () => { void actions.paste(path, expected).then((ok) => { if (ok) setSelection(undefined); }); };
+    const run = () => { void actions.paste(path, expected).then((ok) => { if (ok) closeSelection(); }); };
     if (expected === 'missing') run();
     else confirmAction(t('project:files.actions.replaceTitle'), t('project:files.actions.replaceMessage', { name: actions.clipboard?.path.split('/').pop() }),
       t('project:files.actions.replace'), t('common:actions.cancel'), run);
@@ -120,9 +121,9 @@ export function FilesPanel({ statuses, browser, projectLabel, onOpen, header, co
     <Feedback duration={2500} open={Boolean(actions?.notice)} onOpenChange={() => (() => actions?.clearFeedback())()}>{actions?.notice || ''}</Feedback>
     {selection && actions ? <EntryActionSheet key={`${selection.entry.path}:${selection.mode}`} entry={selection.entry} mode={selection.mode} projectLabel={projectLabel}
       busy={actions.busy} available={actions.available} reason={actions.reason} error={actions.error} canPaste={Boolean(actions.clipboard)}
-      onClose={() => setSelection(undefined)}
-      onCopyPath={() => { void actions.copyPath(selection.entry); setSelection(undefined); }}
-      onRename={(name) => { if (name === undefined) show(selection.entry, 'rename'); else void actions.rename(selection.entry, name).then((ok) => { if (ok) setSelection(undefined); }); }}
-      onSelect={(mode) => { actions.select(selection.entry, mode); setSelection(undefined); }} onPaste={() => void paste(selection.entry.path)} /> : null}
+      onClose={closeSelection}
+      onCopyPath={() => { void actions.copyPath(selection.entry); closeSelection(); }}
+      onRename={(name) => { if (name === undefined) show(selection.entry, 'rename'); else void actions.rename(selection.entry, name).then((ok) => { if (ok) closeSelection(); }); }}
+      onSelect={(mode) => { actions.select(selection.entry, mode); closeSelection(); }} onPaste={() => void paste(selection.entry.path)} /> : null}
   </>}</>;
 }

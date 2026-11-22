@@ -1,7 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 
 import { createAppCore } from '@/runtime/core/create-app-core';
-import type { WorkspaceSnapshot } from '@/runtime/workspace/workspace-types';
 import type { ChatPreferences } from '@/shared/preferences/opencode-preferences';
 import { getConnectionScope, getConnectionUiScope } from '@/shared/contracts/connection-scope';
 import { workspaceKey, type WorkspaceTarget } from '@/shared/contracts/workspace';
@@ -74,8 +73,11 @@ const newCore = () => createAppCore({ settings, chatPreferences: {} as ChatPrefe
 
 function connectedProject(core: ReturnType<typeof newCore>, connectionId: string, projectPath: string) {
   const target: WorkspaceTarget = { connectionId, projectPath };
+  const key = workspaceKey(target);
   const state = { status: 'connected', message: 'Connected' };
   const previous = core.connections.get;
+  const client = { __opencode: { contract: 'v2', directory: projectPath } };
+  const binding = { client, catalog: { isCurrent: () => true }, binding: { revision: 0 } };
   const manager = {
     getState: () => ({ connection: state }),
     connect: async () => state,
@@ -85,7 +87,9 @@ function connectedProject(core: ReturnType<typeof newCore>, connectionId: string
       client: { __opencode: { contract: 'v2', directory: path } },
       isCurrent: () => true,
     } : previous(connectionId)?.getProjectAccess(path),
-    realtime: { getProjectSources: () => undefined },
+    realtime: { getProjectSources: (path: string, scopeKey: string) =>
+      path === projectPath && scopeKey === key ? binding : previous(connectionId)?.realtime.getProjectSources(path, scopeKey),
+      suspendProjects: vi.fn() },
   } as unknown as NonNullable<ReturnType<typeof core.connections.get>>;
   core.connections.get = (id) => id === connectionId && core.store.getState().registry.connections.find((entry) => entry.id === id)?.enabled
     ? manager : previous(id);
@@ -93,7 +97,6 @@ function connectedProject(core: ReturnType<typeof newCore>, connectionId: string
   const created = { id: 'new-session' };
   const createSession = vi.fn(async () => created);
   const openDeepLinkSession = vi.fn(async (_link: unknown, _signal?: AbortSignal) => ({ ok: true }));
-  const key = workspaceKey(target);
   const { session } = core.commands;
   const { navigation, creation } = session;
   const matches = (scope: WorkspaceTarget, scopeKey: string) => scopeKey === key && scope.projectPath === projectPath;
@@ -105,10 +108,6 @@ function connectedProject(core: ReturnType<typeof newCore>, connectionId: string
     ...creation(scope, scopeKey, revision),
     ...(matches(scope, scopeKey) ? { createSession: createSession as unknown as ReturnType<typeof creation>['createSession'] } : {}),
   });
-  const snapshot = {
-    enabled: true, boundDirectory: projectPath || undefined, suspend: vi.fn(),
-    values: {},
-  } as unknown as WorkspaceSnapshot;
   const commands = core.commands.workspace;
   commands.change((current) => {
     const found = current.some(({ id }) => id === connectionId);
@@ -117,7 +116,6 @@ function connectedProject(core: ReturnType<typeof newCore>, connectionId: string
   });
   const access = manager.getProjectAccess(projectPath)!;
   core.queryClient.setQueryData(projectSessionsKey(access.identity, access.client), [{ id: 'rendered', directory: projectPath }]);
-  commands.publish(key, snapshot);
   return { target, openSession, openDeepLinkSession, createSession, created };
 }
 
@@ -155,7 +153,7 @@ describe('app core', () => {
     core.commands.workspace.dispose();
   });
 
-  it('switches focus and retires the previous projection together when an endpoint changes', () => {
+  it('switches focus to the new disabled endpoint without retaining its old connection', async () => {
     const core = newCore();
     const previous = connectedProject(core, getConnectionUiScope(settings), '/repo').target;
     core.commands.workspace.select(previous);
@@ -163,19 +161,10 @@ describe('app core', () => {
     const next = { connectionId: getConnectionUiScope(nextSettings), projectPath: '' };
 
     core.commands.connection.updateSettings(previous.connectionId, nextSettings);
-    core.commands.workspace.forget(workspaceKey(previous));
-    expect(core.store.getState().registry.focus).toEqual(previous);
-    expect(core.store.getState().registry.snapshots[workspaceKey(previous)]).toBeDefined();
-
-    connectedProject(core, next.connectionId, next.projectPath);
-    // A publication from before the edit cannot commit the new selection.
-    expect(core.store.getState().registry.focus).toEqual(previous);
-    const nextKey = workspaceKey(next);
-    const staged = core.store.getState().registry.snapshots[nextKey];
-    core.commands.workspace.publish(nextKey, { ...staged, enabled: false });
     expect(core.store.getState().registry.focus).toEqual(next);
-    expect(core.store.getState().registry.snapshots[workspaceKey(previous)]).toBeUndefined();
-    expect(core.store.getState().registry.snapshots[nextKey]).toBeDefined();
+    expect(core.store.getState().registry.connections).toMatchObject([{ id: next.connectionId, enabled: false, settings: nextSettings }]);
+    await expect(core.commands.workspace.ensure(previous)).rejects.toThrow('This server is no longer available.');
+    await expect(core.commands.workspace.ensure(next)).resolves.toMatchObject({ enabled: false });
     core.commands.workspace.dispose();
   });
 

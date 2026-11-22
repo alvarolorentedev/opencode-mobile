@@ -6,7 +6,8 @@ import { createAppStore, type AppState } from '@/runtime/core/store';
 import { CURRENT_ONBOARDING_VERSION } from '@/features/onboarding/runtime';
 import type { createWorkspaceCommands as WorkspaceCommands } from '@/runtime/core/commands/workspace';
 import type { createConnectionCommands as ConnectionCommands } from '@/runtime/core/commands/connection';
-import { workspaceKey } from '@/shared/contracts/workspace';
+import { resolveWorkspaceProjectKey, workspaceKey } from '@/shared/contracts/workspace';
+import type { RealtimeScopeInput } from '@/runtime/realtime/create-realtime';
 import { defaultChatPreferences } from '@/shared/preferences/opencode-preferences';
 import type { ScopedOpencodeClient } from '@/shared/protocol/opencode/client';
 import { projectQueryKey, type QueryIdentity } from '@/shared/server-data/keys';
@@ -17,9 +18,25 @@ const keys = { sessionKey: (value: any) => JSON.stringify([value.connectionId, v
 
 type TestConnections = Parameters<typeof WorkspaceCommands>[0]['connections'];
 type TestSessionCommands = Parameters<typeof WorkspaceCommands>[1];
+const { createRealtime } = await loadTs('runtime/realtime/create-realtime.ts', {
+  '@/runtime/realtime/transport': { startRealtimeTransport: () => () => {} },
+});
+const quietForeground = { isActive: () => false, subscribe: () => () => {} };
+const quietSubscription = () => () => {};
+function projectSources(key: string, directory: string) {
+  const loadProjectCatalog = vi.fn(async () => ({ currentProjectPath: '/repo', serverProjects: [] }));
+  const suspend = vi.fn();
+  return {
+    workspaceKey: key, projectPath: directory || undefined, binding: { suspend },
+    catalog: { isCurrent: () => true, actions: { loadProjectCatalog } },
+  } as unknown as RealtimeScopeInput & {
+    binding: { suspend: typeof suspend };
+    catalog: { actions: { loadProjectCatalog: typeof loadProjectCatalog } };
+  };
+}
 const unexpectedSessionCommand = () => { throw new Error('Unexpected session command'); };
 function mountWorkspaceConnections(driver: ReturnType<typeof hookRuntime>, useWorkspaceConnections: any, createWorkspaceCommands: typeof WorkspaceCommands, createConnectionCommands: typeof ConnectionCommands, shell: any,
-  connections: TestConnections = { get: () => undefined, subscribeState: () => () => {} },
+  connections: TestConnections = { get: () => undefined, subscribeState: quietSubscription, subscribeProjects: quietSubscription },
   queryClient = new QueryClient(),
   session: TestSessionCommands = { navigation: unexpectedSessionCommand, creation: unexpectedSessionCommand },
   pauseVoice = vi.fn(async (_id?: string) => {}),
@@ -292,7 +309,7 @@ it('auto-approves colliding requests only on the owning server with the policy e
       get: (id: string) => ({
         getProjectAccess: () => ({ identity: identityFor(id), client, isCurrent: () => true }),
       }),
-      subscribeState: () => () => {},
+      subscribeState: quietSubscription, subscribeProjects: quietSubscription,
     },
   }, ({ connectionId }: { connectionId: string }) => ({ replyToPermission: connectionId === 'a' ? a : b })).start();
   try {
@@ -362,12 +379,14 @@ it('keeps lifecycle decisions current without resetting retained runtimes', asyn
     "@/shared/network/shared-event-stream": { createSharedEventStream: () => () => {} },
     "@/shared/protocol/services/session-service": { findSessionForNavigation },
     "@/shared/storage/workspace-storage": { WORKSPACES_STORAGE_KEY: 'workspaces', parseWorkspaces: () => ({ connections: entries, focus: { connectionId: 'a', projectPath: '/repo' } }), serializeWorkspaces: () => 'stored' },
-    "@/shared/contracts/workspace": { workspaceKey: ({ connectionId, projectPath }: any) => JSON.stringify([connectionId, projectPath]) }
+    "@/shared/contracts/workspace": { workspaceKey, resolveWorkspaceProjectKey }
   }, driver.globals);
   const connected = { status: 'connected', message: 'Connected' };
   const client = { __opencode: { contract: 'v2', directory: '' } };
   const queryClient = new QueryClient();
-  const managers = new Map(entries.map(({ id }) => [id, {
+  const realtimes = new Map(['a', 'b', 'c'].map((id) => [id, createRealtime(quietForeground, () => {})]));
+  const managers = new Map([...realtimes].map(([id, realtime]) => [id, {
+    realtime,
     getState: () => ({ connection: connected }), connect: async () => connected, getCatalogClient: () => client,
     getProjectAccess: (directory: string) => ({ identity: { connectionId: id }, client: { __opencode: { contract: 'v2', directory } }, isCurrent: () => true }),
   } as unknown as NonNullable<ReturnType<TestConnections['get']>>]));
@@ -383,18 +402,27 @@ it('keeps lifecycle decisions current without resetting retained runtimes', asyn
   const unscopedNavigation = bindNavigation('b', '');
   const pauseVoice = vi.fn(async (_id?: string) => {});
   const store = mountWorkspaceConnections(driver, useWorkspaceConnections, createWorkspaceCommands, createConnectionCommands, shell,
-    { get: (id) => managers.get(id) ?? managers.get('a'), subscribeState: () => () => {} }, queryClient, {
+    { get: (id) => managers.get(id), subscribeState: quietSubscription, subscribeProjects(listener) {
+      const stops = [...realtimes.values()].map((realtime) => realtime.subscribeProjects(listener));
+      return () => { for (const stop of stops) stop(); };
+    } }, queryClient, {
       creation: () => ({ createSession: vi.fn(), forkSession: vi.fn() }),
       navigation: (scope) => navigation.get(workspaceKey(scope)) ?? unexpectedSessionCommand(),
     }, pauseVoice);
   const isEnabled = driver.value.isEnabled;
   await driver.settle();
   expect(isEnabled('a')).toBe(true);
-  const snapshot = (directory: string) => ({ enabled: true, boundDirectory: directory || undefined,
-    loadProjectCatalog: vi.fn(async () => ({ currentProjectPath: '/repo', serverProjects: [] })),
-    suspend: vi.fn(), values: {} });
-  const original = snapshot('/repo'), other = snapshot('/other'), b = snapshot('/repo');
-  driver.value.publish('["a","/repo"]', original); driver.value.publish('["a","/other"]', other); driver.value.publish('["b","/repo"]', b); driver.flush();
+  driver.value.change((records: AppState['registry']['connections']) => records.map((entry) => ({
+    ...entry, projects: entry.id === 'a' ? ['', '/repo', '/other'] : ['', '/repo'],
+  })));
+  const original = projectSources('["a","/repo"]', '/repo');
+  const other = projectSources('["a","/other"]', '/other');
+  const b = projectSources('["b","/repo"]', '/repo');
+  realtimes.get('a')!.createScope().update(original);
+  realtimes.get('a')!.createScope().update(other);
+  const bProject = realtimes.get('b')!.createScope();
+  bProject.update(b);
+  driver.flush();
   queryClient.setQueryData(catalogKey('a'), { sessions: [{ id: 'collision', directory: '/repo' }] });
   await expect(driver.value.navigate({ connectionId: 'b', projectPath: '/repo', sessionId: 'collision' })).rejects.toThrow('was not found');
   expect(bNavigation.openSession).not.toHaveBeenCalled();
@@ -408,30 +436,34 @@ it('keeps lifecycle decisions current without resetting retained runtimes', asyn
   await driver.value.openExternalSession({ connectionId: 'b', projectPath: '/repo', sessionId: 'collision' });
   expect(bNavigation.openDeepLinkSession).toHaveBeenCalledWith({ sessionId: 'collision', projectPath: '/repo' }, expect.any(AbortSignal));
   expect(originalNavigation.openDeepLinkSession).not.toHaveBeenCalled();
-  const unscoped = snapshot('');
-  driver.value.forget('["b","/repo"]');
-  driver.value.publish('["b",""]', unscoped); driver.flush();
+  const unscoped = projectSources('["b",""]', '');
+  bProject.dispose();
+  driver.value.change((records: AppState['registry']['connections']) => records.map((entry) =>
+    entry.id === 'b' ? { ...entry, projects: [''] } : entry));
+  const bDefault = realtimes.get('b')!.createScope();
+  bDefault.update(unscoped);
+  driver.flush();
   const opening = driver.value.openExternalSession({ connectionId: 'b', projectPath: '', sessionId: 'default-project' });
   await driver.settle();
-  expect(unscoped.loadProjectCatalog).toHaveBeenCalledWith(true);
+  expect(unscoped.catalog.actions.loadProjectCatalog).toHaveBeenCalledWith(true);
   expect(unscopedNavigation.openDeepLinkSession).not.toHaveBeenCalled();
   expect(driver.value.connections.find((entry: any) => entry.id === 'b').projects).toEqual(['']);
   store.getState().setSelection('["b",""]', { activeProjectPath: '/repo' });
-  driver.value.publish('["b",""]', { ...unscoped });
+  bDefault.update({ ...unscoped });
   await driver.settle();
   expect(unscopedNavigation.openDeepLinkSession).not.toHaveBeenCalled();
-  driver.value.publish('["b",""]', b); driver.flush();
+  bDefault.update({ ...b, workspaceKey: '["b",""]' });
+  driver.flush();
   await opening;
   expect(bNavigation.openDeepLinkSession).toHaveBeenCalledWith({ sessionId: 'default-project', projectPath: undefined }, expect.any(AbortSignal));
   await driver.value.disconnect('a'); driver.flush();
   expect(pauseVoice).toHaveBeenLastCalledWith('a');
   expect(isEnabled('a')).toBe(false); expect(isEnabled('b')).toBe(true);
-  expect(original.suspend).toHaveBeenCalledOnce(); expect(other.suspend).toHaveBeenCalledOnce(); expect(b.suspend).not.toHaveBeenCalled();
+  expect(original.binding.suspend).toHaveBeenCalledOnce(); expect(other.binding.suspend).toHaveBeenCalledOnce(); expect(b.binding.suspend).not.toHaveBeenCalled();
   const profile = { id: 'saved', name: 'Saved', serverUrl: 'http://c', username: 'carol' };
   const activating = driver.value.connectSavedProfile(profile);
   await driver.settle();
-  const c = snapshot('');
-  driver.value.publish('["c",""]', c);
+  realtimes.get('c')!.createScope().update(projectSources('["c",""]', ''));
   await activating;
   expect(store.getState().registry.connections.find(({ id }) => id === 'c')?.settings).toMatchObject({ certificate, oidc, password: 'saved-password' });
   expect(mutateConnectionProfiles).not.toHaveBeenCalled();
@@ -469,7 +501,7 @@ it('keeps auto-model and auto-approval preferences on the owning server', async 
     "@/shared/network/shared-event-stream": { createSharedEventStream: () => () => {} },
     "@/shared/protocol/services/session-service": { findSessionForNavigation: vi.fn() },
     "@/shared/storage/workspace-storage": { WORKSPACES_STORAGE_KEY: 'workspaces', parseWorkspaces: () => ({ connections: entries, focus: { connectionId: 'a', projectPath: '/repo' } }), serializeWorkspaces: () => 'stored' },
-    "@/shared/contracts/workspace": { workspaceKey: ({ connectionId, projectPath }: any) => JSON.stringify([connectionId, projectPath]) }
+    "@/shared/contracts/workspace": { workspaceKey, resolveWorkspaceProjectKey }
   }, driver.globals);
   const store = mountWorkspaceConnections(driver, useWorkspaceConnections, createWorkspaceCommands, createConnectionCommands, shell);
   await driver.settle();
@@ -493,7 +525,7 @@ it('keeps auto-model and auto-approval preferences on the owning server', async 
   let contract: 'v2' | 'v1' = 'v2';
   const connections: TestConnections = {
     get: () => ({ getState: () => ({ contract }) }) as ReturnType<TestConnections['get']>,
-    subscribeState: () => () => {},
+    subscribeState: quietSubscription, subscribeProjects: quietSubscription,
   };
   const workspace = createWorkspaceCommands({ store, queryClient, connections }, {
     navigation: unexpectedSessionCommand, creation: unexpectedSessionCommand,
@@ -549,13 +581,18 @@ it('moves chat focus to a connected server when the focused server fails', async
     "@/shared/storage/persistence-hydration": { createPersistenceWriter: () => writer },
     "@/shared/network/shared-event-stream": { createSharedEventStream: () => () => {} },
     "@/shared/storage/workspace-storage": { WORKSPACES_STORAGE_KEY: 'workspaces', parseWorkspaces: () => ({ connections: entries, focus: { connectionId: 'b', projectPath: '/repo' } }), serializeWorkspaces: () => 'stored' },
-    "@/shared/contracts/workspace": { workspaceKey: ({ connectionId, projectPath }: any) => JSON.stringify([connectionId, projectPath]) }
+    "@/shared/contracts/workspace": { workspaceKey, resolveWorkspaceProjectKey }
   }, driver.globals);
   const statuses = new Map<string, ConnectionState['status']>([['a', 'connected'], ['b', 'connected']]);
+  const realtimes = new Map(['a', 'b'].map((id) => [id, createRealtime(quietForeground, () => {})]));
   const listeners = new Set<() => void>();
   const connections: TestConnections = {
-    get: (id) => ({ getState: () => ({ connection: { status: statuses.get(id) } }) }) as unknown as NonNullable<ReturnType<TestConnections['get']>>,
+    get: (id) => ({ realtime: realtimes.get(id), getState: () => ({ connection: { status: statuses.get(id) } }) }) as unknown as NonNullable<ReturnType<TestConnections['get']>>,
     subscribeState(listener) { listeners.add(listener); return () => { listeners.delete(listener); }; },
+    subscribeProjects(listener) {
+      const stops = [...realtimes.values()].map((realtime) => realtime.subscribeProjects(listener));
+      return () => { for (const stop of stops) stop(); };
+    },
   };
   function setStatus(id: string, status: ConnectionState['status']) {
     statuses.set(id, status);
@@ -565,10 +602,8 @@ it('moves chat focus to a connected server when the focused server fails', async
   await driver.settle();
   store.getState().setSelection('["a",""]', { activeProjectPath: '/repo' });
   store.getState().setSelection('["b",""]', { activeProjectPath: '/repo' });
-  const snapshot = () => ({ enabled: true, boundDirectory: '/repo', suspend: vi.fn(),
-    values: {} });
-  driver.value.publish('["a","/repo"]', snapshot());
-  driver.value.publish('["b",""]', snapshot());
+  realtimes.get('a')!.createScope().update(projectSources('["a",""]', '/repo'));
+  realtimes.get('b')!.createScope().update(projectSources('["b",""]', '/repo'));
   await driver.settle();
   expect(driver.value.focus).toEqual({ connectionId: 'b', projectPath: '' });
   setStatus('b', 'error');

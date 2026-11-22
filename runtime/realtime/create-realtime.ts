@@ -1,5 +1,6 @@
 import type { ScopedOpencodeClient } from '@/shared/protocol/opencode/client';
 import type { ChatCommands } from '@/features/chat/runtime';
+import type { useProjectCatalogActions } from '@/features/projects/runtime';
 import type { OpencodeEvent, subscribeEvents } from '@/shared/protocol/opencode/events';
 import { nextPollDelay, shouldPoll } from '@/runtime/realtime/polling';
 import { createReconciler, type ReconcileSources } from '@/runtime/realtime/reconcile';
@@ -18,16 +19,24 @@ export type RealtimeScopeInput = Omit<ReconcileSources, 'pendingSessionIds' | 's
   hasMessages?: (sessionId: string) => boolean;
   refreshVcsDiff?: (scope: 'uncommitted' | 'branch', silent: boolean) => Promise<unknown>;
   chat?: { revision?: number; isCurrent: () => boolean; commands: ChatCommands };
+  catalog?: {
+    revision?: number;
+    isCurrent: () => boolean;
+    actions: ReturnType<typeof useProjectCatalogActions>;
+  };
+  binding?: { revision?: number; client: ScopedOpencodeClient; suspend: () => void; busyForUpdates: boolean };
 };
 
 type Transport = { client: ScopedOpencodeClient; subscribe: typeof subscribeEvents };
 
 export function createRealtime(foreground: Foreground, onFatalError: Parameters<typeof startRealtimeTransport>[0]['onFatalError'], onEvent?: (event: OpencodeEvent) => void) {
   const listeners = new Set<() => void>();
+  const projectListeners = new Set<() => void>();
   const scopes = new Set<ReturnType<typeof createScope>>();
   let status: StreamStatus = 'idle';
   let transport: Transport | undefined;
   let stopTransport: (() => void) | undefined;
+  const notifyProjects = () => { for (const listener of projectListeners) listener(); };
 
   function publish(next: StreamStatus) {
     if (status === next) return;
@@ -93,6 +102,9 @@ export function createRealtime(foreground: Foreground, onFatalError: Parameters<
           if (status === 'connected') reconcileScope();
         }
         if (!previous || previous.busy !== next.busy || previous.constrained !== next.constrained || previous.projectPath !== next.projectPath) syncPolling();
+        if (!previous || previous.projectPath !== next.projectPath || previous.workspaceKey !== next.workspaceKey
+          || previous.binding?.revision !== next.binding?.revision || previous.binding?.client !== next.binding?.client
+          || previous.binding?.busyForUpdates !== next.binding?.busyForUpdates) notifyProjects();
       },
       reset() {
         reconciler.reset();
@@ -103,6 +115,7 @@ export function createRealtime(foreground: Foreground, onFatalError: Parameters<
         stopPoll = undefined;
         reconciler.reset();
         scopes.delete(scope);
+        notifyProjects();
       },
     };
     return scope;
@@ -134,6 +147,17 @@ export function createRealtime(foreground: Foreground, onFatalError: Parameters<
       listeners.add(listener);
       return () => { listeners.delete(listener); };
     },
+    subscribeProjects(listener: () => void) {
+      projectListeners.add(listener);
+      return () => { projectListeners.delete(listener); };
+    },
+    isUpdateBlocked: () => [...scopes].some((scope) => scope.getSources()?.binding?.busyForUpdates === true),
+    suspendProjects(excludedScope?: string) {
+      for (const scope of scopes) {
+        const sources = scope.getSources();
+        if (sources?.workspaceKey !== excludedScope || excludedScope === undefined) sources?.binding?.suspend();
+      }
+    },
     createScope() {
       const scope = createScope();
       scopes.add(scope);
@@ -150,6 +174,7 @@ export function createRealtime(foreground: Foreground, onFatalError: Parameters<
       setTransport();
       for (const scope of scopes) scope.dispose();
       listeners.clear();
+      projectListeners.clear();
     },
   };
 }

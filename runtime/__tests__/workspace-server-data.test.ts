@@ -1,9 +1,35 @@
-import type { QueryClient } from '@tanstack/react-query';
+import { QueryObserver, type QueryClient } from '@tanstack/react-query';
 import { describe, expect, it, vi } from 'vitest';
 import { hookRuntime, loadTs } from '../../tests/helpers/runtime.mjs';
 import { queryRuntime } from '../../tests/helpers/query-runtime.mjs';
 
 describe('retained workspace query demand', () => {
+  it('keeps the connection catalog refetch available when project views subscribe', async () => {
+    const driver = hookRuntime();
+    const query = queryRuntime(driver.react);
+    const cache = query.useQueryClient() as QueryClient;
+    const catalogKey = ['opencode', 'a', 'scope-a', 0, 'v2', 'sessions', 'catalog'];
+    const readCatalog = vi.fn(async () => ({ sessions: [], statuses: {} }));
+    const owner = new QueryObserver(cache, { queryKey: catalogKey, queryFn: readCatalog });
+    const stop = owner.subscribe(() => {});
+    await owner.refetch();
+    readCatalog.mockClear();
+    const { useSessionCatalog } = await loadTs('features/sessions/state/use-session-catalog.ts', {
+      react: driver.react,
+      '@tanstack/react-query': query,
+      '../services/queries': { projectSessionsOptions: () => ({ queryKey: ['project-list'], enabled: false }) },
+      '../services/session-catalog-access': {
+        EMPTY_SESSIONS: [], EMPTY_STATUSES: {}, sessionCatalogAccess: () => ({ catalogKey }),
+      },
+    });
+    driver.mount(() => useSessionCatalog({}, {}), {});
+    await cache.refetchQueries({ queryKey: catalogKey, type: 'active' });
+    expect(readCatalog).toHaveBeenCalledOnce();
+    driver.unmount();
+    stop();
+    cache.clear();
+  });
+
   it('reuses the probe location on activation and isolates simultaneous connections', async () => {
     const driver = hookRuntime();
     const cache = queryRuntime(driver.react).useQueryClient() as QueryClient;

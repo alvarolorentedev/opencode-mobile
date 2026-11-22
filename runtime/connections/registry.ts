@@ -18,6 +18,7 @@ type Slot = {
   manager: Manager;
   input?: ConnectionInput;
   stopState: () => void;
+  stopProjects: () => void;
   stopConnection?: () => void;
   stopRenewal?: () => void;
 };
@@ -34,6 +35,7 @@ export function createConnectionRegistry({ store, queryClient }: { store: AppSto
   const slots = new Map<string, Slot>();
   const listeners = new Set<() => void>();
   const stateListeners = new Set<() => void>();
+  const projectListeners = new Set<() => void>();
   const environmentListeners = new Set<() => void>();
   const foregroundListeners = new Set<(active: boolean) => void>();
   let foregroundActive = true;
@@ -55,6 +57,7 @@ export function createConnectionRegistry({ store, queryClient }: { store: AppSto
     for (const listener of stateListeners) listener();
   }
   function notifyEnvironment() { for (const listener of environmentListeners) listener(); }
+  function notifyProjects() { for (const listener of projectListeners) listener(); }
   const isOnline = () => store.getState().network.online;
   function applyDemand() {
     for (const [id, { manager }] of slots) manager.setDemand(queryForeground && activeId === id, isOnline());
@@ -63,6 +66,7 @@ export function createConnectionRegistry({ store, queryClient }: { store: AppSto
   function drop(id: string, slot: Slot) {
     slots.delete(id);
     slot.stopState();
+    slot.stopProjects();
     slot.stopRenewal?.();
     if (slot.input) slot.manager.setInput({ ...slot.input, entry: { ...slot.input.entry, enabled: false } });
     slot.stopConnection?.();
@@ -85,7 +89,7 @@ export function createConnectionRegistry({ store, queryClient }: { store: AppSto
       let slot = slots.get(entry.id);
       if (!slot) {
         const manager = createManager({ queryClient, foreground });
-        slot = { manager, stopState: manager.subscribe(notifyState) };
+        slot = { manager, stopState: manager.subscribe(notifyState), stopProjects: manager.realtime.subscribeProjects(notifyProjects) };
         slots.set(entry.id, slot);
         changed = true;
       }
@@ -111,7 +115,7 @@ export function createConnectionRegistry({ store, queryClient }: { store: AppSto
       }
       slot.manager.setDemand(queryForeground && activeId === entry.id, isOnline());
     }
-    if (changed) { notify(); notifyState(); }
+    if (changed) { notify(); notifyState(); notifyProjects(); }
   }
 
   return {
@@ -134,6 +138,11 @@ export function createConnectionRegistry({ store, queryClient }: { store: AppSto
       stateListeners.add(listener);
       return () => { stateListeners.delete(listener); };
     },
+    subscribeProjects(listener: () => void) {
+      projectListeners.add(listener);
+      return () => { projectListeners.delete(listener); };
+    },
+    isUpdateBlocked: () => [...slots.values()].some(({ manager }) => manager.realtime.isUpdateBlocked()),
     configure(next: Configuration) {
       configuration = next;
       unsubscribed ??= store.subscribe((current, previous) => {
@@ -166,6 +175,7 @@ export function createConnectionRegistry({ store, queryClient }: { store: AppSto
       for (const [id, slot] of slots) drop(id, slot);
       notify();
       notifyState();
+      notifyProjects();
     },
   };
 }

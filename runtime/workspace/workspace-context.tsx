@@ -59,10 +59,9 @@ export function useWorkspacePreferences(explicit?: WorkspaceTarget) {
 }
 export function useResolvedWorkspaceTarget(target?: WorkspaceTarget) {
   const { resolveKey } = useAppCore().commands.workspace;
-  const availableKey = useAppStore(({ registry: { focus, snapshots } }) => {
+  const availableKey = useAppStore(({ registry: { focus, ready } }) => {
     const requested = target ?? focus;
-    const key = requested && resolveKey(requested);
-    return key && snapshots[key] ? key : undefined;
+    return requested && ready ? resolveKey(requested) : undefined;
   });
   return useMemo(() => {
     if (!availableKey) return undefined;

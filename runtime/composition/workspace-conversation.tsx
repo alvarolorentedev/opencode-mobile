@@ -1,4 +1,4 @@
-import { useLayoutEffect, useMemo, useRef } from 'react';
+import { useCallback, useLayoutEffect, useMemo, useRef } from 'react';
 
 import { useChatCommands, useChatTranscript } from '@/features/chat/runtime';
 import { useApprovalsCatalog, useSessionCatalog, useSessionState } from '@/features/sessions/runtime';
@@ -18,20 +18,23 @@ export function WorkspaceConversation() {
 function FocusedConversation({ scope }: { scope: ReturnType<typeof useProjectScope> }) {
   const { scopeKey, identity, client, directory, revision } = scope;
   const { connectionId } = identity;
-  const { commands, store, voice } = useAppCore();
+  const { commands, store, transcripts, voice } = useAppCore();
   const connection = useConnectionLifecycle(connectionId)?.connection ?? idleConnection.connection;
   const { chatPreferences } = useWorkspacePreferences();
   const { currentSessionId, setCurrentSessionId } = useSessionState(scopeKey);
   const { sessionStatuses } = useSessionCatalog(identity, client);
   const conversationSessionId = useAppStore((state) => state.conversation[scopeKey]?.sessionId);
-  const { messagesBySession } = useChatTranscript(scope, currentSessionId, conversationSessionId);
+  const { messagesBySession } = useChatTranscript(scope, currentSessionId, conversationSessionId, Boolean(conversationSessionId));
+  const transcript = useMemo(() => transcripts(identity, client), [client, identity, transcripts]);
+  const readMessages = useCallback((id: string) => transcript.session(id, store.getState().transcriptLive.get(scopeKey)),
+    [scopeKey, store, transcript]);
   const pending = useApprovalsCatalog(identity, client);
   const sendingState = useAppStore((state) => state.prompt[scopeKey]?.sending ?? IDLE);
   const { sendPrompt } = useChatCommands(scope);
   const { ensureActiveSession } = useMemo(() => commands.session.navigation({ connectionId, projectPath: directory }, scopeKey, revision),
     [commands.session, connectionId, directory, revision, scopeKey]);
   const state = useConversationState({ scopeKey, connection, chatPreferences, currentSessionId, setCurrentSessionId,
-    sessionStatuses, messagesBySession, ...pending, sendingState, ensureActiveSession, sendPrompt });
+    sessionStatuses, messagesBySession, readMessages, ...pending, sendingState, ensureActiveSession, sendPrompt });
   const latest = useRef(state);
   useLayoutEffect(() => { latest.current = state; });
   useLayoutEffect(() => voice.attach(connectionId, scopeKey, {

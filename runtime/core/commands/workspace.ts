@@ -3,33 +3,37 @@ import type { createSessionCommands } from './session';
 import { createWorktreeCommands } from '@/features/projects/runtime';
 import { projectSessionsKey, sessionCatalogOptions } from '@/features/sessions/runtime';
 import { createWorkspaceWaiters } from '@/runtime/workspace/workspace-lifecycle';
-import type { WorkspaceSnapshot } from '@/runtime/workspace/workspace-types';
 import { getConnectionScope } from '@/shared/contracts/connection-scope';
-import { workspaceKey, type ConnectionRecord, type NewWorktreeChatResult, type NewWorktreeChatTarget, type SessionTarget, type WorkspaceTarget } from '@/shared/contracts/workspace';
+import { resolveWorkspaceProjectKey, type ConnectionRecord, type NewWorktreeChatResult, type NewWorktreeChatTarget, type SessionTarget, type WorkspaceTarget } from '@/shared/contracts/workspace';
 import { findSessionForNavigation } from '@/shared/protocol/services/session-service';
 import type { Session } from '@/shared/protocol/opencode/types';
 
 type ReadinessOptions = { signal?: AbortSignal; waitForProject?: boolean };
 
 export function createWorkspaceCommands({ store, connections, queryClient }: Pick<CommandContext, 'store' | 'queryClient'> & {
-  connections: Pick<CommandContext['connections'], 'get' | 'subscribeState'>;
+  connections: Pick<CommandContext['connections'], 'get' | 'subscribeState' | 'subscribeProjects'>;
 }, sessions: Pick<ReturnType<typeof createSessionCommands>, 'creation' | 'navigation'>, pauseConversation: (connectionId?: string) => Promise<void>) {
   const waiters = createWorkspaceWaiters();
   let unsubscribe: (() => void) | undefined;
   let stopConnectionStatus: (() => void) | undefined;
+  let stopProjects: (() => void) | undefined;
   let navigation: AbortController | undefined;
-  let focusRequest: { target: WorkspaceTarget; forgottenKey?: string } | undefined;
+  let focusRequest: WorkspaceTarget | undefined;
   let canPersist = true;
   const registry = () => store.getState().registry;
   const { setRegistry } = store.getState();
 
+  function observeReadiness() {
+    if (focusRequest && scopeIfReady(focusRequest)) commitFocus(focusRequest);
+    waiters.notify();
+  }
   function resume() {
     waiters.resume();
     unsubscribe ??= store.subscribe((current, previous) => {
-      if (current.registry.connections !== previous.registry.connections || current.registry.snapshots !== previous.registry.snapshots
-        || current.selection !== previous.selection) waiters.notify();
+      if (current.registry.connections !== previous.registry.connections || current.selection !== previous.selection) observeReadiness();
     });
-    stopConnectionStatus ??= connections.subscribeState(waiters.notify);
+    stopConnectionStatus ??= connections.subscribeState(observeReadiness);
+    stopProjects ??= connections.subscribeProjects(observeReadiness);
   }
   function cancelNavigation() { navigation?.abort(); }
   function beginNavigation(externalSignal?: AbortSignal) {
@@ -65,15 +69,10 @@ export function createWorkspaceCommands({ store, connections, queryClient }: Pic
     setRegistry({ connections });
   }
 
-  function matches(target: WorkspaceTarget, key: string) {
-    const [id, project] = JSON.parse(key) as [string, string];
-    return id === target.connectionId
-      && (project === target.projectPath || store.getState().selection[key]?.activeProjectPath === target.projectPath);
-  }
   function resolveKey(target: WorkspaceTarget) {
-    const exact = workspaceKey(target);
-    const { snapshots } = registry();
-    return snapshots[exact] ? exact : Object.keys(snapshots).find((key) => matches(target, key)) ?? exact;
+    const { registry, selection } = store.getState();
+    const entry = registry.connections.find(({ id }) => id === target.connectionId);
+    return resolveWorkspaceProjectKey(entry, target, selection);
   }
   function directoryForKey(key: string) {
     const [, directory] = JSON.parse(key) as [string, string];
@@ -82,68 +81,39 @@ export function createWorkspaceCommands({ store, connections, queryClient }: Pic
   function projectPath(target: WorkspaceTarget) {
     return directoryForKey(resolveKey(target));
   }
-  function isCurrentProjection(key: string, entry: ConnectionRecord | undefined, snapshot: WorkspaceSnapshot | undefined) {
-    return snapshot && entry && snapshot.enabled === entry.enabled && (snapshot.revision ?? 0) === (entry.revision ?? 0)
-      && snapshot.boundDirectory === directoryForKey(key);
+  function scopeIfReady(target: WorkspaceTarget) {
+    const entry = registry().connections.find(({ id }) => id === target.connectionId);
+    const key = resolveKey(target);
+    const [, registeredDirectory] = JSON.parse(key) as [string, string];
+    if (!entry?.projects.includes(registeredDirectory)) return;
+    const boundDirectory = directoryForKey(key);
+    const scope = { boundDirectory, revision: entry.revision, enabled: entry.enabled };
+    if (!entry.enabled) return scope;
+    const sources = connections.get(entry.id)?.realtime.getProjectSources(boundDirectory ?? '', key);
+    if (!sources?.binding || (sources.binding.revision ?? 0) !== (entry.revision ?? 0) || !sources.catalog?.isCurrent()) return;
+    return scope;
   }
-  function commitFocus(target: WorkspaceTarget, snapshots = registry().snapshots) {
-    const forgotten = focusRequest?.forgottenKey;
+  function commitFocus(target: WorkspaceTarget) {
     focusRequest = undefined;
-    if (forgotten && snapshots[forgotten] && !matches(target, forgotten)) {
-      snapshots = { ...snapshots };
-      delete snapshots[forgotten];
-    }
-    setRegistry({ focus: target, snapshots });
+    setRegistry({ focus: target });
   }
   function select(target: WorkspaceTarget, persist = true) {
     if (persist) canPersist = true;
-    const { snapshots, focus, connections } = registry();
-    const entry = connections.find((record) => record.id === target.connectionId);
-    const key = resolveKey(target);
-    if (focus && snapshots[resolveKey(focus)] && !isCurrentProjection(key, entry, snapshots[key])) {
-      focusRequest = { target, forgottenKey: focusRequest?.forgottenKey };
+    if (registry().focus && !scopeIfReady(target)) {
+      focusRequest = target;
       return;
     }
     commitFocus(target);
   }
-  function publish(key: string, snapshot: WorkspaceSnapshot) {
-    const { snapshots, connections } = registry();
-    if (snapshots[key] === snapshot) return;
-    const next = { ...snapshots, [key]: snapshot };
-    const target = focusRequest?.target;
-    if (target && matches(target, key)
-      && isCurrentProjection(key, connections.find((entry) => entry.id === target.connectionId), snapshot)) {
-      commitFocus(target, next);
-      return;
-    }
-    setRegistry({ snapshots: next });
-  }
-  function forget(key: string) {
-    const { snapshots, focus } = registry();
-    if (!(key in snapshots)) return;
-    // An endpoint edit can unmount the old branch before the replacement
-    // commits. Retain the displayed projection through that layout commit.
-    if (focusRequest && focus && resolveKey(focus) === key) {
-      focusRequest.forgottenKey = key;
-      return;
-    }
-    const next = { ...snapshots };
-    delete next[key];
-    setRegistry({ snapshots: next });
-  }
-
   function readWorkspace(target: WorkspaceTarget) {
-    const entry = registry().connections.find((record) => record.id === target.connectionId);
-    if (!entry) throw new Error('This server is no longer available.');
-    const key = resolveKey(target);
-    const snapshot = registry().snapshots[key];
-    return isCurrentProjection(key, entry, snapshot) ? snapshot : undefined;
+    if (!registry().connections.some(({ id }) => id === target.connectionId)) throw new Error('This server is no longer available.');
+    return scopeIfReady(target);
   }
   async function ensure(target: WorkspaceTarget, options?: ReadinessOptions) {
-    if (!registry().snapshots[resolveKey(target)]) {
-      change((current) => current.map((entry) => entry.id === target.connectionId && !entry.projects.includes(target.projectPath)
-        ? { ...entry, projects: [...entry.projects, target.projectPath] } : entry));
-    }
+    const key = resolveKey(target);
+    const [, path] = JSON.parse(key) as [string, string];
+    change((current) => current.map((entry) => entry.id === target.connectionId && !entry.projects.includes(path)
+      ? { ...entry, projects: [...entry.projects, path] } : entry));
     return waiters.wait(() => readWorkspace(target), options?.signal);
   }
   async function selectIndependentTarget(target: WorkspaceTarget, field: 'terminalTarget' | 'inspectionTarget') {
@@ -152,12 +122,10 @@ export function createWorkspaceCommands({ store, connections, queryClient }: Pic
   }
   async function retry(id: string) {
     canPersist = true;
-    const { connections: records, snapshots } = registry();
+    const { connections: records } = registry();
     const entry = records.find((record) => record.id === id);
     if (!entry) throw new Error('Server not found.');
-    for (const [key, runtime] of Object.entries(snapshots)) {
-      if ((JSON.parse(key) as [string, string])[0] === id) runtime.suspend();
-    }
+    connections.get(id)?.realtime.suspendProjects();
     // The placeholder's catalog read restores the server's default project.
     change((current) => current.map((item) => item.id === id ? { ...entry, enabled: true, settings: { ...item.settings } } : item));
     await ensure({ connectionId: id, projectPath: '' });
@@ -195,7 +163,7 @@ export function createWorkspaceCommands({ store, connections, queryClient }: Pic
   function selectWorkspace(target: WorkspaceTarget) {
     select({ connectionId: target.connectionId, projectPath: target.projectPath || projectPath(target) || '' });
   }
-  function bindSession(target: WorkspaceTarget, binding: WorkspaceSnapshot) {
+  function bindSession(target: WorkspaceTarget, binding: NonNullable<ReturnType<typeof scopeIfReady>>) {
     const scoped = { connectionId: target.connectionId, projectPath: binding.boundDirectory ?? '' };
     const key = resolveKey(target);
     return {
@@ -257,9 +225,10 @@ export function createWorkspaceCommands({ store, connections, queryClient }: Pic
       check();
       if (!target.projectPath && !projectPath(target)) {
         // The probe may settle before the default project publishes readiness.
-        const catalog = await next.loadProjectCatalog(true);
+        const sources = connections.get(target.connectionId)?.realtime.getProjectSources('', resolveKey(target));
+        const catalog = await sources?.catalog?.actions.loadProjectCatalog(true);
         check();
-        if (catalog.currentProjectPath || catalog.serverProjects[0]?.worktree) {
+        if (catalog?.currentProjectPath || catalog?.serverProjects[0]?.worktree) {
           next = await connectedWorkspace(target, { signal, waitForProject: true });
           check();
         }
@@ -314,13 +283,14 @@ export function createWorkspaceCommands({ store, connections, queryClient }: Pic
       cancelNavigation();
       unsubscribe?.(); unsubscribe = undefined;
       stopConnectionStatus?.(); stopConnectionStatus = undefined;
+      stopProjects?.(); stopProjects = undefined;
       focusRequest = undefined; waiters.dispose();
     },
     cancelNavigation, pauseConversation,
     isPersistenceAllowed: () => canPersist,
     setPersistenceAllowed: (allowed: boolean) => { canPersist = allowed; },
     isEnabled: (id: string) => registry().connections.some((record) => record.id === id && record.enabled),
-    change, select, publish, forget, resolveKey, ensure, retry, connectedWorkspace,
+    change, select, resolveKey, ensure, retry, connectedWorkspace,
     activate, navigate, openExternalSession, createSession, createChat, createChatInWorktree,
     selectTerminalTarget: (target: WorkspaceTarget) => selectIndependentTarget(target, 'terminalTarget'),
     inspect: (target: WorkspaceTarget) => selectIndependentTarget(target, 'inspectionTarget'),

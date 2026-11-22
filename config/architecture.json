@@ -105,8 +105,8 @@
       "useConnectionLifecycle",
       "useConnectionLifecycles",
       "useProjectScope",
-      "useWorkspaceConnectionSettings",
-      "useWorkspaceDomainValue"
+      "useCachedProjectTranscripts",
+      "useWorkspaceConnectionSettings"
     ],
     "features/updates/index.ts": [
       "UpdateBanner",
@@ -291,7 +291,6 @@
       "useConnectionProfiles"
     ],
     "features/sessions/runtime.ts": [
-      "useSessionPreviews",
       "approvalsAccess",
       "clearMissionStatsCaches",
       "collectDescendantSessionIds",
@@ -329,6 +328,7 @@
       "ChatCommands",
       "useChatCommands",
       "useChatTranscript",
+      "cachedTranscriptView",
       "createPromptInboxCommands",
       "reconcilePromptSettlement",
       "createPromptSubmissionActions",

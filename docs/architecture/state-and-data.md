@@ -24,9 +24,9 @@ starts one manager per enabled connection for probing, recovery, credential
 renewal and the shared event stream. Connection presentation reads settings
 from the app store and lifecycle state from the manager. The app shell supplies
 the shared profile, setup and service controls once. Query owns the shared
-session catalog and routine server responses. Catalog projections and retained
-project adapters read those sources. Feature hooks select the focused or scoped
-values from the app core.
+session catalog and routine server responses. Feature hooks select scoped
+facts from Query and the app store. Retained project adapters bind commands
+and reconciliation to the connection manager's realtime scopes.
 
 The workspace commands in `runtime/core/commands/workspace.ts` register project
 demand and wait for a matching retained publication before opening a chat. They
@@ -1410,10 +1410,10 @@ and invalidate only the same partition after a write.
 
 Chat focus, terminal target and Settings inspection target are independent composite references. The presentation map holds composer text/attachments, failed input, editor baseline/current text and transcript offsets. Hidden dirty drafts and PTYs participate in update blocking. Removing a connection names unsaved drafts in its confirmation. Drafts are intentionally not written to disk.
 
-When a server URL edit replaces the displayed connection, the workspace
-command keeps the prior projection available until the new connection revision
-publishes. It changes focus and retires the prior projection in the same store
-update. Terminal and Settings wait for their independent targets before
+Editing a server URL selects the new disabled connection so the forms show the
+new settings and require an explicit reconnect. Navigation to an enabled
+workspace waits for a realtime binding that matches the selected directory
+and connection revision. Terminal and Settings await their own targets before
 changing the selected pane.
 
 The registry holds the recent healthy connection IDs used for failover, as well

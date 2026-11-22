@@ -31,7 +31,7 @@ import { useLocalWakeController } from '@/features/voice/state/conversation/use-
 import { useConversationRuntimeState } from '@/features/voice/state/conversation/use-conversation-runtime-state';
 
 export function useConversationState({ scopeKey, connection, chatPreferences, currentSessionId, setCurrentSessionId,
-  sessionStatuses, messagesBySession, pendingPermissionsBySession, pendingQuestionsBySession,
+  sessionStatuses, messagesBySession, readMessages, pendingPermissionsBySession, pendingQuestionsBySession,
   sendingState, ensureActiveSession, sendPrompt: sendPromptAction,
 }: {
   scopeKey: string;
@@ -41,6 +41,7 @@ export function useConversationState({ scopeKey, connection, chatPreferences, cu
   setCurrentSessionId: Dispatch<SetStateAction<string | undefined>>;
   sessionStatuses: Record<string, SessionStatus>;
   messagesBySession: Record<string, SessionMessageRecord[]>;
+  readMessages?: (id: string) => SessionMessageRecord[];
   pendingPermissionsBySession: Record<string, PendingPermissionRequest[]>;
   pendingQuestionsBySession: Record<string, PendingQuestionRequest[]>;
   sendingState: SendingState;
@@ -332,7 +333,7 @@ export function useConversationState({ scopeKey, connection, chatPreferences, cu
     getConversationAssistantEntries,
     getLatestConversationAssistantEntry,
     latestAssistantRef,
-  } = useConversationAssistantEntries(messagesBySession);
+  } = useConversationAssistantEntries(messagesBySession, readMessages);
   const clearConversationFeedback = useCallback(() => {
     applyConversationFeedback(setConversationFeedback, setConversationFeedbackAction, undefined);
   }, [setConversationFeedback, setConversationFeedbackAction]);

@@ -27,4 +27,3 @@ export type { ApprovalsCatalog } from './state/use-approvals-catalog';
 export { useSessionCatalog } from './state/use-session-catalog';
 export type { SessionCatalog } from './state/use-session-catalog';
 export { useSessionState } from './state/use-session-state';
-export { useSessionPreviews } from './state/use-session-previews';

@@ -30,16 +30,17 @@ describe('app store', () => {
     expect(store.getState().shell.settings).toBe(defaults.settings);
   });
 
-  it('merges registry patches without dropping connections or snapshots', () => {
+  it('merges registry patches without dropping connections', () => {
     const store = createAppStore(defaults);
-    store.getState().setRegistry({ ready: true });
+    const connections = [{ id: 'c', name: 'C', enabled: true, settings: defaults.settings, preferences: {}, projects: ['/p'] }];
+    store.getState().setRegistry({ ready: true, connections });
     store.getState().setRegistry((current) => ({
       focus: { connectionId: 'c', projectPath: '/p' },
       ready: current.ready,
     }));
     expect(store.getState().registry.ready).toBe(true);
     expect(store.getState().registry.focus).toEqual({ connectionId: 'c', projectPath: '/p' });
-    expect(store.getState().registry.snapshots).toEqual({});
+    expect(store.getState().registry.connections).toBe(connections);
   });
 
   it('scopes selection by workspace and preserves sibling scopes', () => {

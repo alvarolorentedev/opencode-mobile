@@ -1,6 +1,9 @@
 import { createServerQueryClient } from '@/shared/server-data/query-client';
 import { createConnectionRegistry } from '@/runtime/connections/registry';
 import { createFileClipboard, invalidateProjectFileReads } from '@/features/projects/runtime';
+import { cachedTranscriptView } from '@/features/chat/runtime';
+import type { ScopedOpencodeClient } from '@/shared/protocol/opencode/client';
+import type { QueryIdentity } from '@/shared/server-data/keys';
 import type { CommandContext } from './commands/context';
 import { createWorkspaceCommands } from './commands/workspace';
 import { createSessionCommands } from './commands/session';
@@ -19,6 +22,7 @@ export type AppCore = CommandContext & {
   terminal: ReturnType<typeof createTerminalRuntime>;
   clipboard: ReturnType<typeof createFileClipboard>;
   voice: ReturnType<typeof createVoiceControls>;
+  transcripts: (identity: QueryIdentity, client: ScopedOpencodeClient) => ReturnType<typeof cachedTranscriptView>;
   commands: {
     workspace: ReturnType<typeof createWorkspaceCommands>;
     session: ReturnType<typeof createSessionCommands>;
@@ -46,7 +50,8 @@ export function createAppCore(defaults: AppStoreDefaults): AppCore {
     const access = context.connections.get(id)?.getProjectAccess(root);
     if (access?.isCurrent()) await invalidateProjectFileReads(queryClient, access.identity, access.client);
   });
-  return { ...context, events: createCoreEvents(context), autoApproval: createAutoApproval(context, session.interactions), terminal: createTerminalRuntime(context), clipboard, voice, commands: {
+  return { ...context, events: createCoreEvents(context), autoApproval: createAutoApproval(context, session.interactions), terminal: createTerminalRuntime(context),
+    clipboard, voice, transcripts: (identity, client) => cachedTranscriptView(queryClient, identity, client), commands: {
     workspace, session, prompt: createPromptCommands(context),
     connection: createConnectionCommands(context, workspace),
   } };

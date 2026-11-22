@@ -9,12 +9,12 @@ import { isV2Client } from '@/shared/protocol/opencode/contracts/contract';
 import {
   getLiveTranscriptBuffer,
   liveTranscriptRecord,
-  overlayLiveRecords,
   reduceLiveEvent,
   seedLiveMessage,
   userMessageRecord,
   type LiveTranscriptMessage,
 } from '@/features/chat/model/live-transcript';
+import { overlayTranscriptMap, overlayTranscriptSession } from '../model/live-transcript-view';
 
 // One paint per frame budget keeps token deltas from triggering a React render
 // per streamed chunk.
@@ -150,7 +150,7 @@ export function useLiveTranscript({ scopeKey, partition, client, isCurrentClient
   }, [paint, readBuffer]);
 
   const overlay = useCallback((sessionId: string, records: SessionMessageRecord[]) => {
-    return overlaySession(readBuffer(), sessionId, records);
+    return overlayTranscriptSession(readBuffer(), sessionId, records);
   }, [readBuffer]);
 
   const adopt = useCallback((sessionId: string, page: SessionMessageRecord[] = EMPTY_RECORDS) => {
@@ -223,35 +223,14 @@ export function useLiveTranscript({ scopeKey, partition, client, isCurrentClient
   return { actions, displayedMessages, readDisplayedSession };
 }
 
-function overlaySession(buffer: ReturnType<typeof getLiveTranscriptBuffer> | undefined, sessionId: string, records: SessionMessageRecord[]) {
-  const session = buffer?.messages.get(sessionId);
-  let next = records;
-  for (const local of buffer?.localUsers.get(sessionId) ?? EMPTY_RECORDS) {
-    const index = next.findIndex((record) => record.info.id === local.info.id);
-    if (index >= 0) {
-      if (next[index].parts === local.parts) continue;
-      next = next.slice();
-      next[index] = local;
-      continue;
-    }
-    const tail = next[next.length - 1];
-    if (!tail || local.info.time.created >= tail.info.time.created) next = [...next, local];
-  }
-  return session ? overlayLiveRecords(next, [...session.values()]) : next;
-}
-
-export function useLiveTranscriptView(scopeKey: string, partition: string | undefined, canonical: Record<string, SessionMessageRecord[]>) {
+export function useLiveTranscriptView(scopeKey: string, partition: string | undefined, canonical: Record<string, SessionMessageRecord[]>, observed = true) {
   const { store } = useAppCore();
-  const paintRevision = useAppStore((state) => state.transcriptUi[scopeKey]?.paintRevision ?? 0);
+  const paintRevision = useAppStore((state) => observed ? state.transcriptUi[scopeKey]?.paintRevision ?? 0 : 0);
   return useMemo(() => {
+    if (!observed) return canonical;
     const buffer = store.getState().transcriptLive.get(scopeKey);
-    if (!buffer || buffer.partition !== partition) return canonical;
-    const sessions = new Set([...buffer.messages.keys(), ...buffer.localUsers.keys()]);
-    if (!sessions.size) return canonical;
-    const displayed = { ...canonical };
-    for (const sessionId of sessions) displayed[sessionId] = overlaySession(buffer, sessionId, canonical[sessionId] ?? EMPTY_RECORDS);
-    return displayed;
+    return overlayTranscriptMap(buffer, partition, canonical);
   // A paint revision publishes mutations to the live buffer.
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [canonical, paintRevision, partition, scopeKey, store]);
+  }, [canonical, observed, paintRevision, partition, scopeKey, store]);
 }

@@ -2,7 +2,7 @@
 import { memo, useCallback, useEffect, useLayoutEffect, useMemo, type Dispatch, type SetStateAction } from 'react';
 
 import { buildClient, type OpencodeConnectionSettings } from '@/shared/protocol/opencode/client';
-import { useApprovalsCatalog, useSessionCatalog, useSessionExecutionActions, useSessionPreviews } from '@/features/sessions/runtime';
+import { useApprovalsCatalog, useSessionCatalog, useSessionExecutionActions } from '@/features/sessions/runtime';
 import { useConnectionRuntime } from '@/runtime/connections/connection-runtime';
 import { useActivityNotifications } from '@/features/notifications/runtime';
 import { useCapabilitiesActions } from '@/features/ai/runtime';
@@ -21,17 +21,15 @@ import { workspaceChatPreferences } from '@/runtime/core/commands/connection';
 import type { ChatPreferences } from '@/shared/preferences/opencode-preferences';
 import { workspaceKey } from '@/shared/contracts/workspace';
 import type { useWorkspaceConnections } from '@/runtime/workspace/use-workspace-connections';
-import type { ProjectBindingInput, WorkspaceSnapshot, WorkspaceValues } from '@/runtime/workspace/workspace-types';
+import type { ProjectBindingInput } from '@/runtime/workspace/workspace-types';
 
 type Manager = ReturnType<typeof useWorkspaceConnections>;
 type Props = Omit<ProjectBindingInput, 'setSettings' | 'setChatPreferences' | 'preferences'> & {
   defaults: ChatPreferences;
   updateSettings: Manager['updateSettings'];
   updatePreferences: Manager['updatePreferences'];
-  publish: (key: string, snapshot: WorkspaceSnapshot) => void;
-  forget: (key: string) => void;
 };
-export const RetainedProject = memo(function RetainedProject({ defaults, updateSettings, updatePreferences, publish, forget, ...props }: Props) {
+export const RetainedProject = memo(function RetainedProject({ defaults, updateSettings, updatePreferences, ...props }: Props) {
   const { store, commands: { session: sessionCommands }, events, terminal } = useAppCore();
   const id = props.connection.id;
   const key = workspaceKey({ connectionId: id, projectPath: props.projectPath ?? '' });
@@ -159,7 +157,7 @@ export const RetainedProject = memo(function RetainedProject({ defaults, updateS
     [inputConnection.revision, sessionCommands, sessionTarget, state.scopeKey]);
   const project = useProjectActions({ ...domain, connectionId: inputConnection.id, connected: state.connection.status === 'connected', client, catalogClient, isCurrentClient, isCurrentCatalogClient, clearProjectState, isHydrated, refreshMessages: inbox.refreshMessages }, sessionRefresh, refreshQueue);
 
-  const modelRouting = useCapabilitiesActions({ ...domain, client, isCurrentClient, isHydrated });
+  useCapabilitiesActions({ ...domain, client, isCurrentClient, isHydrated, revision: inputConnection.revision });
 
   const sessionNavigation = useMemo(() => sessionCommands.navigation(sessionTarget, state.scopeKey, inputConnection.revision),
     [inputConnection.revision, sessionCommands, sessionTarget, state.scopeKey]);
@@ -207,15 +205,27 @@ export const RetainedProject = memo(function RetainedProject({ defaults, updateS
     isStreamConnected,
   });
 
+  const suspend = useCallback(() => {
+    scopeGenerationRef.current++; serverGenerationRef.current++;
+    refreshQueue.clear();
+  }, [refreshQueue, scopeGenerationRef, serverGenerationRef]);
+  const busyForUpdates = prompt.sendingState.active || conversationActive || state.isBootstrappingChat ||
+    state.connection.status === 'connecting' || Boolean(state.mcpAuthPrompt) ||
+    Object.values(sessionCatalog.sessionStatuses).some((status) => status.type !== 'idle') ||
+    Object.values(approvalsCatalog.pendingPermissionsBySession).some((items) => items.length > 0) ||
+    Object.values(approvalsCatalog.pendingQuestionsBySession).some((items) => items.length > 0) ||
+    pendingSessionIds.length > 0 || hasTerminal;
   useWorkspaceRealtime(connectionRuntime.manager?.realtime, {
     workspaceKey: state.scopeKey,
     demanded,
     projectPath: state.activeProjectPath,
+    binding: { revision: inputConnection.revision, client, suspend, busyForUpdates },
     constrained: network.constrained,
     pendingSessionIds,
     busy: pendingSessionIds.length > 0 || prompt.sendingState.active || conversationActive || Object.values(sessionCatalog.sessionStatuses).some((status) => status.type !== 'idle'),
     currentSessionId: state.currentSessionId,
     conversationSessionId,
+    catalog: { revision: inputConnection.revision, isCurrent: () => isCurrentClient(client), actions: project },
     chat: {
       revision: inputConnection.revision,
       isCurrent: () => isCurrentClient(client),
@@ -281,29 +291,5 @@ export const RetainedProject = memo(function RetainedProject({ defaults, updateS
     pruneTranscript: transcript.prune,
   });
 
-  const sessionPreviews = useSessionPreviews(transcript.messagesBySession);
-
-  const { addProject, refreshProjectCatalog } = project;
-  const projectsValue = useMemo(() => ({ addProject, refreshProjectCatalog }), [addProject, refreshProjectCatalog]);
-  const values = useMemo<WorkspaceValues>(() => ({
-    modelRouting, projectsValue,
-  }), [modelRouting, projectsValue]);
-
-  const suspend = useCallback(() => {
-    scopeGenerationRef.current++; serverGenerationRef.current++;
-    refreshQueue.clear();
-  }, [refreshQueue, scopeGenerationRef, serverGenerationRef]);
-  const busy = prompt.sendingState.active || conversationActive || state.isBootstrappingChat ||
-    state.connection.status === 'connecting' || Boolean(state.mcpAuthPrompt) ||
-    Object.values(sessionCatalog.sessionStatuses).some((status) => status.type !== 'idle') ||
-    Object.values(approvalsCatalog.pendingPermissionsBySession).some((items) => items.length > 0) ||
-    Object.values(approvalsCatalog.pendingQuestionsBySession).some((items) => items.length > 0) ||
-    pendingSessionIds.length > 0 || hasTerminal;
-  const boundDirectory = state.activeProjectPath;
-  const snapshot = useMemo<WorkspaceSnapshot>(() => ({ boundDirectory, revision: input.connection.revision, enabled: input.connection.enabled, values, busy, suspend, sessionPreviews,
-    loadProjectCatalog: project.loadProjectCatalog,
-  }), [boundDirectory, input.connection.revision, input.connection.enabled, values, busy, suspend, sessionPreviews, project.loadProjectCatalog]);
-  useLayoutEffect(() => { publish(key, snapshot); }, [key, publish, snapshot]);
-  useLayoutEffect(() => () => forget(key), [forget, key]);
   return null;
 });

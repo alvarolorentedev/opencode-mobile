@@ -51,10 +51,10 @@ export function useChatCommands({ client, directory, isCurrentClient, manager, r
   }, [client, directory, isCurrentClient, manager, revision, scopeKey]);
 }
 
-export function useChatTranscript(scope: ReturnType<typeof useProjectScope>, currentSessionId?: string, conversationSessionId?: string) {
+export function useChatTranscript(scope: ReturnType<typeof useProjectScope>, currentSessionId?: string, conversationSessionId?: string, observe = true) {
   const { client, identity, scopeKey } = scope;
-  const { messagesBySession: canonical, messageWindows } = useTranscriptQueries(identity, client, currentSessionId, conversationSessionId);
-  const messagesBySession = useLiveTranscriptView(scopeKey, liveTranscriptPartition(identity, client), canonical);
+  const { messagesBySession: canonical, messageWindows } = useTranscriptQueries(identity, client, observe ? currentSessionId : undefined, conversationSessionId, observe);
+  const messagesBySession = useLiveTranscriptView(scopeKey, liveTranscriptPartition(identity, client), canonical, observe);
   return { messagesBySession, messageWindows };
 }
 

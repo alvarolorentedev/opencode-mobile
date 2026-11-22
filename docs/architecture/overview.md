@@ -231,10 +231,11 @@ The completion version, preference schema and first-run migration are unchanged.
 - `runtime/composition/opencode-provider.tsx`
   Thin entrypoint: creates the app core and mounts the workspace registry.
 - `runtime/workspace/retained-project.tsx`
-  Retains scoped subscriptions and publishes the project's views. The app
-  core owns navigation, submission, connection and event commands.
+  Attaches the project subscriptions and commands to the connection's
+  realtime lifecycle. The app core owns navigation, submission, connection
+  and event commands.
 - `runtime/core/workspace-selectors.ts`
-  Focused and explicitly targeted selectors read each project projection.
+  Connection and workspace selectors read the app store and manager.
 - `features/*/model/types.ts`
   Feature-owned domain types, exposed to callers through named entrypoints.
 - `features/chat/context.ts`
@@ -275,7 +276,7 @@ The completion version, preference schema and first-run migration are unchanged.
   Event commands read device state from the store and apply protocol events
   through scoped transcript, catalog and interaction operations.
 - `features/chat/state/use-chat-presentation.ts` and
-  `features/sessions/state/use-session-previews.ts`
+  `runtime/core/cached-project-transcripts.ts`
   Memoized transcript presentation and previews for the session library.
   Session selection and actions bind directly through `features/sessions/context.ts`.
 - `runtime/composition/use-project-actions.ts`

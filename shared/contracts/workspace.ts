@@ -33,6 +33,15 @@ export type ConnectionRecord = {
   projects: string[];
 };
 
+export function resolveWorkspaceProjectKey(entry: ConnectionRecord | undefined, target: WorkspaceTarget,
+  selection: Record<string, { activeProjectPath?: string } | undefined>) {
+  const exact = workspaceKey(target);
+  if (!entry || entry.projects.includes(target.projectPath)) return exact;
+  const alias = entry.projects.find((projectPath) =>
+    selection[workspaceKey({ connectionId: entry.id, projectPath })]?.activeProjectPath === target.projectPath);
+  return alias === undefined ? exact : workspaceKey({ connectionId: entry.id, projectPath: alias });
+}
+
 export type WorkspaceCatalog = {
   sessions: Session[];
   statuses: Record<string, SessionStatus>;

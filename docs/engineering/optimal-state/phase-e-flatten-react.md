@@ -3,7 +3,8 @@
 Status: **in progress**. Retained Terminal and Settings panes pass explicit
 workspace targets through their screens and dialogs. Shared portal components
 keep named modal hosts and receive interaction registration through props.
-The projection registry remains.
+The snapshot registry has been removed. React still mounts the project
+adapters that bind commands and realtime reconciliation.
 
 Goal: remove the remaining scope/provider carriers from React. The app mounts
 one core provider and one Query provider; workspaces are keys, not mounted
@@ -20,9 +21,8 @@ Start only after Phase D is complete and green.
   registry access and the app-level share view. Workspace actions bind directly
   to the core.
 - The root still mounts `runtime/workspace/retained-project.tsx` for each
-  project. The registry retains project projections. Focus changes when the
-  requested projection is ready, including when a server URL edit replaces
-  the connection identity.
+  project. Focus changes when the connection exposes a current binding for
+  the requested directory. A server URL edit selects its new disabled target.
 - Connection and project adapters pass Query identity and demand explicitly.
   Query has one app-level provider.
 - Onboarding and preferences read device facts directly from the app store.
@@ -38,14 +38,14 @@ Start only after Phase D is complete and green.
   core selector. Extension mutations check the exact client before a write.
 - MCP controls and saved permission rules select the owning Query entries.
   The core clears a connection's MCP authorization prompt from scoped status.
-- Core navigation and failover wait on the connection manager. The project
-  projection still signals project readiness during a focus change.
+- Core navigation and failover wait on the connection manager's project
+  readiness. The app store tracks selection and connection registrations.
 - Connection controls are composed at the app shell. Profiles, Projects,
   Sessions and native surfaces read lifecycle state from the connection manager.
 - Worktree writes run in the owning service. The core gets the root project's
   guarded client when creating a chat in a new checkout.
 - Project headers and pickers read catalog, location, worktree and VCS data
-  from Query. The remaining project projection still supplies action handles.
+  from Query. Project actions use the connection's guarded command binding.
 - Navigation, sharing and the Chat Library read selected directories and
   sessions from the app store. The active session row comes from Query.
 - Navigation checks session rows in the current credential partition. The
@@ -72,13 +72,14 @@ Start only after Phase D is complete and green.
   working sounds read the app-store voice phase.
 - AI reads provider, agent and model data from scoped Query entries.
   Provider credentials and OAuth actions use the same guarded service from
-  Settings and Onboarding. The classifier view still comes from the retained
-  project.
+  Settings and Onboarding. Classifier probes and their device state share the
+  same credential and directory scope across observers.
 - Chat reads Query and the store directly. The realtime project binding
   supplies guarded command handles without publishing a Chat view. One
   app-level conversation controller owns the microphone, and Chat reads the
   voice state from the store.
-- `runtime/core/workspace-selectors.ts` selects the retained project projection.
+- The library observes its transcript cache entries and live overlay directly.
+  Update blocking reads the busy state from each registered realtime scope.
 - [ADR 0052](../../adr/0052-explicit-overlay-dependencies.md) records explicit
   portal targets and update blocker callbacks. Shared controls use shared imports.
 - Projects, Sessions, Connections and Chat own their presentation and device

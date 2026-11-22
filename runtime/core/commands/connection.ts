@@ -40,7 +40,7 @@ export function createConnectionCommands(
   { store, queryClient, connections }: Pick<CommandContext, 'store' | 'queryClient'> & { connections: Pick<CommandContext['connections'], 'get' | 'subscribeState'> },
   commands: ReturnType<typeof createWorkspaceCommands>,
 ) {
-  const { change, select, ensure, forget, resolveKey, pauseConversation, retry, navigate, openExternalSession } = commands;
+  const { change, select, ensure, resolveKey, pauseConversation, retry, navigate, openExternalSession } = commands;
   const registry = () => store.getState().registry;
   const { setRegistry, setShellValue } = store.getState();
   const write = createPersistenceWriter();
@@ -187,7 +187,7 @@ export function createConnectionCommands(
     if (signal?.aborted) throw new Error('This session link was cancelled.');
     const id = getConnectionUiScope(full);
     const found = registry().connections.find((entry) => entry.id === id);
-    if (found) for (const [key, runtime] of Object.entries(registry().snapshots)) if ((JSON.parse(key) as string[])[0] === id) runtime.suspend();
+    if (found) connections.get(id)?.realtime.suspendProjects();
     // Switching boots the placeholder runtime; its catalog read derives the
     // project from the server (most recently active first).
     change((current) => found ? current.map((entry) => entry.id === id ? { ...entry, settings: full, enabled: true,
@@ -220,9 +220,7 @@ export function createConnectionCommands(
     commands.setPersistenceAllowed(true);
     commands.cancelNavigation();
     await pauseConversation(id);
-    for (const [key, runtime] of Object.entries(registry().snapshots)) if ((JSON.parse(key) as string[])[0] === id) {
-      runtime.suspend();
-    }
+    connections.get(id)?.realtime.suspendProjects();
     change((current) => current.map((entry) => entry.id === id ? { ...entry, enabled: false } : entry));
   }
 
@@ -231,7 +229,7 @@ export function createConnectionCommands(
     if (!previous || JSON.stringify(previous.settings) === JSON.stringify(value)) return;
     const manualChange = !value.connect;
     if (manualChange) commands.setPersistenceAllowed(true);
-    for (const [key, runtime] of Object.entries(registry().snapshots)) if ((JSON.parse(key) as string[])[0] === id && key !== origin) runtime.suspend();
+    connections.get(id)?.realtime.suspendProjects(origin);
     const nextId = getConnectionUiScope(value);
     change((current) => current.map((entry) => entry.id === id ? { ...entry, id: nextId, settings: value, ...(manualChange ? { enabled: false } : {}),
       ...(nextId === id ? {} : { enabled: false, projects: [''], preferences: { autoApprove: false } }) } : entry));
@@ -328,7 +326,6 @@ export function createConnectionCommands(
     await disconnect(id);
     if (settings) void clearMissionStatsCaches(getConnectionScope(settings));
     change((current) => current.filter((entry) => entry.id !== id));
-    for (const key of Object.keys(registry().snapshots)) if ((JSON.parse(key) as string[])[0] === id) forget(key);
   }
 
   async function openSession(target: SessionDeepLinkTarget, signal?: AbortSignal) {
