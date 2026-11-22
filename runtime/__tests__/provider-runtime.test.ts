@@ -12,6 +12,7 @@ import * as realtimeBackoff from '@/runtime/realtime/backoff';
 import * as realtimeLiveness from '@/runtime/realtime/liveness';
 import * as realtimePolling from '@/runtime/realtime/polling';
 import * as realtimeReconcile from '@/runtime/realtime/reconcile';
+import { createAppStore, type AppState } from '@/runtime/core/store';
 
 const realtimeDeps = {
     '@/runtime/realtime/backoff': realtimeBackoff,
@@ -1153,24 +1154,38 @@ assert.deepEqual(Object.keys(cachedTodos).sort(), ['background', 'stale', 'targe
 
 // Real terminal orchestration: stale lists/input and failed removal cannot destroy an opened PTY.
 {
-  const runtime = hookRuntime(), client = {}, records = new Map(), listGate = deferred();
+  const runtime = hookRuntime(), records = new Map(), listGate = deferred();
+  const client = { __opencode: { contract: 'v1', directory: '/repo' } };
+  const store = createAppStore({
+    settings: { serverUrl: 'http://example.test', username: '', password: '', directory: '/repo' },
+    chatPreferences,
+    controlPlaneUrl: '',
+  });
   let listed = [{ id: 'first', status: 'running' }], pendingList = false, rejectRemoval = false;
   const { useTerminalState } = await loadTs('features/terminal/state/use-terminal-state.ts', {
     react: runtime.react,
+    '@/runtime/core': {
+      useAppCore: () => ({ store }),
+      useAppStore<T>(select: (state: AppState) => T) {
+        const [, update] = runtime.react.useState(0);
+        runtime.react.useEffect(() => store.subscribe(() => update((version: number) => version + 1)), []);
+        return select(store.getState());
+      },
+    },
     'react-native': { AppState: { currentState: 'active', addEventListener: () => ({ remove() {} }) } },
     "@/features/terminal/services/terminal-service": { listTerminals: () => pendingList ? listGate.promise : Promise.resolve(listed), createTerminal: async () => ({ id: 'new' }), removeTerminal: async () => { if (rejectRemoval) throw new Error('Rejected'); } },
-    "@/features/terminal/services/terminal-connection": { createTerminalConnection: ({ id, publish }: any) => {
-      const record: any = { state: { id, generation: 0, status: 'connected' }, disposed: false, sent: [], reconnects: 0,
-        foreground() {}, reconnect() { record.reconnects += 1; }, register: () => () => {}, resize() {},
+    "@/features/terminal/services/terminal-connection": { createTerminalConnection: ({ id, publish, readState }: any) => {
+      const record: any = { get state() { return readState(); }, disposed: false, sent: [], reconnects: 0,
+        foreground() { publish({ id, generation: 0, status: 'connected' }); }, reconnect() { record.reconnects += 1; }, register: () => () => {}, resize() {},
         send(input: any) { record.sent.push(input); },
-        exit() { record.state.status = 'exited'; publish(); }, dispose() { record.disposed = true; },
+        exit() { publish({ ...readState(), status: 'exited' }); }, dispose() { record.disposed = true; },
       };
       records.set(id, record); return record;
     } }
   });
-  runtime.mount(useTerminalState, { client, isCurrentClient: () => true, serverUrl: 'http://example.test', directory: '/repo', serverContract: 'v1' });
+  runtime.mount(useTerminalState, { scopeKey: 'terminal-test-workspace', client, isCurrentClient: () => true, serverUrl: 'http://example.test', directory: '/repo', serverContract: 'v1' });
   await runtime.value.openTerminal('first'); runtime.flush();
-  const rotatedClient = {};
+  const rotatedClient = { ...client };
   runtime.update({ client: rotatedClient });
   assert.ok(records.get('first').reconnects >= 1, 'a rotated credential client reconnects the retained PTY');
   runtime.update({ client });

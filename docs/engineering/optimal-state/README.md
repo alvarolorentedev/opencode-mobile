@@ -23,7 +23,7 @@ phase you are executing. Do not preload every phase unless you are planning.
 
 | Phase | Document | Status | Outcome |
 | --- | --- | --- | --- |
-| A | [State evacuation](phase-a-state-evacuation.md) | In progress — A1–A3 done, A4–A7 open | No domain data in per-workspace React state |
+| A | [State evacuation](phase-a-state-evacuation.md) | In progress — A1–A4 done, A5–A7 open | No domain data in per-workspace React state |
 | B | [Connection manager](phase-b-connection-manager.md) | Not started | Transport, probe, renewal, SSE and polling are plain TS |
 | C | [Command core](phase-c-commands.md) | Not started | Cross-domain commands are plain functions; composition deleted |
 | D | [Transcript](phase-d-transcript.md) | Not started | Per-session infinite messages + store live overlay |
@@ -66,11 +66,16 @@ npm run validate:commit
   interactions and network resilience passed. The focused Vitest run covered
   the inbox, the app store and feature boundaries. The impact command found no
   affected suites because the inbox suites still use the legacy loader.
-- A3, `refactor(voice): move conversation runtime state into the app store`.
+- A3, `aa062d6e`.
   The commit gate reported 1,255 passing tests and one existing skip. The
   voice and provider suites, fake-server self-test, docs, web export and 47
   browser tests across chat, onboarding and settings passed. Physical speech
   recognition and playback still require device acceptance.
+- A4, `refactor(terminal): separate PTY inventory from device state`. The
+  commit gate, focused terminal and provider tests, docs and web export passed.
+  All 12 terminal and multi-server browser tests passed, including retained
+  renderer and colliding PTY ID coverage. Native terminal input and screen
+  reader behavior still require device acceptance.
 
 ## Loop protocol
 

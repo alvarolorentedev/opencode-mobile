@@ -1,6 +1,6 @@
 # Phase A — State Evacuation
 
-Status: **in progress**. A1–A3 are complete. A4–A7 remain.
+Status: **in progress**. A1–A4 are complete. A5–A7 remain.
 
 Goal: remove every piece of domain data from the per-workspace React runtime so
 the runtime can be deleted in Phase E without losing retained state.
@@ -38,23 +38,14 @@ the latest phases directly. The workspace retains the recognizer, audio and
 timer lifecycles. The final Phase A audit covers the nested confirmation and
 readback queues.
 
-## Remaining work
-
 ### A4 — Terminal
 
-Current: `features/terminal/state/use-terminal-state.ts` owns terminals,
-active terminal id, instances and scope in `useState`; transport connections and
-foreground flags are refs.
+The [terminal state](../../architecture/state-and-data.md#terminal-state) uses
+Query for PTY inventory and the app store for the opened instances, selection
+and renderer generation. The terminal connection service publishes status into
+the workspace's store entry and keeps the transport handles and replay cursor.
 
-Target:
-- Add a scope-keyed terminal slice for terminals, active id, instances and scope.
-- Keep transport connection handles, request counters and foreground flags as
-  refs.
-- The retained renderer reads the scope/instance data from selectors.
-
-Acceptance:
-- No terminal data in `useState`.
-- `terminal.spec.mjs`, multi-server terminal and retained renderer pass.
+## Remaining work
 
 ### A5 — Transcript state and live overlay
 

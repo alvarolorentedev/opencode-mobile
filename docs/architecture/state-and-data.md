@@ -325,6 +325,11 @@ Primary fields:
 - `terminalRuntime` (scope, opened instances, renderer registration, resize)
 - `terminalConnection`
 
+The terminal list is server data in the project-scoped `terminals` Query
+entry. The app store owns the active PTY, opened instances and renderer
+scope generation for each workspace. PTY transports publish their status to
+that store and retain their sockets, renderer registrations and replay cursors.
+
 The provider retains one WebSocket per opened PTY in the current connection/project
 scope. Each instance reports `connecting`, `connected`, `reconnecting`, `idle`,
 `exited`, or `error`, plus its connection generation and optional error. Switching

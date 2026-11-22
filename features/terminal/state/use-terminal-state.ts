@@ -1,13 +1,21 @@
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { skipToken, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef } from 'react';
 import { AppState } from 'react-native';
 
+import { useAppCore, useAppStore, type AppState as CoreState } from '@/runtime/core';
 import type { ScopedOpencodeClient, ServerContract } from '@/shared/protocol/opencode/client';
 import type { Pty } from '@/shared/protocol/opencode/types';
+import { useQueryIdentity } from '@/shared/server-data/client';
+import { projectQueryKey } from '@/shared/server-data/keys';
 import { createTerminal as svcCreateTerminal, listTerminals, removeTerminal } from '@/features/terminal/services/terminal-service';
 import { createTerminalConnection, type TerminalConnectionContext } from '@/features/terminal/services/terminal-connection';
 import type { TerminalInstance, TerminalRenderer, TerminalRuntime } from '@/features/terminal/model/terminal-types';
 
-export function useTerminalState({ client, isCurrentClient, serverUrl, directory, serverContract, headers, rejectRedirects, enabled = true, online = true }: {
+const EMPTY_TERMINALS: Pty[] = [];
+const EMPTY_INSTANCES: TerminalInstance[] = [];
+
+export function useTerminalState({ scopeKey, client, isCurrentClient, serverUrl, directory, serverContract, headers, rejectRedirects, enabled = true, online = true }: {
+  scopeKey: string;
   client: ScopedOpencodeClient;
   isCurrentClient: (candidate: object) => boolean;
   serverUrl: string;
@@ -18,17 +26,21 @@ export function useTerminalState({ client, isCurrentClient, serverUrl, directory
   enabled?: boolean;
   online?: boolean;
 }) {
-  const [terminals, setTerminals] = useState<Pty[]>([]);
-  const [activeTerminalId, setActiveTerminalId] = useState<string>();
-  const [instances, setInstances] = useState<TerminalInstance[]>([]);
-  const [scope, setScope] = useState(0);
-  const scopeRef = useRef(0);
+  const { store } = useAppCore();
+  const device = useAppStore((state) => state.terminal[scopeKey]);
+  const { scope = 0, activeTerminalId, instances = EMPTY_INSTANCES } = device ?? {};
+  const { connectionId, connectionScope, authRevision } = useQueryIdentity();
+  const cache = useQueryClient();
+  const key = useMemo(() => projectQueryKey({ connectionId, connectionScope, authRevision }, client, 'terminals'), [authRevision, client, connectionId, connectionScope]);
+  const { data: terminals = EMPTY_TERMINALS } = useQuery<Pty[]>({ queryKey: key, queryFn: skipToken });
+  const setDevice = useCallback((patch: Parameters<CoreState['setTerminalState']>[1]) => {
+    store.getState().setTerminalState(scopeKey, patch);
+  }, [scopeKey, store]);
   const refreshRequest = useRef(0);
   const connections = useRef(new Map<string, ReturnType<typeof createTerminalConnection>>());
   const enabledRef = useRef(enabled);
   useLayoutEffect(() => { enabledRef.current = enabled; }, [enabled]);
   const foreground = useRef(AppState.currentState !== 'background' && AppState.currentState !== 'inactive');
-  const publish = useCallback(() => setInstances([...connections.current.values()].map((entry) => entry.state)), []);
 
   // Retained PTY transports read the live client/credentials through this
   // accessor so a same-machine credential rotation reconnects instead of
@@ -50,36 +62,37 @@ export function useTerminalState({ client, isCurrentClient, serverUrl, directory
     };
   }, []);
 
-  useEffect(() => {
-    const owned = connections.current;
-    return () => { for (const connection of owned.values()) connection.dispose(); owned.clear(); };
-  }, []);
+  const disposeTerminals = useCallback(() => {
+    for (const connection of connections.current.values()) connection.dispose();
+    connections.current.clear();
+    refreshRequest.current++;
+    if (store.getState().terminal[scopeKey]) {
+      setDevice((current) => ({ scope: current.scope + 1, activeTerminalId: undefined, instances: EMPTY_INSTANCES }));
+    }
+  }, [scopeKey, setDevice, store]);
+  useEffect(() => disposeTerminals, [disposeTerminals]);
 
   useEffect(() => {
     for (const connection of connections.current.values()) connection.foreground(enabled && online && foreground.current);
   }, [enabled, online]);
 
   const resetTerminal = useCallback(() => {
-    for (const connection of connections.current.values()) connection.dispose();
-    connections.current.clear();
-    setTerminals([]); setActiveTerminalId(undefined); setInstances([]);
-    refreshRequest.current++;
-    scopeRef.current++;
-    setScope(scopeRef.current);
-  }, []);
+    disposeTerminals();
+    if (cache.getQueryData(key) !== undefined) cache.setQueryData(key, EMPTY_TERMINALS);
+  }, [cache, disposeTerminals, key]);
 
   const refreshTerminals = useCallback(async () => {
     if (!isCurrentClient(client)) return;
     const request = ++refreshRequest.current;
     const opened = new Set(connections.current.keys());
     const nextTerminals = await listTerminals(client);
-    if (!isCurrentClient(client) || request !== refreshRequest.current) return;
-    setTerminals(nextTerminals);
+    if (!isCurrentClient(client) || latest.current.client !== client || request !== refreshRequest.current) return;
+    cache.setQueryData(key, nextTerminals);
     for (const [id, connection] of connections.current) {
       const pty = nextTerminals.find((item) => item.id === id);
       if (opened.has(id) && (!pty || pty.status === 'exited') && connection.state.status !== 'exited') connection.exit();
     }
-  }, [client, isCurrentClient]);
+  }, [cache, client, isCurrentClient, key]);
 
   useEffect(() => {
     const subscription = AppState.addEventListener('change', (state) => {
@@ -95,13 +108,21 @@ export function useTerminalState({ client, isCurrentClient, serverUrl, directory
     if (!live.isCurrentClient(live.client)) return;
     const existing = connections.current.get(ptyId);
     if (!existing) {
-      const connection = createTerminalConnection({ id: ptyId, context, publish });
+      const initial: TerminalInstance = { id: ptyId, generation: 0, status: 'connecting' };
+      const connection = createTerminalConnection({
+        id: ptyId,
+        context,
+        readState: () => store.getState().terminal[scopeKey]?.instances.find(({ id }) => id === ptyId) ?? initial,
+        publish: (next) => setDevice((current) => ({ instances: current.instances.map((instance) => instance.id === ptyId ? next : instance) })),
+      });
       connections.current.set(ptyId, connection);
+      setDevice((current) => ({ activeTerminalId: ptyId, instances: [...current.instances, initial] }));
       connection.foreground(enabledRef.current && online && foreground.current);
-      publish();
-    } else if (existing.state.status === 'error' || existing.state.status === 'idle') existing.reconnect();
-    setActiveTerminalId(ptyId);
-  }, [context, online, publish]);
+      return;
+    }
+    if (existing.state.status === 'error' || existing.state.status === 'idle') existing.reconnect();
+    setDevice({ activeTerminalId: ptyId });
+  }, [context, online, scopeKey, setDevice, store]);
 
   // A new client (credential rotation) reuses the same transport with fresh
   // credentials; project switches dispose connections before this runs.
@@ -119,21 +140,23 @@ export function useTerminalState({ client, isCurrentClient, serverUrl, directory
   }, [client, isCurrentClient, openTerminal, refreshTerminals]);
 
   const sendTerminalInput = useCallback((ptyId: string, input: string, generation: number, expectedScope: number) => {
-    if (expectedScope !== scopeRef.current) throw new Error('Terminal scope changed.');
+    if (expectedScope !== (store.getState().terminal[scopeKey]?.scope ?? 0)) throw new Error('Terminal scope changed.');
     const connection = connections.current.get(ptyId);
     if (!connection) throw new Error('Terminal is not open.');
     connection.send(input, generation);
-  }, []);
+  }, [scopeKey, store]);
 
   const closeTerminal = useCallback(async (ptyId: string) => {
     if (!isCurrentClient(client)) throw new Error('Connect this server before terminating its terminal.');
     await removeTerminal(client, ptyId);
     if (!isCurrentClient(client)) return;
     connections.current.get(ptyId)?.dispose(); connections.current.delete(ptyId);
-    setActiveTerminalId((current) => current === ptyId ? connections.current.keys().next().value : current);
-    publish();
+    setDevice((current) => ({
+      activeTerminalId: current.activeTerminalId === ptyId ? connections.current.keys().next().value : current.activeTerminalId,
+      instances: current.instances.filter(({ id }) => id !== ptyId),
+    }));
     await refreshTerminals();
-  }, [client, isCurrentClient, publish, refreshTerminals]);
+  }, [client, isCurrentClient, refreshTerminals, setDevice]);
 
   const registerRenderer = useCallback((ptyId: string, renderer: TerminalRenderer) => {
     return connections.current.get(ptyId)?.register(renderer) ?? (() => {});
