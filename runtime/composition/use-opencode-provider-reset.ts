@@ -39,7 +39,6 @@ export function useOpencodeProviderReset({
     bootstrapPromiseRef,
     bootstrapTokenRef,
     busyNotificationsRef,
-    suppressedPendingRequestIdsRef,
     sessionRefreshTimeoutsRef,
     sessionRefreshOptionsRef,
     explicitSessionSelectionRef,
@@ -52,7 +51,6 @@ export function useOpencodeProviderReset({
     bootstrapPromiseRef.current = null;
     bootstrapTokenRef.current = undefined;
     busyNotificationsRef.current.clear();
-    suppressedPendingRequestIdsRef.current.clear();
     Object.values(sessionRefreshTimeoutsRef.current).forEach((timeout) => clearTimeout(timeout));
     sessionRefreshTimeoutsRef.current = {};
     sessionRefreshOptionsRef.current = {};
@@ -75,7 +73,6 @@ export function useOpencodeProviderReset({
       bootstrapPromiseRef,
     bootstrapTokenRef,
     busyNotificationsRef,
-    suppressedPendingRequestIdsRef,
     sessionRefreshOptionsRef,
     sessionRefreshTimeoutsRef,
     explicitSessionSelectionRef,

@@ -4,6 +4,26 @@ import { createAppCore } from '@/runtime/core/create-app-core';
 import type { WorkspaceSnapshot } from '@/runtime/workspace/workspace-types';
 import type { ChatPreferences } from '@/shared/preferences/opencode-preferences';
 import { workspaceKey, type WorkspaceTarget } from '@/shared/contracts/workspace';
+import { projectQueryKey } from '@/shared/server-data/keys';
+import type { ScopedOpencodeClient } from '@/shared/protocol/opencode/client';
+
+const protocol = vi.hoisted(() => ({
+  replyToPendingPermission: vi.fn(),
+  replyToPendingQuestion: vi.fn(),
+  rejectPendingQuestion: vi.fn(),
+  listPendingInteractions: vi.fn(),
+}));
+
+vi.mock('@/shared/protocol/opencode/client', () => ({
+  ...protocol,
+  withReadSignal: (client: ScopedOpencodeClient) => client,
+  listSavedPermissionRules: vi.fn(async () => []),
+}));
+vi.mock('@/features/sessions/runtime', async () => ({
+  approvalsAccess: (await import('@/features/sessions/services/approvals')).approvalsAccess,
+  createInteractionCommands: (await import('@/features/sessions/services/interaction-commands')).createInteractionCommands,
+  ...(await import('@/features/sessions/services/queries')),
+}));
 
 const settings = { serverUrl: 'http://127.0.0.1:4096', username: '', password: '', directory: '' };
 const newCore = () => createAppCore({ settings, chatPreferences: {} as ChatPreferences, controlPlaneUrl: '' });
@@ -90,5 +110,67 @@ describe('app core', () => {
     checkout.createSession.mockRejectedValueOnce(new Error('Chat creation failed'));
     await expect(commands.createChatInWorktree(target)).resolves.toEqual({ checkout: { directory: '/checkout' }, error: 'Chat creation failed' });
     commands.dispose();
+  });
+
+  it('isolates an in-flight reply by project and rejects writes after credential rotation', async () => {
+    const core = newCore();
+    const { queryClient, commands: { session } } = core;
+    const original = { connectionId: 'server', connectionScope: 'original', authRevision: 0 };
+    let identity = original;
+    let revision = 0;
+    const client = { __opencode: { contract: 'v2', directory: '/a' } } as ScopedOpencodeClient;
+    const refreshMessages = vi.fn(async () => undefined);
+    const manager = {
+      getProjectAccess(projectPath: string) {
+        const capturedRevision = revision;
+        return { identity, revision, client: { __opencode: { ...client.__opencode, directory: projectPath } },
+          isCurrent: () => revision === capturedRevision };
+      },
+      isDemanded: () => false,
+      realtime: { refreshMessages },
+    } as unknown as NonNullable<ReturnType<typeof core.connections.get>>;
+    vi.spyOn(core.connections, 'get').mockReturnValue(manager);
+    const permission = { id: 'p', sessionID: 's' };
+    const question = { id: 'q', sessionID: 's' };
+    const initial = { permissions: { s: [permission] }, questions: { s: [question] } };
+    const key = projectQueryKey(original, client, 'pending-interactions');
+    queryClient.setQueryData(key, initial);
+    const otherClient = { __opencode: { ...client.__opencode, directory: '/b' } } as ScopedOpencodeClient;
+    const otherKey = projectQueryKey(original, otherClient, 'pending-interactions');
+    queryClient.setQueryData(otherKey, initial);
+    const bound = session.interactions({ connectionId: 'server', projectPath: '/a' }, 0);
+    let failReply: (reason: Error) => void = () => {};
+    let startReply: () => void = () => {};
+    const started = new Promise<void>((resolve) => { startReply = resolve; });
+    protocol.replyToPendingPermission.mockImplementationOnce(() => {
+      startReply();
+      return new Promise<void>((_, reject) => { failReply = reject; });
+    });
+    const reply = bound.replyToPermission('p', 'once');
+    const rejected = expect(reply).rejects.toThrow('revoked');
+    await started;
+    expect(queryClient.getQueryData(key)).toEqual({ ...initial, permissions: { s: [] } });
+    expect(queryClient.getQueryData(otherKey)).toEqual(initial);
+    expect(session.isPermissionReplyPending(original, client, 'p')).toBe(true);
+    expect(session.isPermissionReplyPending(original, otherClient, 'p')).toBe(false);
+    identity = { ...original, connectionScope: 'rotated', authRevision: 1 };
+    revision = 1;
+    queryClient.removeQueries({ queryKey: key, exact: true });
+    failReply(new Error('revoked'));
+    await rejected;
+    expect(queryClient.getQueryData(key)).toBeUndefined();
+    expect(session.isPermissionReplyPending(original, client, 'p')).toBe(false);
+    await expect(bound.replyToPermission('p', 'once')).rejects.toThrow('no longer available');
+    expect(refreshMessages).not.toHaveBeenCalled();
+
+    const latest = projectQueryKey(identity, client, 'pending-interactions');
+    queryClient.setQueryData(latest, initial);
+    const current = session.interactions({ connectionId: 'server', projectPath: '/a' }, revision);
+    protocol.replyToPendingQuestion.mockResolvedValueOnce(undefined);
+    await current.replyToQuestion('q', [['answer']]);
+    expect(queryClient.getQueryData(latest)).toEqual({ ...initial, questions: { s: [] } });
+    expect(refreshMessages).toHaveBeenCalledExactlyOnceWith('/a', 's', true);
+    core.commands.workspace.dispose();
+    queryClient.clear();
   });
 });

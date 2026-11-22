@@ -4,6 +4,6 @@ export type ProjectRefreshInput = Pick<ProjectActionsInput,
   'activeProjectPath' | 'client' | 'isCurrentClient' | 'setSessions' | 'sessionsRef' | 'setSessionStatuses' |
   'locallyCreatedSessionsRef' | 'setIsRefreshingDiffs' | 'setDiffsBySession' | 'setVcsDiffsByScope' |
   'setTodosBySession' | 'setPendingPermissionsBySession' | 'setPendingQuestionsBySession' |
-  'suppressedPendingRequestIdsRef' | 'setDiffScopeBySession' | 'setSelectedDiffMessageBySession' |
+  'isPermissionReplyPending' | 'setDiffScopeBySession' | 'setSelectedDiffMessageBySession' |
   'readPinnedDiffMessage' | 'readDiffScope' | 'currentSessionIdRef' | 'readDisplayedSession' |
   'sessionRefreshTimeoutsRef' | 'sessionRefreshOptionsRef' | 'connectionScope' | 'refreshMessages'>;

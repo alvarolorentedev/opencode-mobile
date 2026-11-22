@@ -184,6 +184,12 @@ Approvals are project-scoped Query data now: the refresh path writes one
 listed here because the action layer still calls the grouped maps "session
 caches"; there is no second React copy.
 
+The app core's session commands reply to permissions and questions through
+the owning connection and project. A pending permission mutation suppresses
+that request during reconciliation. An ambiguous response triggers a fresh
+read before restoring the card, and an old credential generation cannot
+write back into the approvals cache.
+
 Canonical message windows, diffs, todos and VCS diffs are Query data: one
 connection-scoped entry per resource holds the per-session maps, and the action
 layer keeps its setter boundary. Diffs and todos are no longer React state.

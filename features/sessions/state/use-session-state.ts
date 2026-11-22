@@ -50,8 +50,5 @@ export function useSessionState(scopeKey: string) {
   // Request correlation while a new session waits to appear in the catalog.
   const locallyCreatedSessionsRef = useRef<Map<string, number>>(new Map());
 
-  // Acknowledgement locks while pending-interaction refresh catches up to replies.
-  const suppressedPendingRequestIdsRef = useRef<Set<string>>(new Set());
-
-  return { currentSessionId, setCurrentSessionId, isBootstrappingChat, setIsBootstrappingChat, activeSessionsVisible, setActiveSessionsVisible, currentSessionIdRef, pendingDeepLinkTargetRef, deepLinkOperationRef, bootstrapPromiseRef, bootstrapTokenRef, explicitSessionSelectionRef, locallyCreatedSessionsRef, suppressedPendingRequestIdsRef };
+  return { currentSessionId, setCurrentSessionId, isBootstrappingChat, setIsBootstrappingChat, activeSessionsVisible, setActiveSessionsVisible, currentSessionIdRef, pendingDeepLinkTargetRef, deepLinkOperationRef, bootstrapPromiseRef, bootstrapTokenRef, explicitSessionSelectionRef, locallyCreatedSessionsRef };
 }

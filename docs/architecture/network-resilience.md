@@ -227,8 +227,8 @@ Cloud Link credential rotation migrates all three connection-scoped snapshots
 
 ## Mutations
 
-`features/sessions/state/use-session-interaction-actions.ts` treats a lost permission/question
-response as uncertain:
+`features/sessions/services/interaction-commands.ts` treats a lost permission or
+question response as uncertain:
 
 - permission: re-list pending requests; if the request is gone, keep the card
   removed and refresh;

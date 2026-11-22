@@ -13,7 +13,7 @@ import type { SessionRefreshInput } from '@/features/sessions/model/refresh-inpu
 // A list read that started before a session was created can resolve after it.
 // Keep just-created sessions visible for a short grace period.
 const LOCAL_SESSION_GRACE_MS = 10_000;
-export function useSessionRefresh({ activeProjectPath, client, isCurrentClient, setSessions, sessionsRef, setSessionStatuses, locallyCreatedSessionsRef, setPendingPermissionsBySession, setPendingQuestionsBySession, suppressedPendingRequestIdsRef }: SessionRefreshInput) {
+export function useSessionRefresh({ activeProjectPath, client, isCurrentClient, setSessions, sessionsRef, setSessionStatuses, locallyCreatedSessionsRef, setPendingPermissionsBySession, setPendingQuestionsBySession, isPermissionReplyPending }: SessionRefreshInput) {
 
   const refreshSessions = useCallback(
     async () => {
@@ -81,12 +81,11 @@ export function useSessionRefresh({ activeProjectPath, client, isCurrentClient, 
     }
     // A reply removes its card before the server acknowledges it. Ignore a
     // refresh that races that reply so the card cannot flicker back.
-    const suppressed = suppressedPendingRequestIdsRef?.current;
     const visible = <T extends { id: string }>(requests: T[]) => (
-      suppressed ? requests.filter((request) => !suppressed.has(request.id)) : requests
+      isPermissionReplyPending ? requests.filter((request) => !isPermissionReplyPending(request.id)) : requests
     );
     if (permissions) setPendingPermissionsBySession(groupPendingRequestsBySession(visible(permissions)));
     if (questions) setPendingQuestionsBySession(groupPendingRequestsBySession(visible(questions)));
-  }, [client, isCurrentClient, setPendingPermissionsBySession, setPendingQuestionsBySession, suppressedPendingRequestIdsRef]);
+  }, [client, isCurrentClient, setPendingPermissionsBySession, setPendingQuestionsBySession, isPermissionReplyPending]);
   return { refreshSessions, refreshSessionStatuses, refreshPendingInteractions };
 }

@@ -24,6 +24,8 @@ import { useDiffCatalog , useMessageCatalog , usePromptInbox , usePromptLifecycl
 import { useTerminalState } from '@/features/terminal/runtime';
 import { useWorkspaceRuntimeState } from '@/runtime/workspace/use-workspace-runtime-state';
 import { useWorkspaceServerData } from '@/runtime/composition/use-workspace-server-data';
+import { useAppCore } from '@/runtime/core';
+import { useQueryIdentity } from '@/shared/server-data/client';
 
 import type { WorkspaceRuntimeInput } from '@/runtime/workspace/workspace-types';
 
@@ -35,6 +37,8 @@ export function useOpencodeProviderComposition(input: WorkspaceRuntimeInput) {
   // workspace except the one that mounted last.
   const network = input.network;
   const { connection: inputConnection } = input;
+  const sessionCommands = useAppCore().commands.session;
+  const identity = useQueryIdentity();
   const isHydrated = input.isHydrated && input.connection.enabled;
   const {
     setOnboardingVersion,
@@ -184,7 +188,8 @@ export function useOpencodeProviderComposition(input: WorkspaceRuntimeInput) {
     setPendingQuestionsBySession: approvalsCatalog.setPendingQuestionsBySession,
   });
 
-  const project = useProjectActions({ ...domain, connectionId: inputConnection.id, connected: state.connection.status === 'connected', client, catalogClient, isCurrentClient, isCurrentCatalogClient, clearProjectState, isHydrated, refreshMessages: inbox.refreshMessages });
+  const isPermissionReplyPending = useCallback((id: string) => sessionCommands.isPermissionReplyPending(identity, client, id), [client, identity, sessionCommands]);
+  const project = useProjectActions({ ...domain, connectionId: inputConnection.id, connected: state.connection.status === 'connected', client, catalogClient, isCurrentClient, isCurrentCatalogClient, clearProjectState, isHydrated, refreshMessages: inbox.refreshMessages, isPermissionReplyPending });
 
   const capabilities = useCapabilitiesActions({ ...domain, client, isCurrentClient, isHydrated });
   // Event bursts (rename + update, config fan-out, file-save VCS events) share
@@ -200,7 +205,6 @@ export function useOpencodeProviderComposition(input: WorkspaceRuntimeInput) {
   const sessionActions = useSessionActions({
     ...domain,
     ...project,
-    ...permissionRules,
     client,
     catalogClient,
     isCurrentClient,
@@ -210,6 +214,9 @@ export function useOpencodeProviderComposition(input: WorkspaceRuntimeInput) {
     refreshChatCapabilities: capabilities.refreshChatCapabilities,
     beginHydration: transcript.beginHydration,
   });
+  const interactions = useMemo(() => sessionCommands.interactions({
+    connectionId: inputConnection.id, projectPath: state.activeProjectPath ?? '',
+  }, inputConnection.revision), [inputConnection.id, inputConnection.revision, sessionCommands, state.activeProjectPath]);
   const ensureActiveSessionRef = useRef(sessionActions.ensureActiveSession);
 
   const prompt = usePromptLifecycle({
@@ -355,6 +362,7 @@ export function useOpencodeProviderComposition(input: WorkspaceRuntimeInput) {
     ...extensions,
     ...project,
     ...sessionActions,
+    ...interactions,
     ...capabilities,
     ...prompt,
     ...connectionActions,

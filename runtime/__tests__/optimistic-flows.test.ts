@@ -585,7 +585,7 @@ describe('interaction refresh suppression', () => {
     runtime.mount(useProjectRefreshActions, {
       client: {},
       isCurrentClient: () => true,
-      suppressedPendingRequestIdsRef: suppressed,
+      isPermissionReplyPending: (id: string) => suppressed.current.has(id),
       setPendingPermissionsBySession: setPermissions,
       setPendingQuestionsBySession: setQuestions,
     });
@@ -604,15 +604,14 @@ describe('interaction refresh suppression', () => {
 
 describe('optimistic interaction replies', () => {
   it('removes a permission immediately and restores it when the reply fails', async () => {
-    const runtime = hookRuntime();
     const reply = deferredGate();
     const client = {
+      listPendingInteractions: vi.fn(async () => undefined),
       replyToPendingPermission: vi.fn(() => reply.promise),
       replyToPendingQuestion: vi.fn(async () => undefined),
       rejectPendingQuestion: vi.fn(async () => undefined),
     };
-    const { useSessionInteractionActions } = await loadTs('features/sessions/state/use-session-interaction-actions.ts', {
-    react: runtime.react,
+    const { createInteractionCommands } = await loadTs('features/sessions/services/interaction-commands.ts', {
     '@/shared/protocol/opencode/client': client
   });
     const request = { id: 'p1', sessionID: 's' };
@@ -621,19 +620,23 @@ describe('optimistic interaction replies', () => {
     const refreshMessages = vi.fn(async () => []);
     const input = {
       client: {},
-      pendingPermissionsBySession: permissions,
-      pendingQuestionsBySession: {},
-      setPendingPermissionsBySession: (value: any) => {
+      isCurrent: () => true,
+      readPermissions: () => permissions,
+      readQuestions: () => ({}),
+      updatePermissions: (value: any) => {
         permissions = typeof value === 'function' ? value(permissions) : value;
       },
-      setPendingQuestionsBySession: () => undefined,
-      suppressedPendingRequestIdsRef: { current: suppressed },
+      updateQuestions: () => undefined,
+      runPermissionReply: (id: string, run: () => Promise<void>) => {
+        suppressed.add(id);
+        return run().finally(() => suppressed.delete(id));
+      },
       refreshMessages,
       refreshSavedPermissions: vi.fn(async () => undefined),
     };
-    runtime.mount(useSessionInteractionActions, input);
+    const commands = createInteractionCommands(input);
 
-    const replying = runtime.value.replyToPermission('p1', 'once');
+    const replying = commands.replyToPermission('p1', 'once');
     await Promise.resolve();
     expect(permissions.s).toEqual([]);
     expect(suppressed.has('p1')).toBe(true);
@@ -644,18 +647,16 @@ describe('optimistic interaction replies', () => {
     expect(suppressed.has('p1')).toBe(false);
     expect(refreshMessages).not.toHaveBeenCalled();
 
-    runtime.unmount();
   });
 
   it('keeps the permission removed after a successful reply', async () => {
-    const runtime = hookRuntime();
     const client = {
+      listPendingInteractions: vi.fn(async () => undefined),
       replyToPendingPermission: vi.fn(async () => undefined),
       replyToPendingQuestion: vi.fn(async () => undefined),
       rejectPendingQuestion: vi.fn(async () => undefined),
     };
-    const { useSessionInteractionActions } = await loadTs('features/sessions/state/use-session-interaction-actions.ts', {
-    react: runtime.react,
+    const { createInteractionCommands } = await loadTs('features/sessions/services/interaction-commands.ts', {
     '@/shared/protocol/opencode/client': client
   });
     const request = { id: 'p1', sessionID: 's' };
@@ -664,24 +665,27 @@ describe('optimistic interaction replies', () => {
     const refreshMessages = vi.fn(async () => []);
     const input = {
       client: {},
-      pendingPermissionsBySession: permissions,
-      pendingQuestionsBySession: {},
-      setPendingPermissionsBySession: (value: any) => {
+      isCurrent: () => true,
+      readPermissions: () => permissions,
+      readQuestions: () => ({}),
+      updatePermissions: (value: any) => {
         permissions = typeof value === 'function' ? value(permissions) : value;
       },
-      setPendingQuestionsBySession: () => undefined,
-      suppressedPendingRequestIdsRef: { current: suppressed },
+      updateQuestions: () => undefined,
+      runPermissionReply: (id: string, run: () => Promise<void>) => {
+        suppressed.add(id);
+        return run().finally(() => suppressed.delete(id));
+      },
       refreshMessages,
       refreshSavedPermissions: vi.fn(async () => undefined),
     };
-    runtime.mount(useSessionInteractionActions, input);
+    const commands = createInteractionCommands(input);
 
-    await expect(runtime.value.replyToPermission('p1', 'once')).resolves.toBeUndefined();
+    await expect(commands.replyToPermission('p1', 'once')).resolves.toBeUndefined();
     expect(permissions.s).toEqual([]);
     expect(suppressed.has('p1')).toBe(false);
     expect(refreshMessages).toHaveBeenCalledWith('s', true);
 
-    runtime.unmount();
   });
 });
 

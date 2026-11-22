@@ -19,12 +19,14 @@ import type { Diagnostics } from '@/shared/protocol/services/diagnostics-service
 import type { useConnectionLinkActions , useSessionActions } from '@/features/sessions/index';
 import type { useConversationState } from '@/features/voice/index';
 import type { useProjectActions } from '@/runtime/composition/use-project-actions';
+import type { createSessionCommands } from '@/runtime/core/commands/session';
 import type { usePromptLifecycle } from '@/features/chat/index';
 import type { SharedInput } from '@/features/sharing/index';
 
 type ActionInputs =
   ReturnType<typeof useProjectActions> &
   ReturnType<typeof useSessionActions> &
+  ReturnType<ReturnType<typeof createSessionCommands>['interactions']> &
   ReturnType<typeof useCapabilitiesActions> &
   ReturnType<typeof usePromptLifecycle> &
   ReturnType<typeof useConnectionLinkActions> & Pick<ConnectionContextValue, 'connect' | 'switchConnection' | 'updateSettings' | 'connectSetup' | 'connectionProfiles'> & { servicesValue: ConnectionContextValue['services'] } &

@@ -1,4 +1,6 @@
+export { approvalsAccess } from './services/approvals';
 export { clearMissionStatsCaches } from './services/mission-stats-cache';
+export { createInteractionCommands } from './services/interaction-commands';
 export { collectDescendantSessionIds } from './model/session-utils';
 export { getActiveSessions } from './model/active-sessions';
 export { getCurrentPendingRequests } from './model/selectors';
@@ -8,6 +10,7 @@ export { MAX_ACTIVE_SESSIONS } from './state/use-active-sessions';
 export { mergeSessionStatuses } from './model/session-utils';
 export { migrateMissionStatsCaches } from './services/mission-stats-cache';
 export { parseFavoriteSessions } from './services/favorites-storage';
+export { pendingInteractionsKey, savedPermissionOptions } from './services/queries';
 export { serializeFavoriteSessions } from './services/favorites-storage';
 export { sessionCatalogOptions } from './services/queries';
 export { useActiveSessions } from './state/use-active-sessions';

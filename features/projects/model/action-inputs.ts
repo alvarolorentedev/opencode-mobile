@@ -37,7 +37,7 @@ export type ProjectActionsInput = {
   setTodosBySession: Dispatch<SetStateAction<Record<string, Todo[]>>>;
   setPendingPermissionsBySession: Dispatch<SetStateAction<Record<string, PendingPermissionRequest[]>>>;
   setPendingQuestionsBySession: Dispatch<SetStateAction<Record<string, PendingQuestionRequest[]>>>;
-  suppressedPendingRequestIdsRef?: { current: Set<string> };
+  isPermissionReplyPending?: (id: string) => boolean;
   setDiffScopeBySession: Dispatch<SetStateAction<Record<string, DiffScope>>>;
   setSelectedDiffMessageBySession: Dispatch<SetStateAction<Record<string, string | undefined>>>;
   readPinnedDiffMessage: (sessionId: string) => string | undefined;

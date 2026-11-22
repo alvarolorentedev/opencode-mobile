@@ -34,8 +34,6 @@ export type SessionActionsInput = {
   currentConfig?: Config;
   messagesBySession: Record<string, SessionMessageRecord[]>;
   favoriteSessions: FavoriteSession[];
-  pendingPermissionsBySession: Record<string, PendingPermissionRequest[]>;
-  pendingQuestionsBySession: Record<string, PendingQuestionRequest[]>;
   setCurrentSessionId: Dispatch<SetStateAction<string | undefined>>;
   setSessions: Dispatch<SetStateAction<Session[]>>;
   setSessionStatuses: Dispatch<SetStateAction<Record<string, SessionStatus>>>;
@@ -45,7 +43,6 @@ export type SessionActionsInput = {
   setTodosBySession: Dispatch<SetStateAction<Record<string, Todo[]>>>;
   setPendingPermissionsBySession: Dispatch<SetStateAction<Record<string, PendingPermissionRequest[]>>>;
   setPendingQuestionsBySession: Dispatch<SetStateAction<Record<string, PendingQuestionRequest[]>>>;
-  suppressedPendingRequestIdsRef: { current: Set<string> };
   setFavoriteSessions: Dispatch<SetStateAction<FavoriteSession[]>>;
   setIsBootstrappingChat: Dispatch<SetStateAction<boolean>>;
   pendingDeepLinkTargetRef: { current: SessionDeepLinkTarget | undefined };
@@ -62,7 +59,6 @@ export type SessionActionsInput = {
   refreshServerFeatures: () => Promise<unknown>;
   refreshDiagnostics: () => Promise<unknown>;
   refreshActiveSessions: () => Promise<unknown>;
-  refreshSavedPermissions?: () => Promise<void>;
   chatPreferences: ChatPreferences;
 };
 
@@ -78,10 +74,6 @@ export type SessionCrudInput = Pick<SessionActionsInput,
 
 export type SessionFavoriteInput = Pick<SessionActionsInput,
   'connectionScopeRef' | 'favoriteSessions' | 'setFavoriteSessions'>;
-
-export type SessionInteractionInput = Pick<SessionActionsInput,
-  'client' | 'pendingPermissionsBySession' | 'pendingQuestionsBySession' | 'setPendingPermissionsBySession' |
-  'setPendingQuestionsBySession' | 'suppressedPendingRequestIdsRef' | 'refreshMessages' | 'refreshSavedPermissions'>;
 
 export type SessionBootstrapInput = Pick<SessionActionsInput,
   'activeProjectPath' | 'connection' | 'client' | 'currentSessionId' | 'currentSessionIdRef' |

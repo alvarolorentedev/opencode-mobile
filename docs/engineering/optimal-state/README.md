@@ -119,10 +119,14 @@ npm run validate:commit
   live Restore, credential rotation, reconnect and fallback polling. The
   original failing checkout was unavailable locally. Physical network handoff
   remains device acceptance.
-- C1. The app core owns workspace readiness, navigation and chat creation.
+- C1, `3d0ece8c`. The app core owns workspace readiness, navigation and chat creation.
   Static checks passed with 1,261 tests and one existing skip. The 21
   focused tests, docs, web export and all 34 sessions, projects,
   multi-server and terminal browser tests passed.
+- C2a. Permission and question replies run through scoped session commands.
+  The commit gate passed with 1,262 tests and one existing skip. The 28
+  focused tests, docs, web export and all 27 interaction, multi-server and
+  realtime browser tests passed, including colliding approvals on two servers.
 
 ## Loop protocol
 

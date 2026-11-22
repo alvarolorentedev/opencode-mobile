@@ -24,5 +24,5 @@ export type SessionRefreshInput = {
 
   setPendingQuestionsBySession: Dispatch<SetStateAction<Record<string, PendingQuestionRequest[]>>>;
 
-  suppressedPendingRequestIdsRef?: { current: Set<string> };
+  isPermissionReplyPending?: (id: string) => boolean;
 };

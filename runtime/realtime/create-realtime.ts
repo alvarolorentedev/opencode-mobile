@@ -69,6 +69,8 @@ export function createRealtime(foreground: Foreground, onFatalError: Parameters<
 
     const scope = {
       isBusy: () => Boolean(input?.projectPath && input.busy),
+      getProjectPath: () => input?.projectPath,
+      refreshMessages: (sessionId: string, silent: boolean) => input?.refreshMessages(sessionId, silent),
       syncPolling,
       reconcile: reconcileScope,
       dispatch(event: OpencodeEvent) {
@@ -132,6 +134,12 @@ export function createRealtime(foreground: Foreground, onFatalError: Parameters<
       return scope;
     },
     setTransport,
+    refreshMessages(projectPath: string, sessionId: string, silent: boolean) {
+      for (const scope of scopes) {
+        if (scope.getProjectPath() === projectPath) return scope.refreshMessages(sessionId, silent) ?? Promise.resolve();
+      }
+      return Promise.resolve();
+    },
     dispose() {
       setTransport();
       for (const scope of scopes) scope.dispose();

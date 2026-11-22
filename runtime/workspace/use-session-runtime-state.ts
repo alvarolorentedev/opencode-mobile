@@ -21,7 +21,7 @@ export function useSessionRuntimeState(input: WorkspaceRuntimeInput, connection:
   const connectionId = input.connection.id;
   const scopeKey = workspaceKey({ connectionId: input.connection.id, projectPath: input.projectPath ?? '' });
   const { activeProjectPath, setActiveProjectPath, activeProjectPathRef, projectFileRequestRef } = useProjectRuntimeState(scopeKey, input.projectPath);
-  const { currentSessionId, setCurrentSessionId, isBootstrappingChat, setIsBootstrappingChat, activeSessionsVisible, setActiveSessionsVisible, currentSessionIdRef, pendingDeepLinkTargetRef, deepLinkOperationRef, bootstrapPromiseRef, bootstrapTokenRef, explicitSessionSelectionRef, locallyCreatedSessionsRef, suppressedPendingRequestIdsRef } = useSessionState(scopeKey);
+  const { currentSessionId, setCurrentSessionId, isBootstrappingChat, setIsBootstrappingChat, activeSessionsVisible, setActiveSessionsVisible, currentSessionIdRef, pendingDeepLinkTargetRef, deepLinkOperationRef, bootstrapPromiseRef, bootstrapTokenRef, explicitSessionSelectionRef, locallyCreatedSessionsRef } = useSessionState(scopeKey);
   const { store } = useAppCore();
   const { diffScopeBySession, selectedDiffMessageBySession, isRefreshingMessages, isRefreshingDiffs } = useAppStore((state) => state.chat[scopeKey] ?? EMPTY_CHAT);
   const chatActions = useMemo(() => {
@@ -86,7 +86,6 @@ export function useSessionRuntimeState(input: WorkspaceRuntimeInput, connection:
     busyNotificationsRef,
     explicitSessionSelectionRef,
     locallyCreatedSessionsRef,
-    suppressedPendingRequestIdsRef,
     promptSubmissionRef,
     projectFileRequestRef,
   };

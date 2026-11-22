@@ -266,8 +266,10 @@
       "useConnectionProfiles"
     ],
     "features/sessions/runtime.ts": [
+      "approvalsAccess",
       "clearMissionStatsCaches",
       "collectDescendantSessionIds",
+      "createInteractionCommands",
       "getActiveSessions",
       "getCurrentPendingRequests",
       "getSessionPreviewById",
@@ -276,6 +278,8 @@
       "mergeSessionStatuses",
       "migrateMissionStatsCaches",
       "parseFavoriteSessions",
+      "pendingInteractionsKey",
+      "savedPermissionOptions",
       "serializeFavoriteSessions",
       "sessionCatalogOptions",
       "useActiveSessions",

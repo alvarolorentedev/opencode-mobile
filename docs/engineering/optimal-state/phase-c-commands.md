@@ -5,6 +5,11 @@ navigation, independent project targets, and chat creation. Retained project
 publications still supply session and worktree actions while those domains are
 migrated.
 
+Permission and question replies now run as plain session commands. Permission
+reconciliation reads pending mutations in the same Query partition as the
+project's approvals. The remaining session lifecycle and refresh actions,
+prompt and connection commands, and event dispatch still need extraction.
+
 Goal: cross-domain behavior becomes plain TypeScript commands. Hooks adapt;
 they no longer own command logic. The per-workspace composition and its value
 mirrors are deleted.

@@ -79,6 +79,18 @@ export function createConnection({ queryClient, foreground, clock = systemClock 
     }
     return catalog.client;
   }
+  function getProjectAccess(projectPath: string) {
+    if (!input?.entry.enabled || connectionState().status !== 'connected') return undefined;
+    const { entry, identity } = input;
+    const { contract } = lifecycle.getState();
+    const client = buildClient({ ...entry.settings, directory: projectPath }, contract);
+    return {
+      identity, client, revision: entry.revision,
+      isCurrent: () => input?.entry.enabled === true && input.entry.revision === entry.revision
+        && input.entry.settings === entry.settings && input.identity.authRevision === identity.authRevision
+        && lifecycle.getState().contract === contract && connectionState().status === 'connected',
+    };
+  }
   const updateActivity = () => {
     const state = connectionState();
     retry.update(state, active && Boolean(input?.entry.enabled) && !input?.entry.settings.connect, online);
@@ -284,6 +296,8 @@ export function createConnection({ queryClient, foreground, clock = systemClock 
     realtime,
     events: { observe: events.observe, observeHealth: events.observeHealth, isHealthy: events.isHealthy },
     getCatalogClient,
+    getProjectAccess,
+    isDemanded: () => active && online,
     dispose() { stopActivity(); retry.dispose(); realtime.dispose(); eventInvalidation.reset(); },
     onInvalidated: (listener: () => void) => { invalidations.add(listener); return () => { invalidations.delete(listener); }; },
     connect,
