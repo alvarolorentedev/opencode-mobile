@@ -7,6 +7,7 @@ import { pruneByKeepIds } from '@/shared/utilities/prune';
 import { recordSessionUsageAndTodos } from '@/features/chat/model/session-ledger';
 import { createAppStore, type AppState } from '@/runtime/core/store';
 import { hookRuntime, loadTs } from '../../../tests/helpers/runtime.mjs';
+import { queryRuntime } from '../../../tests/helpers/query-runtime.mjs';
 
 vi.mock('@/shared/i18n/index', () => ({ getFormatLocale: () => 'en' }));
 
@@ -45,10 +46,16 @@ async function mountTranscript(
   const runtime = hookRuntime();
   const store = createAppStore({ settings: { serverUrl: 'http://server.test', username: '', password: '', directory: '/repo' }, chatPreferences: {} as never, controlPlaneUrl: '' });
   const client = { __opencode: { contract: 'v2', directory: '/repo' } };
-  const actions = { applyEvent: () => false, activeMessageId: () => undefined, clearMessage: () => {}, clearSession: () => {}, deferReconcileToPage: () => {}, overlay: (_sessionId: string, records: Message[]) => records, adopt: () => {}, appendUserMessage: () => {}, hasLocalUsers: () => false, markLocalSend: () => {}, isLocalSendRecent: () => false, reset: () => {}, prune: () => {} };
-  let current = initial;
-  const { useTranscriptState } = await loadTs('features/chat/state/use-transcript-state.ts', {
+  const actions = { applyEvent: () => false, activeMessageId: () => undefined, clearMessage: () => {}, clearSession: () => {}, deferReconcileToPage: () => {}, overlay: (_sessionId: string, records: Message[]) => records, adopt: () => {}, appendUserMessage: () => {}, hasLocalUsers: () => false, isLocalSendRecent: () => false, reset: () => {}, prune: () => {} };
+  const query = queryRuntime(runtime.react);
+  const identity = { connectionId: 'test', connectionScope: 'scope', authRevision: 0 };
+  const { useTranscriptState, transcriptAccess } = await loadTs([
+    'features/chat/state/use-transcript-state.ts', 'features/chat/services/transcript-queries.ts',
+  ], {
     react: runtime.react,
+    '@tanstack/react-query': query,
+    '@/shared/server-data/client': { useQueryIdentity: () => identity },
+    '@/shared/protocol/opencode/client': { withReadSignal: (value: object) => value },
     '@/runtime/core': {
       useAppCore: () => ({ store }),
       useAppStore<T>(select: (state: AppState) => T) {
@@ -64,30 +71,27 @@ async function mountTranscript(
     "@/shared/protocol/services/session-service": { getSessionMessages, getSessionMessage, TRANSCRIPT_PAGE_LIMIT: 20, MAX_MESSAGE_PAGE_LIMIT: 200 },
     "@/shared/protocol/opencode/contracts/session-adapter": { MAX_MESSAGE_PAGE_LIMIT: 200 },
     "@/features/chat/model/session-ledger": { recordSessionUsageAndTodos },
-    "@/features/chat/state/use-live-transcript": { useLiveTranscript: ({ messagesBySession }: { messagesBySession: Record<string, Message[]> }) => ({ actions, displayedMessages: messagesBySession, readDisplayedSession: (id: string) => current[id] ?? [] }) },
+    '@/features/chat/state/use-live-transcript': { useLiveTranscript: ({ messagesBySession, readCanonicalSession }: {
+      messagesBySession: Record<string, Message[]>;
+      readCanonicalSession: (id: string) => Message[];
+    }) => ({ actions, displayedMessages: messagesBySession, readDisplayedSession: readCanonicalSession }) },
     "@/shared/protocol/opencode/v2/mappers": { toMessageRecord: (message: { __record?: unknown }) => message.__record },
     "@/shared/protocol/opencode/in-flight": { coalesceRead: (_client: unknown, _key: string, read: () => unknown) => read() },
     "@/features/chat/services/transcript-cache": { hydrateTranscriptCache: async () => {}, persistTranscriptCache: async () => {} }
   });
+  const access = transcriptAccess(query.useQueryClient(), identity, client);
+  for (const [id, records] of Object.entries(initial)) access.restore(id, records);
   function useHarness() {
-    const [messagesBySession, publishMessages] = runtime.react.useState(initial);
     const [, setIsRefreshingMessages] = runtime.react.useState(false);
-    const state = useTranscriptState({
+    return useTranscriptState({
       scopeKey: 'transcript-test-workspace',
       client,
       isCurrentClient: () => true,
       currentSessionId: 's',
       connectionScope: 'scope',
       activeProjectPath: '/repo',
-      messagesBySession,
-      readMessagesBySession: () => current,
-      setMessagesBySession: (change: (previous: typeof current) => typeof current) => {
-        current = change(current);
-        publishMessages(current);
-      },
       setIsRefreshingMessages,
     });
-    return { ...state, messagesBySession };
   }
   const value = runtime.mount(useHarness, {});
   return { runtime, value, client };

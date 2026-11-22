@@ -9,12 +9,11 @@ import { useQueryIdentity } from '@/shared/server-data/client';
 import { transcriptMetadataKey } from '../services/queries';
 
 type TranscriptMetadata = {
-  messageWindows: Record<string, { nextBefore?: string; hasMore: boolean }>;
   usageStepsBySession: Record<string, SessionUsageStep[]>;
   todoRecordsBySession: Record<string, SessionMessageRecord[]>;
 };
 
-const EMPTY_METADATA: TranscriptMetadata = { messageWindows: {}, usageStepsBySession: {}, todoRecordsBySession: {} };
+const EMPTY_METADATA: TranscriptMetadata = { usageStepsBySession: {}, todoRecordsBySession: {} };
 
 export function useTranscriptMetadata(client: ScopedOpencodeClient) {
   const { connectionId, connectionScope, authRevision } = useQueryIdentity();
@@ -29,8 +28,6 @@ export function useTranscriptMetadata(client: ScopedOpencodeClient) {
       });
     };
     return {
-      readMessageWindow: (sessionId: string) => cache.getQueryData<TranscriptMetadata>(key)?.messageWindows[sessionId],
-      setMessageWindows: setter('messageWindows'),
       setUsageStepsBySession: setter('usageStepsBySession'),
       setTodoRecordsBySession: setter('todoRecordsBySession'),
     };

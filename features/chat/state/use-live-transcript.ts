@@ -27,11 +27,11 @@ type Input = {
   client: ScopedOpencodeClient;
   isCurrentClient: (candidate: object) => boolean;
   messagesBySession: Record<string, SessionMessageRecord[]>;
-  readMessagesBySession: () => Record<string, SessionMessageRecord[]>;
+  readCanonicalSession: (sessionId: string) => SessionMessageRecord[];
   recordUsageAndTodos: (sessionId: string, records: SessionMessageRecord[]) => void;
 };
 
-export function useLiveTranscript({ scopeKey, client, isCurrentClient, messagesBySession, readMessagesBySession, recordUsageAndTodos }: Input) {
+export function useLiveTranscript({ scopeKey, client, isCurrentClient, messagesBySession, readCanonicalSession, recordUsageAndTodos }: Input) {
   const { store } = useAppCore();
   const scopes = store.getState().transcriptLive;
   const paintRevision = useAppStore((state) => state.transcriptUi[scopeKey]?.paintRevision ?? 0);
@@ -76,7 +76,7 @@ export function useLiveTranscript({ scopeKey, client, isCurrentClient, messagesB
     if (event.type === 'session.usage.updated') return true;
     const messageId = stringField(data.assistantMessageID);
     if (!messageId) return false;
-    const records = readMessagesBySession()[sessionId];
+    const records = readCanonicalSession(sessionId);
     if (!session?.has(messageId) && !records?.length && !buffer?.localUsers.get(sessionId)?.length) return false;
     const held = records?.find((record) => record.info.id === messageId);
     const previous = session?.get(messageId) ?? (held ? seedLiveMessage(held) : undefined);
@@ -89,7 +89,7 @@ export function useLiveTranscript({ scopeKey, client, isCurrentClient, messagesB
     if (result.ledger) ledgerRef.current.add(sessionId);
     scheduleFlush(sessionId);
     return true;
-  }, [client, ensureBuffer, isCurrentClient, readBuffer, readMessagesBySession, scheduleFlush]);
+  }, [client, ensureBuffer, isCurrentClient, readBuffer, readCanonicalSession, scheduleFlush]);
 
   const activeMessageId = useCallback((sessionId: string) => {
     let latest: LiveTranscriptMessage | undefined;
@@ -169,14 +169,14 @@ export function useLiveTranscript({ scopeKey, client, isCurrentClient, messagesB
       }
     }
     if (!localUsers?.length) return;
-    const records = readMessagesBySession()[sessionId] ?? EMPTY_RECORDS;
+    const records = readCanonicalSession(sessionId) ?? EMPTY_RECORDS;
     const known = new Set(records.map((record) => record.info.id));
     const remaining = localUsers.filter((record) => !known.has(record.info.id));
     if (remaining.length === localUsers.length) return;
     if (remaining.length === 0) users?.delete(sessionId);
     else users?.set(sessionId, remaining);
     paint();
-  }, [clearMessage, paint, readBuffer, readMessagesBySession]);
+  }, [clearMessage, paint, readBuffer, readCanonicalSession]);
 
   const appendUserMessage = useCallback((sessionId: string, input: {
     id: string;
@@ -184,12 +184,12 @@ export function useLiveTranscript({ scopeKey, client, isCurrentClient, messagesB
     text: string;
     attachments: { url: string; mime?: string; filename?: string }[];
   }) => {
-    if (readMessagesBySession()[sessionId]?.some((item) => item.info.id === input.id)) return;
+    if (readCanonicalSession(sessionId)?.some((item) => item.info.id === input.id)) return;
     const users = ensureBuffer().localUsers;
     const local = users.get(sessionId) ?? EMPTY_RECORDS;
     users.set(sessionId, [...local.filter((item) => item.info.id !== input.id), userMessageRecord({ sessionID: sessionId, ...input })]);
     paint();
-  }, [ensureBuffer, paint, readMessagesBySession]);
+  }, [ensureBuffer, paint, readCanonicalSession]);
 
   const hasLocalUsers = useCallback((sessionId: string) => Boolean(readBuffer()?.localUsers.get(sessionId)?.length), [readBuffer]);
 
@@ -222,10 +222,10 @@ export function useLiveTranscript({ scopeKey, client, isCurrentClient, messagesB
 
   const actions = useMemo(() => ({ applyEvent, activeMessageId, clearMessage, clearSession, deferReconcileToPage, overlay, adopt, appendUserMessage, hasLocalUsers, isLocalSendRecent, reset, prune }),
     [adopt, applyEvent, activeMessageId, appendUserMessage, clearMessage, clearSession, deferReconcileToPage, hasLocalUsers, isLocalSendRecent, overlay, prune, reset]);
-  const readDisplayedSession = useCallback((sessionId: string) => overlay(sessionId, readMessagesBySession()[sessionId] ?? EMPTY_RECORDS), [overlay, readMessagesBySession]);
+  const readDisplayedSession = useCallback((sessionId: string) => overlay(sessionId, readCanonicalSession(sessionId) ?? EMPTY_RECORDS), [overlay, readCanonicalSession]);
   const displayedMessages = useMemo(() => {
     const buffer = readBuffer();
-    const canonical = readMessagesBySession();
+    const canonical = messagesBySession;
     if (!buffer) return canonical;
     const sessions = new Set([...buffer.messages.keys(), ...buffer.localUsers.keys()]);
     if (!sessions.size) return canonical;
@@ -234,7 +234,7 @@ export function useLiveTranscript({ scopeKey, client, isCurrentClient, messagesB
     return displayed;
   // Query and the paint revision publish changes to their respective sources.
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [messagesBySession, overlay, paintRevision, readBuffer, readMessagesBySession]);
+  }, [messagesBySession, overlay, paintRevision, readBuffer]);
 
   return { actions, displayedMessages, readDisplayedSession };
 }

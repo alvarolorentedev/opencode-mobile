@@ -46,7 +46,7 @@ it('paints a batch at 50 ms without writing the live reply or local media to the
   try {
     const { actions } = driver.mount(useLiveTranscript, {
       scopeKey, client: {}, isCurrentClient: () => true, messagesBySession: canonical,
-      readMessagesBySession: () => canonical, recordUsageAndTodos: vi.fn(),
+      readCanonicalSession: (id: string) => canonical[id] ?? [], recordUsageAndTodos: vi.fn(),
     });
     const url = `data:video/mp4;base64,${'A'.repeat(1024 * 1024)}`;
     actions.appendUserMessage('s', { id: 'u', createdAt: 10, text: 'look', attachments: [{ url }] });

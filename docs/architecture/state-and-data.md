@@ -197,12 +197,14 @@ write back into the approvals cache. The connection manager reuses each
 project client for these reads until settings, credentials or the contract
 change.
 
-Canonical message windows, diffs, todos and VCS diffs are Query data: one
-connection-scoped entry per resource holds the per-session maps, and the action
-layer keeps its setter boundary. Diffs and todos are no longer React state.
-The `transcript-metadata` project entry holds pagination cursors and the
-accumulated usage and plan ledgers. The app store holds transcript request
-flags, the streamed overlay, optimistic user records and local send timestamps.
+Each session owns one infinite transcript query in its connection, credential
+and project partition. The pages hold canonical records and their server
+cursors. A bounded tail or an assistant detail updates the held pages in
+place. Loaded session queries have a 45-minute retention window and the
+project's keep set bounds recent inactive histories. Diffs, todos and VCS diffs
+remain Query data. The `transcript-metadata` project entry holds the usage and
+plan ledgers. The app store holds transcript request flags, the streamed
+overlay, optimistic user records and local send timestamps.
 The displayed transcript combines these sources at paint time. Live deltas
 update the store buffer synchronously and publish a revision at most once per
 50 ms batch. Query holds canonical message records throughout streaming.

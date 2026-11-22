@@ -1,4 +1,4 @@
-import { hashKey, onlineManager, focusManager, QueryClient, QueryObserver, QueriesObserver, queryOptions, skipToken } from '@tanstack/react-query';
+import { hashKey, onlineManager, focusManager, QueryClient, QueryObserver, InfiniteQueryObserver, QueriesObserver, infiniteQueryOptions, queryOptions, skipToken } from '@tanstack/react-query';
 
 // Real query-core observers with the deterministic provider hook driver. React
 // context is the boundary being supplied here, not a reimplementation of Query.
@@ -9,8 +9,16 @@ export function queryRuntime(react) {
     client = new QueryClient({ defaultOptions: { queries: { retry: false, gcTime: Infinity, staleTime: 60_000, refetchOnReconnect: false, refetchOnWindowFocus: false } } });
     clients.set(react, client);
   }
+  const observerHook = (Observer) => function useObserver(options) {
+    options = client.defaultQueryOptions(options);
+    const observer = react.useMemo(() => new Observer(client, options), [hashKey(options.queryKey)]);
+    observer.setOptions(options, { listeners: false });
+    const [, publish] = react.useState(0);
+    react.useEffect(() => options.subscribed === false ? undefined : observer.subscribe(() => publish((value) => value + 1)), [observer, options.subscribed]);
+    return observer.getOptimisticResult(options);
+  };
   return {
-    QueryClient, QueryObserver, queryOptions, onlineManager, focusManager, skipToken,
+    QueryClient, QueryObserver, queryOptions, infiniteQueryOptions, onlineManager, focusManager, skipToken,
     useQueryClient: () => client,
     useQueries({ queries }) {
       const options = queries.map((query) => client.defaultQueryOptions(query));
@@ -20,13 +28,7 @@ export function queryRuntime(react) {
       react.useEffect(() => observer.subscribe(() => publish((value) => value + 1)), [observer]);
       return observer.getCurrentResult();
     },
-    useQuery(options) {
-      options = client.defaultQueryOptions(options);
-      const observer = react.useMemo(() => new QueryObserver(client, options), [hashKey(options.queryKey)]);
-      observer.setOptions(options, { listeners: false });
-      const [, publish] = react.useState(0);
-      react.useEffect(() => options.subscribed === false ? undefined : observer.subscribe(() => publish((value) => value + 1)), [observer, options.subscribed]);
-      return observer.getOptimisticResult(options);
-    },
+    useQuery: observerHook(QueryObserver),
+    useInfiniteQuery: observerHook(InfiniteQueryObserver),
   };
 }

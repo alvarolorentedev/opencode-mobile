@@ -26,7 +26,7 @@ phase you are executing. Do not preload every phase unless you are planning.
 | A | [State evacuation](phase-a-state-evacuation.md) | Complete | No domain data in per-workspace React state |
 | B | [Connection manager](phase-b-connection-manager.md) | Complete | Core-owned connection managers run probe, renewal, SSE and polling |
 | C | [Command core](phase-c-commands.md) | Complete | Cross-domain commands run in the app core and the legacy composition is deleted |
-| D | [Transcript](phase-d-transcript.md) | Not started | Per-session infinite messages + store live overlay |
+| D | [Transcript](phase-d-transcript.md) | In progress | Per-session infinite messages + store live overlay |
 | E | [Flatten React](phase-e-flatten-react.md) | Not started | No scope/provider tree or shared-UI runtime exception |
 | F | [Persistence and tests](phase-f-persistence-and-tests.md) | Partially done | Query persistence done; Zustand persist, `loadTs`, `fast-check`, `knip` remain |
 | G | [Harness and guardrails](phase-g-harness-and-guardrails.md) | Not started | Full composition harness, fact rules, docs, release validation |
@@ -174,7 +174,7 @@ npm run validate:commit
   The commit gate passed with 1,275 tests and one existing skip. The 43 focused
   tests, docs, web export and all 88 chat, sessions, projects, multi-server,
   interactions, onboarding and Settings browser tests passed.
-- C6b. Feature views replace the legacy project composition and value
+- C6b, `8d8186bd`. Feature views replace the legacy project composition and value
   builders. Session link validation and local-send tracking run in the core.
   The initial full browser run exposed an inbox race that combined a delivery
   with the ID of a later enqueue. The fix preserves the delivery ID and checks
@@ -182,6 +182,12 @@ npm run validate:commit
   with 1,276 tests, one existing skip and no lint warnings. The 143 focused
   tests, docs, both fake-server self-tests, web export and all 185 browser
   tests passed after the fix.
+- D1. Canonical transcript windows now use scoped per-session infinite
+  queries. Existing page-read and live-overlay policies stayed in place.
+  The 58 focused tests, docs, web export, 67 browser tests and the local commit
+  gate passed with 1,279 tests and one existing skip. The 8 MiB attachment
+  comparison reached every delta with the same first visible update and
+  comparable commit lag. Phase D still needs the cold Query persistence proof.
 
 ## Loop protocol
 

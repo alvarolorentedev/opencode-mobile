@@ -16,7 +16,7 @@ import { useOpencodeProviderEffects } from '@/runtime/composition/use-opencode-p
 import { useOpencodeProviderReset } from '@/runtime/composition/use-opencode-provider-reset';
 import { useWorkspaceRealtime } from '@/runtime/realtime/use-workspace-realtime';
 import { useProjectActions } from '@/runtime/composition/use-project-actions';
-import { useChatPresentation, useDiffCatalog, useMessageCatalog, usePromptInbox, usePromptLifecycle, useTranscriptReadErrors, useTranscriptState } from '@/features/chat/runtime';
+import { useChatPresentation, useDiffCatalog, usePromptInbox, usePromptLifecycle, useTranscriptReadErrors, useTranscriptState } from '@/features/chat/runtime';
 import { useTerminalState } from '@/features/terminal/runtime';
 import { useSessionRuntimeState } from '@/runtime/workspace/use-session-runtime-state';
 import { useWorkspaceServerData } from '@/runtime/composition/use-workspace-server-data';
@@ -130,11 +130,10 @@ export const RetainedProject = memo(function RetainedProject({ defaults, updateS
   const serverData = useWorkspaceServerData(client, state.connection.status === 'connected', isCurrentClient);
   const sessionCatalog = useSessionCatalog(client);
   const approvalsCatalog = useApprovalsCatalog(client);
-  const messageCatalog = useMessageCatalog(client);
   const diffCatalog = useDiffCatalog(client);
-  const transcript = useTranscriptState({ ...state, ...messageCatalog, client, isCurrentClient });
+  const transcript = useTranscriptState({ ...state, client, isCurrentClient });
   const domain = {
-    ...state, ...serverData, ...sessionCatalog, ...approvalsCatalog, ...messageCatalog, ...diffCatalog,
+    ...state, ...serverData, ...sessionCatalog, ...approvalsCatalog, ...diffCatalog,
     messagesBySession: transcript.messagesBySession, readDisplayedSession: transcript.readDisplayedSession,
   };
   const projects = useMemo(
@@ -221,7 +220,6 @@ export const RetainedProject = memo(function RetainedProject({ defaults, updateS
     resetTranscript,
     clearRefreshes: refreshQueue.clear,
     setSessions: sessionCatalog.setSessions,
-    setMessagesBySession: messageCatalog.setMessagesBySession,
     setDiffsBySession: diffCatalog.setDiffsBySession,
     setTodosBySession: diffCatalog.setTodosBySession,
     setVcsDiffsByScope: diffCatalog.setVcsDiffsByScope,

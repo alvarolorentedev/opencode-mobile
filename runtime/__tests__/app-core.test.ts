@@ -338,7 +338,11 @@ describe('app core', () => {
     queryClient.setQueryData(sessionsKey, [{ id: 's', title: 'Original' }, { id: 'other', title: 'Keep' }]);
     queryClient.setQueryData(approvalsKey, { permissions: { s: [{ id: 'pending' }] }, questions: {} });
     queryClient.setQueryData(statusesKey, { sessions: [], statuses: { s: { type: 'idle' }, other: { type: 'busy' } } });
-    for (const name of ['messages', 'diffs', 'todos']) {
+    const transcript = (id: string, authRevision = 1) => projectQueryKey({ ...identity, authRevision }, client, 'transcript', id);
+    queryClient.setQueryData(transcript('s'), 'remove');
+    queryClient.setQueryData(transcript('other'), 'keep');
+    queryClient.setQueryData(transcript('s', 0), 'old partition');
+    for (const name of ['diffs', 'todos']) {
       queryClient.setQueryData([...ownerKey, name], { s: ['remove'], other: ['keep'] });
       queryClient.setQueryData([...oldKey, name], { s: ['old partition'] });
     }
@@ -364,7 +368,10 @@ describe('app core', () => {
     expect(queryClient.getQueryData(sessionsKey)).toEqual([{ id: 'other', title: 'Keep' }]);
     expect(queryClient.getQueryData(approvalsKey)).toEqual({ permissions: {}, questions: {} });
     expect(queryClient.getQueryData(statusesKey)).toEqual({ sessions: [], statuses: { other: { type: 'busy' } } });
-    for (const name of ['messages', 'diffs', 'todos']) {
+    expect(queryClient.getQueryData(transcript('s'))).toBeUndefined();
+    expect(queryClient.getQueryData(transcript('other'))).toBe('keep');
+    expect(queryClient.getQueryData(transcript('s', 0))).toBe('old partition');
+    for (const name of ['diffs', 'todos']) {
       expect(queryClient.getQueryData([...ownerKey, name])).toEqual({ other: ['keep'] });
       expect(queryClient.getQueryData([...oldKey, name])).toEqual({ s: ['old partition'] });
     }

@@ -1,6 +1,5 @@
 import type { Dispatch, SetStateAction } from 'react';
 
-import type { SessionMessageRecord } from '@/shared/presentation/format';
 import type { FileDiff, SessionStatus, Todo } from '@/shared/protocol/opencode/types';
 import { pruneByKeepIds } from '@/shared/utilities/prune';
 
@@ -12,7 +11,6 @@ export type PruneProviderTranscriptsInput = {
   conversationSessionId?: string;
   recentSessionIds: string[];
   sessionStatuses: Record<string, SessionStatus>;
-  setMessagesBySession: Dispatch<SetStateAction<Record<string, SessionMessageRecord[]>>>;
   setDiffsBySession: Dispatch<SetStateAction<Record<string, FileDiff[]>>>;
   setTodosBySession: Dispatch<SetStateAction<Record<string, Todo[]>>>;
   pruneTranscript: (keepIds: Set<string>, limit: number) => void;
@@ -28,13 +26,12 @@ export function pruneProviderTranscripts({
   conversationSessionId,
   recentSessionIds,
   sessionStatuses,
-  setMessagesBySession,
   setDiffsBySession,
   setTodosBySession,
   pruneTranscript,
 }: PruneProviderTranscriptsInput) {
-  // Message maps are connection-scoped and shared by every mounted project.
-  // A hidden workspace's keep-set is incomplete, so only the visible one may prune.
+  // Keep a bootstrapping session until it can publish its first selection.
+  // Diffs and todos share a connection, so only the visible project may prune.
   if (!visible || isBootstrappingChat) return;
   const keepIds = new Set<string>();
   const openingSessionId = pendingDeepLinkTargetRef.current?.sessionId;
@@ -46,7 +43,6 @@ export function pruneProviderTranscripts({
     if (status.type !== 'idle') keepIds.add(id);
   }
 
-  setMessagesBySession((current) => pruneByKeepIds(current, keepIds, keepIds.size + 1));
   setDiffsBySession((current) => pruneByKeepIds(current, keepIds, keepIds.size + 1));
   setTodosBySession((current) => pruneByKeepIds(current, keepIds, keepIds.size + 1));
   pruneTranscript(keepIds, keepIds.size + 1);

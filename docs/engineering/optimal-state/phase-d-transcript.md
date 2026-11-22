@@ -1,6 +1,14 @@
 # Phase D — Transcript
 
-Status: **not started**.
+Status: **in progress**. The browser baseline uses 160 deltas at 10 ms intervals
+and an 8 MiB inline attachment. Five Phase C runs reached the final delta in
+30–31 visible updates, with median intervals of 59–61 ms. Cached text painted
+in 149–171 ms before the delayed network response. The per-session query spike
+reached the final delta in 30 updates, with a 61 ms median interval and 19–23 ms
+baseline versus 20–22 ms candidate p95 delay from the newest delta to its
+visible update. First paint was 57 ms at baseline and 56–57 ms in the spike.
+The existing disk cache painted in 144–173 ms with the spike. The Query
+persistence comparison remains.
 
 Goal: canonical messages become per-session infinite queries. The live stream
 overlay lives in Zustand. The connection-scoped message map is deleted.
@@ -10,10 +18,9 @@ and [chat behavior](../../product/functional-spec.md#chat-screen-detailed-behavi
 
 Start only after Phase C is complete and green.
 
-## Current shape
+## Phase C baseline
 
-- `features/chat/state/use-message-catalog.ts` holds one connection-scoped
-  Query map keyed by session.
+- A single connection-scoped Query held every canonical session window.
 - `useTranscriptMetadata` reads Query-owned pagination cursors and ledgers;
   the app store holds the transcript request flags.
 - `useLiveTranscript` renders the app-store overlay alongside canonical windows.

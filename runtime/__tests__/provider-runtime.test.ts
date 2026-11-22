@@ -6,6 +6,7 @@ import { runInNewContext } from 'node:vm';
 import ts from 'typescript';
 import { loadTs, hookRuntime, deferred } from '../../tests/helpers/runtime.mjs';
 import { describe, it } from 'vitest';
+import { pruneByKeepIds } from '@/shared/utilities/prune';
 import { pruneProviderTranscripts } from '@/features/chat/model/transcript-pruning';
 import { recordSessionUsageAndTodos } from '@/features/chat/model/session-ledger';
 import * as realtimeBackoff from '@/runtime/realtime/backoff';
@@ -1151,10 +1152,9 @@ const pruneInput: any = {
   conversationSessionId: undefined,
   recentSessionIds: [],
   sessionStatuses: {},
-  setMessagesBySession: (update: any) => { cachedMessages = update(cachedMessages); },
   setDiffsBySession: (update: any) => { cachedDiffs = update(cachedDiffs); },
   setTodosBySession: (update: any) => { cachedTodos = update(cachedTodos); },
-  pruneTranscript: () => {},
+  pruneTranscript: (keep: Set<string>, limit: number) => { cachedMessages = pruneByKeepIds(cachedMessages, keep, limit); },
 };
 pruneProviderTranscripts(pruneInput);
 assert.deepEqual(cachedMessages.target, ['new transcript'], 'bootstrap reads cannot be evicted before selecting their target');
@@ -1168,7 +1168,7 @@ assert.deepEqual(Object.keys(cachedMessages), ['target'], 'pruning resumes after
 assert.deepEqual(Object.keys(cachedDiffs), ['target']); assert.deepEqual(Object.keys(cachedTodos), ['target']);
 
 // A hidden workspace sees only its own selection; it must not evict the
-// visible workspace's transcript from the connection-scoped map.
+// visible workspace's transcript.
 cachedMessages = { target: ['new transcript'], background: ['old'], stale: ['old'] };
 cachedDiffs = { target: ['new diff'], background: ['old diff'], stale: ['old diff'] };
 cachedTodos = { target: ['new todo'], background: ['old todo'], stale: ['old todo'] };

@@ -2,7 +2,7 @@ import { useEffect, useRef, type Dispatch, type SetStateAction } from 'react';
 
 import type { ScopedOpencodeClient } from '@/shared/protocol/opencode/client';
 import type { FileDiff, Session, SessionStatus, Todo } from '@/shared/protocol/opencode/types';
-import { pruneProviderTranscripts, type MessagesBySession } from '@/features/chat/runtime';
+import { pruneProviderTranscripts } from '@/features/chat/runtime';
 import type { useSessionRuntimeState } from '@/runtime/workspace/use-session-runtime-state';
 
 // Keep a small bounded history so returning to a recent chat paints from
@@ -13,7 +13,6 @@ type ProviderEffectsInput = ReturnType<typeof useSessionRuntimeState> & {
   sessions: Session[];
   sessionsRef: { current: Session[] };
   sessionStatuses: Record<string, SessionStatus>;
-  setMessagesBySession: Dispatch<SetStateAction<MessagesBySession>>;
   setDiffsBySession: Dispatch<SetStateAction<Record<string, FileDiff[]>>>;
   setTodosBySession: Dispatch<SetStateAction<Record<string, Todo[]>>>;
   active: boolean;
@@ -42,7 +41,6 @@ export function useOpencodeProviderEffects({
   sessionsRef,
   sessionStatuses,
   setCurrentSessionId,
-  setMessagesBySession,
   setDiffsBySession,
   setTodosBySession,
   isBootstrappingChat,
@@ -113,10 +111,9 @@ export function useOpencodeProviderEffects({
       conversationSessionId,
       recentSessionIds: recentSessionIdsRef.current,
       sessionStatuses,
-      setMessagesBySession,
       setDiffsBySession,
       setTodosBySession,
       pruneTranscript,
     });
-  }, [active, currentSessionId, conversationSessionId, isBootstrappingChat, pendingDeepLinkTargetRef, pruneTranscript, sessionStatuses, setDiffsBySession, setMessagesBySession, setTodosBySession]);
+  }, [active, currentSessionId, conversationSessionId, isBootstrappingChat, pendingDeepLinkTargetRef, pruneTranscript, sessionStatuses, setDiffsBySession, setTodosBySession]);
 }

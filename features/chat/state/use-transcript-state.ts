@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, type Dispatch, type SetStateAction } from 'react';
 
 import { useAppCore, useAppStore } from '@/runtime/core';
-import { mergeSessionMessageWindow, prependSessionMessageHistory, type SessionMessageRecord } from '@/shared/presentation/format';
+import { mergeSessionMessageWindow, type SessionMessageRecord } from '@/shared/presentation/format';
 import type { ScopedOpencodeClient } from '@/shared/protocol/opencode/client';
 import type { TranscriptReadOptions, TranscriptRefreshMode } from '@/shared/contracts/domain';
 import { pruneByKeepIds } from '@/shared/utilities/prune';
@@ -9,6 +9,7 @@ import { hydrateTranscriptCache, persistTranscriptCache } from '@/features/chat/
 import { recordSessionUsageAndTodos } from '@/features/chat/model/session-ledger';
 import { useLiveTranscript } from '@/features/chat/state/use-live-transcript';
 import { useTranscriptMetadata } from '@/features/chat/state/use-transcript-metadata';
+import { useTranscriptQueries } from '@/features/chat/state/use-transcript-queries';
 import { coalesceRead } from '@/shared/protocol/opencode/in-flight';
 import { isV2Client } from '@/shared/protocol/opencode/contracts/contract';
 import { toMessageRecord } from '@/shared/protocol/opencode/v2/mappers';
@@ -21,7 +22,6 @@ import { getSessionMessage as svcGetSessionMessage, getSessionMessages as svcGet
 export const INITIAL_TRANSCRIPT_LIMIT = MAX_MESSAGE_PAGE_LIMIT;
 export const OLDER_TRANSCRIPT_LIMIT = MAX_MESSAGE_PAGE_LIMIT;
 
-type MessagesBySession = Record<string, SessionMessageRecord[]>;
 type TranscriptFlags = Record<string, boolean>;
 const EMPTY_FLAGS: TranscriptFlags = {};
 
@@ -44,9 +44,6 @@ export function useTranscriptState({
   currentSessionId,
   connectionScope,
   activeProjectPath,
-  messagesBySession,
-  readMessagesBySession,
-  setMessagesBySession,
   setIsRefreshingMessages,
 }: {
   scopeKey: string;
@@ -55,15 +52,15 @@ export function useTranscriptState({
   currentSessionId?: string;
   connectionScope: string;
   activeProjectPath?: string;
-  messagesBySession: MessagesBySession;
-  readMessagesBySession: () => MessagesBySession;
-  setMessagesBySession: Dispatch<SetStateAction<MessagesBySession>>;
   setIsRefreshingMessages: Dispatch<SetStateAction<boolean>>;
 }) {
   const { store } = useAppCore();
   const loadingOlderBySession = useAppStore((state) => state.transcriptUi[scopeKey]?.loadingOlderBySession ?? EMPTY_FLAGS);
   const hydratingSessionIds = useAppStore((state) => state.transcriptUi[scopeKey]?.hydratingSessionIds ?? EMPTY_FLAGS);
-  const { messageWindows, readMessageWindow, setMessageWindows, usageStepsBySession, setUsageStepsBySession, todoRecordsBySession, setTodoRecordsBySession } = useTranscriptMetadata(client);
+  const conversationSessionId = useAppStore((state) => state.conversation[scopeKey]?.sessionId);
+  const { access, messagesBySession, messageWindows } = useTranscriptQueries(client, currentSessionId, conversationSessionId);
+  const { read: readCanonicalSession, window: readMessageWindow } = access;
+  const { usageStepsBySession, setUsageStepsBySession, todoRecordsBySession, setTodoRecordsBySession } = useTranscriptMetadata(client);
   const hydrationRequestRef = useRef<Record<string, symbol>>({});
   const olderRequestRef = useRef<Record<string, symbol>>({});
   // Transcript reads can overlap: a cold window, a prompt-send refresh, a
@@ -113,12 +110,12 @@ export function useTranscriptState({
     client,
     isCurrentClient,
     messagesBySession,
-    readMessagesBySession,
+    readCanonicalSession,
     recordUsageAndTodos,
   });
 
   useEffect(() => {
-    if (!currentSessionId || !activeProjectPath || (readMessagesBySession()[currentSessionId]?.length ?? 0) > 0) {
+    if (!currentSessionId || !activeProjectPath || readCanonicalSession(currentSessionId).length > 0) {
       return;
     }
     const key = `${connectionScope}\u0000${activeProjectPath}\u0000${currentSessionId}`;
@@ -128,11 +125,11 @@ export function useTranscriptState({
     void hydrateTranscriptCache(connectionScope, activeProjectPath, requestedSession, (records) => {
       // A live refresh may have painted first; never let the cache overwrite a
       // fresher window or a session the user has already left.
-      if (currentSessionId !== requestedSession || (readMessagesBySession()[requestedSession]?.length ?? 0) > 0) return;
-      setMessagesBySession((current) => (current[requestedSession]?.length ? current : { ...current, [requestedSession]: records }));
+      if (currentSessionId !== requestedSession || readCanonicalSession(requestedSession).length > 0) return;
+      access.restore(requestedSession, records);
       recordUsageAndTodos(requestedSession, records);
     }, () => isCurrentClient(client) && currentSessionId === requestedSession);
-  }, [activeProjectPath, client, connectionScope, currentSessionId, isCurrentClient, readMessagesBySession, recordUsageAndTodos, setMessagesBySession]);
+  }, [activeProjectPath, client, connectionScope, currentSessionId, isCurrentClient, access, readCanonicalSession, recordUsageAndTodos]);
 
   const beginHydration = useCallback((sessionId: string) => {
     const request = Symbol();
@@ -153,7 +150,7 @@ export function useTranscriptState({
 
   const refreshMessages = useCallback(
     async (sessionId: string, silent = false, options?: TranscriptReadOptions) => {
-      const held = readMessagesBySession()[sessionId] ?? [];
+      const held = readCanonicalSession(sessionId);
       const hasHeld = held.length > 0 || live.hasLocalUsers(sessionId);
       // A live V2 turn reconciles its assistant message alone. Reading the newest
       // page here would re-download the sent prompt and any attachment bytes it
@@ -181,9 +178,9 @@ export function useTranscriptState({
           }
           const record = toMessageRecord(message, sessionId);
           if (!record) return readDisplayedSession(sessionId);
-          const previous = readMessagesBySession()[sessionId] ?? held;
+          const previous = readCanonicalSession(sessionId);
           const canonical = replaceMessageRecord(previous, record);
-          if (canonical !== previous) setMessagesBySession((current) => ({ ...current, [sessionId]: canonical }));
+          if (canonical !== previous) access.update(sessionId, () => canonical);
           live.clearMessage(sessionId, messageId);
           recordUsageAndTodos(sessionId, [record]);
           persist(sessionId, canonical);
@@ -233,12 +230,8 @@ export function useTranscriptState({
           if (!isCurrentClient(client) || !isCurrentGeneration()) {
             return page.records;
           }
-          setMessagesBySession((current) => ({ ...current, [sessionId]: page.records }));
+          access.replace(sessionId, page);
           live.adopt(sessionId, page.records);
-          setMessageWindows((current) => ({
-            ...current,
-            [sessionId]: { nextBefore: page.nextBefore, hasMore: page.hasMore },
-          }));
           recordUsageAndTodos(sessionId, page.records);
           persist(sessionId, page.records);
           return page.records;
@@ -254,11 +247,7 @@ export function useTranscriptState({
         const staleTail = tailRequest < readState.tailApplied;
         if (page.records.length === 0) {
           if (windowMissing && !staleTail) {
-            setMessageWindows((current) => (
-              current[sessionId]
-                ? current
-                : { ...current, [sessionId]: { nextBefore: page.nextBefore, hasMore: page.hasMore } }
-            ));
+            access.update(sessionId, (records) => records, page);
           }
           if (!staleTail) {
             readState.tailApplied = Math.max(readState.tailApplied, tailRequest);
@@ -266,19 +255,15 @@ export function useTranscriptState({
           return live.overlay(sessionId, held);
         }
 
-        const currentHeld = readMessagesBySession()[sessionId] ?? held;
+        const currentHeld = readCanonicalSession(sessionId);
         if (staleTail) {
           // Older responses may still hold records the newer window dropped.
           // Fill gaps in place, but never adopt their window or move the paging
           // cursor backward, and never roll streamed content back.
-          setMessagesBySession((current) => {
-            const previous = current[sessionId] ?? held;
-            const next = mergeSessionMessageWindow(previous, page.records, {
-              applyUpdates: false,
-              adoptUnknownWindow: false,
-            });
-            return next === previous ? current : { ...current, [sessionId]: next };
-          });
+          access.update(sessionId, (previous) => mergeSessionMessageWindow(previous, page.records, {
+            applyUpdates: false,
+            adoptUnknownWindow: false,
+          }));
           live.adopt(sessionId);
           recordUsageAndTodos(sessionId, page.records);
           return page.records;
@@ -293,37 +278,18 @@ export function useTranscriptState({
           // A burst larger than one page landed. Adopt the fetched page and
           // restart history paging from its oldest record instead of
           // downloading bridging pages.
-          setMessagesBySession((current) => ({ ...current, [sessionId]: page.records }));
+          access.replace(sessionId, page);
           live.adopt(sessionId, page.records);
-          setMessageWindows((current) => ({
-            ...current,
-            [sessionId]: { nextBefore: page.nextBefore, hasMore: page.hasMore },
-          }));
           recordUsageAndTodos(sessionId, page.records);
           persist(sessionId, page.records);
           return page.records;
         }
 
         const merged = mergeSessionMessageWindow(currentHeld, page.records);
-        setMessagesBySession((current) => {
-          const previous = current[sessionId] ?? held;
-          const next = mergeSessionMessageWindow(previous, page.records);
-          if (next === previous) {
-            return current;
-          }
-          return { ...current, [sessionId]: next };
-        });
+        // A restored snapshot shares the newest server page only after an
+        // overlap confirms its cursor. Canonical history keeps its last cursor.
+        access.update(sessionId, () => merged, windowMissing ? page : undefined);
         live.adopt(sessionId, page.records);
-        if (windowMissing) {
-          // The newest page overlaps the held records, so it is contiguous with
-          // them. Keep the held history and resume paging from this page's
-          // cursor instead of leaving the window unset.
-          setMessageWindows((current) => (
-            current[sessionId]
-              ? current
-              : { ...current, [sessionId]: { nextBefore: page.nextBefore, hasMore: page.hasMore } }
-          ));
-        }
         recordUsageAndTodos(sessionId, page.records);
         persist(sessionId, merged);
         return page.records;
@@ -334,7 +300,7 @@ export function useTranscriptState({
         finishHydration?.();
       }
     },
-    [beginHydration, client, isCurrentClient, live, persist, readDisplayedSession, readMessagesBySession, readMessageWindow, readStateFor, recordUsageAndTodos, setIsRefreshingMessages, setMessagesBySession, setMessageWindows],
+    [access, beginHydration, client, isCurrentClient, live, persist, readCanonicalSession, readDisplayedSession, readMessageWindow, readStateFor, recordUsageAndTodos, setIsRefreshingMessages],
   );
 
   const loadOlderMessages = useCallback(
@@ -368,18 +334,7 @@ export function useTranscriptState({
           || currentMeta.nextBefore !== meta.nextBefore) {
           return;
         }
-        setMessagesBySession((current) => {
-          const previous = current[sessionId] ?? [];
-          const prepended = prependSessionMessageHistory(previous, page.records);
-          if (prepended === previous) {
-            return current;
-          }
-          return { ...current, [sessionId]: prepended };
-        });
-        setMessageWindows((current) => ({
-          ...current,
-          [sessionId]: { nextBefore: page.nextBefore, hasMore: page.hasMore },
-        }));
+        access.appendOlder(sessionId, meta.nextBefore, page);
         recordUsageAndTodos(sessionId, page.records);
       } finally {
         if (olderRequestRef.current[sessionId] === request) {
@@ -388,11 +343,10 @@ export function useTranscriptState({
         }
       }
     },
-    [client, isCurrentClient, readMessageWindow, readStateFor, recordUsageAndTodos, refreshMessages, scopeKey, setMessageWindows, setMessagesBySession, store],
+    [client, isCurrentClient, readMessageWindow, readStateFor, recordUsageAndTodos, refreshMessages, scopeKey, access, store],
   );
 
   const reset = useCallback(() => {
-    setMessageWindows({});
     store.getState().setTranscriptUi(scopeKey, { loadingOlderBySession: EMPTY_FLAGS, hydratingSessionIds: EMPTY_FLAGS });
     setUsageStepsBySession({});
     setTodoRecordsBySession({});
@@ -400,17 +354,17 @@ export function useTranscriptState({
     olderRequestRef.current = {};
     readStateRef.current = {};
     live.reset();
-  }, [live, scopeKey, setMessageWindows, setTodoRecordsBySession, setUsageStepsBySession, store]);
+  }, [live, scopeKey, setTodoRecordsBySession, setUsageStepsBySession, store]);
 
   // Drop pagination, usage, and plan state for sessions that are no longer kept
   // in memory, mirroring the provider's transcript-cache pruning.
   const prune = useCallback((keepIds: Set<string>, limit: number) => {
-    setMessageWindows((current) => pruneByKeepIds(current, keepIds, limit));
+    access.prune(keepIds, limit);
     setUsageStepsBySession((current) => pruneByKeepIds(current, keepIds, limit));
     setTodoRecordsBySession((current) => pruneByKeepIds(current, keepIds, limit));
     readStateRef.current = pruneByKeepIds(readStateRef.current, keepIds, limit);
     live.prune(keepIds);
-  }, [live, setMessageWindows, setTodoRecordsBySession, setUsageStepsBySession]);
+  }, [access, live, setTodoRecordsBySession, setUsageStepsBySession]);
 
   return {
     messagesBySession: displayedMessages,
