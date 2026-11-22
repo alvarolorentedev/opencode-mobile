@@ -1,12 +1,12 @@
 import { useCallback, type Dispatch, type SetStateAction } from 'react';
 
-import type { useWorkspaceRuntimeState } from '@/runtime/workspace/use-workspace-runtime-state';
+import type { useSessionRuntimeState } from '@/runtime/workspace/use-session-runtime-state';
 import type { FileDiff, Session, Todo } from '@/shared/protocol/opencode/types';
 import type { ApprovalsCatalog } from '@/features/sessions/runtime';
 import type { MessagesBySession } from '@/features/chat/runtime';
 
 type ResetInput = {
-  state: ReturnType<typeof useWorkspaceRuntimeState>;
+  state: ReturnType<typeof useSessionRuntimeState>;
   resetTerminal: () => void;
   resetTranscript: () => void;
   clearRefreshes: () => void;

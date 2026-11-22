@@ -11,5 +11,6 @@ export { hydrateCapabilitiesSnapshot } from './services/capabilities-snapshot';
 export { migrateCapabilitiesSnapshots } from './services/capabilities-snapshot';
 export { persistCapabilitiesSnapshot } from './services/capabilities-snapshot';
 export { useCapabilitiesActions } from './state/use-capabilities-actions';
+export { useCapabilitiesPresentation } from './state/use-capabilities-presentation';
 export { routePrompt } from './services/prompt-routing';
 export { getInitialMode } from './model/opencode-model-selection';

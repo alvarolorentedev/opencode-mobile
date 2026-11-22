@@ -30,7 +30,7 @@ import { MISSION_PATH } from '@/shared/contracts/mission-control';
 import { WorkspaceNative } from '@/runtime/composition/workspace-native';
 import { useMissionWidget } from '@/features/widgets/runtime';
 import { clearWorkspacePresentation, hasWorkspaceDrafts } from '@/runtime/presentation/workspace-presentation';
-import { WorkspaceRuntime } from '@/runtime/workspace/workspace-runtime';
+import { RetainedProject } from '@/runtime/workspace/retained-project';
 import { workspaceKey, type ConnectionRecord, type WorkspaceCatalog, type WorkspaceTarget } from '@/shared/contracts/workspace';
 import type { SharedWorkspaceState, WorkspaceValues } from '@/runtime/workspace/workspace-types';
 import { useCallback, useEffect, useMemo, useState, type PropsWithChildren, type SetStateAction } from 'react';
@@ -201,7 +201,7 @@ export function WorkspaceProvider({ children }: PropsWithChildren) {
         const key = workspaceKey({ connectionId: entry.id, projectPath: path });
         const visible = focus?.connectionId === entry.id && (focus.projectPath === path || current === snapshots[key]);
         const demanded = readTarget?.connectionId === entry.id && (readTarget.projectPath === path || readTarget === focus && visible);
-        return <ServerDataScope key={key} connection={entry} active={demanded}><WorkspaceRuntime
+        return <ServerDataScope key={key} connection={entry} active={demanded}><RetainedProject
           connection={entry} catalog={catalogs[entry.id]} switchConnection={switchConnection} projectPath={path || undefined} shared={shared} network={network} defaults={shell.chatPreferences} isHydrated={isHydrated}
           visible={visible} isConnectionOwner={index === 0} connectSetup={connectSetup} connectionProfiles={connectionProfiles} servicesValue={servicesValue}
           updateSettings={updateWorkspaceSettings} updatePreferences={manager.updatePreferences} publish={manager.publish} forget={manager.forget} />

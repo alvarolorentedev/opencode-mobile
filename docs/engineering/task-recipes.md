@@ -136,7 +136,7 @@ sharing fixed ports across concurrent runs, and testing only the happy path.
 
 ## Provider state field or endpoint
 
-**When:** you add or change provider-owned state, a session field, or an API
+**When:** you add or change a domain state field, a session field, or an API
 endpoint consumed by the app.
 
 **Read only:** [state and data § State Ownership Overview](../architecture/state-and-data.md#state-ownership-overview) and the owning domain section; [architecture § Module Map](../architecture/overview.md#module-map); [API contract](../architecture/api-contract.md) for endpoint changes.
@@ -144,9 +144,10 @@ endpoint consumed by the app.
 **Edit in this order:**
 
 1. Public type: `shared/contracts/domain.ts`.
-2. Value assembly: `runtime/composition/opencode-provider-values.ts`.
-3. Domain wiring: `runtime/composition/use-opencode-provider-composition.ts` and the
-   owning domain hook.
+2. State ownership: TanStack Query for server data and `runtime/core/store.ts`
+   for device data.
+3. Behavior: update the owning feature or the cross-domain command in
+   `runtime/core/commands/`. Bind scoped project inputs only when needed.
 4. Persistence: `runtime/persistence/use-opencode-persistence.ts` and
    `shared/storage/persistence-hydration.ts` only if the field survives relaunch.
 5. Context exposure: `features/chat/context.ts` and the domain context type.

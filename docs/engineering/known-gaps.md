@@ -12,13 +12,11 @@ requires explicit human validation under `AGENTS.md`.
 Closed on 2026-10-18. The coupling hotspot was split without changing behavior:
 
 - `runtime/composition/opencode-provider.tsx` is now a thin wrapper (~33 lines). The
-  domain hooks and their input spreads moved to
-  `runtime/composition/use-opencode-provider-composition.ts` (~410 lines), and the
-  context-provider tree was later replaced by `runtime/core/workspace-scope.ts`
-  under ADR 0051.
+  first composition split became the app-core commands and retained project
+  adapters under ADR 0051. Scoped selectors live in `runtime/core/workspace-scope.ts`.
 - The provider line ratchet in `tests/vitest/architecture.test.ts` dropped from
   500 to 60 in the same change, so the entrypoint cannot regrow into a god
-  object. The repo-wide 500-line ceiling still covers both new files.
+  object. The repo-wide 500-line ceiling still covers runtime modules.
 - `features/chat/ui/chat-view.tsx` renders `TranscriptList`, `ChangesOverlay`,
   and `PendingInteractions` directly; the `ChatContent` pass-through
   (`features/chat/ui/chat-view.tsx` and its barrel) is gone.

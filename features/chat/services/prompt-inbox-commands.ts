@@ -133,7 +133,7 @@ export function createPromptInboxCommands({ cache, clock, readOutbox: read, writ
       // them would re-download the newly delivered prompt and its attachments.
       const records = options?.inboxOnly ? [] : await readMessages(sessionId, silent, options);
       if (!isCurrent()) return records;
-      if (options?.delivered && pending) {
+      if (options?.delivered && pending && !pending.some((prompt) => prompt.id === options.inboxID)) {
         // A delivered prompt becomes a transcript record from its pending data;
         // the stored message (and its inline attachment bytes) is never fetched.
         const pendingIds = new Set(pending.map((prompt) => prompt.id));

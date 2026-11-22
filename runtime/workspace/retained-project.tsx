@@ -1,40 +1,68 @@
-// Per-workspace domain composition. See docs/architecture/overview.md#top-level-runtime-composition.
+// Observe the retained project and publish its scoped presentation to the app shell.
 import { emptySharedInput } from '@/features/sharing/runtime';
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef } from 'react';
+import { memo, useCallback, useEffect, useLayoutEffect, useMemo, type Dispatch, type SetStateAction } from 'react';
 
-import { buildClient, getRequestHeaders, withOidcAuthorizationObject } from '@/shared/protocol/opencode/client';
+import { buildClient, getRequestHeaders, withOidcAuthorizationObject, type OpencodeConnectionSettings } from '@/shared/protocol/opencode/client';
 import { useOidcAccessToken } from '@/shared/auth/oidc/use-oidc-access-token';
-import { getActiveSessions , MAX_ACTIVE_SESSIONS , useApprovalsCatalog , useConnectionLinkActions , usePermissionRulesState , useSessionActions , useSessionCatalog } from '@/features/sessions/runtime';
+import { getActiveSessions, MAX_ACTIVE_SESSIONS, useApprovalsCatalog, usePermissionRulesState, useSessionActions, useSessionCatalog, useSessionPresentation } from '@/features/sessions/runtime';
 import { useConnectionRuntime } from '@/runtime/connections/connection-runtime';
 import { CURRENT_ONBOARDING_VERSION, isOnboardingComplete } from '@/features/onboarding/runtime';
-import { buildOpencodeProjects, resolveActiveProject , useWorktreeState } from '@/features/projects/runtime';
-import { useOpencodeProviderValues } from '@/runtime/composition/opencode-provider-values';
+import { buildOpencodeProjects, resolveActiveProject, useProjectPresentation, useWorktreeState } from '@/features/projects/runtime';
 import { useActivityNotifications } from '@/features/notifications/runtime';
-import { useCapabilitiesActions } from '@/features/ai/runtime';
+import { useCapabilitiesActions, useCapabilitiesPresentation } from '@/features/ai/runtime';
 import { useConversationState } from '@/features/voice/runtime';
-import { useExtensionsState , useMcpState } from '@/features/extensions/runtime';
+import { useExtensionsState, useMcpState } from '@/features/extensions/runtime';
 import { useOpencodeProviderEffects } from '@/runtime/composition/use-opencode-provider-effects';
 import { useOpencodeProviderReset } from '@/runtime/composition/use-opencode-provider-reset';
 import { useWorkspaceRealtime } from '@/runtime/realtime/use-workspace-realtime';
 import { useProjectActions } from '@/runtime/composition/use-project-actions';
-import { useDiffCatalog , useMessageCatalog , usePromptInbox , usePromptLifecycle , useTranscriptReadErrors , useTranscriptState } from '@/features/chat/runtime';
+import { useChatPresentation, useDiffCatalog, useMessageCatalog, usePromptInbox, usePromptLifecycle, useTranscriptReadErrors, useTranscriptState } from '@/features/chat/runtime';
 import { useTerminalState } from '@/features/terminal/runtime';
-import { useWorkspaceRuntimeState } from '@/runtime/workspace/use-workspace-runtime-state';
+import { useSessionRuntimeState } from '@/runtime/workspace/use-session-runtime-state';
 import { useWorkspaceServerData } from '@/runtime/composition/use-workspace-server-data';
 import { useAppCore } from '@/runtime/core';
 import { useQueryActivity, useQueryIdentity } from '@/shared/server-data/client';
 
-import type { WorkspaceRuntimeInput } from '@/runtime/workspace/workspace-types';
+import { serverPreferences } from '@/runtime/core/commands/connection';
+import { defaultChatPreferences, type ChatPreferences } from '@/shared/preferences/opencode-preferences';
+import { workspaceKey } from '@/shared/contracts/workspace';
+import { getServerCapabilities } from '@/shared/protocol/opencode/capabilities';
+import type { useWorkspaceConnections } from '@/runtime/workspace/use-workspace-connections';
+import type { ProjectBindingInput, WorkspaceSnapshot, WorkspaceValues } from '@/runtime/workspace/workspace-types';
 
-export function useOpencodeProviderComposition(input: WorkspaceRuntimeInput) {
+type Manager = ReturnType<typeof useWorkspaceConnections>;
+type Props = Omit<ProjectBindingInput, 'setSettings' | 'setChatPreferences' | 'preferences'> & {
+  defaults: ChatPreferences;
+  updateSettings: Manager['updateSettings'];
+  updatePreferences: Manager['updatePreferences'];
+  publish: (key: string, snapshot: WorkspaceSnapshot) => void;
+  forget: (key: string) => void;
+};
+export const RetainedProject = memo(function RetainedProject({ defaults, updateSettings, updatePreferences, publish, forget, ...props }: Props) {
+  const { store, commands: { session: sessionCommands }, events } = useAppCore();
+  const id = props.connection.id;
+  const key = workspaceKey({ connectionId: id, projectPath: props.projectPath ?? '' });
+  const preferences = useMemo(() => ({ ...defaults, ...serverPreferences(defaultChatPreferences), ...props.connection.preferences }), [defaults, props.connection.preferences]);
+  const setSettings = useCallback<Dispatch<SetStateAction<OpencodeConnectionSettings>>>((next) => {
+    const entry = store.getState().registry.connections.find((candidate) => candidate.id === id);
+    if (entry) updateSettings(id, typeof next === 'function' ? next(entry.settings) : next, key);
+  }, [id, key, store, updateSettings]);
+  const setChatPreferences = useCallback<Dispatch<SetStateAction<ChatPreferences>>>((next) => {
+    const { registry, shell } = store.getState();
+    const entry = registry.connections.find((candidate) => candidate.id === id);
+    if (!entry) return;
+    updatePreferences(id, typeof next === 'function' ? next({ ...shell.chatPreferences, ...serverPreferences(defaultChatPreferences), ...entry.preferences }) : next);
+  }, [id, store, updatePreferences]);
+  const input: ProjectBindingInput = { ...props, preferences, setSettings, setChatPreferences };
+
   const connectionRuntime = useConnectionRuntime(input.connection, input.catalog);
-  const state = useWorkspaceRuntimeState(input, connectionRuntime);
+  const local = useSessionRuntimeState(input, connectionRuntime.connection, connectionRuntime.serverContract);
+  const state = { ...local, ...input.shared, chatPreferences: input.preferences, setChatPreferences: input.setChatPreferences };
   // Connectivity is owned by WorkspaceProvider. NetInfo.configure() is global
   // and tears down existing listeners, so a per-runtime hook would freeze every
   // workspace except the one that mounted last.
   const network = input.network;
   const { connection: inputConnection } = input;
-  const { commands: { session: sessionCommands }, events } = useAppCore();
   const refreshQueue = useMemo(() => events.createProjectRefreshQueue(), [events]);
   useEffect(() => refreshQueue.clear, [refreshQueue]);
   const identity = useQueryIdentity();
@@ -44,10 +72,22 @@ export function useOpencodeProviderComposition(input: WorkspaceRuntimeInput) {
     setOnboardingVersion,
     setOnboardingActive,
     setMcpAuthPrompt,
+    cancelBootstrap,
     clientGenerationRef,
     scopeGenerationRef,
     serverGenerationRef,
   } = state;
+
+  useEffect(() => () => {
+    scopeGenerationRef.current++;
+    serverGenerationRef.current++;
+    cancelBootstrap();
+  }, [cancelBootstrap, scopeGenerationRef, serverGenerationRef]);
+  useLayoutEffect(() => {
+    scopeGenerationRef.current++;
+    serverGenerationRef.current++;
+    cancelBootstrap();
+  }, [inputConnection.revision, cancelBootstrap, scopeGenerationRef, serverGenerationRef]);
 
   const onboardingCompleted = isOnboardingComplete(state.onboardingVersion);
 
@@ -170,7 +210,8 @@ export function useOpencodeProviderComposition(input: WorkspaceRuntimeInput) {
     maxTotal: MAX_ACTIVE_SESSIONS,
   }), [catalog.sessions, catalog.statuses, state.currentSessionId, state.chatPreferences.hideSubagentChats]);
 
-  const streamConnectedRef = useRef(false);
+  const { manager } = connectionRuntime;
+  const isStreamConnected = useCallback(() => manager?.realtime.getStatus() === 'connected', [manager]);
   const { resetTerminal } = terminal;
   const { reset: resetTranscript } = transcript;
   const forgetSessionCreation = useCallback((id?: string) => sessionCommands.forgetSessionCreation(identity, client, id), [client, identity, sessionCommands]);
@@ -232,7 +273,6 @@ export function useOpencodeProviderComposition(input: WorkspaceRuntimeInput) {
     ...project,
     client,
     isCurrentClient,
-    markLocalSend: transcript.markLocalSend,
   });
 
   const { onInvalidated } = connectionRuntime;
@@ -242,11 +282,9 @@ export function useOpencodeProviderComposition(input: WorkspaceRuntimeInput) {
     clearProjectState();
     resetPrompt();
   }), [clearProjectState, onInvalidated, resetPrompt, scopeGenerationRef]);
-  const linkActions = useConnectionLinkActions({ client, isCurrentClient, connectionScope: state.connectionScope,
-    connection: state.connection, activeProjectPath: state.activeProjectPath, openSession: sessionNavigation.openSession, connect: connectionRuntime.connect });
-  const connectionActions = { ...connectionRuntime, ...linkActions,
-    updateSettings: (patch: Partial<typeof state.settings>) => input.setSettings((current) => ({ ...current, ...patch })),
-    switchConnection: input.switchConnection, connectSetup: input.connectSetup, connectionProfiles: input.connectionProfiles, servicesValue: input.servicesValue };
+  const updateConnectionSettings = useCallback((patch: Partial<OpencodeConnectionSettings>) => {
+    setSettings((current) => ({ ...current, ...patch }));
+  }, [setSettings]);
   const { conversation, clearConversationFeedback, toggleConversationMode } = useConversationState({
     scopeKey: state.scopeKey,
     connection: state.connection,
@@ -270,7 +308,7 @@ export function useOpencodeProviderComposition(input: WorkspaceRuntimeInput) {
     connectionScope: state.connectionScope, connected: input.isConnectionOwner && state.connection.status === 'connected',
     currentSessionId: input.visible ? state.currentSessionId : undefined, sessions: sessionCatalog.sessions, sendingState: prompt.sendingState, promptError: prompt.promptError,
     autoApprove: state.chatPreferences.autoApprove,
-    streamConnectedRef,
+    isStreamConnected,
   });
 
   const eventStreamStatus = useWorkspaceRealtime(connectionRuntime.manager?.realtime, {
@@ -318,10 +356,6 @@ export function useOpencodeProviderComposition(input: WorkspaceRuntimeInput) {
     refreshVcsDiff: project.refreshVcsDiff,
   });
 
-  useLayoutEffect(() => {
-    streamConnectedRef.current = eventStreamStatus === 'connected';
-  });
-
   useOpencodeProviderEffects({
     active: input.visible,
     ...domain,
@@ -333,48 +367,60 @@ export function useOpencodeProviderComposition(input: WorkspaceRuntimeInput) {
     pruneTranscript: transcript.prune,
   });
 
-  const values = useOpencodeProviderValues({
-    ...domain,
-    ...transcript,
-    transcriptReadError: state.currentSessionId ? transcriptRead.errors[state.currentSessionId] : undefined,
-    retryTranscript,
-    ...permissionRules,
-    mcpAuthPrompt: state.mcpAuthPrompt,
-    dismissMcpAuth,
-    pendingPromptsBySession: inbox.pendingPromptsBySession,
-    pendingNoticesBySession: inbox.pendingNoticesBySession,
-    cancelPrompt: inbox.cancelPrompt,
-    ...terminal,
-    ...worktree,
-    ...mcp,
-    ...extensions,
-    ...project,
-    ...sessionActions,
-    ...sessionNavigation,
-    ...sessionCreation,
-    ...sessionEditing,
-    ...interactions,
-    ...capabilities,
-    ...prompt,
-    ...connectionActions,
-    activeSessions,
-    refreshActiveSessions: catalog.refresh,
-    conversation,
-    clearConversationFeedback,
-    toggleConversationMode,
-    isHydrated: input.isHydrated,
-    onboardingCompleted,
-    onboardingActive: state.onboardingActive,
-    completeOnboarding,
-    startOnboardingReview,
-    stopOnboardingReview,
-    projects,
-    activeProject,
-    eventStreamStatus,
-    network,
-    reconnect,
-    sharedInput: emptySharedInput,
+  const { currentSessionValue, sessionLibraryValue } = useSessionPresentation({
+    ...domain, ...sessionNavigation, ...sessionCreation, ...sessionEditing, ...sessionActions,
+    activeSessions, refreshActiveSessions: catalog.refresh, refreshSessions: project.refreshSessions,
   });
+  const chatValue = useChatPresentation({
+    ...domain, ...transcript, ...project, ...sessionActions, ...interactions, ...capabilities, ...prompt,
+    activeSession: currentSessionValue.activeSession,
+    transcriptReadError: state.currentSessionId ? transcriptRead.errors[state.currentSessionId] : undefined,
+    retryTranscript, pendingPromptsBySession: inbox.pendingPromptsBySession, pendingNoticesBySession: inbox.pendingNoticesBySession,
+    cancelPrompt: inbox.cancelPrompt, sharedInput: emptySharedInput,
+  });
+
+  const onboardingValue = useMemo<WorkspaceValues['onboardingValue']>(() => ({
+    isHydrated: input.isHydrated, onboardingCompleted, onboardingActive: state.onboardingActive,
+    completeOnboarding, startOnboardingReview, stopOnboardingReview,
+  }), [input.isHydrated, onboardingCompleted, state.onboardingActive, completeOnboarding, startOnboardingReview, stopOnboardingReview]);
+  const serverCapabilities = useMemo(() => getServerCapabilities(state.serverContract), [state.serverContract]);
+  const connectionValue = useMemo<WorkspaceValues['connectionValue']>(() => ({
+    connectionProfiles: input.connectionProfiles, settings: state.settings, updateSettings: updateConnectionSettings,
+    switchConnection: input.switchConnection, connection: state.connection, serverCapabilities, connect: connectionRuntime.connect,
+    connectSetup: input.connectSetup, services: input.servicesValue,
+  }), [input.connectionProfiles, state.settings, updateConnectionSettings, input.switchConnection, state.connection, serverCapabilities,
+    connectionRuntime.connect, input.connectSetup, input.servicesValue]);
+  const diagnosticsValue = useMemo<WorkspaceValues['diagnosticsValue']>(() => ({
+    diagnostics: project.diagnostics, refreshDiagnostics: project.refreshDiagnostics, eventStreamStatus, transport: { network, reconnect },
+  }), [project.diagnostics, project.refreshDiagnostics, eventStreamStatus, network, reconnect]);
+  const capabilitiesValue = useCapabilitiesPresentation(serverData, capabilities);
+  const preferencesValue = useMemo<WorkspaceValues['preferencesValue']>(() => ({
+    chatPreferences: state.chatPreferences, updateChatPreferences: capabilities.updateChatPreferences,
+  }), [state.chatPreferences, capabilities.updateChatPreferences]);
+  const { projectsValue, projectFilesValue } = useProjectPresentation({ ...domain, ...project, ...worktree, activeProject, projects });
+  const { mcpAuthPrompt } = state;
+  const { savedPermissions, refreshSavedPermissions, removeSavedPermission } = permissionRules;
+  const approvalsValue = useMemo<WorkspaceValues['approvalsValue']>(() => ({
+    approvals: { mcpAuth: mcpAuthPrompt, dismissMcpAuth, savedPermissions, refreshSavedPermissions, removeSavedPermission },
+  }), [mcpAuthPrompt, dismissMcpAuth, savedPermissions, refreshSavedPermissions, removeSavedPermission]);
+  const conversationValue = useMemo<WorkspaceValues['conversationValue']>(() => ({
+    conversation, clearConversationFeedback, toggleConversationMode,
+  }), [conversation, clearConversationFeedback, toggleConversationMode]);
+  const { terminals, activeTerminalId, terminalRuntime, terminalConnection, refreshTerminals, createTerminal, openTerminal, sendTerminalInput, closeTerminal } = terminal;
+  const terminalValue = useMemo<WorkspaceValues['terminalValue']>(() => ({
+    terminals, activeTerminalId, terminalRuntime, terminalConnection, refreshTerminals, createTerminal, openTerminal, sendTerminalInput, closeTerminal,
+  }), [terminals, activeTerminalId, terminalRuntime, terminalConnection, refreshTerminals, createTerminal, openTerminal, sendTerminalInput, closeTerminal]);
+  const { mcpStatuses, refreshMcpServers, addMcpServer, connectMcpServer, disconnectMcpServer, mcpOAuth } = mcp;
+  const mcpValue = useMemo<WorkspaceValues['mcpValue']>(() => ({
+    mcpStatuses, refreshMcpServers, addMcpServer, connectMcpServer, disconnectMcpServer, mcpOAuth,
+  }), [mcpStatuses, refreshMcpServers, addMcpServer, connectMcpServer, disconnectMcpServer, mcpOAuth]);
+  const extensionItems = extensions.extensions;
+  const extensionsValue = useMemo(() => ({ extensions: extensionItems }), [extensionItems]);
+  const values = useMemo<WorkspaceValues>(() => ({
+    onboardingValue, connectionValue, diagnosticsValue, capabilitiesValue, preferencesValue, projectsValue, projectFilesValue,
+    currentSessionValue, sessionLibraryValue, chatValue, approvalsValue, conversationValue, terminalValue, mcpValue, extensionsValue,
+  }), [onboardingValue, connectionValue, diagnosticsValue, capabilitiesValue, preferencesValue, projectsValue, projectFilesValue,
+    currentSessionValue, sessionLibraryValue, chatValue, approvalsValue, conversationValue, terminalValue, mcpValue, extensionsValue]);
 
   const suspend = useCallback(() => {
     scopeGenerationRef.current++; serverGenerationRef.current++;
@@ -386,14 +432,17 @@ export function useOpencodeProviderComposition(input: WorkspaceRuntimeInput) {
     Object.values(approvalsCatalog.pendingPermissionsBySession).some((items) => items.length > 0) ||
     Object.values(approvalsCatalog.pendingQuestionsBySession).some((items) => items.length > 0) ||
     pendingSessionIds.length > 0 || terminal.terminalRuntime.instances.length > 0;
-  return useMemo(() => ({ libraryVisible: state.activeSessionsVisible, revision: input.connection.revision, enabled: input.connection.enabled, values, busy, suspend, catalogClient, catalogSessions: catalog.sessions, catalogStatuses: catalog.statuses,
+  const snapshot = useMemo<WorkspaceSnapshot>(() => ({ libraryVisible: state.activeSessionsVisible, revision: input.connection.revision, enabled: input.connection.enabled, values, busy, suspend, catalogClient, catalogSessions: catalog.sessions, catalogStatuses: catalog.statuses,
     loadProjectCatalog: project.loadProjectCatalog,
     pendingPermissions: approvalsCatalog.pendingPermissionsBySession, pendingQuestions: approvalsCatalog.pendingQuestionsBySession,
     native: { settings: state.settings, catalogClient, contract: state.serverContract, isCurrentCatalogClient,
       connectionScope: state.connectionScope, currentSessionId: state.currentSessionId, sessions: sessionCatalog.sessions,
       activeSessions, todoRecordsBySession: transcript.todoRecordsBySession,
-      todosBySession: diffCatalog.todosBySession, streamConnectedRef },
+      todosBySession: diffCatalog.todosBySession, isStreamConnected },
   }), [state.activeSessionsVisible, input.connection.revision, input.connection.enabled, values, busy, suspend, catalogClient, catalog.sessions, catalog.statuses, project.loadProjectCatalog, approvalsCatalog.pendingPermissionsBySession,
     approvalsCatalog.pendingQuestionsBySession, state.settings, state.serverContract, isCurrentCatalogClient, state.connectionScope,
-    state.currentSessionId, sessionCatalog.sessions, activeSessions, transcript.todoRecordsBySession, diffCatalog.todosBySession]);
-}
+    state.currentSessionId, sessionCatalog.sessions, activeSessions, transcript.todoRecordsBySession, diffCatalog.todosBySession, isStreamConnected]);
+  useLayoutEffect(() => { publish(key, snapshot); }, [key, publish, snapshot]);
+  useLayoutEffect(() => () => forget(key), [forget, key]);
+  return null;
+});

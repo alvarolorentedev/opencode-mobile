@@ -32,7 +32,6 @@ export type PromptCommandInput = {
   chatPreferences: ChatPreferences;
   readSettings: () => OpencodeConnectionSettings;
   refreshSessions: () => Promise<unknown>;
-  markLocalSend: (sessionId: string) => void;
   refreshSessionDiff: (sessionId: string, silent?: boolean, messageId?: string, records?: SessionMessageRecord[]) => Promise<unknown>;
   refreshSessionTodos: (sessionId: string) => Promise<unknown>;
   scheduleSessionRefresh: (sessionId: string, options?: SessionRefreshOptions) => void;
@@ -47,13 +46,14 @@ type PromptOperations = {
   setError: (error: { message: string; occurredAt: number; sessionId?: string }) => void;
   clearDiffPin: (sessionId: string) => void;
   clearBusyNotification: (key: string) => void;
+  markLocalSend: (sessionId: string) => void;
   clock: () => number;
 };
 
 export function createPromptSubmissionActions({
   submitPrompt, client, isCurrentClient, activeProjectPath, connectionScope, sessions, availableAgents,
   currentConfig, availableModels, availableProviders, chatPreferences, readSettings, sessionStatuses, messagesBySession, refreshSessions,
-  markLocalSend, refreshSessionDiff, refreshSessionTodos, scheduleSessionRefresh,
+  refreshSessionDiff, refreshSessionTodos, scheduleSessionRefresh,
 }: PromptCommandInput, operations: PromptOperations) {
   async function sendPrompt(
     sessionId: string,
@@ -173,7 +173,7 @@ export function createPromptSubmissionActions({
       const resolvedContext = context?.map((item) => item.kind === 'file' && root && !item.path.startsWith('/')
         ? { ...item, path: `${root}/${item.path}` }
         : item);
-      markLocalSend(sessionId);
+      operations.markLocalSend(sessionId);
       await submitPrompt({
         sessionID: sessionId,
         agent,

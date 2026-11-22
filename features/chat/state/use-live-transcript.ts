@@ -7,6 +7,7 @@ import type { OpencodeEvent } from '@/shared/protocol/opencode/events';
 import { stringField } from '@/shared/protocol/opencode/v2/fields';
 import { isV2Client } from '@/shared/protocol/opencode/contracts/contract';
 import {
+  getLiveTranscriptBuffer,
   liveTranscriptRecord,
   overlayLiveRecords,
   reduceLiveEvent,
@@ -37,15 +38,7 @@ export function useLiveTranscript({ scopeKey, client, isCurrentClient, messagesB
   const readBuffer = useCallback(() => scopes.get(scopeKey), [scopeKey, scopes]);
   // Stream events write synchronously to the store's buffer. Only a paint
   // revision notifies React, so token deltas do not wake every subscriber.
-  const ensureBuffer = useCallback(() => {
-    const existing = readBuffer();
-    if (existing) return existing;
-    const buffer: NonNullable<ReturnType<typeof readBuffer>> = {
-      messages: new Map(), reconcileOnPage: new Map(), localUsers: new Map(), localSends: new Map(),
-    };
-    scopes.set(scopeKey, buffer);
-    return buffer;
-  }, [readBuffer, scopeKey, scopes]);
+  const ensureBuffer = useCallback(() => getLiveTranscriptBuffer(scopes, scopeKey), [scopeKey, scopes]);
   const paint = useCallback(() => store.getState().setTranscriptUi(scopeKey, (current) => ({ paintRevision: current.paintRevision + 1 })), [scopeKey, store]);
   const timersRef = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
   const ledgerRef = useRef<Set<string>>(new Set());
@@ -200,10 +193,6 @@ export function useLiveTranscript({ scopeKey, client, isCurrentClient, messagesB
 
   const hasLocalUsers = useCallback((sessionId: string) => Boolean(readBuffer()?.localUsers.get(sessionId)?.length), [readBuffer]);
 
-  const markLocalSend = useCallback((sessionId: string) => {
-    ensureBuffer().localSends.set(sessionId, Date.now());
-  }, [ensureBuffer]);
-
   const isLocalSendRecent = useCallback((sessionId: string) => {
     const timestamps = readBuffer()?.localSends;
     const sentAt = timestamps?.get(sessionId);
@@ -231,8 +220,8 @@ export function useLiveTranscript({ scopeKey, client, isCurrentClient, messagesB
     }
   }, [clearSession, readBuffer]);
 
-  const actions = useMemo(() => ({ applyEvent, activeMessageId, clearMessage, clearSession, deferReconcileToPage, overlay, adopt, appendUserMessage, hasLocalUsers, markLocalSend, isLocalSendRecent, reset, prune }),
-    [adopt, applyEvent, activeMessageId, appendUserMessage, clearMessage, clearSession, deferReconcileToPage, hasLocalUsers, isLocalSendRecent, markLocalSend, overlay, prune, reset]);
+  const actions = useMemo(() => ({ applyEvent, activeMessageId, clearMessage, clearSession, deferReconcileToPage, overlay, adopt, appendUserMessage, hasLocalUsers, isLocalSendRecent, reset, prune }),
+    [adopt, applyEvent, activeMessageId, appendUserMessage, clearMessage, clearSession, deferReconcileToPage, hasLocalUsers, isLocalSendRecent, overlay, prune, reset]);
   const readDisplayedSession = useCallback((sessionId: string) => overlay(sessionId, readMessagesBySession()[sessionId] ?? EMPTY_RECORDS), [overlay, readMessagesBySession]);
   const displayedMessages = useMemo(() => {
     const buffer = readBuffer();

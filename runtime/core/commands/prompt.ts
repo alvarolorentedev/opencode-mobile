@@ -1,4 +1,4 @@
-import { createPromptInboxCommands, createPromptSubmissionActions, EMPTY_OUTBOX, reconcilePromptSettlement, type PromptCommandInput, type PromptSubmission } from '@/features/chat/runtime';
+import { createPromptInboxCommands, createPromptSubmissionActions, EMPTY_OUTBOX, getLiveTranscriptBuffer, reconcilePromptSettlement, type PromptCommandInput, type PromptSubmission } from '@/features/chat/runtime';
 import type { CommandContext } from '@/runtime/core/commands/context';
 import type { PromptUiState } from '@/runtime/core/store';
 
@@ -37,6 +37,9 @@ export function createPromptCommands({ store, clock, queryClient }: Pick<Command
       finish,
       setError: setPromptError,
       clearBusyNotification: (key: string) => busyNotifications.delete(key),
+      markLocalSend(sessionId: string) {
+        getLiveTranscriptBuffer(store.getState().transcriptLive, scopeKey).localSends.set(sessionId, clock());
+      },
       clearDiffPin(sessionId: string) {
         setChat(scopeKey, (current) => ({ selectedDiffMessageBySession: { ...current.selectedDiffMessageBySession, [sessionId]: undefined } }));
       },

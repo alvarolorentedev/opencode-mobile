@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { QueryClient } from '@tanstack/react-query';
 
 import { createSessionNavigationCommands } from '@/runtime/core/commands/session-navigation';
+import { getLiveTranscriptBuffer } from '@/features/chat/model/live-transcript';
 import { forgetSessionCreation, recentlyCreatedSessionIds, sessionCreationCommands } from '@/features/sessions/services/session-creation';
 import { sessionCatalogAccess } from '@/features/sessions/services/session-catalog-access';
 import { sessionEditCommands } from '@/features/sessions/services/session-editing';
@@ -363,7 +364,7 @@ describe('non-blocking prompt reconciliation', () => {
       notifyTaskFinished: vi.fn(),
       trackPendingTaskFinishedNotification: vi.fn(async () => undefined),
     };
-    const { usePromptLifecycle } = await loadPromptLifecycle(runtime, {
+    const { usePromptLifecycle, store } = await loadPromptLifecycle(runtime, {
     '@/features/notifications/services/notifications': notifications,
     "@/features/chat/model/system-prompt": preferences,
     "@/features/ai/model/opencode-model-selection": models,
@@ -374,7 +375,6 @@ describe('non-blocking prompt reconciliation', () => {
     "@/features/ai/services/prompt-routing": { routePrompt: async () => undefined }
   });
     const submitPrompt = vi.fn(async () => ({ id: 'u1', sessionId: 's', createdAt: 1, text: 'Hello', attachments: [], delivery: 'steer', state: 'waiting' }));
-    const markLocalSend = vi.fn();
     const refreshSessionDiff = vi.fn(async () => []);
     const refreshSessionTodos = vi.fn(async () => []);
     const scheduleSessionRefresh = vi.fn();
@@ -391,7 +391,6 @@ describe('non-blocking prompt reconciliation', () => {
       chatPreferences: { ...preferences.defaultChatPreferences, mode: 'summary' },
       settingsRef: { current: { serverUrl: 'http://server', username: '' } },
       refreshSessions: vi.fn(async () => [{ id: 's', title: 'chat' }]),
-      markLocalSend,
       refreshSessionDiff,
       refreshSessionTodos,
       scheduleSessionRefresh,
@@ -399,6 +398,7 @@ describe('non-blocking prompt reconciliation', () => {
       submitPrompt,
     };
     runtime.mount(usePromptLifecycle, input);
+    const markLocalSend = vi.spyOn(getLiveTranscriptBuffer(store.getState().transcriptLive, input.scopeKey).localSends, 'set');
 
     let resolved = false;
     const sending = runtime.value.sendPrompt('s', 'Hello').then((value: boolean) => {
@@ -410,7 +410,7 @@ describe('non-blocking prompt reconciliation', () => {
     await expect(sending).resolves.toBe(true);
     expect(submitPrompt).toHaveBeenCalledOnce();
     expect(submitPrompt).toHaveBeenCalledWith(expect.objectContaining({ agent: 'build' }), 'steer');
-    expect(markLocalSend).toHaveBeenCalledWith('s');
+    expect(markLocalSend).toHaveBeenCalledWith('s', expect.any(Number));
     runtime.update({ availableAgents: [] });
     await expect(runtime.value.sendPrompt('s', 'Keep this draft')).rejects.toThrow('chat:composer.noEligibleAgent');
     expect(submitPrompt).toHaveBeenCalledOnce();

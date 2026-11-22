@@ -33,15 +33,12 @@ describe('architecture ratchets', () => {
       return files;
     }
 
-    // 1. The provider orchestrates domains; it should not regrow into a god object.
-    // Composition lives in runtime/composition/use-opencode-provider-composition.ts and the
-    // context wiring in runtime/workspace/domain-provider-tree.tsx; the entrypoint stays
-    // a thin wrapper so it cannot accumulate orchestration again.
+    // The provider mounts the application core and workspace shell.
     const provider = await read('runtime/composition/opencode-provider.tsx');
     const providerLines = provider.split('\n').length;
     assert.ok(
       providerLines <= 60,
-      `runtime/composition/opencode-provider.tsx is ${providerLines} lines. Keep it a thin wrapper over use-opencode-provider-composition.ts / opencode-provider-tree.tsx instead of growing the provider.`,
+      `runtime/composition/opencode-provider.tsx is ${providerLines} lines. Keep the app-core entrypoint at or below 60 lines.`,
     );
 
     // 1b. No source file may exceed the readable-size ceiling. Generated locale
@@ -88,7 +85,7 @@ describe('architecture ratchets', () => {
       'WorkspaceProvider must own the single connectivity monitor.',
     );
     assert.doesNotMatch(
-      await read('runtime/composition/use-opencode-provider-composition.ts'),
+      await read('runtime/workspace/retained-project.tsx'),
       /useNetworkStatus|use-network-status/,
       'Each workspace runtime must consume the shared network snapshot, not configure NetInfo itself.',
     );

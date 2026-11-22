@@ -67,9 +67,9 @@ describe('feature boundaries', () => {
         [/new QueryClient\s*\(/, ['shared/server-data/client.tsx', 'shared/server-data/query-client.ts']],
         [/<ServerDataProvider(?:\s|>)/, ['runtime/composition/opencode-provider.tsx']],
         [/<ConnectionCatalog(?:\s|>|\/)/, ['runtime/workspace/workspace-provider.tsx']],
-        [/<WorkspaceRuntime(?:\s|>)/, ['runtime/workspace/workspace-provider.tsx']],
+        [/<RetainedProject(?:\s|>)/, ['runtime/workspace/workspace-provider.tsx']],
         [/\buseWorkspaceConnections\s*\(/, ['runtime/workspace/use-workspace-connections.ts', 'runtime/workspace/workspace-provider.tsx']],
-        [/\buseOpencodeProviderComposition\s*\(/, ['runtime/composition/use-opencode-provider-composition.ts', 'runtime/workspace/workspace-runtime.tsx']],
+        [/\b(?:useOpencodeProviderComposition|useOpencodeProviderValues|WorkspaceRuntime|eventActionsRef)\b/, []],
       ];
       for (const [mount, allowed] of owners) if (mount.test(mod.source) && !allowed.includes(mod.file)) problems.push(`${mod.file}: duplicate shared runtime owner`);
       for (const edge of mod.imports) {
@@ -98,7 +98,7 @@ describe('feature boundaries', () => {
     assert.deepEqual(cycles(featureGraph), [], 'Feature dependencies, including type imports, must be acyclic.');
     assert.deepEqual(cycles(graph), [], 'Value imports must not create module cycles.');
     const uiReachable = [...reachable(graph, 'runtime/ui.ts')];
-    assert.deepEqual(uiReachable.filter((file) => file.startsWith('runtime/shell/') || file.startsWith('runtime/composition/') || /workspace-provider|workspace-runtime|connection-runtime/.test(file) || /^features\/[^/]+\/ui\//.test(file)), [], 'The scope API must not reach root composition or feature presentation.');
+    assert.deepEqual(uiReachable.filter((file) => file.startsWith('runtime/shell/') || file.startsWith('runtime/composition/') || /workspace-provider|retained-project|connection-runtime/.test(file) || /^features\/[^/]+\/ui\//.test(file)), [], 'The scope API must not reach root composition or feature presentation.');
     assert.deepEqual(modules.find((mod) => mod.file === 'runtime/ui.ts')!.imports.flatMap((edge) => edge.symbols).sort(), ['WorkspaceScope', 'WorkspaceScopeContext', 'useUpdateBlocker'].sort());
   });
 

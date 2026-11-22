@@ -106,11 +106,10 @@ Used primarily by tab icons.
 
 #### Responsibility
 
-- thin entrypoint that mounts the provider tree with the composition unit's values
+- mounts the application core and workspace shell
 
-Orchestration lives in `runtime/composition/use-opencode-provider-composition.ts` and the
-context wiring in `runtime/core/workspace-scope.ts`; the entrypoint is held
-to 60 lines by the architecture ratchet and only re-exports the public types.
+App commands live in `runtime/core/commands/`. The scope selectors live in
+`runtime/core/workspace-scope.ts`. The entrypoint stays within the 60-line ratchet.
 
 The public UI contract is exposed through domain hooks from `features/chat/context.ts` (`useOnboarding`, `useConnection`, `useDiagnostics`, `useCapabilities`, `usePreferences`, `useProjects`, `useProjectFiles`, `useCurrentSession`, `useSessionLibrary`, `useChat`, `useApprovals`, `useConversation`, `useTerminal`, `useMcp`), each typed by its matching `*ContextValue`. There is no combined runtime context value.
 

@@ -3,13 +3,13 @@ import { useEffect, useRef, type Dispatch, type SetStateAction } from 'react';
 import type { ScopedOpencodeClient } from '@/shared/protocol/opencode/client';
 import type { FileDiff, Session, SessionStatus, Todo } from '@/shared/protocol/opencode/types';
 import { pruneProviderTranscripts, type MessagesBySession } from '@/features/chat/runtime';
-import type { useWorkspaceRuntimeState } from '@/runtime/workspace/use-workspace-runtime-state';
+import type { useSessionRuntimeState } from '@/runtime/workspace/use-session-runtime-state';
 
 // Keep a small bounded history so returning to a recent chat paints from
 // memory. Pruning still enforces the record cap per session.
 const RECENT_TRANSCRIPT_SESSIONS = 3;
 
-type ProviderEffectsInput = ReturnType<typeof useWorkspaceRuntimeState> & {
+type ProviderEffectsInput = ReturnType<typeof useSessionRuntimeState> & {
   sessions: Session[];
   sessionsRef: { current: Session[] };
   sessionStatuses: Record<string, SessionStatus>;

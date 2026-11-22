@@ -708,8 +708,8 @@ providers/opencode-provider-types.ts,shared/protocol/opencode/types.ts,split
 providers/opencode-provider-utils.ts,features/projects/model/project-utils.ts,split
 providers/opencode-provider-utils.ts,features/sessions/model/session-utils.ts,split
 providers/opencode-provider-utils.ts,shared/utilities/prune.ts,split
-providers/opencode-provider-values-input.ts,runtime/composition/opencode-provider-values-input.ts,moved
-providers/opencode-provider-values.ts,runtime/composition/opencode-provider-values.ts,moved
+providers/opencode-provider-values-input.ts,runtime/workspace/workspace-types.ts,moved
+providers/opencode-provider-values.ts,features/chat/state/use-chat-presentation.ts,moved
 providers/opencode-provider.tsx,features/ai/model/types.ts,split
 providers/opencode-provider.tsx,features/chat/model/types.ts,split
 providers/opencode-provider.tsx,features/connections/model/types.ts,split
@@ -771,7 +771,7 @@ providers/use-app-updates.ts,features/updates/state/use-app-updates.ts,moved
 providers/use-capabilities-actions.ts,features/ai/state/use-capabilities-actions.ts,moved
 providers/use-coalesced-refresh.ts,runtime/realtime/use-coalesced-refresh.ts,moved
 providers/use-connect-state.ts,features/cloud-link/state/use-connect-state.ts,moved
-providers/use-connection-link-actions.ts,features/sessions/state/use-connection-link-actions.ts,moved
+providers/use-connection-link-actions.ts,runtime/core/commands/session-navigation.ts,moved
 providers/use-connection-profiles.ts,features/connections/state/use-connection-profiles.ts,moved
 providers/use-connection-retry.ts,features/connections/state/use-connection-retry.ts,moved
 providers/use-conversation-keep-awake.ts,features/voice/state/use-conversation-keep-awake.ts,moved
@@ -782,7 +782,7 @@ providers/use-mcp-state.ts,features/extensions/state/use-mcp-state.ts,moved
 providers/use-native-surfaces.ts,features/sessions/state/use-native-surfaces.ts,moved
 providers/use-network-status.ts,shared/network/use-network-status.ts,moved
 providers/use-opencode-persistence.ts,runtime/persistence/use-opencode-persistence.ts,moved
-providers/use-opencode-provider-composition.ts,runtime/composition/use-opencode-provider-composition.ts,moved
+providers/use-opencode-provider-composition.ts,runtime/workspace/retained-project.tsx,moved
 providers/use-opencode-provider-effects.ts,runtime/composition/use-opencode-provider-effects.ts,moved
 providers/use-opencode-provider-reset.ts,runtime/composition/use-opencode-provider-reset.ts,moved
 providers/use-opencode-realtime.ts,runtime/realtime/use-opencode-realtime.ts,moved
@@ -837,7 +837,7 @@ providers/workspace-native.tsx,runtime/composition/workspace-native.tsx,moved
 providers/workspace-presentation.ts,runtime/presentation/workspace-presentation.ts,moved
 providers/workspace-project-groups.ts,features/projects/model/workspace-project-groups.ts,moved
 providers/workspace-provider.tsx,runtime/workspace/workspace-provider.tsx,moved
-providers/workspace-runtime.tsx,runtime/workspace/workspace-runtime.tsx,moved
+providers/workspace-runtime.tsx,runtime/workspace/retained-project.tsx,moved
 providers/workspace-storage.ts,shared/storage/workspace-storage.ts,moved
 providers/workspace-types.ts,runtime/workspace/workspace-types.ts,split
 providers/workspace-types.ts,shared/contracts/workspace.ts,split
@@ -1043,3 +1043,7 @@ uniwind-types.d.ts,uniwind-types.d.ts,retained
 vitest.config.mts,vitest.config.mts,retained
 widgets/session-widget-task.tsx,features/widgets/background.tsx,moved
 widgets/session-widget.tsx,features/widgets/ui/session-widget.tsx,moved
+runtime/composition/opencode-provider-values-input.ts,runtime/workspace/workspace-types.ts,moved
+runtime/composition/opencode-provider-values.ts,features/chat/state/use-chat-presentation.ts,moved
+runtime/composition/use-opencode-provider-composition.ts,runtime/workspace/retained-project.tsx,moved
+runtime/workspace/workspace-runtime.tsx,runtime/workspace/retained-project.tsx,moved

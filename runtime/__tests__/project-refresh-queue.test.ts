@@ -20,6 +20,7 @@ describe('project refresh queue', () => {
     const queue = createProjectRefreshQueue();
     const actions = refreshActions();
     queue.scheduleSession('s', { inboxOnly: true, delivered: true, inboxID: 'pending' }, actions);
+    queue.scheduleSession('s', { inboxOnly: true, inboxID: 'later-enqueue' }, actions);
     queue.scheduleSession('s', { messages: true, messageId: 'assistant' }, actions);
     queue.scheduleSession('s', { messages: true, messageMode: 'replace', diff: true, delayMs: 50 }, actions);
     await vi.advanceTimersByTimeAsync(49);

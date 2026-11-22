@@ -87,7 +87,7 @@ During the migration the provider composition below remains the current owner of
 domain state; it may read the core as an adapter and must not gain new state.
 
 The dominant design decision is central orchestration through the provider layer:
-`runtime/composition/opencode-provider.tsx` mounts `WorkspaceProvider`, which coordinates the app-store connection registry and the app-wide coordinators. Each retained connection/project branch mounts a headless `WorkspaceRuntime`, reusing `use-opencode-provider-composition.ts`. Domain hooks select the focused or scoped values from the app core; there is no per-domain context provider tree.
+`runtime/composition/opencode-provider.tsx` mounts `WorkspaceProvider`, which coordinates the app-store connection registry and the app-wide coordinators. Each retained project subscribes to its scoped data through `runtime/workspace/retained-project.tsx`. App-core commands run cross-domain actions. Domain hooks select the focused or scoped values from the app core; there is no per-domain context provider tree.
 
 This composition unit is the application's effective domain layer. It owns:
 
@@ -125,8 +125,8 @@ from the changing workspace snapshot registry. The stable presentation map
 background workspace publish cannot invalidate a draft consumer. Chat reads
 actions and focus from the actions context. The connection, project, session
 and voice hooks bind their app commands where the screen uses them. The root
-provides the incoming share view to Chat. `WorkspaceRuntime` is wrapped in
-`React.memo` so unchanged runtimes skip parent-driven renders.
+provides the incoming share view to Chat. The retained project adapter uses
+`React.memo` so an unchanged project can skip parent-driven renders.
 
 Connectivity is owned once by `WorkspaceProvider`. `NetInfo.configure()` is
 process-global and resets previously registered listeners, so mounting
@@ -229,9 +229,9 @@ The completion version, preference schema and first-run migration are unchanged.
 
 - `runtime/composition/opencode-provider.tsx`
   Thin entrypoint: creates the app core and mounts the workspace registry.
-- `runtime/composition/use-opencode-provider-composition.ts`
-  The orchestrator: wires the domain hooks, assembles their inputs, and derives
-  the domain values. This is the application's effective domain layer.
+- `runtime/workspace/retained-project.tsx`
+  Retains scoped subscriptions and publishes the project's views. The app
+  core owns navigation, submission, connection and event commands.
 - `runtime/core/workspace-scope.ts`
   Focused/scoped value selectors and the scope carriers. There is no domain
   context provider tree.
@@ -274,9 +274,9 @@ The completion version, preference schema and first-run migration are unchanged.
 - `runtime/core/events.ts` and `shared/protocol/opencode/event-dispatch.ts`
   Event commands read device state from the store and apply protocol events
   through scoped transcript, catalog and interaction operations.
-- `runtime/composition/opencode-provider-values.ts`
-  Derived selectors and the memoized domain context values rendered by
-  `OpencodeProvider`.
+- `features/chat/state/use-chat-presentation.ts` and
+  `features/sessions/state/use-session-presentation.ts`
+  Memoized views for the transcript, approvals, active chat and session library.
 - `runtime/composition/use-project-actions.ts`
   Project catalog, project selection, session/file
   refresh, file search/open/save/download, and diagnostics actions.
@@ -408,19 +408,15 @@ MCP and worktree callback bridges use stable callbacks backed by the provider's
 latest refs. Conversation submission similarly uses the latest send action
 without restarting a submitted turn when message state changes.
 
-These domain hooks are composed by `use-opencode-provider-composition.ts`, which
-is the single orchestrator. Each hook receives the current client (and, when it
-must call a later-defined provider callback, a latest-ref) and exposes its own
-reset, so the provider's project/connection reset composes them instead of
-inlining state.
+The retained project binds feature subscriptions to the current client.
+Feature hooks publish presentation data and supply cleanup where needed.
+`runtime/core/commands/` and `runtime/core/events.ts` own cross-domain behavior.
 
 `tests/vitest/architecture.test.ts` (run by `npm run test:vitest`) enforces a repo-wide readable-size ratchet: every source
 file under `app/`, `features/`, `runtime/`, `shared/`, and `features/widgets/` must stay at
 or below **500 lines** (200-400 is the target; generated `shared/i18n/resources.ts` is
 exempt), `runtime/composition/opencode-provider.tsx` must stay a thin wrapper at or below
-**60 lines** because composition lives in
-`runtime/composition/use-opencode-provider-composition.ts`, and the public context surface
-cannot grow past 127 members. When a limit is genuinely outgrown, split the file
+**60 lines**. The public context surface cannot grow past 127 members. When a limit is genuinely outgrown, split the file
 into the right layer and, if needed, lower the number in the same change.
 
 ### Services
@@ -1103,11 +1099,11 @@ This is one of the densest parts of the architecture and would need careful pari
 
 The highest-coupling areas are:
 
-### `runtime/composition/use-opencode-provider-composition.ts`
+### Project retention
 
-This is the main behavioral hotspot. Changes here can affect nearly every screen.
-The wrapper (`opencode-provider.tsx`) and the tree (`opencode-provider-tree.tsx`)
-stay mechanical so orchestration pressure is visible in one file.
+The retained project adapter pairs its feature subscriptions with the
+connection's data partition. Changes to that binding can affect the Chat,
+Project, Terminal and Settings panes.
 
 ### Prompt lifecycle
 

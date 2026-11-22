@@ -13,3 +13,4 @@ export { useProjectFileActions } from './state/use-project-file-actions';
 export { useProjectRuntimeState } from './state/use-project-runtime-state';
 export { useWorktreeState } from './state/use-worktree-state';
 export { vcsInfoOptions } from './services/queries/status';
+export { useProjectPresentation } from './state/use-project-presentation';

@@ -1,5 +1,6 @@
 import type { QueryClient } from '@tanstack/react-query';
 
+import { getLiveTranscriptBuffer } from '@/features/chat/model/live-transcript';
 import type { createPromptCommands as CreatePromptCommands } from '@/runtime/core/commands/prompt';
 import { createAppStore, type AppState, type AppStore } from '@/runtime/core/store';
 import { createServerQueryClient } from '@/shared/server-data/query-client';
@@ -35,7 +36,7 @@ function coreImports(runtime: Runtime, store: AppStore, prompt: ReturnType<typeo
 
 export async function fixturePromptCommands(store: AppStore, imports: Record<string, unknown>, globals?: Record<string, unknown>) {
   const chat = await loadTs(['features/chat/services/prompt-submission.ts', 'features/chat/services/prompt-settlement.ts'], imports, globals);
-  return commandsFor(store, createServerQueryClient(), chat, globals);
+  return commandsFor(store, createServerQueryClient(), { ...chat, getLiveTranscriptBuffer }, globals);
 }
 
 export async function loadPromptLifecycle(runtime: Runtime, imports: Record<string, unknown>) {

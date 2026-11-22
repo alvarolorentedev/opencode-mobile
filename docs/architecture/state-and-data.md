@@ -23,7 +23,7 @@ The app store owns the connection registry, focus and preferences.
 starts one manager per enabled connection for probing, recovery, credential
 renewal and the shared event stream. Query owns the shared session catalog and
 routine server responses. Independent catalog projections and retained
-`WorkspaceRuntime` project adapters read those sources. Feature hooks select
+Retained project adapters read those sources. Feature hooks select
 the focused or scoped values from the app core.
 
 The workspace commands in `runtime/core/commands/workspace.ts` register project

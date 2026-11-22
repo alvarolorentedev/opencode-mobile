@@ -20,8 +20,9 @@ and [feature boundaries](../docs/architecture/feature-boundaries.md).
   `registry.ts` follows enabled connections and credential revisions.
   `connection-runtime.tsx` adapts lifecycle snapshots and projects the catalog
   alongside the retained project adapters.
-- `runtime/workspace/workspace-runtime.tsx`: retained connection/project branch.
-- `runtime/composition/`: domain wiring, values, reset and cross-feature effects.
+- `runtime/workspace/retained-project.tsx`: binds scoped feature subscriptions
+  and publishes the retained project views.
+- `runtime/composition/`: app entrypoint and project lifecycle adapters.
 - `runtime/persistence/`: app hydration/write-back and cross-domain credential-scope migration.
 - `runtime/realtime/`: SSE plus polling reconciliation and coalescing.
 - `runtime/presentation/`: stable drafts/scroll positions, owned by the app store and independent of registry updates.

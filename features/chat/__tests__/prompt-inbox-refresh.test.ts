@@ -4,6 +4,29 @@ import { deferred, hookRuntime } from '../../../tests/helpers/runtime.mjs';
 import { createFixtureInbox, loadPromptInbox } from '../../../runtime/__tests__/prompt-command-fixture';
 
 describe('prompt inbox refresh', () => {
+  it('only promotes a delivered prompt after the server inbox no longer holds it', async () => {
+    const runtime = hookRuntime();
+    const prompt = { id: 'm1', sessionId: 's', createdAt: 1, text: 'Waiting prompt', state: 'waiting', delivery: 'steer', attachments: [] };
+    const inbox = vi.fn(async () => [prompt]);
+    const appendUserMessage = vi.fn();
+    const client = { __opencode: { contract: 'v2', directory: '/workspace' }, promptInbox: {} } as never;
+    const { usePromptInbox } = await loadPromptInbox(runtime, {
+      '@/shared/protocol/services/session-service': { getSessionInbox: inbox, getSessionNotices: async () => [] },
+      '@/shared/protocol/opencode/client/errors': { classifyConnectionFailure: () => 'unknown' },
+    });
+    runtime.mount(() => usePromptInbox({
+      client, queueScope: 'scope', isCurrentClient: () => true, refreshMessages: async () => [], appendUserMessage,
+    }), {});
+    const delivery = { inboxOnly: true, delivered: true, inboxID: 'm1' };
+    await runtime.value.refreshMessages('s', true, delivery);
+    expect(appendUserMessage).not.toHaveBeenCalled();
+
+    inbox.mockResolvedValueOnce([]);
+    await runtime.value.refreshMessages('s', true, delivery);
+    expect(appendUserMessage).toHaveBeenCalledExactlyOnceWith('s', { id: 'm1', createdAt: 1, text: 'Waiting prompt', attachments: [] });
+    runtime.unmount();
+  });
+
   it('flushes a workspace outbox on reconnect and ignores remote results from superseded credentials', async () => {
     const runtime = hookRuntime();
     const admission = deferred();

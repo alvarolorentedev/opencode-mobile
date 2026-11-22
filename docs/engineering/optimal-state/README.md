@@ -25,7 +25,7 @@ phase you are executing. Do not preload every phase unless you are planning.
 | --- | --- | --- | --- |
 | A | [State evacuation](phase-a-state-evacuation.md) | Complete | No domain data in per-workspace React state |
 | B | [Connection manager](phase-b-connection-manager.md) | Complete | Core-owned connection managers run probe, renewal, SSE and polling |
-| C | [Command core](phase-c-commands.md) | In progress | Cross-domain commands are plain functions; composition deleted |
+| C | [Command core](phase-c-commands.md) | Complete | Cross-domain commands run in the app core and the legacy composition is deleted |
 | D | [Transcript](phase-d-transcript.md) | Not started | Per-session infinite messages + store live overlay |
 | E | [Flatten React](phase-e-flatten-react.md) | Not started | No scope/provider tree or shared-UI runtime exception |
 | F | [Persistence and tests](phase-f-persistence-and-tests.md) | Partially done | Query persistence done; Zustand persist, `loadTs`, `fast-check`, `knip` remain |
@@ -169,11 +169,19 @@ npm run validate:commit
   existing skip and no lint warnings. The 82 focused tests, both fake-server
   self-tests, docs, web export and all 56 chat, diffs, interactions, multi-server,
   network, realtime and terminal browser tests passed.
-- C6a. Saved links and cross-server favorites run through the connection core.
+- C6a, `3946a79e`. Saved links and cross-server favorites run through the connection core.
   Feature hooks bind commands directly and the root action overrides are gone.
   The commit gate passed with 1,275 tests and one existing skip. The 43 focused
   tests, docs, web export and all 88 chat, sessions, projects, multi-server,
   interactions, onboarding and Settings browser tests passed.
+- C6b. Feature views replace the legacy project composition and value
+  builders. Session link validation and local-send tracking run in the core.
+  The initial full browser run exposed an inbox race that combined a delivery
+  with the ID of a later enqueue. The fix preserves the delivery ID and checks
+  that the server inbox no longer contains it. The final commit gate passed
+  with 1,276 tests, one existing skip and no lint warnings. The 143 focused
+  tests, docs, both fake-server self-tests, web export and all 185 browser
+  tests passed after the fix.
 
 ## Loop protocol
 
@@ -212,9 +220,9 @@ first, then use `E2E_SKIP_BUILD=1`.
 
 - [ ] `createAppCore` owns store, Query client, connection registry, commands,
       event handler and dispose.
-- [ ] Connection transport/probe/renewal/SSE/polling are plain TS; no React
+- [x] Connection transport/probe/renewal/SSE/polling are plain TS; no React
       component mounts a transport.
-- [ ] Cross-domain commands are plain functions; `use-opencode-provider-composition.ts`,
+- [x] Cross-domain commands are plain functions; `use-opencode-provider-composition.ts`,
       `opencode-provider-values*.ts`, `eventActionsRef` and `WorkspaceRuntime`
       are deleted.
 - [ ] Messages use per-session infinite queries; the live overlay is in Zustand.

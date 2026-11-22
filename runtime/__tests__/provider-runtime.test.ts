@@ -87,7 +87,6 @@ function extractDeclarations(source: string, names: string[]) {
   return found.join('\n');
 }
 const projectActionsSource = await readSource('../../features/projects/state/use-project-file-actions.ts');
-const connectionActionsSource = await readSource('../../features/sessions/state/use-connection-link-actions.ts');
 const names = ['openProjectFile', 'saveProjectFile'];
 const declarations = [
   extractDeclarations(projectActionsSource, ['openProjectFile', 'saveProjectFile']),
@@ -1039,44 +1038,14 @@ profileRuntime.update({ switchConnection: async () => {} });
 assert.equal(profileRuntime.value, stableProfiles, 'profile domain values remain stable when only callback bridges change');
 profileRuntime.unmount();
 
-// Actual session callbacks: refresh an explicit target missing from an
-// otherwise populated cache and preserve deep-link resolution.
-const sessionNames = ['openDeepLinkSession'];
-const sessionDeclarations = [
-  extractDeclarations(connectionActionsSource, ['openDeepLinkSession']),
-].join('\n');
+// Link validation and automatic bootstrap share the scoped session command.
 let createdSessions = 0, fetchedSessions = 0;
-const resolvableDirectories = new Set();
+let currentClient = true;
+const linkClient: { api?: object } = {};
 const target = { id: 'target', time: {} };
-const sessionContext: any = {
-  exports: {}, operation: { current: 0 }, withReadSignal: (client: any) => client, useCallback: (fn: any) => fn, client: { directory: '/repo' },
-  activeProjectPath: '/repo', activeProjectPathRef: { current: '/repo' }, settingsRef: { current: {} },
-  connection: { status: 'connected' }, connectionRef: { current: { status: 'connected' } },
-  serverContractRef: { current: 'v1' }, serverGenerationRef: { current: 1 },
-  buildClient: (settings: any) => settings,
-  refreshSessions: async () => { fetchedSessions++; return [target]; }, refreshActiveSessions: async () => {},
-  currentSessionId: undefined, sessions: [{ id: 'cached' }], sessionsRef: { current: [{ id: 'cached' }] }, messagesBySession: {},
-  pendingDeepLinkTargetRef: { current: { sessionId: 'target', projectPath: '/repo' } },
-  connectionScope: 'scope', createSession: async () => { createdSessions++; },
-  explicitSessionSelectionRef: { current: undefined },
-  setIsBootstrappingChat: () => {}, refreshMessages: async () => {}, refreshSessionDiff: async () => {},
-  refreshSessionTodos: async () => {}, refreshPendingInteractions: async () => {}, refreshChatCapabilities: async () => {},
-  refreshServerFeatures: async () => {}, refreshDiagnostics: async () => {}, isCurrentClient: () => true,
-  setCurrentSessionId: (id: any) => { sessionContext.currentSessionIdRef.current = id; },
-  deepLinkOperationRef: {}, currentSessionIdRef: {}, serverProjectsRef: { current: [{ worktree: '/repo' }] },
-  projectPathsByConnectionRef: { current: { scope: [] } },
-  isAvailableProjectDirectory: async (candidate: any) => resolvableDirectories.has(candidate.directory),
-  connect: async () => {}, selectProject: (path: any) => { sessionContext.activeProjectPathRef.current = path; }, setTimeout, Date,
-  connectionScopeRef: { current: 'scope' },
-  loadConnectionProfiles: async () => [{ id: 'saved', serverUrl: 'https://other', username: '', scope: 'other' }],
-  findProfileByConnectionScope: (profiles: any, scope: any) => profiles.find((profile: any) => profile.scope === scope),
-  getProfilePassword: async () => 'secret',
-  switchConnection: async () => { sessionContext.connectionScopeRef.current = 'other'; sessionContext.serverGenerationRef.current++; },
-};
-sessionContext.findSessionForNavigation = async (_client: unknown, id: string) => (await sessionContext.refreshSessions()).find((session: { id: string }) => session.id === id);
-sessionContext.openSession = async (id: string) => { sessionContext.currentSessionIdRef.current = id; };
-runInNewContext(ts.transpileModule(`${sessionDeclarations}\nexports.actions = { ${sessionNames.join(', ')} };`, { compilerOptions: { module: ts.ModuleKind.CommonJS } }).outputText, sessionContext);
-const sessionActions = sessionContext.exports.actions;
+const refreshLinkSessions = async () => { fetchedSessions++; return [target]; };
+let findLinkedSession = async (_client: unknown, id: string): Promise<{ id: string; time: object; directory?: string } | undefined> =>
+  (await refreshLinkSessions()).find((session) => session.id === id);
 const bootstrapKey = 'bootstrap-scope';
 const sessionCacheKey = ['test', 'project-session-catalog'];
 const bootstrapCache = new QueryClient({ defaultOptions: { queries: { gcTime: Infinity } } });
@@ -1084,13 +1053,16 @@ bootstrapCache.setQueryData(sessionCacheKey, [{ id: 'cached' }]);
 const bootstrapStore = createAppStore({ settings: { serverUrl: 'https://server.test', directory: '', username: '', password: '' }, chatPreferences: {} as never, controlPlaneUrl: '' });
 const { createSessionNavigationCommands } = await loadTs('runtime/core/commands/session-navigation.ts', {
   '@/features/sessions/runtime': { projectSessionsKey: () => sessionCacheKey },
+  '@/shared/protocol/opencode/client': { withReadSignal: (client: object) => client },
+  '@/shared/protocol/services/session-service': { findSessionForNavigation: (client: object, id: string) => findLinkedSession(client, id) },
 });
 const bootstrap = createSessionNavigationCommands({
   store: bootstrapStore, queryClient: bootstrapCache,
   connections: { get: () => ({
-    getProjectAccess: () => ({ client: {}, identity: {}, revision: 0, isCurrent: () => true }),
+    getState: () => ({ connection: { status: 'connected' } }),
+    getProjectAccess: () => ({ client: linkClient, identity: { connectionScope: 'scope' }, revision: 0, isCurrent: () => currentClient }),
     realtime: { getProjectSources: () => ({
-      refreshSessions: async () => bootstrapCache.setQueryData(sessionCacheKey, await sessionContext.refreshSessions()),
+      refreshSessions: async () => bootstrapCache.setQueryData(sessionCacheKey, await refreshLinkSessions()),
       refreshMessages: async () => {}, refreshSessionDiff: async () => {}, refreshSessionTodos: async () => {}, refreshPendingInteractions: async () => {},
     }) },
   }) },
@@ -1105,40 +1077,41 @@ assert.equal(await bootstrap.ensureActiveSession(), undefined); assert.equal(cre
 // Local deep-link validation remains authoritative and never creates a chat.
 // Cross-connection/project preparation is covered through the workspace manager
 // in workspaces.test.ts, rather than by the removed runtime switching loop.
-sessionContext.pendingDeepLinkTargetRef.current = undefined;
-assert.equal((await sessionActions.openDeepLinkSession({ sessionId: 'target', projectPath: '/repo' })).ok, true);
-assert.equal(sessionContext.currentSessionIdRef.current, 'target');
-assert.match((await sessionActions.openDeepLinkSession({ sessionId: 'missing', projectPath: '/repo' })).error, /was not found/);
+bootstrapStore.getState().setSelection(bootstrapKey, { pendingDeepLink: undefined });
+const selectedLinkSession = () => bootstrapStore.getState().selection[bootstrapKey]?.currentSessionId;
+assert.equal((await bootstrap.openDeepLinkSession({ sessionId: 'target', projectPath: '/repo' })).ok, true);
+assert.equal(selectedLinkSession(), 'target');
+assert.match((await bootstrap.openDeepLinkSession({ sessionId: 'missing', projectPath: '/repo' })).error, /was not found/);
 assert.equal(createdSessions, 0);
 const firstOpenGate = deferred<void>();
 let opens = 0;
-sessionContext.findSessionForNavigation = async (_client: unknown, id: string) => {
+findLinkedSession = async (_client: unknown, id: string) => {
   if (++opens === 1) await firstOpenGate.promise;
   return { id, time: {} };
 };
-const firstOpen = sessionActions.openDeepLinkSession({ sessionId: 'first', projectPath: '/repo' });
-assert.equal((await sessionActions.openDeepLinkSession({ sessionId: 'second', projectPath: '/repo' })).ok, true);
+const firstOpen = bootstrap.openDeepLinkSession({ sessionId: 'first', projectPath: '/repo' });
+assert.equal((await bootstrap.openDeepLinkSession({ sessionId: 'second', projectPath: '/repo' })).ok, true);
 firstOpenGate.resolve(); assert.match((await firstOpen).error, /superseded/);
-assert.equal(sessionContext.currentSessionIdRef.current, 'second');
+assert.equal(selectedLinkSession(), 'second');
 const switchedOpenGate = deferred<void>();
-sessionContext.findSessionForNavigation = async () => { await switchedOpenGate.promise; return target; };
-const switchedOpen = sessionActions.openDeepLinkSession({ sessionId: 'target', projectPath: '/repo' });
-sessionContext.isCurrentClient = () => false; switchedOpenGate.resolve();
+findLinkedSession = async () => { await switchedOpenGate.promise; return target; };
+const switchedOpen = bootstrap.openDeepLinkSession({ sessionId: 'target', projectPath: '/repo' });
+currentClient = false; switchedOpenGate.resolve();
 assert.equal((await switchedOpen).ok, false, 'a server switch cannot complete an old session open');
-sessionContext.isCurrentClient = () => true;
+currentClient = true;
 const canceledOpenGate = deferred<void>();
-sessionContext.findSessionForNavigation = async () => { await canceledOpenGate.promise; return target; };
+findLinkedSession = async () => { await canceledOpenGate.promise; return target; };
 const openController = new AbortController();
-const canceledOpen = sessionActions.openDeepLinkSession({ sessionId: 'target', projectPath: '/repo' }, openController.signal);
+const canceledOpen = bootstrap.openDeepLinkSession({ sessionId: 'target', projectPath: '/repo' }, openController.signal);
 openController.abort(); canceledOpenGate.resolve();
 assert.equal((await canceledOpen).ok, false);
-assert.equal(sessionContext.currentSessionIdRef.current, 'second', 'cancelled links preserve the selected session');
+assert.equal(selectedLinkSession(), 'second', 'cancelled links preserve the selected session');
 
-sessionContext.client.api = {};
-sessionContext.findSessionForNavigation = async () => ({ id: 'target', time: {}, directory: '/other' });
-assert.match((await sessionActions.openDeepLinkSession({ sessionId: 'target', projectPath: '/repo' })).error, /was not found/);
-sessionContext.findSessionForNavigation = async () => ({ id: 'target', time: {}, directory: '/repo' });
-assert.equal((await sessionActions.openDeepLinkSession({ sessionId: 'target', projectPath: '/repo' })).ok, true);
+linkClient.api = {};
+findLinkedSession = async () => ({ id: 'target', time: {}, directory: '/other' });
+assert.match((await bootstrap.openDeepLinkSession({ sessionId: 'target', projectPath: '/repo' })).error, /was not found/);
+findLinkedSession = async () => ({ id: 'target', time: {}, directory: '/repo' });
+assert.equal((await bootstrap.openDeepLinkSession({ sessionId: 'target', projectPath: '/repo' })).ok, true);
 
 // Exercise the actual library runner without loading the native rendering tree.
 const librarySource = await readFile(new URL('../../features/sessions/ui/chat-library.tsx', import.meta.url), 'utf8');

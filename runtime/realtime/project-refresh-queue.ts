@@ -40,7 +40,9 @@ export function createProjectRefreshQueue() {
       ...(messageId ? { messageId } : {}),
       inboxOnly: !messages && Boolean(pending.inboxOnly || options?.inboxOnly),
       delivered: Boolean(pending.delivered || options?.delivered),
-      inboxID: options?.inboxID ?? pending.inboxID,
+      // An enqueue or cancellation can arrive in the same burst as a
+      // delivery. Keep the ID paired with the event that delivered it.
+      inboxID: options?.delivered ? options.inboxID : pending.inboxID,
       messageMode: pending.messageMode ?? options?.messageMode,
       diff: pending.diff || options?.diff,
       todos: pending.todos || options?.todos,

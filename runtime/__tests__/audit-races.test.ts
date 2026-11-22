@@ -166,7 +166,7 @@ describe('prompt submission ownership', () => {
     const input = { scopeKey, client, isCurrentClient: (candidate: object) => candidate === currentClient.current, activeProjectPath: '/repo', connectionScope: scopes.getConnectionScope(settings),
       sessions: [{ id: 's', title: 'chat' }], sessionStatuses: {}, availableAgents: [{ id: 'build', label: 'Build', mode: 'primary' }], availableModels: [], chatPreferences: preferences.defaultChatPreferences,
       settingsRef: { current: settings },
-      refreshSessions: refresh, markLocalSend: vi.fn(),
+      refreshSessions: refresh,
       refreshSessionDiff: refresh, refreshSessionTodos: refresh, scheduleSessionRefresh: vi.fn(), summarizeSessionTitle: vi.fn(),
       submitPrompt: vi.fn().mockReturnValueOnce(a.promise).mockReturnValueOnce(b.promise),
     };

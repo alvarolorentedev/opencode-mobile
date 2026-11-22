@@ -6,7 +6,7 @@ import type { ServerContract } from '@/shared/protocol/opencode/client';
 
 import type { ConnectionState } from '@/shared/contracts/domain';
 
-import type { WorkspaceRuntimeInput } from '@/runtime/workspace/workspace-types';
+import type { ProjectBindingInput } from '@/runtime/workspace/workspace-types';
 
 import { useProjectRuntimeState } from '@/features/projects/runtime';
 import { useSessionState } from '@/features/sessions/runtime';
@@ -14,7 +14,7 @@ import { useExtensionPromptState } from '@/features/extensions/runtime';
 import { useAppCore, useAppStore } from '@/runtime/core';
 import { EMPTY_CHAT, type ChatUiState } from '@/runtime/core/store';
 
-export function useSessionRuntimeState(input: WorkspaceRuntimeInput, connection: ConnectionState, serverContract: ServerContract) {
+export function useSessionRuntimeState(input: ProjectBindingInput, connection: ConnectionState, serverContract: ServerContract) {
   const settings = input.connection.settings;
   const setSettings = input.setSettings;
   const connectionId = input.connection.id;

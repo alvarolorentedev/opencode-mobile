@@ -169,12 +169,12 @@
       "QuestionFlow",
       "SessionDeepLinkScreen",
       "SessionLibraryContextValue",
-      "useConnectionLinkActions",
       "missionBadge",
       "useQuickActionRoute",
       "useSessionActions"
     ],
     "features/projects/runtime.ts": [
+      "useProjectPresentation",
       "buildOpencodeProjects",
       "fetchProjectCatalog",
       "fileStatusOptions",
@@ -203,6 +203,7 @@
       "useActivityNotifications"
     ],
     "features/ai/runtime.ts": [
+      "useCapabilitiesPresentation",
       "agentsOptions",
       "capabilitiesOptions",
       "clearCapabilitiesSnapshots",
@@ -266,6 +267,7 @@
       "useConnectionProfiles"
     ],
     "features/sessions/runtime.ts": [
+      "useSessionPresentation",
       "approvalsAccess",
       "clearMissionStatsCaches",
       "collectDescendantSessionIds",
@@ -293,7 +295,6 @@
       "SessionCatalog",
       "useMissionActivity",
       "useMissionOverview",
-      "useConnectionLinkActions",
       "useNativeSurfaces",
       "usePermissionRulesState",
       "useSessionActions",
@@ -302,6 +303,7 @@
       "useSessionState"
     ],
     "features/chat/runtime.ts": [
+      "useChatPresentation",
       "createPromptInboxCommands",
       "reconcilePromptSettlement",
       "createPromptSubmissionActions",
@@ -316,7 +318,8 @@
       "useMessageCatalog",
       "MessageCatalog",
       "MessagesBySession",
-      "LiveTranscriptMessage",
+      "getLiveTranscriptBuffer",
+      "LiveTranscriptBuffer",
       "PromptCommandInput",
       "PromptSubmission",
       "usePromptInbox",

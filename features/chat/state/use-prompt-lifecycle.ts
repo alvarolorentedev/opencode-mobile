@@ -15,7 +15,7 @@ type PromptLifecycleInput = Omit<PromptCommandInput, 'readSettings'> & {
 export function usePromptLifecycle({
   scopeKey, submitPrompt, client, isCurrentClient, activeProjectPath, connectionScope, sessions,
   sessionStatuses, availableAgents, currentConfig, availableModels, availableProviders, messagesBySession,
-  chatPreferences, settingsRef, refreshSessions, markLocalSend, refreshSessionDiff,
+  chatPreferences, settingsRef, refreshSessions, refreshSessionDiff,
   refreshSessionTodos, scheduleSessionRefresh,
 }: PromptLifecycleInput) {
   const { commands } = useAppCore();
@@ -27,9 +27,9 @@ export function usePromptLifecycle({
   const actions = useCallback(() => workspace.actions({
     submitPrompt, client, isCurrentClient, activeProjectPath, connectionScope, sessions, availableAgents,
     currentConfig, availableModels, availableProviders, messagesBySession, sessionStatuses, chatPreferences, readSettings,
-    refreshSessions, markLocalSend, refreshSessionDiff, refreshSessionTodos, scheduleSessionRefresh,
+    refreshSessions, refreshSessionDiff, refreshSessionTodos, scheduleSessionRefresh,
   }), [activeProjectPath, availableAgents, availableModels, availableProviders, chatPreferences, client, connectionScope,
-    currentConfig, isCurrentClient, markLocalSend, messagesBySession, readSettings, refreshSessionDiff, refreshSessionTodos,
+    currentConfig, isCurrentClient, messagesBySession, readSettings, refreshSessionDiff, refreshSessionTodos,
     refreshSessions, scheduleSessionRefresh, sessions, sessionStatuses, submitPrompt, workspace]);
   const sendPrompt = useCallback<PromptActions['sendPrompt']>((...args) => actions().sendPrompt(...args), [actions]);
   const abortSession = useCallback<PromptActions['abortSession']>((...args) => actions().abortSession(...args), [actions]);

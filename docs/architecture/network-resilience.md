@@ -206,6 +206,8 @@ See [ADR 0045](../adr/0045-queue-only-unsent-prompts.md).
 - A transport failure during prompt admission is marked `Delivery uncertain`.
   It stays visible until dismissed. An older message with the same text is
   insufficient to confirm delivery.
+- A delivery event keeps its prompt ID through refresh coalescing. The app
+  promotes the prompt only after the server inbox no longer contains that ID.
 - The queue is in memory. Prepared attachments can be large or refer to
   temporary files, and the app does not send queued prompts after it relaunches.
 

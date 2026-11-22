@@ -11,8 +11,7 @@ import type { PendingConfirmation } from '@/features/voice/runtime';
 import type { FileClipboardEntry } from '@/features/projects/runtime';
 import type { ConnectionProfile } from '@/shared/contracts/connection-profiles';
 import type { TerminalInstance } from '@/features/terminal/index';
-import type { LiveTranscriptMessage } from '@/features/chat/runtime';
-import type { SessionMessageRecord } from '@/shared/presentation/format';
+import type { LiveTranscriptBuffer } from '@/features/chat/runtime';
 import type { VoiceRecoveryAction } from '@/shared/platform/voice/speech-errors';
 
 // Device-local state only. Server facts belong to TanStack Query; anything in
@@ -106,13 +105,6 @@ type TranscriptUiState = {
   paintRevision: number;
 };
 
-type TranscriptLiveBuffer = {
-  messages: Map<string, Map<string, LiveTranscriptMessage>>;
-  reconcileOnPage: Map<string, Set<string>>;
-  localUsers: Map<string, SessionMessageRecord[]>;
-  localSends: Map<string, number>;
-};
-
 const EMPTY_TRANSCRIPT_UI: TranscriptUiState = { loadingOlderBySession: {}, hydratingSessionIds: {}, paintRevision: 0 };
 
 type WorkspaceUiState = {
@@ -164,7 +156,7 @@ export type AppState = {
   conversation: Record<string, ConversationRuntimeState | undefined>;
   terminal: Record<string, TerminalDeviceState | undefined>;
   transcriptUi: Record<string, TranscriptUiState | undefined>;
-  transcriptLive: Map<string, TranscriptLiveBuffer>;
+  transcriptLive: Map<string, LiveTranscriptBuffer>;
   workspaceUi: Record<string, WorkspaceUiState | undefined>;
   localClassifierReady?: boolean;
   fileClipboard: FileClipboardState;

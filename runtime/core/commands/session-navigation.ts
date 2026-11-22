@@ -1,11 +1,16 @@
 import { projectSessionsKey } from '@/features/sessions/runtime';
 import type { CommandContext } from '@/runtime/core/commands/context';
 import type { RealtimeScopeInput } from '@/runtime/realtime/create-realtime';
+import type { SessionDeepLinkTarget } from '@/shared/contracts/domain';
 import type { WorkspaceTarget } from '@/shared/contracts/workspace';
+import { withReadSignal } from '@/shared/protocol/opencode/client';
 import type { Session } from '@/shared/protocol/opencode/types';
+import { findSessionForNavigation } from '@/shared/protocol/services/session-service';
 
 type SessionNavigation = {
   openSession: (sessionId: string) => Promise<void>;
+  openDeepLinkSession: (target: SessionDeepLinkTarget, signal?: AbortSignal) => Promise<{ ok: boolean; error?: string }>;
+  openSessionInProject: (projectPath: string, sessionId: string, connectionScope?: string) => Promise<void>;
   ensureActiveSession: () => Promise<string | undefined>;
 };
 
@@ -21,6 +26,7 @@ function hydrate(sources: RealtimeScopeInput, sessionId: string) {
 export function createSessionNavigationCommands({ store, queryClient, connections }: CommandContext,
   createSession: (target: WorkspaceTarget, scopeKey: string, revision?: number) => Promise<Session>) {
   const bootstraps = new Map<string, { token: object; promise: Promise<string | undefined> }>();
+  const links = new Map<string, object>();
   const selection = (key: string) => store.getState().selection[key];
   const { setSelection } = store.getState();
 
@@ -33,8 +39,8 @@ export function createSessionNavigationCommands({ store, queryClient, connection
       const manager = connections.get(target.connectionId);
       const access = manager?.getProjectAccess(target.projectPath);
       const sources = manager?.realtime.getProjectSources(target.projectPath, scopeKey);
-      if (!access || !sources || (access.revision ?? 0) !== (revision ?? 0)) return;
-      return { access, sources };
+      if (!manager || !access || !sources || (access.revision ?? 0) !== (revision ?? 0)) return;
+      return { manager, access, sources };
     }
 
     async function openSession(sessionId: string) {
@@ -51,6 +57,49 @@ export function createSessionNavigationCommands({ store, queryClient, connection
         const diffScope = store.getState().chat[scopeKey]?.diffScopeBySession[sessionId];
         if (diffScope && diffScope !== 'turn') void sources.refreshVcsDiff?.(diffScope, true);
       }).catch(() => undefined).finally(() => finish?.());
+    }
+
+    async function openDeepLinkSession(link: SessionDeepLinkTarget, signal?: AbortSignal) {
+      const attempt = {};
+      links.set(scopeKey, attempt);
+      try {
+        const id = link.sessionId.trim();
+        if (!id) throw new Error('This session link is missing a session ID.');
+        if (signal?.aborted) throw new Error('This session link was cancelled.');
+        const scope = getScope();
+        if (!scope) throw new Error('This session link was superseded.');
+        const check = () => {
+          if (signal?.aborted) throw new Error('This session link was cancelled.');
+          if (links.get(scopeKey) !== attempt || !scope.access.isCurrent()) throw new Error('This session link was superseded.');
+        };
+        check();
+        const { manager, access: { identity, client } } = scope;
+        if (link.connectionScope && link.connectionScope !== identity.connectionScope) throw new Error('The saved connection for this session is not available.');
+        if (!target.projectPath || (link.projectPath && link.projectPath !== target.projectPath)) {
+          throw new Error('This session link does not name a project, and no project is open.');
+        }
+        const connection = manager.getState().connection;
+        const connected = connection.status === 'connected' ? connection : await manager.connect();
+        check();
+        if (connected.status !== 'connected') throw new Error(connected.message);
+        const session = await findSessionForNavigation(signal ? withReadSignal(client, signal) : client, id, signal);
+        check();
+        if (!session || session.id !== id || session.time.archived || (client.api && session.directory !== target.projectPath)) {
+          throw new Error(`Session ${id} was not found in the ${target.projectPath} project.`);
+        }
+        await openSession(id);
+        check();
+        return { ok: true };
+      } catch (error) {
+        return { ok: false, error: error instanceof Error ? error.message : 'Could not open this session link.' };
+      } finally {
+        if (links.get(scopeKey) === attempt) links.delete(scopeKey);
+      }
+    }
+
+    async function openSessionInProject(projectPath: string, sessionId: string, connectionScope?: string) {
+      const result = await openDeepLinkSession({ projectPath, sessionId, connectionScope });
+      if (!result.ok) throw new Error(result.error);
     }
 
     async function ensureActiveSession(): Promise<string | undefined> {
@@ -96,7 +145,7 @@ export function createSessionNavigationCommands({ store, queryClient, connection
       return promise;
     }
 
-    return { openSession, ensureActiveSession };
+    return { openSession, openDeepLinkSession, openSessionInProject, ensureActiveSession };
   }
 
   return { navigation, cancelBootstrap };

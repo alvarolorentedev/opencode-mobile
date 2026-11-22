@@ -425,7 +425,6 @@ export function useTranscriptState({
     applyTranscriptEvent: live.applyEvent,
     liveTranscriptMessageId: live.activeMessageId,
     appendUserMessage: live.appendUserMessage,
-    markLocalSend: live.markLocalSend,
     isLocalSendRecent: live.isLocalSendRecent,
     loadOlderMessages,
     reset,

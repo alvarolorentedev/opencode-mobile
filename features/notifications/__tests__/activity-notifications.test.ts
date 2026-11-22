@@ -49,7 +49,7 @@ function pluginNotice() {
 }
 function props() {
   return { catalogClient: {} as any, settings: { serverUrl: 'https://server', username: '', password: '', directory: '' },
-    contract: 'v2' as const, connectionScope: 'scope', connected: true, currentSessionId: 'one', sessions: [session('one')], sendingState: { active: false }, autoApprove: false, streamConnectedRef: { current: true } };
+    contract: 'v2' as const, connectionScope: 'scope', connected: true, currentSessionId: 'one', sessions: [session('one')], sendingState: { active: false }, autoApprove: false, isStreamConnected: () => true };
 }
 
 beforeEach(() => {

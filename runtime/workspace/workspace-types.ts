@@ -1,12 +1,23 @@
 import type { NetworkStatus } from '@/shared/network/network-status';
 
-import type { OpencodeConnectionSettings } from '@/shared/protocol/opencode/client';
+import type { OpencodeConnectionSettings, PendingPermissionRequest, PendingQuestionRequest, ScopedOpencodeClient } from '@/shared/protocol/opencode/client';
 
 import type { ChatPreferences } from '@/shared/preferences/opencode-preferences';
 
-import type { ConnectionContextValue } from '@/features/connections/index';
-
-import type { useOpencodeProviderComposition } from '@/runtime/composition/use-opencode-provider-composition';
+import type { CapabilitiesContextValue } from '@/features/ai/index';
+import type { ChatContextValue } from '@/features/chat/index';
+import type { ConnectionContextValue, DiagnosticsContextValue } from '@/features/connections/index';
+import type { ExtensionsContextValue, McpContextValue } from '@/features/extensions/index';
+import type { OnboardingContextValue } from '@/features/onboarding/index';
+import type { ProjectFilesContextValue, ProjectsContextValue } from '@/features/projects/index';
+import type { useProjectCatalogActions } from '@/features/projects/runtime';
+import type { ApprovalsContextValue, CurrentSessionContextValue, SessionLibraryContextValue } from '@/features/sessions/index';
+import type { TerminalContextValue } from '@/features/terminal/index';
+import type { ConversationContextValue } from '@/features/voice/index';
+import type { useWidgetState } from '@/features/widgets/runtime';
+import type { ActiveSessionItem } from '@/shared/contracts/domain';
+import type { PreferencesContextValue } from '@/shared/preferences/types';
+import type { Session, SessionStatus } from '@/shared/protocol/opencode/types';
 
 import type { WorkspaceShellState } from '@/runtime/workspace/use-workspace-shell-state';
 
@@ -19,7 +30,7 @@ export type SharedWorkspaceState = Pick<WorkspaceShellState,
   'onboardingActive' | 'setOnboardingActive' |
   'favoriteSessions' | 'setFavoriteSessions' | 'hiddenProjects' | 'setHiddenProjects'> & { fileClipboard?: import('@/features/projects/index').FileClipboard };
 
-export type WorkspaceRuntimeInput = {
+export type ProjectBindingInput = {
   connection: ConnectionRecord;
   catalog?: WorkspaceCatalog;
   switchConnection: ConnectionContextValue['switchConnection'];
@@ -37,6 +48,38 @@ export type WorkspaceRuntimeInput = {
   isConnectionOwner: boolean;
 };
 
-export type WorkspaceSnapshot = ReturnType<typeof useOpencodeProviderComposition>;
+export type WorkspaceSnapshot = {
+  libraryVisible: boolean;
+  revision?: number;
+  enabled: boolean;
+  values: WorkspaceValues;
+  busy: boolean;
+  suspend: () => void;
+  catalogClient: ScopedOpencodeClient;
+  catalogSessions: Session[];
+  catalogStatuses: Record<string, SessionStatus>;
+  loadProjectCatalog: ReturnType<typeof useProjectCatalogActions>['loadProjectCatalog'];
+  pendingPermissions: Record<string, PendingPermissionRequest[]>;
+  pendingQuestions: Record<string, PendingQuestionRequest[]>;
+  native: Omit<Parameters<typeof useWidgetState>[0], 'hydrated' | 'connected' | 'showPreviews' | 'language'> & {
+    activeSessions: ActiveSessionItem[];
+  };
+};
 
-export type WorkspaceValues = WorkspaceSnapshot['values'];
+export type WorkspaceValues = {
+  onboardingValue: OnboardingContextValue;
+  connectionValue: ConnectionContextValue;
+  diagnosticsValue: DiagnosticsContextValue;
+  capabilitiesValue: CapabilitiesContextValue;
+  preferencesValue: PreferencesContextValue;
+  projectsValue: ProjectsContextValue;
+  projectFilesValue: ProjectFilesContextValue;
+  currentSessionValue: CurrentSessionContextValue;
+  sessionLibraryValue: SessionLibraryContextValue;
+  chatValue: ChatContextValue;
+  approvalsValue: ApprovalsContextValue;
+  conversationValue: ConversationContextValue;
+  terminalValue: TerminalContextValue;
+  mcpValue: McpContextValue;
+  extensionsValue: ExtensionsContextValue;
+};
