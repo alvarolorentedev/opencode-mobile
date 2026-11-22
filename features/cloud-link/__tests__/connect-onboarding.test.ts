@@ -1,55 +1,67 @@
-import { uiImports } from '../../../tests/helpers/ui.mjs';
+// @vitest-environment happy-dom
+
+import '../../../tests/helpers/native-primitives';
+import { act } from 'react';
 import { describe, expect, it, vi } from 'vitest';
-import { hookRuntime, loadTs } from '../../../tests/helpers/runtime.mjs';
+
+import { ConnectOnboarding } from '@/features/cloud-link/ui/connect-onboarding';
+import { ConnectPairing } from '@/features/cloud-link/ui/connect-pairing';
+import PairScreen from '@/features/cloud-link/ui/pair-screen';
+import type { WorkspaceRegistry } from '@/runtime/workspace/workspace-context';
+import type { ConnectSetup } from '@/shared/contracts/cloud-link-setup';
+import { connectionViewProbe } from '../../../tests/helpers/connection-view-probe';
+import { settleReact } from '../../../tests/helpers/controlled-clock';
+import { renderHook } from '../../../tests/helpers/render-hook';
+
+const route = vi.hoisted(() => ({
+  params: {} as Record<string, string | undefined>,
+  router: { setParams: vi.fn(), replace: vi.fn(), push: vi.fn() },
+}));
+vi.mock('react-native', async () => (await import('../../../tests/helpers/native-view-platform')).nativeViewPlatform({ platform: 'android' }));
+vi.mock('expo-constants', () => ({ default: {} }));
+vi.mock('expo-localization', () => ({ getLocales: () => [] }));
+vi.mock('expo-router', () => ({
+  useIsFocused: () => true, usePathname: () => '/pair',
+  useLocalSearchParams: () => route.params, useRouter: () => route.router,
+}));
+vi.mock('expo/fetch', () => ({}));
+vi.mock('expo-crypto', () => ({}));
+vi.mock('expo-file-system', () => ({}));
+vi.mock('expo-secure-store', () => ({}));
+vi.mock('@react-native-async-storage/async-storage', () => ({ default: {} }));
+vi.mock('@/shared/platform/camera/connect-camera-gate', () => ({ ConnectCameraGate: 'CameraGate' }));
+vi.mock('@/shared/platform/camera/connect-scanner', () => ({ ConnectScanner: 'Scanner' }));
+vi.mock('react-i18next', async (original) => ({
+  ...await original<typeof import('react-i18next')>(),
+  useTranslation: () => ({ t: (key: string) => key, i18n: { language: 'en' } }),
+}));
 
 type Element = { type: unknown; props: Record<string, any> };
-function find(root: Element | Element[], type: string): Element | undefined {
+function find(root: Element | Element[], type: unknown): Element | undefined {
   if (Array.isArray(root)) return root.map((child) => find(child, type)).find(Boolean);
   if (!root || typeof root !== 'object') return;
   if (root.type === type || root.props?.testID === type) return root;
   return find(root.props?.children, type);
 }
 
-async function pairing(guided = true, entitled = false) {
-  const runtime = hookRuntime();
+function pairing(guided = true, entitled = false) {
   const onConnected = vi.fn();
-  const setup = { initialization: 'ready', phase: 'idle', busy: false, entitled, cancelPairing: vi.fn(async () => true), pairLink: vi.fn(), dismissError: vi.fn() };
-  const { ConnectPairing } = await loadTs('features/cloud-link/ui/connect-pairing.tsx', {
-    ...uiImports,
-    "@/shared/contracts/cloud-link": { CONNECT_LEARN_MORE_URL: "https://opencodecloud.link/" },
-    "@/features/connections/ui/connection-setup-form": { ConnectionSetupForm: "ConnectionSetupForm" },
-    react: runtime.react,
-    'react/jsx-runtime': { jsx: (type: unknown, props: object) => ({ type, props }), jsxs: (type: unknown, props: object) => ({ type, props }) },
-    'expo-router': { useIsFocused: () => true },
-    'react-i18next': { useTranslation: () => ({ t: (key: string) => key }) },
-    'react-native': { AppState: { currentState: 'active', addEventListener: () => ({ remove() {} }) }, Platform: { OS: 'android' }, StyleSheet: { create: (styles: object) => styles }, View: 'View', KeyboardAvoidingView: 'View' },
-    'react-native-safe-area-context': { useSafeAreaInsets: () => ({ top: 0, bottom: 0 }) },
-    "./sections/setting-rows": { Button: 'Button' },
-    "@/shared/ui/theme/theme": { Colors: { light: {} } },
-    "@/shared/ui/theme/use-color-scheme": { useColorScheme: () => 'light' },
-    "@/shared/ui/theme/use-palette": { usePalette: () => ({}) },
-    "@/shared/ui/hooks/use-dismiss-on-back": { useDismissOnBack: vi.fn() },
-    "@/features/updates/context": { useUpdateBlocker: vi.fn() },
-    "@/shared/platform/camera/connect-camera-gate": { ConnectCameraGate: 'CameraGate' },
-    "@/shared/platform/camera/connect-scanner": { ConnectScanner: 'Scanner' },
-    "@/features/cloud-link/ui/connect-subscription": { ConnectSubscription: 'Subscription' },
-    "@/features/cloud-link/ui/connect-onboarding": { ConnectOnboarding: 'Onboarding' },
-    "@/features/updates/index": { ...uiImports['@/features/updates/index'], UpdateBlockingSheet: 'Overlay' }
-  });
-  runtime.mount(ConnectPairing, { setup, guided, onConnected, onClose: vi.fn(), onManage: vi.fn() });
-  const step = () => find(runtime.value, 'Onboarding')?.props.step;
-  const next = () => { find(runtime.value, 'Onboarding')!.props.onNext(); runtime.flush(); };
-  const update = (changes: object) => { Object.assign(setup, changes); runtime.update({ setup }); };
+  const setup = { initialization: 'ready', phase: 'idle', busy: false, entitled, cancelPairing: vi.fn(async () => true), pairLink: vi.fn(), dismissError: vi.fn() } as unknown as ConnectSetup;
+  const props = { setup, guided, onConnected, onClose: vi.fn(), onManage: vi.fn() };
+  const runtime = renderHook(ConnectPairing, props, connectionViewProbe({} as WorkspaceRegistry['connectionControls']));
+  const step = () => find(runtime.result.current, ConnectOnboarding)?.props.step;
+  const next = () => act(() => find(runtime.result.current, ConnectOnboarding)!.props.onNext());
+  const update = (changes: Partial<ConnectSetup>) => runtime.rerender({ ...props, setup: Object.assign(setup, changes) });
   return { runtime, setup, step, next, update, onConnected };
 }
 
 describe('Cloud Link guided setup', () => {
   it('delays camera permission until explicit scan and returns to the illustrated step after denial', async () => {
-    const view = await pairing();
+    const view = pairing();
     expect(view.step()).toBe(1);
     view.next(); expect(view.step()).toBe(2);
     view.next(); expect(view.step()).toBe(3);
-    expect(find(view.runtime.value, 'CameraGate')).toBeUndefined();
+    expect(find(view.runtime.result.current, 'CameraGate')).toBeUndefined();
     view.update({ phase: 'finalizing', busy: true, entitled: true });
     expect(view.step()).toBe(3);
     view.update({ phase: 'idle', busy: false, error: 'Store finalization failed' });
@@ -57,16 +69,16 @@ describe('Cloud Link guided setup', () => {
     view.update({ error: undefined });
     expect(view.step()).toBe(4);
     expect(view.onConnected).not.toHaveBeenCalled();
-    find(view.runtime.value, 'Onboarding')!.props.onScan(); view.runtime.flush();
-    const gate = find(view.runtime.value, 'CameraGate');
+    act(() => find(view.runtime.result.current, ConnectOnboarding)!.props.onScan());
+    const gate = find(view.runtime.result.current, 'CameraGate');
     expect(gate).toBeDefined();
-    gate!.props.onCancel(); view.runtime.flush();
+    act(() => gate!.props.onCancel());
     expect(view.step()).toBe(4);
-    expect(find(view.runtime.value, 'CameraGate')).toBeUndefined();
+    expect(find(view.runtime.result.current, 'CameraGate')).toBeUndefined();
   });
 
   it('keeps canceled and pending purchases on subscription and returns expired access there', async () => {
-    const view = await pairing(); view.next(); view.next();
+    const view = pairing(); view.next(); view.next();
     view.update({ phase: 'pending', notice: 'Pending store approval' });
     expect(view.step()).toBe(3);
     view.update({ phase: 'idle', notice: 'Canceled' });
@@ -78,13 +90,13 @@ describe('Cloud Link guided setup', () => {
   });
 
   it('opens the illustrated pairing step for subscribers and preserves direct-link continuation', async () => {
-    const subscriber = await pairing(true, true);
+    const subscriber = pairing(true, true);
     expect(subscriber.step()).toBe(4);
-    expect(find(subscriber.runtime.value, 'CameraGate')).toBeUndefined();
-    const linked = await pairing(false);
+    expect(find(subscriber.runtime.result.current, 'CameraGate')).toBeUndefined();
+    const linked = pairing(false);
     expect(linked.step()).toBeUndefined();
-    expect(find(linked.runtime.value, 'connect-subscription-sheet')!.props.visible).toBe(true);
-    expect(find(linked.runtime.value, 'CameraGate')).toBeUndefined();
+    expect(find(linked.runtime.result.current, 'connect-subscription-sheet')!.props.visible).toBe(true);
+    expect(find(linked.runtime.result.current, 'CameraGate')).toBeUndefined();
     linked.update({ phase: 'paired', entitled: true });
     expect(linked.onConnected).toHaveBeenCalledOnce();
   });
@@ -92,41 +104,28 @@ describe('Cloud Link guided setup', () => {
 
 
 it('strips an incoming QR immediately and pairs once after store recovery becomes ready', async () => {
-  const runtime = hookRuntime();
-  let params: Record<string, string | undefined> = { v: '1', cp: 'https://api.opencodecloud.link', id: 'pending', t: 'temporary-proof' };
-  const incoming = { ...params };
+  route.params = { v: '1', cp: 'https://api.opencodecloud.link', id: 'pending', t: 'temporary-proof' };
+  const incoming = { ...route.params };
   const pairLink = vi.fn(async () => true);
-  const setup = { enabled: true, initialization: 'loading', busy: true, pairLink, cancelPairing: vi.fn(async () => true) };
-  const setParams = vi.fn((next: typeof params) => { params = { ...params, ...next }; });
-  const router = { setParams, replace: vi.fn(), push: vi.fn() };
-  const { default: PairScreen } = await loadTs('features/cloud-link/ui/pair-screen.tsx', {
-    ...uiImports,
-    react: runtime.react,
-    'react/jsx-runtime': { jsx: (type: unknown, props: object) => ({ type, props }), jsxs: (type: unknown, props: object) => ({ type, props }) },
-    'expo-router': { useLocalSearchParams: () => params, useRouter: () => router },
-    'react-native': { KeyboardAvoidingView: 'View', ScrollView: 'View' },
-    'react-native-safe-area-context': { SafeAreaView: 'View' },
-    '@/features/cloud-link/ui/connect-panel': { ConnectManagementPanel: 'Management' },
-    '@/features/cloud-link/ui/connect-pairing': { ConnectEntry: 'Entry' },
-    '@/features/connections/context': { useConnection: () => ({ connectSetup: setup }) },
-    '@/runtime/workspace': { useBootState: () => ({ isHydrated: true, onboardingCompleted: true, onboardingActive: false }) },
-  });
-  runtime.mount(PairScreen, {});
-  await runtime.settle();
+  const setup = { enabled: true, initialization: 'loading', busy: true, pairLink, cancelPairing: vi.fn(async () => true) } as unknown as ConnectSetup;
+  const setParams = route.router.setParams.mockImplementation((patch) => { route.params = { ...route.params, ...patch }; });
+  const controls = { connectSetup: setup } as WorkspaceRegistry['connectionControls'];
+  const runtime = renderHook(PairScreen, {}, connectionViewProbe(controls, true));
+  await settleReact();
   expect(setParams).toHaveBeenCalledOnce();
-  expect(params.t).toBeUndefined();
+  expect(route.params.t).toBeUndefined();
   expect(pairLink).not.toHaveBeenCalled();
-  setup.initialization = 'ready'; runtime.update({}); await runtime.settle();
+  setup.initialization = 'ready'; runtime.rerender({}); await settleReact();
   expect(pairLink).not.toHaveBeenCalled();
-  setup.busy = false; runtime.update({}); await runtime.settle();
+  setup.busy = false; runtime.rerender({}); await settleReact();
   expect(pairLink).toHaveBeenCalledExactlyOnceWith(incoming);
-  runtime.update({}); await runtime.settle();
+  runtime.rerender({}); await settleReact();
   expect(pairLink).toHaveBeenCalledOnce();
   setup.initialization = 'loading'; setup.busy = true;
-  params = { ...incoming, id: 'cancelled' }; runtime.update({}); await runtime.settle();
-  await runtime.value.props.setup.cancelPairing();
+  route.params = { ...incoming, id: 'cancelled' }; runtime.rerender({}); await settleReact();
+  await act(async () => { await runtime.result.current?.props.setup.cancelPairing(); });
   setup.initialization = 'ready'; setup.busy = false;
-  runtime.update({}); await runtime.settle();
+  runtime.rerender({}); await settleReact();
   expect(pairLink).toHaveBeenCalledOnce();
   runtime.unmount();
 });

@@ -403,11 +403,18 @@ npm run validate:commit
   All 44 focused cases, the static gate and 27 onboarding and settings browser
   flows passed.
 
-- F7. Chat composer, markdown, voice and native layout probes exercise real
+- F7, `e145a0d2`. Chat composer, markdown, voice and native layout probes exercise real
   React and render the app's controls. Share handoff and local audio capture,
   enrollment and wake-word tests use their production hooks and controlled
   timers with platform fakes. All 83 focused cases retained their executed
   test identities and passed.
+
+- F8. Cloud Link store recovery, credential storage, terminal upgrades,
+  Android build-script argument checks and incoming QR flows use normal
+  imports. Native billing, secure storage and subprocess calls stay at the
+  test boundary. The old data-URL loader is deleted. Connection protocol tests
+  now cover the real SDK and redirect-aware transport. All 39 migrated cases
+  retained their identities, and both fake-server contracts passed self-test.
 
 ## Loop protocol
 
