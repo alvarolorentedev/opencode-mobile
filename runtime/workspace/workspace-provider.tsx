@@ -33,7 +33,7 @@ import { WorkspaceNative } from '@/runtime/composition/workspace-native';
 import { useMissionWidget } from '@/features/widgets/runtime';
 import { clearWorkspacePresentation, hasWorkspaceDrafts } from '@/runtime/presentation/workspace-presentation';
 import { WorkspaceRuntime } from '@/runtime/workspace/workspace-runtime';
-import { workspaceKey, type ConnectionRecord, type NewWorktreeChatResult, type NewWorktreeChatTarget, type WorkspaceCatalog, type WorkspaceTarget } from '@/shared/contracts/workspace';
+import { workspaceKey, type ConnectionRecord, type WorkspaceCatalog, type WorkspaceTarget } from '@/shared/contracts/workspace';
 import type { SharedWorkspaceState, WorkspaceValues } from '@/runtime/workspace/workspace-types';
 import { useCallback, useEffect, useMemo, useState, type PropsWithChildren, type SetStateAction } from 'react';
 import { usePathname } from 'expo-router';
@@ -65,6 +65,7 @@ export function WorkspaceProvider({ children }: PropsWithChildren) {
   const getRegistry = useCallback(() => core.store.getState().registry, [core]);
   const manager = useWorkspaceConnections(shell, isHydrated, {
     registry: registryState,
+    commands: core.commands.workspace,
     getRegistry,
     getShell,
     setRegistry: core.store.getState().setRegistry,
@@ -72,7 +73,7 @@ export function WorkspaceProvider({ children }: PropsWithChildren) {
   useWorkspaceAutoApprove(manager);
   const { updateSettings: updateWorkspaceSettings, retry, change, removeConnection: removeWorkspaceConnection, connectedWorkspace, isEnabled } = manager;
   const { setFavoriteSessions, setSettings, setChatPreferences, setHiddenProjects } = shell;
-  const { connections, focus, retainedFocus, snapshots, ensure, resolveKey, switchConnection, activate, navigate, openExternalSession, connectSavedProfile, disconnect } = manager;
+  const { connections, focus, retainedFocus, snapshots, resolveKey, switchConnection, activate, navigate, openExternalSession, connectSavedProfile, disconnect } = manager;
   const catalogs = useMemo(() => {
     const current: Record<string, WorkspaceCatalog> = {};
     for (const { id, revision } of connections) {
@@ -134,8 +135,7 @@ export function WorkspaceProvider({ children }: PropsWithChildren) {
   const connectionProfiles = useConnectionProfiles({ clearCapabilitiesSnapshots, settings, switchConnection, updateSettings, profiles, setProfiles, onSaved: profileSaved, onRemoved: profileRemoved });
   const { servicesValue } = useServicesState({ settings, connectSetup, connections: manager.connections, visible: pathname === '/settings' || pathname === '/service' });
   const { terminalTarget, inspectionTarget } = registryState;
-  const selectTerminalTarget = useCallback(async (target: WorkspaceTarget) => { await ensure(target); core.store.getState().setRegistry({ terminalTarget: target }); }, [core, ensure]);
-  const inspect = useCallback(async (target: WorkspaceTarget) => { await ensure(target); core.store.getState().setRegistry({ inspectionTarget: target }); }, [core, ensure]);
+  const { selectTerminalTarget, inspect } = core.commands.workspace;
   const openSession = useCallback(async (target: SessionDeepLinkTarget, signal?: AbortSignal) => {
     try {
       let entry: Pick<ConnectionRecord, 'id' | 'projects' | 'enabled'> | undefined = target.connectionScope ? connections.find((value) => getConnectionScope(value.settings) === target.connectionScope) : connections.find((value) => value.id === focus?.connectionId);
@@ -167,28 +167,7 @@ export function WorkspaceProvider({ children }: PropsWithChildren) {
     if (!entry.enabled) await retry(entry.id);
     await navigate({ connectionId: entry.id, projectPath, sessionId });
   }, [connections, navigate, openSession, retry]);
-  const createChat = useCallback(async (target: WorkspaceTarget) => {
-    if (!target.projectPath) throw new Error('Choose a project before creating a chat.');
-    const runtime = await connectedWorkspace(target);
-    const session = await runtime.values.currentSessionValue.createSession();
-    await runtime.values.currentSessionValue.openSession(session.id);
-    await activate(target);
-    return session;
-  }, [activate, connectedWorkspace]);
-  const createChatInWorktree = useCallback(async (target: NewWorktreeChatTarget): Promise<NewWorktreeChatResult> => {
-    let checkout: import('@/shared/protocol/opencode/project').ProjectWorktree | undefined;
-    try {
-      const root = await connectedWorkspace({ connectionId: target.connectionId, projectPath: target.projectRoot });
-      checkout = await root.values.projectFilesValue.createWorktree(target.name);
-      const runtime = await connectedWorkspace({ connectionId: target.connectionId, projectPath: checkout.directory });
-      const session = await runtime.values.currentSessionValue.createSession();
-      await runtime.values.currentSessionValue.openSession(session.id);
-      await activate({ connectionId: target.connectionId, projectPath: checkout.directory });
-      return { session, checkout };
-    } catch (reason) {
-      return { checkout, error: reason instanceof Error ? reason.message : 'Could not create the worktree chat.' };
-    }
-  }, [activate, connectedWorkspace]);
+  const { createChat, createChatInWorktree } = core.commands.workspace;
   const refreshTargets = useCallback(async () => {
     await Promise.all(Object.values(catalogs).map((catalog) => catalog.refresh()));
   }, [catalogs]);

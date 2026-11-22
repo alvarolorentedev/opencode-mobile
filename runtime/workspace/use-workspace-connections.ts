@@ -13,16 +13,14 @@ import { clearCapabilitiesSnapshots } from '@/features/ai/runtime';
 import { clearMissionStatsCaches } from '@/features/sessions/runtime';
 import type { ChatPreferences } from '@/shared/preferences/opencode-preferences';
 import { createPersistenceWriter } from '@/shared/storage/persistence-hydration';
-import { findSessionForNavigation } from '@/shared/protocol/services/session-service';
 import type { WorkspaceShellState } from '@/runtime/workspace/use-workspace-shell-state';
 import type { AppState, RegistryState, ShellState } from '@/runtime/core/store';
 import { connectedWorkspaceTarget } from '@/runtime/workspace/workspace-focus';
-import { createWorkspaceWaiters } from '@/runtime/workspace/workspace-lifecycle';
+import type { createWorkspaceCommands } from '@/runtime/core/commands/workspace';
 import { parseWorkspaces, serializeWorkspaces, WORKSPACES_STORAGE_KEY } from '@/shared/storage/workspace-storage';
-import { workspaceKey, type ConnectionRecord, type SessionTarget, type WorkspaceTarget } from '@/shared/contracts/workspace';
-import type { WorkspaceSnapshot } from '@/runtime/workspace/workspace-types';
+import type { ConnectionRecord, WorkspaceTarget } from '@/shared/contracts/workspace';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 
 export const SERVER_PREFERENCE_KEYS = ['enabledModelIds', 'knownModelIds', 'autoEnableNewModels', 'recentModelIds', 'mode', 'autoApprove', 'autoModel'] as const;
 export function serverPreferences(value: Partial<ChatPreferences>) {
@@ -31,59 +29,24 @@ export function serverPreferences(value: Partial<ChatPreferences>) {
 
 export type WorkspaceRegistryAccess = {
   registry: RegistryState;
+  commands: ReturnType<typeof createWorkspaceCommands>;
   getRegistry: () => RegistryState;
   getShell: () => ShellState;
   setRegistry: AppState['setRegistry'];
 };
 
 export function useWorkspaceConnections(shell: WorkspaceShellState, hydrated: boolean, access: WorkspaceRegistryAccess) {
-  const { registry, getRegistry, getShell, setRegistry } = access;
+  const { registry, commands, getRegistry, getShell, setRegistry } = access;
   const { setSettings, setChatPreferences, setHiddenProjects } = shell;
   const { connections, focus, retainedFocus, ready, snapshots } = registry;
   const records = { get current() { return getRegistry().connections; } };
   const selected = { get current() { return getRegistry().focus; } };
   const live = { get current() { return getRegistry().snapshots; } };
-  const setConnections = useCallback((next: ConnectionRecord[]) => setRegistry({ connections: next }), [setRegistry]);
-  const setSnapshots = useCallback((next: Record<string, WorkspaceSnapshot>) => setRegistry({ snapshots: next }), [setRegistry]);
-  const setFocus = useCallback((next: WorkspaceTarget | undefined) => setRegistry({ focus: next }), [setRegistry]);
-  const setRetainedFocus = useCallback((next: WorkspaceTarget | undefined | ((current: WorkspaceTarget | undefined) => WorkspaceTarget | undefined)) => {
-    setRegistry((current) => ({ retainedFocus: typeof next === 'function' ? next(current.retainedFocus) : next }));
-  }, [setRegistry]);
+  const { change, select, publish, forget, resolveKey, ensure, connectedWorkspace, isEnabled,
+    activate, navigate, openExternalSession, pauseConversation, retry } = commands;
   const setReady = useCallback((next: boolean) => setRegistry({ ready: next }), [setRegistry]);
-  // A single readiness waiter registry for this mounted coordinator.
-  const [waiters] = useState(createWorkspaceWaiters);
-  const navigation = useRef<AbortController | undefined>(undefined);
-  const canPersist = useRef(true);
-  const activation = useRef(0);
   const [write] = useState(createPersistenceWriter);
-  useEffect(() => { waiters.resume(); return () => { waiters.dispose(); navigation.current?.abort(); }; }, [waiters]);
-  const change = useCallback((update: (current: ConnectionRecord[]) => ConnectionRecord[]) => {
-    const next = update(records.current);
-    if (next.length === records.current.length && next.every((entry, index) => entry === records.current[index])) return;
-    const revisioned = next.map((entry) => {
-      const previous = records.current.find((value) => value.id === entry.id);
-      return previous && (previous.settings !== entry.settings || previous.enabled !== entry.enabled)
-        ? { ...entry, revision: (previous.revision ?? 0) + 1, authRevision: (previous.authRevision ?? 0) + (previous.settings.password !== entry.settings.password || JSON.stringify(previous.settings.headers) !== JSON.stringify(entry.settings.headers) || JSON.stringify(previous.settings.certificate) !== JSON.stringify(entry.settings.certificate) || JSON.stringify(previous.settings.oidc) !== JSON.stringify(entry.settings.oidc) || getConnectionScope(previous.settings) !== getConnectionScope(entry.settings) ? 1 : 0) } : entry;
-    });
-    setConnections(revisioned); waiters.notify();
-  }, [waiters]);
-  const isEnabled = useCallback((id: string) => records.current.some((entry) => entry.id === id && entry.enabled), []);
-  const select = useCallback((target: WorkspaceTarget, persist = true) => {
-    if (persist) canPersist.current = true; setFocus(target);
-    if (Object.entries(live.current).some(([key, value]) => (JSON.parse(key) as string[])[0] === target.connectionId && ((JSON.parse(key) as string[])[1] === target.projectPath || value.values.projectsValue.activeProjectPath === target.projectPath))) setRetainedFocus(target);
-  }, []);
-  const publish = useCallback((key: string, snapshot: WorkspaceSnapshot) => {
-    if (live.current[key] === snapshot) return;
-    setSnapshots({ ...live.current, [key]: snapshot });
-    const target = selected.current;
-    if (target && (JSON.parse(key) as string[])[0] === target.connectionId && ((JSON.parse(key) as string[])[1] === target.projectPath || snapshot.values.projectsValue.activeProjectPath === target.projectPath)) {
-      setRetainedFocus((previous) => previous?.connectionId === target.connectionId && previous.projectPath === target.projectPath ? previous : target);
-    }
-    waiters.notify();
-  }, [waiters]);
-  const forget = useCallback((key: string) => {
-    const next = { ...live.current }; delete next[key]; setSnapshots(next); waiters.notify();
-  }, [waiters]);
+  useEffect(() => { commands.resume(); return commands.dispose; }, [commands]);
 
   const saveProfile = useCallback(async (settings: OpencodeConnectionSettings) => mutateConnectionProfiles(async (profiles, save) => {
     const existing = findMatchingProfile(profiles, settings);
@@ -124,7 +87,7 @@ export function useWorkspaceConnections(shell: WorkspaceShellState, hydrated: bo
     void (async () => {
       let stored;
       try { const raw = await AsyncStorage.getItem(WORKSPACES_STORAGE_KEY); stored = raw ? parseWorkspaces(raw) : undefined; }
-      catch (error) { canPersist.current = false; console.warn('Could not read workspace registry.', error); }
+      catch (error) { commands.setPersistenceAllowed(false); console.warn('Could not read workspace registry.', error); }
       if (stored) {
         // Project lists are server-derived; never restore locally remembered
         // projects. Every connection boots from the placeholder runtime and
@@ -156,7 +119,7 @@ export function useWorkspaceConnections(shell: WorkspaceShellState, hydrated: bo
       change(() => entries); select(target, false); setReady(true);
     })().catch((error) => {
       console.error('Could not restore workspaces.', error);
-      canPersist.current = false;
+      commands.setPersistenceAllowed(false);
       if (cancelled) return;
       const initial = getShell();
       const id = getConnectionUiScope(initial.settings);
@@ -165,7 +128,7 @@ export function useWorkspaceConnections(shell: WorkspaceShellState, hydrated: bo
       select({ connectionId: id, projectPath: '' }, false); setReady(true);
     });
     return () => { cancelled = true; };
-  }, [hydrated, change, getShell, select, saveProfile, write]);
+  }, [hydrated, change, commands, getShell, select, saveProfile, setReady, write]);
 
   const persisted = useMemo(() => {
     // Only the connection list and the focused connection survive a restart.
@@ -176,18 +139,10 @@ export function useWorkspaceConnections(shell: WorkspaceShellState, hydrated: bo
   }, [connections, focus]);
   useEffect(() => {
     // Automatic capability refreshes must not overwrite an unread registry.
-    if (ready && canPersist.current) void write(WORKSPACES_STORAGE_KEY, persisted, () => AsyncStorage.setItem(WORKSPACES_STORAGE_KEY, persisted))
+    if (ready && commands.isPersistenceAllowed()) void write(WORKSPACES_STORAGE_KEY, persisted, () => AsyncStorage.setItem(WORKSPACES_STORAGE_KEY, persisted))
       .catch((error) => console.warn('Could not save workspaces.', error));
-  }, [persisted, ready, write]);
+  }, [commands, persisted, ready, write]);
 
-  const resolveKey = useCallback((target: WorkspaceTarget) => {
-    const exact = workspaceKey(target);
-    if (live.current[exact]) return exact;
-    return Object.keys(live.current).find((key) => {
-      const [id] = JSON.parse(key) as [string, string];
-      return id === target.connectionId && live.current[key].values.projectsValue.activeProjectPath === target.projectPath;
-    }) ?? exact;
-  }, []);
   // Remember the two most recent healthy chat owners so a failure returns to
   // the server the user was actually using instead of an arbitrary connected one.
   useEffect(() => {
@@ -212,141 +167,8 @@ export function useWorkspaceConnections(shell: WorkspaceShellState, hydrated: bo
     });
     // Never turn an unread registry into a writable one just because a server
     // failed during startup; focus locally and let the next user action persist.
-    if (target) select(target, canPersist.current);
-  }, [connections, focus, ready, resolveKey, select, snapshots]);
-  const readWorkspace = useCallback((target: WorkspaceTarget) => {
-    const entry = records.current.find((item) => item.id === target.connectionId);
-    if (!entry) throw new Error('This server is no longer available.');
-    const snapshot = live.current[resolveKey(target)];
-    return snapshot && snapshot.enabled === entry.enabled && (snapshot.revision ?? 0) === (entry.revision ?? 0) ? snapshot : undefined;
-  }, [resolveKey]);
-  const ensure = useCallback(async (target: WorkspaceTarget, options?: { signal?: AbortSignal }) => {
-    if (!live.current[resolveKey(target)]) change((current) => current.map((entry) => entry.id === target.connectionId && !entry.projects.includes(target.projectPath)
-      ? { ...entry, projects: [...entry.projects, target.projectPath] } : entry));
-    return waiters.wait(() => readWorkspace(target), options?.signal);
-  }, [change, readWorkspace, resolveKey, waiters]);
-  const retry = useCallback(async (id: string) => {
-    canPersist.current = true;
-    const entry = records.current.find((item) => item.id === id);
-    if (!entry) throw new Error('Server not found.');
-    for (const [key, runtime] of Object.entries(live.current)) if ((JSON.parse(key) as string[])[0] === id) runtime.suspend();
-    change((current) => current.map((item) => item.id === id ? { ...entry, enabled: true, settings: { ...item.settings } } : item));
-    // Reconnect boots the placeholder runtime; its catalog read derives the
-    // project from the server (most recently active first).
-    const runtime = await ensure({ connectionId: id, projectPath: '' });
-    return runtime.values.connectionValue.connect();
-  }, [change, ensure]);
-  const connectedWorkspace = useCallback(async (target: WorkspaceTarget, options?: { signal?: AbortSignal; waitForProject?: boolean }) => {
-    const entry = records.current.find((item) => item.id === target.connectionId);
-    if (!entry?.enabled) throw new Error('Connect this server before opening its workspace.');
-    const snapshot = await ensure(target, options);
-    let failure: unknown;
-    if (snapshot.values.connectionValue.connection.status !== 'connected') {
-      if (options?.signal?.aborted) throw new Error('This navigation was cancelled.');
-      const attempt = snapshot.values.connectionValue.connection.status === 'error' ? retry(target.connectionId) : snapshot.values.connectionValue.connect();
-      void attempt.catch((error) => { failure = error; waiters.notify(); });
-    }
-    return waiters.wait(() => {
-      if (failure) throw failure;
-      if (!records.current.find((item) => item.id === target.connectionId)?.enabled) throw new Error('Server disconnected.');
-      const current = readWorkspace(target);
-      const connection = current?.values.connectionValue.connection;
-      if (connection?.status === 'error') throw new Error(connection.message);
-      if (connection?.status === 'connected' && (!options?.waitForProject || current?.values.projectsValue.activeProjectPath)) return current;
-    }, options?.signal);
-  }, [ensure, readWorkspace, retry, waiters]);
-  const beginActivation = useCallback((externalSignal?: AbortSignal) => {
-    navigation.current?.abort();
-    const controller = new AbortController(); navigation.current = controller;
-    if (externalSignal) {
-      const cancel = () => controller.abort();
-      externalSignal.addEventListener('abort', cancel, { once: true });
-      controller.signal.addEventListener('abort', () => externalSignal.removeEventListener('abort', cancel), { once: true });
-      if (externalSignal.aborted) controller.abort();
-    }
-    return controller.signal;
-  }, []);
-  const pauseConversation = useCallback(async () => {
-    const previous = selected.current && live.current[resolveKey(selected.current)];
-    if (previous?.values.conversationValue.conversation.active) await previous.values.conversationValue.toggleConversationMode();
-  }, [resolveKey]);
-  // Commits the workspace selection once the runtime is ready. App navigation
-  // and external links share this step; it never reads the session list.
-  const selectWorkspace = useCallback((target: WorkspaceTarget, next: WorkspaceSnapshot) => {
-    select({ connectionId: target.connectionId, projectPath: target.projectPath || next.values.projectsValue.activeProjectPath || '' });
-  }, [select]);
-  // In-app navigation. The caller already knows the workspace and session from
-  // rendered data, so this only prepares the runtime and selects the session
-  // locally. It must not validate against a server session list: that read is
-  // slow on remote links and is unnecessary for a chat the app is showing.
-  const navigate = useCallback(async (target: SessionTarget) => {
-    const signal = beginActivation();
-    const operation = ++activation.current;
-    const check = () => { if (signal.aborted || operation !== activation.current) throw new Error('This navigation was cancelled.'); };
-    check();
-    await pauseConversation();
-    const next = await connectedWorkspace(target, { signal });
-    check();
-    // Rows are rendered from a runtime catalog or project list, so a normal tap
-    // is known locally. Only stale references (for example an old favorite)
-    // need one catalog read to report that the chat no longer exists.
-    const known = () => Object.entries(live.current).some(([key, snapshot]) => (
-      (JSON.parse(key) as string[])[0] === target.connectionId && (
-      snapshot.catalogSessions.some((session) => session.id === target.sessionId && (!session.directory || session.directory === target.projectPath))
-      || snapshot.values.sessionLibraryValue.sessions.some((session) => session.id === target.sessionId && (!session.directory || session.directory === target.projectPath))
-    )));
-    if (!known()) {
-      const session = await findSessionForNavigation(next.catalogClient, target.sessionId, signal);
-      check();
-      if (!session || session.id !== target.sessionId || (session.directory && session.directory !== target.projectPath) || session.time.archived) {
-        throw new Error(`Session ${target.sessionId} was not found in the ${target.projectPath} project.`);
-      }
-    }
-    check();
-    await next.values.currentSessionValue.openSession(target.sessionId);
-    check();
-    selectWorkspace(target, next);
-    navigation.current?.abort();
-  }, [beginActivation, connectedWorkspace, pauseConversation, selectWorkspace]);
-  // Workspace focus without a session. Project switching and "new chat" use
-  // this; session selection happens separately through navigate/openSession.
-  const activate = useCallback(async (target: WorkspaceTarget) => {
-    const signal = beginActivation();
-    const operation = ++activation.current;
-    const check = () => { if (signal.aborted || operation !== activation.current) throw new Error('This navigation was cancelled.'); };
-    check();
-    await pauseConversation();
-    const next = await connectedWorkspace(target, { signal });
-    check();
-    selectWorkspace(target, next);
-    navigation.current?.abort();
-  }, [beginActivation, connectedWorkspace, pauseConversation, selectWorkspace]);
-  // External link resolution (notifications, widgets, quick actions, OS links)
-  // confirms the target against the owning server before switching. In-app
-  // navigation must not use this path.
-  const openExternalSession = useCallback(async (target: SessionTarget, externalSignal?: AbortSignal) => {
-    const signal = beginActivation(externalSignal);
-    const operation = ++activation.current;
-    const check = () => { if (signal.aborted || operation !== activation.current) throw new Error('This session link was cancelled.'); };
-    check();
-    await pauseConversation();
-    let next = await connectedWorkspace(target, { signal });
-    check();
-    if (!target.projectPath && !next.values.projectsValue.activeProjectPath) {
-      // On cold start the connection can be ready before its default project is selected.
-      const catalog = await next.loadProjectCatalog(true);
-      check();
-      if (catalog.currentProjectPath || catalog.serverProjects[0]?.worktree) {
-        next = await connectedWorkspace(target, { signal, waitForProject: true });
-        check();
-      }
-    }
-    const opened = await next.values.currentSessionValue.openDeepLinkSession({ sessionId: target.sessionId, projectPath: target.projectPath || undefined }, signal);
-    if (!opened.ok) throw new Error(opened.error);
-    check();
-    selectWorkspace(target, next);
-    navigation.current?.abort();
-  }, [beginActivation, connectedWorkspace, pauseConversation, selectWorkspace]);
+    if (target) select(target, commands.isPersistenceAllowed());
+  }, [commands, connections, focus, ready, resolveKey, select, snapshots]);
   const registerConnection = useCallback(async (full: OpencodeConnectionSettings, profile: ConnectionProfile, preferences?: Partial<ChatPreferences>, selectWorkspace = true, signal?: AbortSignal) => {
     if (signal?.aborted) throw new Error('This session link was cancelled.');
     const id = getConnectionUiScope(full);
@@ -377,19 +199,19 @@ export function useWorkspaceConnections(shell: WorkspaceShellState, hydrated: bo
     return registerConnection(await readProfileConnection(profile), profile, undefined, false, signal);
   }, [registerConnection]);
   const disconnect = useCallback(async (id: string) => {
-    canPersist.current = true;
-    navigation.current?.abort();
+    commands.setPersistenceAllowed(true);
+    commands.cancelNavigation();
     for (const [key, runtime] of Object.entries(live.current)) if ((JSON.parse(key) as string[])[0] === id) {
       if (runtime.values.conversationValue.conversation.active) await runtime.values.conversationValue.toggleConversationMode();
       runtime.suspend();
     }
     change((current) => current.map((entry) => entry.id === id ? { ...entry, enabled: false } : entry));
-  }, [change]);
+  }, [change, commands]);
   const updateSettings = useCallback((id: string, value: OpencodeConnectionSettings, origin?: string) => {
     const previous = records.current.find((entry) => entry.id === id);
     if (!previous || JSON.stringify(previous.settings) === JSON.stringify(value)) return;
     const manualChange = !value.connect;
-    if (manualChange) canPersist.current = true;
+    if (manualChange) commands.setPersistenceAllowed(true);
     for (const [key, runtime] of Object.entries(live.current)) if ((JSON.parse(key) as string[])[0] === id && key !== origin) runtime.suspend();
     const nextId = getConnectionUiScope(value);
     change((current) => current.map((entry) => entry.id === id ? { ...entry, id: nextId, settings: value, ...(manualChange ? { enabled: false } : {}),
@@ -400,7 +222,7 @@ export function useWorkspaceConnections(shell: WorkspaceShellState, hydrated: bo
       if (origin && !stillUsed) void releaseHostTrust(previous.settings.serverUrl);
     }
     if (selected.current?.connectionId === id) { if (nextId !== id) select({ connectionId: nextId, projectPath: '' }); setSettings(value); }
-  }, [change, select, setSettings]);
+  }, [change, commands, select, setSettings]);
   const updatePreferences = useCallback((id: string, value: ChatPreferences) => {
     if (!records.current.some((entry) => entry.id === id)) return;
     const preferences = serverPreferences(value);

@@ -26,6 +26,12 @@ routine server responses. Independent catalog projections and retained
 `WorkspaceRuntime` project adapters read those sources. Feature hooks select
 the focused or scoped values from the app core.
 
+The workspace commands in `runtime/core/commands/workspace.ts` register project
+demand and wait for a matching retained publication before opening a chat. They
+own navigation cancellation, chat and worktree creation, and independent
+terminal and inspection targets. A newer navigation cancels an older external
+link before it can change focus.
+
 State is split into seven practical domains:
 
 1. connection and environment state

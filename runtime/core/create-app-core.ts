@@ -1,12 +1,12 @@
 import { createServerQueryClient } from '@/shared/server-data/query-client';
 import { createConnectionRegistry } from '@/runtime/connections/registry';
+import type { CommandContext } from './commands/context';
+import { createWorkspaceCommands } from './commands/workspace';
 
 import { createAppStore, type AppStoreDefaults } from './store';
 
-export type AppCore = {
-  store: ReturnType<typeof createAppStore>;
-  queryClient: ReturnType<typeof createServerQueryClient>;
-  connections: ReturnType<typeof createConnectionRegistry>;
+export type AppCore = CommandContext & {
+  commands: { workspace: ReturnType<typeof createWorkspaceCommands> };
 };
 
 // The only app-level composition root. React mounts this once; features read
@@ -15,9 +15,11 @@ export type AppCore = {
 export function createAppCore(defaults: AppStoreDefaults): AppCore {
   const store = createAppStore(defaults);
   const queryClient = createServerQueryClient();
-  return {
+  const context: CommandContext = {
     store,
     queryClient,
     connections: createConnectionRegistry({ store, queryClient }),
+    clock: () => Date.now(),
   };
+  return { ...context, commands: { workspace: createWorkspaceCommands(context) } };
 }

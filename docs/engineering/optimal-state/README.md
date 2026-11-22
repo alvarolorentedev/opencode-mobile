@@ -25,7 +25,7 @@ phase you are executing. Do not preload every phase unless you are planning.
 | --- | --- | --- | --- |
 | A | [State evacuation](phase-a-state-evacuation.md) | Complete | No domain data in per-workspace React state |
 | B | [Connection manager](phase-b-connection-manager.md) | Complete | Core-owned connection managers run probe, renewal, SSE and polling |
-| C | [Command core](phase-c-commands.md) | Not started | Cross-domain commands are plain functions; composition deleted |
+| C | [Command core](phase-c-commands.md) | In progress | Cross-domain commands are plain functions; composition deleted |
 | D | [Transcript](phase-d-transcript.md) | Not started | Per-session infinite messages + store live overlay |
 | E | [Flatten React](phase-e-flatten-react.md) | Not started | No scope/provider tree or shared-UI runtime exception |
 | F | [Persistence and tests](phase-f-persistence-and-tests.md) | Partially done | Query persistence done; Zustand persist, `loadTs`, `fast-check`, `knip` remain |
@@ -112,13 +112,17 @@ npm run validate:commit
   network resilience and multi-server browser tests passed. The realtime
   test joins a second project to the same SSE subscription and verifies
   directory isolation.
-- B4 and Phase B gate. Catalog projections and retained projects no longer
+- B4 and Phase B gate, `1976abce`. Catalog projections and retained projects no longer
   share a connection provider. The commit gate reported 1,259 passing tests
   and one existing skip. The focused tests, docs, both fake-server self-tests
   and development web export passed. All 185 browser tests passed, including
   live Restore, credential rotation, reconnect and fallback polling. The
   original failing checkout was unavailable locally. Physical network handoff
   remains device acceptance.
+- C1. The app core owns workspace readiness, navigation and chat creation.
+  Static checks passed with 1,261 tests and one existing skip. The 21
+  focused tests, docs, web export and all 34 sessions, projects,
+  multi-server and terminal browser tests passed.
 
 ## Loop protocol
 

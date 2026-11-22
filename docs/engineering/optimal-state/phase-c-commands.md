@@ -1,6 +1,9 @@
 # Phase C — Command Core
 
-Status: **not started**.
+Status: **in progress**. The app core owns the workspace commands for readiness,
+navigation, independent project targets, and chat creation. Retained project
+publications still supply session and worktree actions while those domains are
+migrated.
 
 Goal: cross-domain behavior becomes plain TypeScript commands. Hooks adapt;
 they no longer own command logic. The per-workspace composition and its value

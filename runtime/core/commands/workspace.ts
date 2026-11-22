@@ -1,0 +1,242 @@
+import type { CommandContext } from '@/runtime/core/commands/context';
+import { createWorkspaceWaiters } from '@/runtime/workspace/workspace-lifecycle';
+import type { WorkspaceSnapshot } from '@/runtime/workspace/workspace-types';
+import { getConnectionScope } from '@/shared/contracts/connection-scope';
+import { workspaceKey, type ConnectionRecord, type NewWorktreeChatResult, type NewWorktreeChatTarget, type SessionTarget, type WorkspaceTarget } from '@/shared/contracts/workspace';
+import { findSessionForNavigation } from '@/shared/protocol/services/session-service';
+
+type ReadinessOptions = { signal?: AbortSignal; waitForProject?: boolean };
+
+export function createWorkspaceCommands({ store }: Pick<CommandContext, 'store'>) {
+  const waiters = createWorkspaceWaiters();
+  let unsubscribe: (() => void) | undefined;
+  let navigation: AbortController | undefined;
+  let canPersist = true;
+  const registry = () => store.getState().registry;
+  const { setRegistry } = store.getState();
+
+  function resume() {
+    waiters.resume();
+    unsubscribe ??= store.subscribe(({ registry: current }, { registry: previous }) => {
+      if (current.connections !== previous.connections || current.snapshots !== previous.snapshots) waiters.notify();
+    });
+  }
+  function cancelNavigation() { navigation?.abort(); }
+  function beginNavigation(externalSignal?: AbortSignal) {
+    cancelNavigation();
+    const controller = new AbortController();
+    navigation = controller;
+    if (externalSignal) {
+      const cancel = () => controller.abort();
+      externalSignal.addEventListener('abort', cancel, { once: true });
+      controller.signal.addEventListener('abort', () => externalSignal.removeEventListener('abort', cancel), { once: true });
+      if (externalSignal.aborted) controller.abort();
+    }
+    return controller;
+  }
+
+  function change(update: (current: ConnectionRecord[]) => ConnectionRecord[]) {
+    const current = registry().connections;
+    const next = update(current);
+    if (next.length === current.length && next.every((entry, index) => entry === current[index])) return;
+    const connections = next.map((entry) => {
+      const previous = current.find((record) => record.id === entry.id);
+      if (!previous || (previous.settings === entry.settings && previous.enabled === entry.enabled)) return entry;
+      const old = previous.settings;
+      const settings = entry.settings;
+      const credentialsChanged = old.password !== settings.password || JSON.stringify(old.headers) !== JSON.stringify(settings.headers)
+        || JSON.stringify(old.certificate) !== JSON.stringify(settings.certificate) || JSON.stringify(old.oidc) !== JSON.stringify(settings.oidc)
+        || getConnectionScope(old) !== getConnectionScope(settings);
+      return {
+        ...entry, revision: (previous.revision ?? 0) + 1,
+        authRevision: (previous.authRevision ?? 0) + Number(credentialsChanged),
+      };
+    });
+    setRegistry({ connections });
+  }
+
+  function matches(target: WorkspaceTarget, key: string, snapshot: WorkspaceSnapshot) {
+    const [id, project] = JSON.parse(key) as [string, string];
+    return id === target.connectionId
+      && (project === target.projectPath || snapshot.values.projectsValue.activeProjectPath === target.projectPath);
+  }
+  function resolveKey(target: WorkspaceTarget) {
+    const exact = workspaceKey(target);
+    const { snapshots } = registry();
+    return snapshots[exact] ? exact : Object.entries(snapshots).find(([key, snapshot]) => matches(target, key, snapshot))?.[0] ?? exact;
+  }
+  function select(target: WorkspaceTarget, persist = true) {
+    if (persist) canPersist = true;
+    const db = registry();
+    const retained = Object.entries(db.snapshots).some(([key, snapshot]) => matches(target, key, snapshot));
+    setRegistry({ focus: target, retainedFocus: retained ? target : db.retainedFocus });
+  }
+  function publish(key: string, snapshot: WorkspaceSnapshot) {
+    const { snapshots, focus, retainedFocus } = registry();
+    if (snapshots[key] === snapshot) return;
+    const retain = focus && matches(focus, key, snapshot) && workspaceKey(focus) !== (retainedFocus && workspaceKey(retainedFocus));
+    setRegistry({ snapshots: { ...snapshots, [key]: snapshot }, ...(retain ? { retainedFocus: focus } : {}) });
+  }
+  function forget(key: string) {
+    const snapshots = { ...registry().snapshots };
+    delete snapshots[key];
+    setRegistry({ snapshots });
+  }
+
+  function readWorkspace(target: WorkspaceTarget) {
+    const entry = registry().connections.find((record) => record.id === target.connectionId);
+    if (!entry) throw new Error('This server is no longer available.');
+    const snapshot = registry().snapshots[resolveKey(target)];
+    return snapshot && snapshot.enabled === entry.enabled && (snapshot.revision ?? 0) === (entry.revision ?? 0) ? snapshot : undefined;
+  }
+  async function ensure(target: WorkspaceTarget, options?: ReadinessOptions) {
+    if (!registry().snapshots[resolveKey(target)]) {
+      change((current) => current.map((entry) => entry.id === target.connectionId && !entry.projects.includes(target.projectPath)
+        ? { ...entry, projects: [...entry.projects, target.projectPath] } : entry));
+    }
+    return waiters.wait(() => readWorkspace(target), options?.signal);
+  }
+  async function selectIndependentTarget(target: WorkspaceTarget, field: 'terminalTarget' | 'inspectionTarget') {
+    await ensure(target);
+    setRegistry({ [field]: target });
+  }
+  async function retry(id: string) {
+    canPersist = true;
+    const { connections, snapshots } = registry();
+    const entry = connections.find((record) => record.id === id);
+    if (!entry) throw new Error('Server not found.');
+    for (const [key, runtime] of Object.entries(snapshots)) {
+      if ((JSON.parse(key) as [string, string])[0] === id) runtime.suspend();
+    }
+    // The placeholder's catalog read restores the server's default project.
+    change((current) => current.map((item) => item.id === id ? { ...entry, enabled: true, settings: { ...item.settings } } : item));
+    const runtime = await ensure({ connectionId: id, projectPath: '' });
+    return runtime.values.connectionValue.connect();
+  }
+  async function connectedWorkspace(target: WorkspaceTarget, options?: ReadinessOptions) {
+    if (!registry().connections.find((record) => record.id === target.connectionId)?.enabled) {
+      throw new Error('Connect this server before opening its workspace.');
+    }
+    const snapshot = await ensure(target, options);
+    let failure: unknown;
+    if (snapshot.values.connectionValue.connection.status !== 'connected') {
+      if (options?.signal?.aborted) throw new Error('This navigation was cancelled.');
+      const attempt = snapshot.values.connectionValue.connection.status === 'error' ? retry(target.connectionId) : snapshot.values.connectionValue.connect();
+      void attempt.catch((error) => { failure = error; waiters.notify(); });
+    }
+    return waiters.wait(() => {
+      if (failure) throw failure;
+      if (!registry().connections.find((record) => record.id === target.connectionId)?.enabled) throw new Error('Server disconnected.');
+      const current = readWorkspace(target);
+      const connection = current?.values.connectionValue.connection;
+      if (connection?.status === 'error') throw new Error(connection.message);
+      if (connection?.status === 'connected' && (!options?.waitForProject || current?.values.projectsValue.activeProjectPath)) return current;
+    }, options?.signal);
+  }
+
+  async function pauseConversation() {
+    const { focus, snapshots } = registry();
+    const conversation = focus && snapshots[resolveKey(focus)]?.values.conversationValue;
+    if (conversation?.conversation.active) await conversation.toggleConversationMode();
+  }
+  function selectWorkspace(target: WorkspaceTarget, snapshot: WorkspaceSnapshot) {
+    select({ connectionId: target.connectionId, projectPath: target.projectPath || snapshot.values.projectsValue.activeProjectPath || '' });
+  }
+
+  async function navigate(target: SessionTarget) {
+    const controller = beginNavigation();
+    const { signal } = controller;
+    const check = () => { if (signal.aborted) throw new Error('This navigation was cancelled.'); };
+    check();
+    await pauseConversation();
+    const next = await connectedWorkspace(target, { signal });
+    check();
+    // Rendered library rows are known in the owning connection. A stale favorite
+    // is resolved once against that same server before changing focus.
+    const inProject = (session: { id: string; directory?: string }) => session.id === target.sessionId && (!session.directory || session.directory === target.projectPath);
+    const known = Object.entries(registry().snapshots).some(([key, snapshot]) =>
+      (JSON.parse(key) as [string, string])[0] === target.connectionId
+      && (snapshot.catalogSessions.some(inProject) || snapshot.values.sessionLibraryValue.sessions.some(inProject)));
+    if (!known) {
+      const session = await findSessionForNavigation(next.catalogClient, target.sessionId, signal);
+      check();
+      if (!session || !inProject(session) || session.time.archived) {
+        throw new Error(`Session ${target.sessionId} was not found in the ${target.projectPath} project.`);
+      }
+    }
+    check();
+    await next.values.currentSessionValue.openSession(target.sessionId);
+    check();
+    selectWorkspace(target, next);
+    controller.abort();
+  }
+  async function activate(target: WorkspaceTarget) {
+    const controller = beginNavigation();
+    const { signal } = controller;
+    await pauseConversation();
+    const next = await connectedWorkspace(target, { signal });
+    if (signal.aborted) throw new Error('This navigation was cancelled.');
+    selectWorkspace(target, next);
+    controller.abort();
+  }
+  async function openExternalSession(target: SessionTarget, externalSignal?: AbortSignal) {
+    const controller = beginNavigation(externalSignal);
+    const { signal } = controller;
+    const check = () => { if (signal.aborted) throw new Error('This session link was cancelled.'); };
+    try {
+      check();
+      await pauseConversation();
+      let next = await connectedWorkspace(target, { signal });
+      check();
+      if (!target.projectPath && !next.values.projectsValue.activeProjectPath) {
+        // The probe may settle before the default project publishes readiness.
+        const catalog = await next.loadProjectCatalog(true);
+        check();
+        if (catalog.currentProjectPath || catalog.serverProjects[0]?.worktree) {
+          next = await connectedWorkspace(target, { signal, waitForProject: true });
+          check();
+        }
+      }
+      const opened = await next.values.currentSessionValue.openDeepLinkSession({ sessionId: target.sessionId, projectPath: target.projectPath || undefined }, signal);
+      if (!opened.ok) throw new Error(opened.error);
+      check();
+      selectWorkspace(target, next);
+    } finally {
+      controller.abort();
+    }
+  }
+  async function createChat(target: WorkspaceTarget) {
+    if (!target.projectPath) throw new Error('Choose a project before creating a chat.');
+    const runtime = await connectedWorkspace(target);
+    const session = await runtime.values.currentSessionValue.createSession();
+    await runtime.values.currentSessionValue.openSession(session.id);
+    await activate(target);
+    return session;
+  }
+  async function createChatInWorktree(target: NewWorktreeChatTarget): Promise<NewWorktreeChatResult> {
+    let checkout: NewWorktreeChatResult['checkout'];
+    try {
+      const root = await connectedWorkspace({ connectionId: target.connectionId, projectPath: target.projectRoot });
+      checkout = await root.values.projectFilesValue.createWorktree(target.name);
+      const project = { connectionId: target.connectionId, projectPath: checkout.directory };
+      const session = await createChat(project);
+      return { session, checkout };
+    } catch (reason) {
+      return { checkout, error: reason instanceof Error ? reason.message : 'Could not create the worktree chat.' };
+    }
+  }
+
+  resume();
+  return {
+    resume,
+    dispose() { cancelNavigation(); unsubscribe?.(); unsubscribe = undefined; waiters.dispose(); },
+    cancelNavigation, pauseConversation,
+    isPersistenceAllowed: () => canPersist,
+    setPersistenceAllowed: (allowed: boolean) => { canPersist = allowed; },
+    isEnabled: (id: string) => registry().connections.some((record) => record.id === id && record.enabled),
+    change, select, publish, forget, resolveKey, ensure, retry, connectedWorkspace,
+    activate, navigate, openExternalSession, createChat, createChatInWorktree,
+    selectTerminalTarget: (target: WorkspaceTarget) => selectIndependentTarget(target, 'terminalTarget'),
+    inspect: (target: WorkspaceTarget) => selectIndependentTarget(target, 'inspectionTarget'),
+  };
+}
