@@ -1,7 +1,10 @@
 # Phase G — Harness and Guardrails
 
-Status: **in progress**. The composition harness and source checks are in place.
-The deliberate regression check, final browser/native gates and review are open.
+Status: **complete**. The real-core composition harness and ownership checks
+are in place. The integration test rejects the deliberate scope-routing
+regression, which was reverted. Final local gates and iOS simulator interaction
+acceptance passed at `c092ed88`; signed-release and physical-device checks remain
+pending in the [validation handoff](README.md#validation-handoff).
 
 Goal: prove the final architecture at the seam, encode its runtime invariants,
 and close the documentation. This is the last phase; do not start it with any
@@ -78,13 +81,15 @@ changes.
 
 ## Documentation and release
 
-- Finalize ADR 0051 with every phase checked.
-- Add ADRs for the connection manager, command core, transcript design and
-  persistence policy if those decisions are not already captured.
-- Update the state/boundary/network/validation docs to current behavior.
-- Update the phase status table in [the index](README.md).
-- Remove the temporary implementation notes that are no longer true.
-- Run the commit gate and full release validation.
+- ADR 0051 now records the completed migration checklist; the phase index and
+  current state/boundary/network/validation docs describe the shipped behavior.
+- The existing ADR set covers connection lifecycle, command ownership,
+  transcript queries and persistence policy.
+- Temporary implementation notes that no longer describe current behavior
+  have been removed.
+- The local commit and Phase G gates passed. Signed release builds, physical
+  device checks and tag-driven release validation remain separate pending
+  release acceptance.
 
 ## Phase G gate
 
@@ -102,13 +107,13 @@ is available; the tag release is authoritative.
 
 ## Acceptance
 
-- Harness covers the eight flows above and fails on a deliberate cross-domain
+- [x] Harness covers the eight flows above and fails on a deliberate cross-domain
   regression.
-- Ownership manifest and source checks reject duplicate writers and UI/core
+- [x] Ownership manifest and source checks reject duplicate writers and UI/core
   imports.
-- Every phase in the index is complete.
-- Full 185-flow E2E, Storybook, docs and static gate pass.
-- `git status` is clean; commits are one per phase/sub-phase.
+- [x] Every phase in the index is complete.
+- [x] Full 185-flow E2E, Storybook, docs and static gate pass.
+- [x] `git status` was clean at the `c092ed88` implementation checkpoint.
 
 ## Pitfalls
 

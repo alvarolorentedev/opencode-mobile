@@ -1,9 +1,9 @@
 # Phase F — Persistence and Tests
 
-Status: **in progress**. Query persistence, the session-cache removal, and
-Zustand device preference persistence are complete. The first native-import
-batch and four fast-check properties landed. All legacy suites use native imports and the real React renderer where needed.
-Knip cleanup and the full checkpoint are open.
+Status: **complete**. Query persistence, the session-cache removal, Zustand
+device preference persistence, native test imports, property tests and the
+platform-aware Knip cleanup are complete. The local Phase F checkpoint passed
+at `c092ed88`; see the [validation handoff](README.md#validation-handoff).
 
 Goal: one retention policy and one test infrastructure. No custom module loader,
 no duplicate storage writer, no hand-written edge matrices where a property test
@@ -31,29 +31,21 @@ Start only after Phase E is complete and green.
   Query restoration and app-core hydration finish before the workspace shell
   routes to onboarding or the saved session.
 
-## Remaining work
+## Completed migration scope
 
 ### `loadTs` and `hookRuntime` removal
 
-The baseline had 87 legacy suites using a custom module loader. Migrate
-them in feature batches:
-1. Add the renderer and platform mocks the suite needs.
-2. Replace `loadTs` with native imports.
-3. Replace `vi.mock` only at platform boundaries; do not mock domain modules.
-4. Keep the same test names and assertions. Compare test identities before and
-   after each batch.
-5. Delete the suite’s import map and any dead stand-ins.
-6. Delete `loadTs`/`hookRuntime` when the last suite is migrated.
-
-Do not add new `loadTs` usage. Do not weaken a suite to make migration easier.
+All 87 legacy suites now use native imports, with the real React renderer where
+needed. The migration retained test names and assertions, removed the custom
+loader and its dead stand-ins, and kept mocks at platform boundaries.
 
 ### Property tests and dead-code cleanup
 
 - `tests/vitest/state-properties.test.ts` covers the connection reducer, retry
-  status merge, anchored transcript page merge and live overlay ordering.
-- Add `knip` with a focused config; remove unused files/exports/dependencies
-  reported by a clean run.
-- Keep generated locale resources exempt.
+  status merge, anchored transcript page merge and live overlay ordering with
+  `fast-check`.
+- Knip has a platform-aware config; the scoped reachability and unused-export
+  checks passed. Generated locale resources remain exempt.
 
 ## Phase F gate
 
@@ -68,13 +60,13 @@ Full 185-flow suite required at this checkpoint.
 
 ## Acceptance
 
-- One writer per persisted key; no duplicate storage paths.
-- Cold start paints from Query + store hydration; credentials remain secure.
-- No `loadTs`/`hookRuntime`; test discovery and typecheck still cover every
+- [x] One writer per persisted key; no duplicate storage paths.
+- [x] Cold start paints from Query + store hydration; credentials remain secure.
+- [x] No `loadTs`/`hookRuntime`; test discovery and typecheck still cover every
   suite.
-- `fast-check` covers the reducers/merges named above.
-- `knip` is clean or has a reviewed, small ignore list.
-- Full E2E passes, including reload, onboarding and credential rotation.
+- [x] `fast-check` covers the reducers/merges named above.
+- [x] `knip` is clean or has a reviewed, small ignore list.
+- [x] Full E2E passes, including reload, onboarding and credential rotation.
 
 ## Pitfalls
 

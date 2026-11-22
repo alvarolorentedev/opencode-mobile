@@ -28,8 +28,8 @@ phase you are executing. Do not preload every phase unless you are planning.
 | C | [Command core](phase-c-commands.md) | Complete | Cross-domain commands run in the app core and the legacy composition is deleted |
 | D | [Transcript](phase-d-transcript.md) | Complete | Per-session infinite messages, bounded Query persistence and store live overlay |
 | E | [Flatten React](phase-e-flatten-react.md) | Complete | No scope/provider tree or shared-UI runtime exception |
-| F | [Persistence and tests](phase-f-persistence-and-tests.md) | In progress | Persistence and loader removal implemented; Knip and checkpoint open |
-| G | [Harness and guardrails](phase-g-harness-and-guardrails.md) | In progress | Composition harness and ownership checks implemented; final validation open |
+| F | [Persistence and tests](phase-f-persistence-and-tests.md) | Complete | Persistence, loader removal, property tests and scoped Knip validated |
+| G | [Harness and guardrails](phase-g-harness-and-guardrails.md) | Complete | Composition harness, ownership checks and final local gates validated |
 
 ## Current baseline
 
@@ -455,20 +455,25 @@ npm run validate:commit
 
 ## Validation handoff
 
-The final implementation batch is in commit `85de9005`. Its local checkpoint
-passed the commit gate (1,298 passed and one historical skip), Storybook, both
-fake-server self-tests, the scoped Knip check, and all 185 Chromium flows. The
-executed Vitest inventories preserved every Phase F baseline identity and added
-two restored voice cases plus three harness and ownership checks. Temporarily
-pinning workspace activation to the current connection failed the new
-integration case at the scope-switch assertion. The mutation was reverted.
+The final implementation is on `main` at `c092ed88`. Local static checks,
+scoped Knip, docs, Storybook, both fake-server self-tests and all 185 Chromium
+flows passed. The executed Vitest inventories preserved every Phase F baseline
+identity and added two restored voice cases plus three harness and ownership
+checks. Temporarily pinning workspace activation to the current connection
+failed the integration harness at the scope-switch assertion; the mutation was
+reverted and the regression check remains.
 
-Knip checks file reachability and dependency usage across the repository. Its
-unused-export checks focus on the migrated runtime, Chat services and server
-data. Android API 36 loaded the retained transcript and returned to it with
-hardware Back after opening the Chat Library. Final iOS interaction and signed
-or physical-device validation remain open. Use the Phase F and G gate commands
-and native acceptance steps to close those checks.
+GitHub Actions run [45059716137](https://github.com/alvarolorentedev/opencode-mobile/actions/runs/45059716137)
+passed its static and E2E jobs, including the critical smoke flows. CI skipped
+its separate full-flow step; the local 185-flow result above covers that suite.
+Android API 36 loaded the retained transcript and returned to it with hardware
+Back after opening Chat Library. The iOS 26.5 simulator build succeeded on an
+iPhone 17 Pro. The smoke opened Chat Library from “Explain this project,”
+confirmed the session appeared, closed the library and returned to the same
+transcript.
+
+The signed iOS release build and physical-device validation remain pending.
+This checkpoint did not create or move a release tag or publish to a store.
 
 ## Loop protocol
 
@@ -517,10 +522,13 @@ first, then use `E2E_SKIP_BUILD=1`.
       exception remains.
 - [x] Query and Zustand persistence own retention; no duplicate caches or
       writers.
-- [ ] No `loadTs`/`hookRuntime`; `fast-check` and `knip` are in use.
+- [x] No `loadTs`/`hookRuntime`; `fast-check` and `knip` are in use.
 - [x] Full fake-server composition harness and fact/command guardrails exist.
-- [ ] `npm run validate:commit`, full 185-flow E2E, Storybook and native smoke
+- [x] `npm run validate:commit`, full 185-flow E2E, Storybook and native smoke
       pass on the final commit.
+
+Signed iOS release-build and physical-device checks remain pending beyond this
+local simulator acceptance checkpoint.
 
 ## Pitfalls
 
