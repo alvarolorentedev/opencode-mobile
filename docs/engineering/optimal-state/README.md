@@ -384,12 +384,16 @@ npm run validate:commit
   hooks are deleted. Catalog, notification, favorite and native voice service
   tests import their modules through Vitest. All 34 affected browser flows
   passed.
-- F4. Keyboard, gesture, icon, list row and voice setup tests now use real
+- F4, `cc4ed15b`. Keyboard, gesture, icon, list row and voice setup tests now use real
   React. The background notification and native voice model suites import
   their implementations directly. Discovery and typechecking now include
   the existing TSX voice settings suite. Its two cases passed, giving
-  1,295 passing tests and one existing skip. Storybook and FOSS preparation
-  passed.
+  1,295 passing tests and one existing skip. Storybook, FOSS preparation and
+  47 affected browser flows passed.
+- F5. Connection profile retirement, scoped credential storage, native mod
+  idempotence, session catalog and Mission stats now run through normal
+  imports. The Mission hydration case reads and writes the real persisted
+  record through the platform storage fixture.
 
 ## Loop protocol
 

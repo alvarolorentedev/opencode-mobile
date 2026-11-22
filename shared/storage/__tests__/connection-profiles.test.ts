@@ -1,143 +1,43 @@
-import { moduleSourceUri } from '../../../tests/helpers/module-source.mjs';
 import assert from 'node:assert/strict';
-import path from 'node:path';
-import { fileURLToPath, pathToFileURL } from 'node:url';
-import { describe, it } from 'vitest';
+import { describe, it, vi } from 'vitest';
 
-// Same transport as the session-cache suite: transpile TS and import via data
-// URIs, rewriting the `@/` alias and replacing native modules with stubs. The
-// point of this suite is that the persisted profile model and the credential
-// resolution stay explicit, validated, and password-free.
-//
-// Migrated from the standalone tests/connection-profiles.test.mjs Node script.
+import * as storageKeys from '@/shared/storage/keys';
+import * as connectionScope from '@/shared/contracts/connection-scope';
+
 describe('connection profiles', () => {
   it('validates profiles, resolves scoped credentials, and serializes one transaction', async () => {
-    const here = path.dirname(fileURLToPath(import.meta.url));
-    const root = path.join(here, '..', '..', '..');
+    const asyncValues = new Map<string, string>();
+    const secureValues = new Map<string, string>();
+    const platform = { OS: 'android' };
+    const asyncStorage = {
+      async getItem(key: string) { return asyncValues.get(key) ?? null; },
+      async setItem(key: string, value: string) { asyncValues.set(key, value); },
+      async removeItem(key: string) { asyncValues.delete(key); },
+    };
+    const secureStore = {
+      AFTER_FIRST_UNLOCK_THIS_DEVICE_ONLY: 'after-first-unlock',
+      async getItemAsync(key: string) { return secureValues.get(key) ?? null; },
+      async setItemAsync(key: string, value: string) { secureValues.set(key, value); },
+      async deleteItemAsync(key: string) { secureValues.delete(key); },
+    };
+    let nextId = 0;
+    vi.doMock('@react-native-async-storage/async-storage', () => ({ default: asyncStorage }));
+    vi.doMock('expo-secure-store', () => secureStore);
+    vi.doMock('react-native', () => ({ Platform: platform }));
+    vi.doMock('expo-constants', () => ({
+      default: { expoConfig: { extra: { connectPilot: { enabled: true, controlPlanes: ['https://api.opencodecloud.link'] } } } },
+    }));
+    vi.doMock('expo-crypto', () => ({
+      randomUUID: () => '00000000-0000-4000-8000-' + String(++nextId).padStart(12, '0'),
+    }));
 
-    async function transpileToDataUri(relativePath: string, replacements: [RegExp, string][] = []) {
-      return moduleSourceUri(root, relativePath, [...replacements,]);
-    }
-
-    // Shared stub state lives on globalThis so every data-URI module instance sees
-    // the same maps.
-    const g = globalThis as any;
-    g.__profilesTestAsyncStorage = new Map();
-    g.__profilesTestSecureStore = new Map();
-    g.__profilesTestPlatformOS = 'android';
-
-    const asyncStorageStubUri = `data:text/javascript,${encodeURIComponent(`
-      export default {
-        async getItem(key) { return globalThis.__profilesTestAsyncStorage.has(key) ? globalThis.__profilesTestAsyncStorage.get(key) : null; },
-        async setItem(key, value) { globalThis.__profilesTestAsyncStorage.set(key, value); },
-        async removeItem(key) { globalThis.__profilesTestAsyncStorage.delete(key); },
-      };
-    `)}`;
-    const secureStoreStubUri = `data:text/javascript,${encodeURIComponent(`
-      export async function getItemAsync(key) { return globalThis.__profilesTestSecureStore.has(key) ? globalThis.__profilesTestSecureStore.get(key) : null; }
-      export async function setItemAsync(key, value) { globalThis.__profilesTestSecureStore.set(key, value); }
-      export async function deleteItemAsync(key) { globalThis.__profilesTestSecureStore.delete(key); }
-    `)}`;
-    const reactNativeStubUri = `data:text/javascript,${encodeURIComponent(`
-      export const Platform = { get OS() { return globalThis.__profilesTestPlatformOS; } };
-    `)}`;
-    const cryptoStubUri = `data:text/javascript,${encodeURIComponent(`
-      let counter = 0;
-      export function randomUUID() {
-        counter += 1;
-        return '00000000-0000-4000-8000-' + String(counter).padStart(12, '0');
-      }
-      export class AESEncryptionKey {
-        static async generate() { return new AESEncryptionKey(); }
-        static async import() { return new AESEncryptionKey(); }
-        async encoded() { return 'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA='; }
-        async bytes() { return new Uint8Array(32); }
-      }
-      export class AESSealedData {
-        static fromCombined() { return new AESSealedData(); }
-        async combined() { return ''; }
-      }
-      export async function aesEncryptAsync() { return new AESSealedData(); }
-      export async function aesDecryptAsync() { return new Uint8Array(); }
-    `)}`;
-
-    const base64Uri = `data:text/javascript,${encodeURIComponent(
-      `import { base64 } from ${JSON.stringify(pathToFileURL(path.join(root, 'node_modules/@scure/base/lib/index.js')).href)}; export { base64 };`,
-    )}`;
-    const zodUri = `data:text/javascript,${encodeURIComponent(
-      `import { z } from ${JSON.stringify(pathToFileURL(path.join(root, 'node_modules/zod/index.cjs')).href)}; export { z };`,
-    )}`;
-
-    const connectionScopeUri = await transpileToDataUri('shared/contracts/connection-scope.ts', [
-      [/from '@scure\/base'/g, `from "${base64Uri}"`],
-    ]);
-    const storageKeysUri = await transpileToDataUri('shared/storage/keys.ts');
-    g.__profilesTestConnectConfig = { extra: { connectPilot: { enabled: true, controlPlanes: ['https://api.opencodecloud.link'] } } };
-    const constantsStubUri = `data:text/javascript,${encodeURIComponent(`export default { get expoConfig() { return globalThis.__profilesTestConnectConfig; } };`)}`;
-    const connectUri = await transpileToDataUri('shared/contracts/cloud-link.ts', [
-      [/from 'expo\/fetch'/g, `from "data:text/javascript,export const fetch = (...args) => globalThis.fetch(...args);"`],
-      [/from 'expo-constants'/g, `from "${constantsStubUri}"`],
-      [/from 'expo-secure-store'/g, `from "${secureStoreStubUri}"`],
-      [/from 'react-native'/g, `from "${reactNativeStubUri}"`],
-    ]);
-    const urlUri = await transpileToDataUri('shared/contracts/server-url.ts', [
-      [/from '@\/shared\/protocol\/opencode\/client\/types'/g, `from "data:text/javascript,export const defaultConnectionSettings = {serverUrl:'http://localhost'};"`],
-    ]);
-    const connectionPasswordUri = await transpileToDataUri('shared/storage/connection-password.ts', [
-      [/from '@\/shared\/contracts\/server-url'/g, `from "${urlUri}"`],
-      [/from '@\/shared\/contracts\/cloud-link'/g, `from "${connectUri}"`],
-      [/from '@react-native-async-storage\/async-storage'/g, `from "${asyncStorageStubUri}"`],
-      [/from 'expo-secure-store'/g, `from "${secureStoreStubUri}"`],
-      [/from 'react-native'/g, `from "${reactNativeStubUri}"`],
-      [/from '@\/shared\/storage\/keys'/g, `from "${storageKeysUri}"`],
-    ]);
-    const workspaceStubUri = `data:text/javascript,${encodeURIComponent("export const WORKSPACES_STORAGE_KEY = 'opencode-mobile.workspaces'; export const parseWorkspaces = JSON.parse;")}`;
-    const connectionHeadersStubUri = `data:text/javascript,${encodeURIComponent(`
-      const activeKey = 'opencode-mobile.connection-headers';
-      const profileKey = (id) => 'opencode-mobile.connection-profile-headers.' + id;
-      const parse = (raw) => { if (!raw) return {}; try { const value = JSON.parse(raw); return value && typeof value === 'object' ? value : {}; } catch { return {}; } };
-      const write = (key, headers) => { const text = headers && Object.keys(headers).length ? JSON.stringify(headers) : ''; if (text) globalThis.__profilesTestSecureStore.set(key, text); else globalThis.__profilesTestSecureStore.delete(key); };
-      export async function getConnectionHeaders() { return parse(globalThis.__profilesTestSecureStore.get(activeKey)); }
-      export async function saveConnectionHeaders(headers) { write(activeKey, headers); }
-      export async function getProfileHeaders(id) { return parse(globalThis.__profilesTestSecureStore.get(profileKey(id))); }
-      export async function saveProfileHeaders(id, headers) { write(profileKey(id), headers); }
-      export async function deleteProfileHeaders(id) { globalThis.__profilesTestSecureStore.delete(profileKey(id)); }
-    `)}`;
-    const autoModelPreferencesUri = await transpileToDataUri('shared/preferences/auto-model.ts', []);
-    const connectionProfilesUri = await transpileToDataUri('shared/storage/connection-profiles.ts', [
-      [/from '@\/shared\/preferences\/auto-model'/g, `from "${autoModelPreferencesUri}"`],
-      [/from '@\/shared\/storage\/workspace-storage'/g, `from "${workspaceStubUri}"`],
-      [/from '@\/shared\/contracts\/server-url'/g, `from "${urlUri}"`],
-      [/from '@\/shared\/contracts\/cloud-link'/g, `from "${connectUri}"`],
-      [/from '@react-native-async-storage\/async-storage'/g, `from "${asyncStorageStubUri}"`],
-      [/from 'expo-crypto'/g, `from "${cryptoStubUri}"`],
-      [/from 'expo-secure-store'/g, `from "${secureStoreStubUri}"`],
-      [/from 'react-native'/g, `from "${reactNativeStubUri}"`],
-      [/from '@\/shared\/storage\/connection-password'/g, `from "${connectionPasswordUri}"`],
-      [/from '@\/shared\/storage\/connection-headers'/g, `from "${connectionHeadersStubUri}"`],
-      [/from '@\/shared\/contracts\/connection-scope'/g, `from "${connectionScopeUri}"`],
-      [/from '@\/shared\/storage\/keys'/g, `from "${storageKeysUri}"`],
-      [/from 'zod'/g, `from "${zodUri}"`],
-    ]);
-
-    const asyncStorage = (await import(asyncStorageStubUri)).default;
-    const secureStore = await import(secureStoreStubUri);
-    const connectionHeaders = await import(connectionHeadersStubUri);
-    const storageKeys = await import(storageKeysUri);
-    const connectionScope = await import(connectionScopeUri);
+    const connectionHeaders = await import('@/shared/storage/connection-headers');
     const {
-      deleteProfilePassword,
-      findMatchingProfile,
-      findProfileByConnectionScope,
-      getProfilePassword,
-      loadConnectionProfiles,
-      mutateConnectionProfiles,
-      pickModelPreferences,
-      resolveConnectionCredentials,
-      saveProfilePassword,
-      saveConnectProfile,
-      toConnectionProfile,
-    } = Object.assign({}, await import(connectionProfilesUri), await import(await transpileToDataUri('shared/contracts/connection-profiles.ts', [[/from '@\/shared\/contracts\/cloud-link'/g, `from "${connectUri}"`], [/from '@\/shared\/contracts\/connection-scope'/g, `from "${connectionScopeUri}"`], [/from '@\/shared\/contracts\/server-url'/g, `from "${urlUri}"`]])));
+      deleteProfilePassword, getProfilePassword, loadConnectionProfiles, mutateConnectionProfiles,
+      resolveConnectionCredentials, saveProfilePassword, saveConnectProfile,
+    } = await import('@/shared/storage/connection-profiles');
+    const { findMatchingProfile, findProfileByConnectionScope, pickModelPreferences, toConnectionProfile } =
+      await import('@/shared/contracts/connection-profiles');
 
     const resolveConnectionPassword = async (identity: { serverUrl: string; username: string }) => (
       await resolveConnectionCredentials(identity)
@@ -153,16 +53,17 @@ describe('connection profiles', () => {
     const parked = { serverUrl: 'https://parked.example', username: 'alice' };
     await saveConnectionProfiles([{ id: 'parked', name: 'Parked', ...parked }]);
     await saveProfilePassword('parked', 'retained-secret');
-    await asyncStorage.setItem('opencode-mobile.workspaces', JSON.stringify({ version: 1, connections: [{ settings: parked, enabled: false }] }));
+    const storedParked = { id: connectionScope.getConnectionUiScope(parked), name: 'Parked', projects: [''], preferences: {}, settings: parked };
+    await asyncStorage.setItem('opencode-mobile.workspaces', JSON.stringify({ version: 1, connections: [{ ...storedParked, enabled: false }] }));
     assert.equal(await resolveConnectionCredentials(parked), undefined, 'Disconnected servers must not be polled by background tasks or widgets.');
     assert.equal(await getProfilePassword('parked'), 'retained-secret');
-    await asyncStorage.setItem('opencode-mobile.workspaces', JSON.stringify({ version: 1, connections: [{ settings: parked, enabled: true }] }));
+    await asyncStorage.setItem('opencode-mobile.workspaces', JSON.stringify({ version: 1, connections: [{ ...storedParked, enabled: true }] }));
     assert.deepEqual(await resolveConnectionCredentials(parked), { password: 'retained-secret', headers: {} });
     await asyncStorage.removeItem('opencode-mobile.workspaces');
 
     function resetStorage() {
-      g.__profilesTestAsyncStorage.clear();
-      g.__profilesTestSecureStore.clear();
+      asyncValues.clear();
+      secureValues.clear();
     }
 
     async function setActiveConnection(settings: unknown) {
@@ -255,22 +156,23 @@ describe('connection profiles', () => {
       resetStorage();
       await asyncStorage.setItem(storageKeys.CONNECTION_PROFILES_STORAGE_KEY, '{not json');
       assert.deepEqual(await loadConnectionProfiles(), []);
-      assert.equal(g.__profilesTestAsyncStorage.has(storageKeys.CONNECTION_PROFILES_STORAGE_KEY), false);
+      assert.equal(asyncValues.has(storageKeys.CONNECTION_PROFILES_STORAGE_KEY), false);
 
       await asyncStorage.setItem(storageKeys.CONNECTION_PROFILES_STORAGE_KEY, '{"not":"an array"}');
       assert.deepEqual(await loadConnectionProfiles(), []);
-      assert.equal(g.__profilesTestAsyncStorage.has(storageKeys.CONNECTION_PROFILES_STORAGE_KEY), false);
+      assert.equal(asyncValues.has(storageKeys.CONNECTION_PROFILES_STORAGE_KEY), false);
 
       const stored = [
         { id: 'keep', name: 'Keep', serverUrl: 'https://a.example', username: 'u', password: 'leaked', extra: true },
         { id: 'bad-prefs', name: 'Bad', serverUrl: 'https://b.example', username: '', modelPreferences: { enabledModelIds: [1] } },
         { name: 'missing id', serverUrl: 'https://c.example', username: '' },
       ];
-      g.__profilesTestAsyncStorage.set(storageKeys.CONNECTION_PROFILES_STORAGE_KEY, JSON.stringify(stored));
+      asyncValues.set(storageKeys.CONNECTION_PROFILES_STORAGE_KEY, JSON.stringify(stored));
       const loaded = await loadConnectionProfiles();
       assert.deepEqual(loaded, [{ id: 'keep', name: 'Keep', serverUrl: 'https://a.example', username: 'u' }]);
 
-      const rewritten = g.__profilesTestAsyncStorage.get(storageKeys.CONNECTION_PROFILES_STORAGE_KEY);
+      const rewritten = asyncValues.get(storageKeys.CONNECTION_PROFILES_STORAGE_KEY);
+      assert.ok(rewritten);
       assert.equal(rewritten.includes('leaked'), false);
       assert.equal(rewritten.includes('extra'), false);
       assert.deepEqual(JSON.parse(rewritten), loaded);
@@ -322,7 +224,7 @@ describe('connection profiles', () => {
 
       // Passwords and headers never reach AsyncStorage: profiles, active
       // settings, and the resolution path all keep them in SecureStore.
-      for (const value of g.__profilesTestAsyncStorage.values()) {
+      for (const value of asyncValues.values()) {
         assert.equal(value.includes('server-a-secret'), false);
         assert.equal(value.includes('server-b-secret'), false);
         assert.equal(value.includes('client-id'), false);
@@ -335,15 +237,15 @@ describe('connection profiles', () => {
       resetStorage();
       await saveProfilePassword('p9', 'secret');
       assert.equal(await getProfilePassword('p9'), 'secret');
-      assert.equal(g.__profilesTestSecureStore.get('opencode-mobile.connection-profile-password.p9'), 'secret');
+      assert.equal(secureValues.get('opencode-mobile.connection-profile-password.p9'), 'secret');
       await deleteProfilePassword('p9');
-      assert.equal(g.__profilesTestSecureStore.has('opencode-mobile.connection-profile-password.p9'), false);
+      assert.equal(secureValues.has('opencode-mobile.connection-profile-password.p9'), false);
       assert.equal(await getProfilePassword('p9'), '');
 
-      g.__profilesTestPlatformOS = 'web';
+      platform.OS = 'web';
       await saveProfilePassword('p9', 'ignored');
-      assert.equal(g.__profilesTestSecureStore.has('opencode-mobile.connection-profile-password.p9'), false);
-      g.__profilesTestPlatformOS = 'android';
+      assert.equal(secureValues.has('opencode-mobile.connection-profile-password.p9'), false);
+      platform.OS = 'android';
     }
 
     // Connect re-pairing replaces only this control-plane/machine's profile and
@@ -355,6 +257,7 @@ describe('connection profiles', () => {
       assert.equal(await resolveConnectionPassword(first), 'signed-secret-1');
       assert.deepEqual(await resolveConnectionCredentials(first), { password: 'signed-secret-1', headers: {}, connect: first.connect }, 'Background clients must carry expiry metadata into their fetch guard.');
       const next = await saveConnectProfile('https://api.opencodecloud.link', { ...claim, device_id: 'device-2', device_secret: 'signed-secret-2' });
+      assert.ok(first.connect && next.connect);
       assert.equal(next.id, first.id, 'Credential rotation preserves user-visible profile identity.');
       assert.equal(findMatchingProfile([first], next)?.id, first.id, 'Rotated Cloud Link usernames still match the saved machine.');
       assert.equal(findMatchingProfile([first], { ...next, connect: { ...next.connect, machineId: 'another-machine' } }), undefined);
@@ -365,7 +268,7 @@ describe('connection profiles', () => {
       assert.equal(await getProfilePassword(first.id), 'signed-secret-2');
       assert.deepEqual(await loadConnectionProfiles(), [next]);
       assert.equal(await resolveConnectionPassword(next), 'signed-secret-2');
-      for (const value of g.__profilesTestAsyncStorage.values()) assert.ok(!value.includes('signed-secret'));
+      for (const value of asyncValues.values()) assert.ok(!value.includes('signed-secret'));
       assert.equal(toConnectionProfile({ ...next, connect: { ...next.connect, expiresAt: 'bad' } }), undefined);
       assert.equal(toConnectionProfile({ ...next, username: 'another-device' }), undefined);
       await setActiveConnection({ serverUrl: next.serverUrl, username: next.username, connect: next.connect });
@@ -389,13 +292,13 @@ describe('connection profiles', () => {
       await assert.rejects(saveConnectProfile('https://api.opencodecloud.link', { ...claim, device_id: 'replacement' }), /disk full/);
       asyncStorage.setItem = originalSet;
       assert.deepEqual(await loadConnectionProfiles(), [kept]);
-      assert.equal(g.__profilesTestSecureStore.size, 1);
+      assert.equal(secureValues.size, 1);
       const originalGet = asyncStorage.getItem;
       asyncStorage.getItem = async () => { throw new Error('storage unavailable'); };
       await assert.rejects(saveConnectProfile('https://api.opencodecloud.link', claim), /storage unavailable/);
       asyncStorage.getItem = originalGet;
       assert.deepEqual(await loadConnectionProfiles(), [kept]);
-      assert.equal(g.__profilesTestSecureStore.size, 1, 'A read failure cannot overwrite existing profiles or secrets.');
+      assert.equal(secureValues.size, 1, 'A read failure cannot overwrite existing profiles or secrets.');
     }
 
     // Manual credentials, Cloud Link and preference writes share one transaction.
@@ -404,7 +307,9 @@ describe('connection profiles', () => {
       const manual = { id: 'manual', name: 'Manual', serverUrl: 'http://alice:private@host.test/proxy', username: 'configured' };
       await saveConnectionProfiles([manual]);
       assert.equal((await loadConnectionProfiles())[0].serverUrl, 'http://host.test/proxy');
-      assert.ok(!g.__profilesTestAsyncStorage.get(storageKeys.CONNECTION_PROFILES_STORAGE_KEY).includes('private'));
+      const rawManual = asyncValues.get(storageKeys.CONNECTION_PROFILES_STORAGE_KEY);
+      assert.ok(rawManual);
+      assert.ok(!rawManual.includes('private'));
       const entered = Promise.withResolvers<void>(), credential = Promise.withResolvers<void>();
       const edit = mutateConnectionProfiles(async (stored: any, save: any) => {
         entered.resolve(); await credential.promise;
