@@ -8,7 +8,7 @@ import type { CapabilitiesContextValue } from '@/features/ai/index';
 import type { ChatContextValue } from '@/features/chat/index';
 import type { ProjectFilesContextValue, ProjectsContextValue } from '@/features/projects/index';
 import type { useProjectCatalogActions } from '@/features/projects/runtime';
-import type { ActiveSessionItem, CurrentSessionContextValue } from '@/features/sessions/index';
+import type { ActiveSessionItem } from '@/features/sessions/index';
 import type { ConversationContextValue } from '@/features/voice/index';
 import type { useWidgetState } from '@/features/widgets/runtime';
 
@@ -55,7 +55,6 @@ export type WorkspaceValues = {
   capabilitiesValue: CapabilitiesContextValue;
   projectsValue: Pick<ProjectsContextValue, 'addProject' | 'refreshProjectCatalog' | 'refreshProjectStatus'>;
   projectFilesValue: ProjectFilesContextValue;
-  currentSessionValue: Omit<CurrentSessionContextValue, 'currentSessionId' | 'activeSession'>;
   chatValue: ChatContextValue;
   conversationValue: ConversationContextValue;
 };

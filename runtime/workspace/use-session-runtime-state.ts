@@ -19,7 +19,7 @@ export function useSessionRuntimeState(input: ProjectBindingInput, connection: C
   const connectionId = input.connection.id;
   const scopeKey = workspaceKey({ connectionId: input.connection.id, projectPath: input.projectPath ?? '' });
   const { activeProjectPath, setActiveProjectPath, activeProjectPathRef, projectFileRequestRef } = useProjectRuntimeState(scopeKey, input.projectPath);
-  const { currentSessionId, setCurrentSessionId, isBootstrappingChat, setActiveSessionsVisible, currentSessionIdRef, pendingDeepLinkTargetRef, deepLinkOperationRef, explicitSessionSelectionRef } = useSessionState(scopeKey);
+  const { currentSessionId, setCurrentSessionId, isBootstrappingChat, currentSessionIdRef, pendingDeepLinkTargetRef, explicitSessionSelectionRef } = useSessionState(scopeKey);
   const { store, commands } = useAppCore();
   const cancelBootstrap = useCallback(() => commands.session.cancelBootstrap(scopeKey), [commands, scopeKey]);
   const { diffScopeBySession, selectedDiffMessageBySession, isRefreshingMessages, isRefreshingDiffs } = useAppStore((state) => state.chat[scopeKey] ?? EMPTY_CHAT);
@@ -65,14 +65,12 @@ export function useSessionRuntimeState(input: ProjectBindingInput, connection: C
     mcpAuthPrompt, clearMcpAuthPrompt,
     isRefreshingMessages, isRefreshingDiffs,
     isBootstrappingChat, cancelBootstrap,
-    setActiveSessionsVisible,
     connectionScope,
     settingsRef,
     connectionScopeRef,
     activeProjectPathRef,
     currentSessionIdRef,
     pendingDeepLinkTargetRef,
-    deepLinkOperationRef,
     scopeGenerationRef,
     serverGenerationRef,
     clientGenerationRef,

@@ -56,6 +56,9 @@ using the owning connection scope.
 The workspace picker and library enumerate the same connected project
 partitions. The library and share picker observe cached project lists without
 starting background reads.
+Session opening and creation bind directly to the core commands. The library
+sets its visibility on the selected workspace so connection catalog polling
+runs while the library is open and the route is foregrounded.
 
 Session selection and startup bootstrap use the scoped app-core command in
 `runtime/core/commands/session-navigation.ts`. Explicit selection commits

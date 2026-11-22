@@ -35,8 +35,8 @@ export function createAppCore(defaults: AppStoreDefaults): AppCore {
     connections: createConnectionRegistry({ store, queryClient }),
     clock: () => Date.now(),
   };
-  const workspace = createWorkspaceCommands(context);
   const session = createSessionCommands(context);
+  const workspace = createWorkspaceCommands(context, session);
   return { ...context, events: createCoreEvents(context), autoApproval: createAutoApproval(context, session.interactions), terminal: createTerminalRuntime(context), commands: {
     workspace, session, prompt: createPromptCommands(context),
     connection: createConnectionCommands(context, workspace),

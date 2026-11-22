@@ -131,7 +131,7 @@ export function WorkspaceProvider({ children }: PropsWithChildren) {
   const { servicesValue } = useServicesState({ settings, connectSetup, connections: manager.connections, visible: pathname === '/settings' || pathname === '/service' });
   const connectionControls = useMemo(() => ({ connectionProfiles, connectSetup, services: servicesValue }), [connectionProfiles, connectSetup, servicesValue]);
   const { terminalTarget, inspectionTarget } = registryState;
-  const { selectTerminalTarget, inspect } = core.commands.workspace;
+  const { createSession, selectTerminalTarget, inspect } = core.commands.workspace;
   const { openSession } = core.commands.connection;
   const refreshTargets = useCallback(async () => {
     await Promise.all(Object.values(catalogs).map((catalog) => catalog.refresh()));
@@ -148,11 +148,12 @@ export function WorkspaceProvider({ children }: PropsWithChildren) {
     createAt: async (target) => {
       const entry = connections.find((item) => getConnectionScope(item.settings) === target.connectionScope);
       if (!entry) throw new Error('This server is no longer available.');
-      const workspace = await connectedWorkspace({ connectionId: entry.id, projectPath: target.projectPath });
-      return workspace.values.currentSessionValue.createSession();
+      const workspace = { connectionId: entry.id, projectPath: target.projectPath };
+      await connectedWorkspace(workspace);
+      return createSession(workspace);
     },
     sessions: (focus && catalogs[focus.connectionId]?.sessions) || [], hideSubagentChats: shell.chatPreferences.hideSubagentChats, refreshTargets,
-    createSession: async () => { if (!current) throw new Error('Choose a workspace.'); return current.values.currentSessionValue.createSession(); }, openSession });
+    createSession: async () => { if (!focus) throw new Error('Choose a workspace.'); return createSession(focus); }, openSession });
   const shared = useMemo<SharedWorkspaceState>(() => ({
     fileClipboard,
     controlPlaneUrl: shell.controlPlaneUrl, setControlPlaneUrl: shell.setControlPlaneUrl,

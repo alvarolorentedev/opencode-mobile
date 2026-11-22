@@ -275,8 +275,9 @@ The completion version, preference schema and first-run migration are unchanged.
   Event commands read device state from the store and apply protocol events
   through scoped transcript, catalog and interaction operations.
 - `features/chat/state/use-chat-presentation.ts` and
-  `features/sessions/state/use-session-presentation.ts`
-  Memoized views for the transcript, approvals, active chat and session library.
+  `features/sessions/state/use-session-previews.ts`
+  Memoized transcript presentation and previews for the session library.
+  Session selection and actions bind directly through `features/sessions/context.ts`.
 - `runtime/composition/use-project-actions.ts`
   Project catalog, project selection, session/file
   refresh, file search/open/save/download, and diagnostics actions.

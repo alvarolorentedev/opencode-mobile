@@ -40,13 +40,6 @@ export type ActiveSessionItem = {
 export type CurrentSessionContextValue = {
   currentSessionId?: string;
   activeSession?: Session;
-  // Grouped so the connection-wide snapshot, its refresh, and the
-  // library-visibility signal for polling share one context member.
-  activeSessions: {
-    list: ActiveSessionItem[];
-    refresh: () => Promise<void>;
-    setVisible: (visible: boolean) => void;
-  };
   ensureActiveSession: () => Promise<string | undefined>;
   openDeepLinkSession: (target: SessionDeepLinkTarget, signal?: AbortSignal) => Promise<{ ok: boolean; error?: string }>;
   openSession: (sessionId: string) => Promise<void>;

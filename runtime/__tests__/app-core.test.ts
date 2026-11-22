@@ -90,12 +90,23 @@ function connectedProject(core: ReturnType<typeof newCore>, connectionId: string
   const openSession = vi.fn(async (_id: string) => {});
   const created = { id: 'new-session' };
   const createSession = vi.fn(async () => created);
-  const openDeepLinkSession = vi.fn(async (_link: unknown, _signal: AbortSignal) => ({ ok: true }));
+  const openDeepLinkSession = vi.fn(async (_link: unknown, _signal?: AbortSignal) => ({ ok: true }));
+  const key = workspaceKey(target);
+  const { session } = core.commands;
+  const { navigation, creation } = session;
+  const matches = (scope: WorkspaceTarget, scopeKey: string) => scopeKey === key && scope.projectPath === projectPath;
+  session.navigation = (scope, scopeKey, revision) => ({
+    ...navigation(scope, scopeKey, revision),
+    ...(matches(scope, scopeKey) ? { openSession, openDeepLinkSession } : {}),
+  });
+  session.creation = (scope, scopeKey, revision) => ({
+    ...creation(scope, scopeKey, revision),
+    ...(matches(scope, scopeKey) ? { createSession: createSession as unknown as ReturnType<typeof creation>['createSession'] } : {}),
+  });
   const snapshot = {
     enabled: true, boundDirectory: projectPath || undefined, suspend: vi.fn(),
     values: {
       conversationValue: { conversation: { active: false } },
-      currentSessionValue: { openSession, openDeepLinkSession, createSession },
     },
   } as unknown as WorkspaceSnapshot;
   const commands = core.commands.workspace;
@@ -106,7 +117,7 @@ function connectedProject(core: ReturnType<typeof newCore>, connectionId: string
   });
   const access = manager.getProjectAccess(projectPath)!;
   core.queryClient.setQueryData(projectSessionsKey(access.identity, access.client), [{ id: 'rendered', directory: projectPath }]);
-  commands.publish(workspaceKey(target), snapshot);
+  commands.publish(key, snapshot);
   return { target, openSession, openDeepLinkSession, createSession, created };
 }
 

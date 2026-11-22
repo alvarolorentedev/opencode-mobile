@@ -294,7 +294,7 @@
       "useConnectionProfiles"
     ],
     "features/sessions/runtime.ts": [
-      "useSessionPresentation",
+      "useSessionPreviews",
       "approvalsAccess",
       "clearMissionStatsCaches",
       "collectDescendantSessionIds",

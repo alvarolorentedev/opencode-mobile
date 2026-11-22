@@ -307,11 +307,15 @@ npm run validate:commit
   core commands and favorites update the app store. The commit gate passed
   with 1,283 tests and one existing skip. All 100 focused tests and 60 browser
   flows across Sessions, Chat, multi-server, Extensions, share, diffs and Settings passed.
-- E18. Projects and the chat library share a connected scope selector. The
+- E18, `7e6eda4b`. Projects and the chat library share a connected scope selector. The
   library and share picker read project session lists directly from Query.
   The commit gate passed with 1,283 tests and one existing skip. All 99 focused
   tests and 55 browser flows across Projects, Sessions, share, multi-server,
   Mission Control, Chat and Terminal passed.
+- E19. Session navigation and creation call the core directly. The library
+  drives its catalog polling gate from actual visibility. The commit gate
+  passed with 1,283 tests and one existing skip. All 100 focused tests and the
+  full 185-flow browser suite passed.
 
 ## Loop protocol
 

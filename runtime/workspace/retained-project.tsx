@@ -2,7 +2,7 @@
 import { memo, useCallback, useEffect, useLayoutEffect, useMemo, type Dispatch, type SetStateAction } from 'react';
 
 import { buildClient, type OpencodeConnectionSettings } from '@/shared/protocol/opencode/client';
-import { getActiveSessions, MAX_ACTIVE_SESSIONS, useApprovalsCatalog, useSessionCatalog, useSessionExecutionActions, useSessionPresentation } from '@/features/sessions/runtime';
+import { getActiveSessions, MAX_ACTIVE_SESSIONS, useApprovalsCatalog, useSessionCatalog, useSessionExecutionActions, useSessionPreviews } from '@/features/sessions/runtime';
 import { useConnectionRuntime } from '@/runtime/connections/connection-runtime';
 import { useProjectPresentation, useWorktreeState } from '@/features/projects/runtime';
 import { useActivityNotifications } from '@/features/notifications/runtime';
@@ -174,8 +174,6 @@ export const RetainedProject = memo(function RetainedProject({ defaults, updateS
 
   const sessionNavigation = useMemo(() => sessionCommands.navigation(sessionTarget, state.scopeKey, inputConnection.revision),
     [inputConnection.revision, sessionCommands, sessionTarget, state.scopeKey]);
-  const sessionCreation = useMemo(() => sessionCommands.creation(sessionTarget, state.scopeKey, inputConnection.revision),
-    [inputConnection.revision, sessionCommands, sessionTarget, state.scopeKey]);
   const sessionActions = useSessionExecutionActions({
     client,
     isCurrentClient,
@@ -286,10 +284,8 @@ export const RetainedProject = memo(function RetainedProject({ defaults, updateS
     pruneTranscript: transcript.prune,
   });
 
-  const { activeSession, currentSessionValue, sessionPreviews } = useSessionPresentation({
-    ...domain, ...sessionNavigation, ...sessionCreation,
-    activeSessions, refreshActiveSessions: catalog.refresh,
-  });
+  const activeSession = sessionCatalog.sessions.find(({ id }) => id === state.currentSessionId);
+  const sessionPreviews = useSessionPreviews(transcript.messagesBySession);
   const chatValue = useChatPresentation({
     ...domain, ...transcript, ...project, ...sessionActions, ...interactions, ...capabilities, ...prompt,
     activeSession,
@@ -305,9 +301,9 @@ export const RetainedProject = memo(function RetainedProject({ defaults, updateS
   }), [conversation, clearConversationFeedback, toggleConversationMode]);
   const values = useMemo<WorkspaceValues>(() => ({
     capabilitiesValue, projectsValue, projectFilesValue,
-    currentSessionValue, chatValue, conversationValue,
+    chatValue, conversationValue,
   }), [capabilitiesValue, projectsValue, projectFilesValue,
-    currentSessionValue, chatValue, conversationValue]);
+    chatValue, conversationValue]);
 
   const suspend = useCallback(() => {
     scopeGenerationRef.current++; serverGenerationRef.current++;

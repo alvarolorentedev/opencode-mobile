@@ -1,4 +1,4 @@
-import { useCallback, useMemo } from 'react';
+import { useCallback, useEffect, useMemo } from 'react';
 import { useWorkspaces } from '@/runtime/workspace';
 import { useAppCore, useConnectionLifecycles } from '@/runtime/core';
 import { connectedConnections } from '@/features/sessions/model/workspace-library';
@@ -12,6 +12,13 @@ export function useWorkspaceLibrary(visible = true) {
   const { connections, store, clock, commands: { session, workspace: { ensure, resolveKey } } } = useAppCore();
   const lifecycles = useConnectionLifecycles();
   const { catalogs } = registry;
+  const visibleKey = visible && registry.focus ? resolveKey(registry.focus) : undefined;
+  useEffect(() => {
+    if (!visibleKey) return;
+    const { setSelection } = store.getState();
+    setSelection(visibleKey, { activeSessionsVisible: true });
+    return () => { setSelection(visibleKey, { activeSessionsVisible: false }); };
+  }, [store, visibleKey]);
   // The library is mounted while closed so its search/section state survives.
   // Skip the cross-project derivation until it is actually visible.
   const sessions = useLibrarySessions(catalogs, { visible });

@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useRef, type Dispatch, type SetStateAction } from 'react';
+import { useCallback, useMemo, type Dispatch, type SetStateAction } from 'react';
 
 import { useAppCore, useAppStore } from '@/runtime/core';
 import type { SelectionState } from '@/runtime/core';
@@ -21,9 +21,6 @@ export function useSessionState(scopeKey: string) {
     write((current) => ({ currentSessionId: typeof value === 'function' ? value(current.currentSessionId) : value }));
   }, [write]);
   const isBootstrappingChat = selection.isBootstrappingChat;
-  const setActiveSessionsVisible = useCallback<Dispatch<SetStateAction<boolean>>>((value) => {
-    write((current) => ({ activeSessionsVisible: typeof value === 'function' ? value(current.activeSessionsVisible) : value }));
-  }, [write]);
 
   const currentSessionIdRef = useMemo(() => ({ get current() { return store.getState().selection[scopeKey]?.currentSessionId; } }), [scopeKey, store]);
 
@@ -32,12 +29,10 @@ export function useSessionState(scopeKey: string) {
     set current(pendingDeepLink: SelectionState['pendingDeepLink']) { write({ pendingDeepLink }); },
   }), [scopeKey, store, write]);
 
-  const deepLinkOperationRef = useRef<object | undefined>(undefined);
-
   const explicitSessionSelectionRef = useMemo(() => ({
     get current() { return store.getState().selection[scopeKey]?.explicitSessionId; },
     set current(explicitSessionId: string | undefined) { write({ explicitSessionId }); },
   }), [scopeKey, store, write]);
 
-  return { currentSessionId, setCurrentSessionId, isBootstrappingChat, setActiveSessionsVisible, currentSessionIdRef, pendingDeepLinkTargetRef, deepLinkOperationRef, explicitSessionSelectionRef };
+  return { currentSessionId, setCurrentSessionId, isBootstrappingChat, currentSessionIdRef, pendingDeepLinkTargetRef, explicitSessionSelectionRef };
 }

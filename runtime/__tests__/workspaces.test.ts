@@ -16,13 +16,16 @@ const identity = { getConnectionScope: (value: any) => `${value.serverUrl}:${val
 const keys = { sessionKey: (value: any) => JSON.stringify([value.connectionId, value.projectPath, value.sessionId]) };
 
 type TestConnections = Parameters<typeof WorkspaceCommands>[0]['connections'];
+type TestSessionCommands = Parameters<typeof WorkspaceCommands>[1];
+const unexpectedSessionCommand = () => { throw new Error('Unexpected session command'); };
 function mountWorkspaceConnections(driver: ReturnType<typeof hookRuntime>, useWorkspaceConnections: any, createWorkspaceCommands: typeof WorkspaceCommands, createConnectionCommands: typeof ConnectionCommands, shell: any,
   connections: TestConnections = { get: () => undefined, subscribeState: () => () => {} },
   queryClient = new QueryClient(),
+  session: TestSessionCommands = { navigation: unexpectedSessionCommand, creation: unexpectedSessionCommand },
 ) {
   const store = createAppStore({ settings: shell.settings, chatPreferences: shell.chatPreferences, controlPlaneUrl: '' });
   store.getState().setShellValue('onboardingVersion', shell.onboardingVersion);
-  const workspace = createWorkspaceCommands({ store, connections, queryClient });
+  const workspace = createWorkspaceCommands({ store, connections, queryClient }, session);
   const commands = { workspace, connection: createConnectionCommands({ store, connections, queryClient }, workspace) };
   const getRegistry = () => store.getState().registry;
   driver.mount(() => {
@@ -85,7 +88,11 @@ describe('multi-server contracts', () => {
     const commands = {
       connection: { retry: vi.fn(), openSession: vi.fn(), openSessionInProject: vi.fn() },
       workspace: { activate: vi.fn() },
-      session: { creation: () => ({ forkSession: vi.fn() }), editing: () => ({ revertSession: vi.fn(), unrevertSession: vi.fn() }) },
+      session: {
+        creation: () => ({ createSession: vi.fn(), forkSession: vi.fn() }),
+        editing: () => ({ revertSession: vi.fn(), unrevertSession: vi.fn() }),
+        navigation: () => ({ ensureActiveSession: vi.fn(), openSession: vi.fn() }),
+      },
     };
     const connectionControls = { connectionProfiles: [], connectSetup: {}, services: {} };
     const lifecycle = { connection: { status: 'connected' }, contract: 'v2' };
@@ -121,7 +128,6 @@ describe('multi-server contracts', () => {
     });
     const base = {
       projectsValue: { addProject: async () => '/repo' },
-      currentSessionValue: { openDeepLinkSession: async () => ({ ok: true }) },
       chatValue: { currentMessages: [] },
     };
     driver.mount(({ values }: { values: Record<string, unknown> }) => {
@@ -340,44 +346,57 @@ it('keeps lifecycle decisions current without resetting retained runtimes', asyn
     getState: () => ({ connection: connected }), connect: async () => connected, getCatalogClient: () => client,
     getProjectAccess: (directory: string) => ({ identity: { connectionId: id }, client: { __opencode: { contract: 'v2', directory } }, isCurrent: () => true }),
   } as unknown as NonNullable<ReturnType<TestConnections['get']>>]));
+  const navigation = new Map<string, ReturnType<TestSessionCommands['navigation']>>();
+  function bindNavigation(connectionId: string, projectPath: string) {
+    const actions = { openSession: vi.fn(async () => {}), openDeepLinkSession: vi.fn(async () => ({ ok: true })),
+      openSessionInProject: vi.fn(async () => {}), ensureActiveSession: vi.fn(async () => undefined) };
+    navigation.set(workspaceKey({ connectionId, projectPath }), actions);
+    return actions;
+  }
+  const originalNavigation = bindNavigation('a', '/repo');
+  const bNavigation = bindNavigation('b', '/repo');
+  const unscopedNavigation = bindNavigation('b', '');
   const store = mountWorkspaceConnections(driver, useWorkspaceConnections, createWorkspaceCommands, createConnectionCommands, shell,
-    { get: (id) => managers.get(id) ?? managers.get('a'), subscribeState: () => () => {} }, queryClient);
+    { get: (id) => managers.get(id) ?? managers.get('a'), subscribeState: () => () => {} }, queryClient, {
+      creation: () => ({ createSession: vi.fn(), forkSession: vi.fn() }),
+      navigation: (scope) => navigation.get(workspaceKey(scope)) ?? unexpectedSessionCommand(),
+    });
   const isEnabled = driver.value.isEnabled;
   await driver.settle();
   expect(isEnabled('a')).toBe(true);
   const snapshot = (id: string, directory: string) => ({ enabled: true, boundDirectory: directory || undefined, native: { settings: driver.value.connections.find((entry: any) => entry.id === id).settings },
     loadProjectCatalog: vi.fn(async () => ({ currentProjectPath: '/repo', serverProjects: [] })),
-    suspend: vi.fn(), values: { currentSessionValue: { openSession: vi.fn(async () => {}), openDeepLinkSession: vi.fn(async () => ({ ok: true })) }, conversationValue: { conversation: { active: true }, toggleConversationMode: vi.fn(async () => {}) } } });
+    suspend: vi.fn(), values: { conversationValue: { conversation: { active: true }, toggleConversationMode: vi.fn(async () => {}) } } });
   const original = snapshot('a', '/repo'), other = snapshot('a', '/other'), b = snapshot('b', '/repo');
   driver.value.publish('["a","/repo"]', original); driver.value.publish('["a","/other"]', other); driver.value.publish('["b","/repo"]', b); driver.flush();
   queryClient.setQueryData(catalogKey('a'), { sessions: [{ id: 'collision', directory: '/repo' }] });
   await expect(driver.value.navigate({ connectionId: 'b', projectPath: '/repo', sessionId: 'collision' })).rejects.toThrow('was not found');
-  expect(b.values.currentSessionValue.openSession).not.toHaveBeenCalled();
+  expect(bNavigation.openSession).not.toHaveBeenCalled();
   findSessionForNavigation.mockResolvedValueOnce({ id: 'outside-catalog', directory: '/repo', time: {} });
   await driver.value.navigate({ connectionId: 'b', projectPath: '/repo', sessionId: 'outside-catalog' });
-  expect(b.values.currentSessionValue.openSession).toHaveBeenCalledWith('outside-catalog');
+  expect(bNavigation.openSession).toHaveBeenCalledWith('outside-catalog');
   queryClient.setQueryData(catalogKey('b'), { sessions: [{ id: 'collision', directory: '/repo' }] });
   await driver.value.navigate({ connectionId: 'b', projectPath: '/repo', sessionId: 'collision' }); driver.flush();
-  expect(b.values.currentSessionValue.openSession).toHaveBeenCalledWith('collision');
+  expect(bNavigation.openSession).toHaveBeenCalledWith('collision');
   driver.value.select({ connectionId: 'a', projectPath: '/repo' }); driver.flush();
   await driver.value.openExternalSession({ connectionId: 'b', projectPath: '/repo', sessionId: 'collision' });
-  expect(b.values.currentSessionValue.openDeepLinkSession).toHaveBeenCalledWith({ sessionId: 'collision', projectPath: '/repo' }, expect.any(AbortSignal));
-  expect(original.values.currentSessionValue.openDeepLinkSession).not.toHaveBeenCalled();
+  expect(bNavigation.openDeepLinkSession).toHaveBeenCalledWith({ sessionId: 'collision', projectPath: '/repo' }, expect.any(AbortSignal));
+  expect(originalNavigation.openDeepLinkSession).not.toHaveBeenCalled();
   const unscoped = snapshot('b', '');
   driver.value.forget('["b","/repo"]');
   driver.value.publish('["b",""]', unscoped); driver.flush();
   const opening = driver.value.openExternalSession({ connectionId: 'b', projectPath: '', sessionId: 'default-project' });
   await driver.settle();
   expect(unscoped.loadProjectCatalog).toHaveBeenCalledWith(true);
-  expect(unscoped.values.currentSessionValue.openDeepLinkSession).not.toHaveBeenCalled();
+  expect(unscopedNavigation.openDeepLinkSession).not.toHaveBeenCalled();
   expect(driver.value.connections.find((entry: any) => entry.id === 'b').projects).toEqual(['']);
   store.getState().setSelection('["b",""]', { activeProjectPath: '/repo' });
   driver.value.publish('["b",""]', { ...unscoped });
   await driver.settle();
-  expect(unscoped.values.currentSessionValue.openDeepLinkSession).not.toHaveBeenCalled();
+  expect(unscopedNavigation.openDeepLinkSession).not.toHaveBeenCalled();
   driver.value.publish('["b",""]', b); driver.flush();
   await opening;
-  expect(b.values.currentSessionValue.openDeepLinkSession).toHaveBeenCalledWith({ sessionId: 'default-project', projectPath: undefined }, expect.any(AbortSignal));
+  expect(bNavigation.openDeepLinkSession).toHaveBeenCalledWith({ sessionId: 'default-project', projectPath: undefined }, expect.any(AbortSignal));
   await driver.value.disconnect('a'); driver.flush();
   expect(isEnabled('a')).toBe(false); expect(isEnabled('b')).toBe(true);
   expect(original.suspend).toHaveBeenCalledOnce(); expect(other.suspend).toHaveBeenCalledOnce(); expect(b.suspend).not.toHaveBeenCalled();

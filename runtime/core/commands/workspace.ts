@@ -1,4 +1,5 @@
 import type { CommandContext } from '@/runtime/core/commands/context';
+import type { createSessionCommands } from './session';
 import { createWorktreeCommands } from '@/features/projects/runtime';
 import { projectSessionsKey, sessionCatalogOptions } from '@/features/sessions/runtime';
 import { createWorkspaceWaiters } from '@/runtime/workspace/workspace-lifecycle';
@@ -12,7 +13,7 @@ type ReadinessOptions = { signal?: AbortSignal; waitForProject?: boolean };
 
 export function createWorkspaceCommands({ store, connections, queryClient }: Pick<CommandContext, 'store' | 'queryClient'> & {
   connections: Pick<CommandContext['connections'], 'get' | 'subscribeState'>;
-}) {
+}, sessions: Pick<ReturnType<typeof createSessionCommands>, 'creation' | 'navigation'>) {
   const waiters = createWorkspaceWaiters();
   let unsubscribe: (() => void) | undefined;
   let stopConnectionStatus: (() => void) | undefined;
@@ -199,6 +200,14 @@ export function createWorkspaceCommands({ store, connections, queryClient }: Pic
   function selectWorkspace(target: WorkspaceTarget) {
     select({ connectionId: target.connectionId, projectPath: target.projectPath || projectPath(target) || '' });
   }
+  function bindSession(target: WorkspaceTarget, binding: WorkspaceSnapshot) {
+    const scoped = { connectionId: target.connectionId, projectPath: binding.boundDirectory ?? '' };
+    const key = resolveKey(target);
+    return {
+      ...sessions.creation(scoped, key, binding.revision),
+      ...sessions.navigation(scoped, key, binding.revision),
+    };
+  }
 
   async function navigate(target: SessionTarget) {
     const controller = beginNavigation();
@@ -228,7 +237,7 @@ export function createWorkspaceCommands({ store, connections, queryClient }: Pic
       }
     }
     check();
-    await next.values.currentSessionValue.openSession(target.sessionId);
+    await bindSession(target, next).openSession(target.sessionId);
     check();
     selectWorkspace(target);
     controller.abort();
@@ -260,7 +269,7 @@ export function createWorkspaceCommands({ store, connections, queryClient }: Pic
           check();
         }
       }
-      const opened = await next.values.currentSessionValue.openDeepLinkSession({ sessionId: target.sessionId, projectPath: target.projectPath || undefined }, signal);
+      const opened = await bindSession(target, next).openDeepLinkSession({ sessionId: target.sessionId, projectPath: target.projectPath || undefined }, signal);
       if (!opened.ok) throw new Error(opened.error);
       check();
       selectWorkspace(target);
@@ -268,11 +277,14 @@ export function createWorkspaceCommands({ store, connections, queryClient }: Pic
       controller.abort();
     }
   }
+  async function createSession(target: WorkspaceTarget) {
+    return bindSession(target, await ensure(target)).createSession();
+  }
   async function createChat(target: WorkspaceTarget) {
     if (!target.projectPath) throw new Error('Choose a project before creating a chat.');
-    const runtime = await connectedWorkspace(target);
-    const session = await runtime.values.currentSessionValue.createSession();
-    await runtime.values.currentSessionValue.openSession(session.id);
+    const commands = bindSession(target, await connectedWorkspace(target));
+    const session = await commands.createSession();
+    await commands.openSession(session.id);
     await activate(target);
     return session;
   }
@@ -314,7 +326,7 @@ export function createWorkspaceCommands({ store, connections, queryClient }: Pic
     setPersistenceAllowed: (allowed: boolean) => { canPersist = allowed; },
     isEnabled: (id: string) => registry().connections.some((record) => record.id === id && record.enabled),
     change, select, publish, forget, resolveKey, ensure, retry, connectedWorkspace,
-    activate, navigate, openExternalSession, createChat, createChatInWorktree,
+    activate, navigate, openExternalSession, createSession, createChat, createChatInWorktree,
     selectTerminalTarget: (target: WorkspaceTarget) => selectIndependentTarget(target, 'terminalTarget'),
     inspect: (target: WorkspaceTarget) => selectIndependentTarget(target, 'inspectionTarget'),
   };
