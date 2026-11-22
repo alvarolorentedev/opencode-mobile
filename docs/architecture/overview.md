@@ -1,10 +1,13 @@
 # Architecture
 
-Implementation locations follow [feature boundaries](feature-boundaries.md) and [ADR 0015](../adr/0015-feature-oriented-implementation.md). `runtime/` owns cross-feature state and lifecycle composition; Settings and Onboarding compose public feature UI.
+Implementation locations follow [feature boundaries](feature-boundaries.md) and
+[ADR 0052](../adr/0052-explicit-overlay-dependencies.md). `runtime/` owns
+cross-feature state and lifecycle composition; Settings and Onboarding compose
+public feature UI.
 
-Related ADRs: [0002 provider-centric orchestration](../adr/0002-provider-centric-orchestration.md) ·
-[0004 SSE with polling fallback](../adr/0004-sse-with-polling-fallback.md) ·
-[0005 thin routes and presentational components](../adr/0005-thin-routes-and-presentational-components.md)
+Related ADRs: [0051 app core state tiers](../adr/0051-app-core-state-tiers.md) ·
+[0052 explicit overlay dependencies](../adr/0052-explicit-overlay-dependencies.md) ·
+[0004 SSE with polling fallback](../adr/0004-sse-with-polling-fallback.md)
 
 ## Read by task
 
@@ -12,7 +15,7 @@ Related ADRs: [0002 provider-centric orchestration](../adr/0002-provider-centric
 | --- | --- |
 | Understand layers and boot | [High-Level Shape](#high-level-shape), [Top-Level Runtime Composition](#top-level-runtime-composition), [Runtime Boot Sequence](#runtime-boot-sequence) |
 | Find the owning file | [Module Map](#module-map) |
-| Change provider/session data flow | [Data Flow Model](#data-flow-model), [Real-Time Update Architecture](#real-time-update-architecture) |
+| Change app or session data flow | [Data Flow Model](#data-flow-model), [Real-Time Update Architecture](#real-time-update-architecture) |
 | Change a screen | [Navigation Architecture](#navigation-architecture), [Screen Responsibilities](#screen-responsibilities) |
 | Change conversation mode | [Conversation Mode Architecture](#conversation-mode-architecture) |
 | Check a hotspot | [Architectural Hotspots](#architectural-hotspots) |
@@ -22,18 +25,22 @@ Related ADRs: [0002 provider-centric orchestration](../adr/0002-provider-centric
 The app uses a simple structural pattern:
 
 - Expo Router provides navigation and screen composition.
-- `OpencodeProvider` mounts the shared runtime; feature hooks own domain behavior at their existing application/connection/project lifetimes.
-- Screens are thin and read/write provider state through narrow domain hooks
+- `runtime/shell/opencode-provider.tsx` mounts the app core and one
+  `WorkspaceProvider`; feature hooks own domain behavior at their application,
+  connection and project lifetimes.
+- Screens are thin and read/write domain state through narrow hooks
   (`useChat()`, `useProjects()`, `useConnection()`, ...).
-- Feature services own domain request aggregation; shared protocol services retain genuinely cross-feature operations.
-- `shared/` contains protocol, storage, platform interfaces and formatting; product workflows live in features.
-- `features/` colocates presentation, domain state/actions, services, rules and owned tests.
+- Feature services own domain request aggregation; shared protocol services
+  retain genuinely cross-feature operations.
+- `shared/` contains protocol, storage, platform interfaces and formatting;
+  product workflows live in features.
+- `features/` colocates presentation, domain state/actions, services, rules and
+  owned tests.
 
-This means the real application architecture is not screen-centric. It is
-provider-centric today, with state ownership moving to the app core
-([ADR 0051](../adr/0051-app-core-state-tiers.md)): server facts in TanStack
-Query, device facts in one app store. Feature ownership and import boundaries do
-not change with that migration.
+The architecture is not screen-centric. Server facts live in TanStack Query and
+device facts live in one app store owned by `runtime/core`
+([ADR 0051](../adr/0051-app-core-state-tiers.md)). Features own their
+presentation and domain rules; `runtime/` composes their lifecycle.
 
 ## Top-Level Runtime Composition
 
@@ -85,31 +92,26 @@ validation is still required to establish whether it resolves the flicker.
 
 `runtime/core/create-app-core.ts` is the app composition root. It owns one
 TanStack Query client for server facts and one Zustand store for device facts.
-During the migration the provider composition below remains the current owner of
-domain state; it may read the core as an adapter and must not gain new state.
+`runtime/shell/opencode-provider.tsx` mounts `WorkspaceProvider`, which
+coordinates the app-store connection registry and the app-wide coordinators.
+The app core reconciles retained project keys and registers their commands with
+each connection's realtime manager. Domain hooks select focused or scoped values
+from the core; there is no per-domain context provider tree.
 
-The dominant design decision is central orchestration through the provider layer:
-`runtime/shell/opencode-provider.tsx` mounts `WorkspaceProvider`, which coordinates the app-store connection registry and the app-wide coordinators. The app core reconciles retained project keys and registers their commands with each connection’s realtime manager. Domain hooks select the focused or scoped values from the app core; there is no per-domain context provider tree.
+The core and Query own:
 
-This composition unit is the application's effective domain layer. It owns:
-
-- connection settings and connection state
+- connection settings and lifecycle state
 - project catalog and active project selection
-- session lists and session status tracking
-- current session selection and data refresh
-- transcript, diff (turn + VCS scopes), and todo caches
-- session-scoped permission and question queues refreshed by events and list APIs
+- session lists, statuses and selection
+- transcript, diff (turn + VCS scopes), todo and interaction reads
 - provider/model/agent capability discovery
-- chat preference management
-- prompt send / abort lifecycle
-- conversation mode state machine
-- notification completion tracking
-- global SSE subscription with reconnect and polling fallback
-- session lifecycle actions, slash commands, project inspection, and diagnostics
-- worktree, MCP, and PTY terminal orchestration
-- persistence hydration and write-back
+- prompt send/abort, session lifecycle, slash commands, project inspection and diagnostics
+- worktree, MCP and PTY terminal orchestration
+- event dispatch, realtime recovery and polling fallback
 
-If this app were reimplemented, this provider would be the main source of truth for required behavior.
+The app store owns device facts: connection registry and focus, preferences,
+presentation state, conversation mode and notification completion tracking.
+Persistence hydration and write-back follow the same split.
 
 Its public contract is the set of domain values (`*ContextValue` types):
 onboarding, connection, diagnostics, capabilities, preferences, projects,
@@ -174,7 +176,7 @@ language and V2 Steer/Append delivery. Session model choices are made in Chat
 and require OpenCode 2; delivery also requires V2.
 Provider setup embeds the same composition as Settings, including auth dialogs,
 model toggles, account actions, confirmations and feedback. All selections write
-through existing provider actions, and Ready summarizes current provider state.
+through existing core actions, and Ready summarizes current settings.
 Voice & Responses reuses the Settings voice controls in an onboarding view,
 including OS/on-device input, command-model setup, playback packs, voice preview,
 auto-readback and response style. Model downloads and microphone permission are
@@ -215,18 +217,18 @@ The completion version, preference schema and first-run migration are unchanged.
 - `features/sessions/ui/session-link-screen.tsx`
   Session deep-link resolver. Parses `sessionId`, `project`, and optional
   `connectionScope`, delegates to `openDeepLinkSession()`, then replaces onto
-  the Chat tab. Connection switching and credential resolution stay in the provider.
+  the Chat tab. Connection switching and credential resolution stay in the app core.
 - `features/sharing/ui/share-screen.tsx`
-  Inbound-share preview. Renders the provider-staged `sharedInput` (text, link,
+  Inbound-share preview. Renders the app-staged `sharedInput` (text, link,
   attachment tiles, skipped-item warnings), the shared project picker, and
   Add to chat / Discard. Thin controller: it never fetches, persists, or
   submits. `features/sharing/model/native-intent.ts` routes the `expo-sharing` host here.
 - `app/onboarding/*.tsx`
   First-run setup assistant steps (presentation, permissions, connect,
-  project, ready). Thin controllers over provider state; they do not own
+  project, ready). Thin controllers over domain state; they do not own
   connection/project/preference persistence.
 
-### Provider Layer
+### App Core And Runtime
 
 - `runtime/shell/opencode-provider.tsx`
   Thin entrypoint: creates the app core and mounts the workspace registry.
@@ -260,7 +262,7 @@ The completion version, preference schema and first-run migration are unchanged.
 - `features/sessions/model/session-utils.ts`
   Small provider-agnostic helpers (project labels, pending-request grouping).
 - `features/sessions/model/selectors.ts`
-  Derived selectors extracted from the provider body.
+  Derived selectors for session presentation.
 - `runtime/core/store.ts`
   App preferences, persisted metadata and per-project device state.
 - `shared/server-data/` and `runtime/workspace/use-workspace-server-data.ts`
@@ -323,7 +325,7 @@ The completion version, preference schema and first-run migration are unchanged.
   retains ordered metadata and secure credential writes. The storage schemas
   validate each field independently.
 - `features/connections/state/use-connection-profiles.ts`
-  Provider-owned saved-profile state, UI sequencing and credential ordering,
+  Saved-profile state, UI sequencing and credential ordering,
   hostname defaults, setup probing, local V2 pairing, and connection actions
   exposed through `useConnection().connectionProfiles`. Setup probes never switch
   the active connection; saving an edit does not reconnect.
@@ -379,7 +381,7 @@ The completion version, preference schema and first-run migration are unchanged.
   handling.
 - `features/sessions/state/use-permission-rules-state.ts`
   V2 saved "always allow" rules: list, refresh, and remove, connection-scoped
-  like the rest of the provider state.
+  like the rest of the scoped server state.
 - `features/projects/state/use-project-inventory.ts` and
   `features/projects/state/use-worktree-actions.ts`
   Scoped catalog and worktree reads with guarded checkout actions.
@@ -757,11 +759,11 @@ In-app navigation and deep links are separate paths. Library rows, favorites, an
 
 When the app is launched from (or navigated to) a session deep link, the dedicated resolver route `features/sessions/ui/session-link-screen.tsx` parses `sessionId` + `project`, calls `openDeepLinkSession()`, and replaces onto the Chat tab where the session is already current. An ID-only link arriving before project selection resolves the default from the connection's project catalog before validating the session.
 
-This boot chain is important because the Chat screen itself is not responsible for initial data ownership. It only triggers `ensureActiveSession()` when the provider has enough context.
+This boot chain is important because the Chat screen itself is not responsible for initial data ownership. It only triggers `ensureActiveSession()` when the app core has enough context.
 
 ## Client Topology
 
-The provider creates two client instances:
+The connection manager creates two client instances:
 
 - `client`
   Bound to `settings` plus `activeProjectPath`. Used for session-scoped calls.
@@ -781,16 +783,15 @@ switch is deliberately ordered:
 4. reconnect with the target settings passed explicitly to `runConnect()` instead of reading a render-delayed ref, then
 5. hydrate only state whose connection scope matches the new settings.
 
-Persisted session caches, favorites, and pending
-notifications are all keyed by connection scope, so a switch can never surface
-or mutate another server's state even when both servers expose the same project
-path.
+Persisted Query catalogs, favorites and pending notifications are all keyed by
+connection scope, so a switch can never surface or mutate another server's state
+even when both servers expose the same project path.
 
 ## Data Flow Model
 
-### Server -> Provider
+### Server -> Query
 
-The provider fetches and caches:
+The connection managers and Query fetch and cache server facts:
 
 - project catalog
 - sessions and statuses
@@ -800,12 +801,12 @@ The provider fetches and caches:
 - pending permissions and questions by session, populated by events and refreshed from the server
 - providers, models, and agents
 - commands, project file status/search/read bytes, VCS information, and diagnostics
-- worktrees, MCP statuses, PTYs, terminal connection state, and terminal output
+- worktrees, MCP statuses, PTYs and terminal connection state
 - a connection-wide session snapshot (all sessions + statuses) from the unscoped catalog client, used by the Chat Library "Active" group. The global SSE stream still filters events to the active project, so this snapshot is refreshed on connect, when the library opens, and by a 20-second poll while a session is running.
 
-### Provider -> Derived State
+### Query And Store -> Selectors
 
-Selectors transform provider state into:
+Selectors transform Query and app-store facts into:
 
 - current transcript
 - session preview text
@@ -813,13 +814,14 @@ Selectors transform provider state into:
 - current permissions and questions scoped to the active or sending session
 - conversation status label
 
-### Provider -> UI
+### Selectors -> UI
 
-Screens and components consume one context and render local presentation states.
+Screens and components consume narrow domain hooks and render local presentation
+state.
 
-### UI -> Provider
+### UI -> Core Commands
 
-User interactions are converted to provider actions such as:
+User interactions call core commands such as:
 
 - `connect`
 - `selectProject`
@@ -1115,7 +1117,7 @@ select their own targets and read the same partitions.
 
 ### Conversation mode
 
-It spans provider state, timers, speech recognition, TTS, keep-awake, and chat state.
+It spans domain state, timers, speech recognition, TTS, keep-awake, and chat state.
 
 ### Capability refresh
 

@@ -1,6 +1,6 @@
 # ADR 0017: Native defaults and prebuilt engines
 
-- Status: Accepted
+- Status: Superseded by ADR 0031
 - Date: 2026-10-31
 - Deciders: maintainers
 - Supersedes: [ADR 0016](0016-supported-expo-native-integrations.md)

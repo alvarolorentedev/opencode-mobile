@@ -230,7 +230,7 @@ Native events are dispatched directly. Execution/legacy-native status events mai
 
 V1 translates events with matching semantics at `shared/protocol/opencode/compat/v1/events.ts`. Legacy message deltas, question metadata, configuration and diagnostic events retain explicit compatibility extensions. The native path never converts events to v1.
 
-SSE reconnects with bounded backoff and reconciles sessions, pending interactions and active transcript state after recovery. Polling continues when SSE is unavailable and while busy even with a connected stream, so missed events cannot strand a prompt. Retry state keeps safety polling alive until execution resumes or completes. Completion notifications, review selections and conversation mode use provider-derived state on both contracts.
+SSE reconnects with bounded backoff and reconciles sessions, pending interactions and active transcript state after recovery. Polling continues when SSE is unavailable and while busy even with a connected stream, so missed events cannot strand a prompt. Retry state keeps safety polling alive until execution resumes or completes. Completion notifications, review selections and conversation mode use app state on both contracts.
 
 ## Connector Service Management (Cloud Link)
 

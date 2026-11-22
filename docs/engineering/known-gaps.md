@@ -7,50 +7,7 @@ than behavior, so they should land one at a time with the usual validation.
 Any change here that touches `tests/e2e/` or `tests/fake-opencode/` still
 requires explicit human validation under `AGENTS.md`.
 
-## 1. Provider and chat orchestration wiring
-
-Closed on 2026-10-18. The coupling hotspot was split without changing behavior:
-
-- `runtime/shell/opencode-provider.tsx` is now a thin wrapper (~33 lines). The
-  first composition split became the app-core commands and retained project
-  adapters under ADR 0051. Scoped selectors live in `runtime/core/workspace-selectors.ts`.
-- The provider line ratchet in `tests/vitest/architecture.test.ts` dropped from
-  500 to 60 in the same change, so the entrypoint cannot regrow into a god
-  object. The repo-wide 500-line ceiling still covers runtime modules.
-- `features/chat/ui/chat-view.tsx` renders `TranscriptList`, `ChangesOverlay`,
-  and `PendingInteractions` directly; the `ChatContent` pass-through
-  (`features/chat/ui/chat-view.tsx` and its barrel) is gone.
-- `useChatViewController` returns `header` / `content` / `composer` / `overlay`
-  / `actions` namespaces instead of ~85 flat members, and `ChatView` consumes
-  those namespaces directly.
-
-The domain context fan-out is closed under ADR 0051: feature hooks select
-memoized domain values from `runtime/core/workspace-selectors.ts`, and the
-per-workspace context provider tree is gone. The remaining orchestration
-coupling is the per-workspace composition itself; commands are still hooks.
-Selector work continues only where profiling shows a real fan-out cost.
-
-## 2. Test infrastructure leftovers
-
-Partially closed on 2026-10-18:
-
-- **The Playwright specs are split.** The former ~2,300-line
-  `tests/e2e/flows.spec.mjs` is now domain specs (`chat`, `interactions`,
-  `diffs`, `projects`, `sessions`, `realtime`, `settings`, `terminal`, `v2`,
-  `compat`) sharing `tests/e2e/helpers/flows.mjs`. `onboarding.spec.mjs` and
-  `plan-overlay-probe.spec.mjs` reuse the same helpers instead of duplicating
-  them. Test titles are unchanged.
-- **The Vitest suites are fully type-checked.** `tsconfig.tests.json`
-  type-checks every file under `tests/vitest`; `npm run typecheck:tests` (part of
-  `test:ci:static`) runs it. Application imports resolve through Vitest and
-  React hooks use the normal renderer lifecycle in tests.
-  `tests/vitest/typecheck-ratchet.test.ts` limits exclusions.
-- **`tests/foss-prepare.test.mjs`** stays a standalone Node script
-  (`npm run test:foss`, run by the `ci.yml` static job). It mutates a temporary
-  `node_modules` tree and is build tooling rather than app behavior, so it is
-  deliberately not part of the Vitest include.
-
-### Static release verification limit
+## Static release verification limit
 
 Release artifacts are checked statically for signing, package identity, version,
 ARM64-only ABI, native libraries, R8/ProGuard safety, the WorkManager constructor,
@@ -59,7 +16,7 @@ app starts, renders or initializes native modules on a device. Google Play
 internal testing and TestFlight are the real-device validation environments.
 There is no emulator, self-hosted device runner or paid device farm in CI.
 
-## 3. Remote crash reporting
+## Remote crash reporting
 
 Implemented for sanitized JavaScript errors and performance data through the
 optional OTLP exporter in [observability](../architecture/observability.md).
@@ -77,11 +34,11 @@ Remaining gaps:
 - sending previously recorded local events after consent is deliberately
   impossible, so enabling remote reporting only affects new events
 
-## 3b. Offline outbox and native 4G validation
+## Offline outbox and native 4G validation
 
-The queued-prompt path introduced on 2026-10-23 is intentionally
-process-lifetime and scoped to its connection/project workspace. It covers a
-drop during an active turn, survives client rebuilds for the same workspace,
+The queued-prompt path is intentionally process-lifetime and scoped to its
+connection/project workspace. It covers a drop during an active turn, survives
+client rebuilds for the same workspace,
 and prevents duplicate admission after a lost response. It does not send after
 the app is killed, and it does not persist prepared attachment data URLs (the
 composer draft remains the durable copy). A true persistent outbox would need
@@ -95,9 +52,9 @@ Android data saver/background restrictions, and iOS background suspension.
 Adding NetInfo and expo-image-manipulator also requires a native build/device
 smoke test before release.
 
-## 4. Transcript merge micro-optimizations
+## Transcript merge micro-optimizations
 
-Deferred on 2026-10-18 while the transcript refresh policy was simplified
+Deferred while the transcript refresh policy was simplified
 (single tail-merge, one 200-record initial window, no backward bridging). The remaining
 render-cost machinery is intentionally untouched because it is not the source of
 the stale/empty-transcript behavior and is harder to validate:
@@ -114,9 +71,9 @@ The transcript cache now measures inline media before serializing and drops an
 over-budget record instead of re-stringifying the whole window; record equality
 inside a live page merge still uses `JSON.stringify`.
 
-## 5. V2 non-message timeline records
+## V2 non-message timeline records
 
-Deferred on 2026-10-19. The fixed detailed transcript renders message, tool,
+Deferred. The fixed detailed transcript renders message, tool,
 reasoning, patch, and shell activity, plus user-facing `synthetic` notices.
 The V2 timeline also carries `idle`, `system`, `skill`, `agent-switched`,
 `model-switched`, and `location-switched` records. They are fetched but not
@@ -125,12 +82,11 @@ renderer would map them into transcript details (and would need to decide how
 to present skill/system text). Internal synthetic prompt context (instruction
 loads and mode reminders) also maps to an empty non-display record.
 
-## 6. Gateway headers on direct file reads and browser WebSockets
+## Gateway headers on direct file reads and browser WebSockets
 
-Closed for the OpenCode data plane on 2026-10-23: per-connection custom headers
-are sent on probes, REST, SSE, terminal connect-token requests and native
-terminal WebSocket upgrades, and values live in SecureStore. Two direct paths
-remain outside that guarantee by design:
+Per-connection custom headers cover probes, REST, SSE, terminal connect-token
+requests and native terminal WebSocket upgrades, and values live in SecureStore.
+Two direct paths remain outside that guarantee by design:
 
 - **Attachment previews.** `shared/platform/attachments.ts` fetches attachment `uri`
   values directly, and those URLs may be arbitrary hosts. Attaching a
@@ -148,7 +104,7 @@ Cloud Link profiles and `opencode pair` QR codes cannot carry custom headers;
 the editor is manual-only. Supporting them would require a control-plane/QR
 contract change, not app-side plumbing.
 
-## 7. V1 support policy
+## V1 support policy
 
 V1 is maintained only for the feature intersection with V2. V1-only surfaces
 (sharing, archive/restore, title summarization, general config writes, persistent
@@ -160,7 +116,7 @@ Realtime timing and reconciliation helpers live under `runtime/realtime/`.
 Keep the dual SSE/polling model and preserve its timing contract when editing
 them.
 
-## 8. Conversation wake phrase limitations
+## Conversation wake phrase limitations
 
 The wake phrase is a submission gate over the existing OS recognizer, not a
 dedicated wake-word engine. Consequences:
@@ -181,13 +137,8 @@ dedicated wake-word engine. Consequences:
   skips KWS and starts command capture directly. Confirmation, endpointing and
   speaker verification (when enrolled) are the remaining safeguards.
 
-## 9. Workspace readiness and render-time state
+## Workspace render-time state
 
-One render-timing coupling remains in the workspace shell.
-
-- **Workspace readiness.** Closed on 2026-11-21: `ensure()`,
-  `connectedWorkspace()`, and `navigate()` use `createWorkspaceWaiters`, which
-  resolves on a committed publication or removal instead of polling React state.
 - **Connect pairing changes step during render.**
   `features/cloud-link/ui/connect-pairing.tsx` derives `step` from provider state,
   then calls `setStep(4)` or `setStep(3)` directly in the render body (the
@@ -196,7 +147,7 @@ One render-timing coupling remains in the workspace shell.
   step from provider state plus a local override, or move the adjustment into
   an effect with an explicit guard.
 
-## 10. Extension management boundaries
+## Extension management boundaries
 
 Extensions are V2-only and edit server-side config files because the native API
 has no durable config/plugin/skill/command mutation surface. Consequences:
@@ -225,7 +176,7 @@ has no durable config/plugin/skill/command mutation surface. Consequences:
 Deferred library replacements and extraction candidates are documented in
 [library-extraction.md](./library-extraction.md).
 
-## 11. On-device voice limits
+## On-device voice limits
 
 The optional local path uses pretrained sherpa-onnx KWS, speaker-embedding,
 Silero VAD, and Moonshine tiny English command models. No model training is
@@ -300,7 +251,7 @@ Known limits:
   capability proxy. They do not benchmark model quality or prompt-cache behavior;
   the long-chat guard is a fixed conservative threshold, not measured savings.
 
-## 11b. Android OEM speech recognition
+## Android OEM speech recognition
 
 Android recognizes the system default `RecognitionService`, which on some OEM
 devices is not Google's service. The app now detects a session that never
@@ -316,7 +267,7 @@ a visible Google recognizer before surfacing a retryable error. Limits remain:
   other OEM recognizers; the browser suite cannot exercise native speech
   services
 
-## 12. Custom CA trust limits
+## Custom CA trust limits
 
 Per-connection custom CA trust is native-only. Web and the browser E2E harness
 never expose the certificate control. OpenCode 1 connections and Cloud Link keep
@@ -326,7 +277,7 @@ covered. Revocation/OCSP is not checked. Non-CA/self-signed anchors pin the exac
 certificate and require re-import on renewal. Native trust behavior needs
 physical-device or simulator validation; CI cannot prove it.
 
-## 13. Vendored sherpa-onnx patch
+## Vendored sherpa-onnx patch
 
 `@siteed/sherpa-onnx.rn` is pinned to `1.3.1` and patched through
 `patches/@siteed+sherpa-onnx.rn+1.3.1.patch`. Do not bump the package without
@@ -371,7 +322,7 @@ Exit plan:
   bridge/handler key mismatch is still present. Re-run the native ABI test and
   validate preview and message playback on a device.
 
-## 14. Project archive is server-automatic
+## Project archive is server-automatic
 
 OpenCode archives a project when every known directory has been missing for an
 hour, and resolving the directory again unarchives it. The V2 protocol exposes
@@ -389,7 +340,7 @@ Exit plan:
   invalidation as the other project mutations.
 - Do not emulate archive by editing the canonical directory or deleting files.
 
-## 15. Inline prompt media and on-demand retrieval
+## Inline prompt media and on-demand retrieval
 
 A V2 server stores prompt attachments inline in the user message
 (`FilePart.url` is the data URL), so a message read returns their bytes. The live

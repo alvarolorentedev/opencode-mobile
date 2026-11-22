@@ -16,7 +16,6 @@ eligibility, the restart toast, the handoff gate and failure snackbar.
 
 `shared/platform/android-app-updates.ts` wraps `expo-in-app-updates` 0.13.0 with
 one pinned patch (`patches/expo-in-app-updates+0.13.0.patch`; see
-[ADR 0031](../adr/0031-flexible-updates-with-explicit-install.md) and
 [ADR 0036](../adr/0036-flexible-first-with-play-urgency.md)).
 Production builds require Expo Application's Play install-referrer service to be
 available; Play Core enforces account ownership, matching signing and a higher

@@ -39,7 +39,7 @@ this order: the access summary, the connector's exposed services (when a Cloud
 Link connection is active), Subscription actions (native store management,
 offers when inactive, one Restore row), and a Machines shortcut to the existing
 management route, closing with a learn-more row. It uses the shared Settings
-overlay and provider state; it
+overlay and domain state; it
 never opens the camera or starts a purchase merely by opening the section.
 `connect-panel.tsx` renders the separate machine/profile management view. It loads the machine list when the view opens and on app resume, so the surface has no refresh action. `features/cloud-link/ui/pair-screen.tsx` ingests links and navigates only; deep links skip the camera gate.
 Domain state/actions come from `useConnection().connectSetup`; see [Cloud Link](../../product/cloud-link.md).
@@ -75,7 +75,7 @@ scanner. It preserves stored profiles. Components do not poll or classify errors
 Responsibility:
 
 - show connection state card
-- show the current connection message or error hint from provider state
+- show the current connection message or error hint from connection state
 - render the saved-connection list (`ConnectionProfiles`)
 - offer Scan QR code (local), Manual and Cloud Link creation choices through
   `Add connection`
@@ -254,7 +254,7 @@ Responsibility:
 Responsibility:
 
 - edit response scope and next-action hints separately from voice input/output
-- pass changes through `updateChatPreferences`; no prompt construction or provider state lives here
+- pass changes through `updateChatPreferences`; no prompt construction or domain state lives here
 
 #### `LanguageSection`
 
@@ -325,7 +325,7 @@ Responsibility:
 - fall back to the Play Store listing only when Android reports that no native review action is available
 - open the GitHub issue tracker for improvement feedback
 - open the `https://getopencode.app/support/` page in the browser
-- hold only URL constants, availability checks, and opening in `shared/platform/support.ts`; no provider state
+- hold only URL constants, availability checks, and opening in `shared/platform/support.ts`; no domain state
 
 ### `features/ai/ui/provider-config-dialog.tsx`
 

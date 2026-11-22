@@ -4,7 +4,7 @@ Back to the [documentation hub](../README.md).
 
 How the app is composed, where state lives, and how it talks to OpenCode.
 
-This section is for anyone changing provider behavior, session state, realtime
+This section is for anyone changing app behavior, session state, realtime
 transport, persistence, or the client protocol. Read
 [overview.md](overview.md) first, then the page that owns your concern.
 
@@ -12,9 +12,9 @@ transport, persistence, or the client protocol. Read
 
 | Document | Owns |
 | --- | --- |
-| [feature-boundaries.md](feature-boundaries.md) | Product ownership, public APIs, exact scope-aware UI exception and migration inventory |
-| [overview.md](overview.md) | Runtime composition, module map, boot flow, screen/provider boundaries, realtime model, and cross-cutting invariants |
-| [state-and-data.md](state-and-data.md) | Provider state ownership, persistence, derived data, transcript transformation, and capability discovery |
+| [feature-boundaries.md](feature-boundaries.md) | Product ownership, public APIs, scope-aware UI and shared dependency direction |
+| [overview.md](overview.md) | Runtime composition, module map, boot flow, screen boundaries, realtime model, and cross-cutting invariants |
+| [state-and-data.md](state-and-data.md) | App and server state ownership, persistence, derived data, transcript transformation, and capability discovery |
 | [api-contract.md](api-contract.md) | OpenCode 2 contract, V1 compatibility boundary, endpoint usage, and request/response expectations |
 | [plugin-guis.md](plugin-guis.md) | Generic sandboxed host for OpenCode V2 `gui-experimental` bundles |
 | [network-resilience.md](network-resilience.md) | Connectivity, deadlines, SSE/polling recovery, offline queue, and cached reads |
@@ -25,11 +25,11 @@ transport, persistence, or the client protocol. Read
 | Concern | Owning layer |
 | --- | --- |
 | App-wide connection registry, focus, and persistence | `runtime/core/commands/connection.ts`, `runtime/core/commands/workspace.ts`, `runtime/persistence/device-preferences.ts` |
-| Provider-specific agent guidance | `runtime/AGENTS.md` (loaded when working in `runtime/`) |
+| Runtime-specific agent guidance | `runtime/AGENTS.md` (loaded when working in `runtime/`) |
 | Routine server reads and connection lifecycle | `shared/server-data/`, `runtime/connections/connection-catalog.tsx`, `runtime/connections/connection-binding.ts` ([ADR 0014](../adr/0014-server-data-and-explicit-lifecycles.md)) |
 | Scoped project commands and presentation | `runtime/core/project-runtimes.ts`, `runtime/core/project-binding.ts` and feature presentation hooks |
 | Public domain hooks and scope selectors | `features/*/context.ts`, `runtime/core/workspace-selectors.ts` |
-| Provider-facing API aggregation | `shared/protocol/services/` |
+| Protocol service aggregation | `shared/protocol/services/` |
 | Client construction, endpoint wrappers, protocol types | `shared/protocol/opencode/` |
 | V1 compatibility only | `shared/protocol/opencode/compat/v1/` |
 | Routing and thin screen wiring | `app/` |
@@ -38,8 +38,8 @@ transport, persistence, or the client protocol. Read
 
 ## Rules
 
-- The app is provider-centric. Domain state and orchestration belong in
-  `runtime/`, not in screens or presentational components.
+- The app is feature-owned and core-composed. Domain state and orchestration
+  belong in `runtime/`, not in screens or presentational components.
 - Keep protocol normalization close to `shared/protocol/opencode/`.
 - Preserve the dual realtime model: SSE is primary, polling is the safety net.
 - New API-dependent features are V2-only unless an existing V1 compatibility

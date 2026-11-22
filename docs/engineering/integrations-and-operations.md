@@ -96,8 +96,8 @@ for issue attachments. No Sentry DSN, sponsorship or backend server is required.
 
 ## Expo / Native Integrations
 
-Expo SDK 58 and [ADR 0017](../adr/0017-native-defaults-and-prebuilt-engines.md) define
-the supported dependency baseline. Prefer existing platform interfaces, official
+Expo SDK 58 and the [library decisions](library-extraction.md) define the
+supported dependency baseline. Prefer existing platform interfaces, official
 Expo APIs, then maintained packages; retain a local module only for a documented
 missing capability. Native SDK calls stay out of generic UI. See the
 [agent setup and diagnostics](development.md#optional-local-agent-tooling).
@@ -480,10 +480,10 @@ per opened PTY, disposing its sockets and timers on project changes or provider 
 the inspected paths show no clear listener/timer leak to fix without profiling
 evidence.
 
-The persisted session cache contains only small session DTOs and statuses, with
-a seven-day TTL. Its keys are per connection + project, and saved connection
-profiles add one small metadata entry each, so profile several saved servers
-with large project catalogs if storage growth becomes visible.
+Persisted Query catalogs contain only small session/project DTOs and statuses,
+with a seven-day TTL. Their keys are per connection + project, and saved
+connection profiles add one small metadata entry each, so profile several saved
+servers with large project catalogs if storage growth becomes visible.
 
 ## Security / Data Handling Notes
 
@@ -498,7 +498,7 @@ The app splits persisted connection data:
 
 Operational implication:
 
-- server-derived persisted state (session caches, remembered sessions, favorites, pending notifications) is scoped by the password-free connection scope from `shared/contracts/connection-scope.ts`, so credentials never appear in those keys or DTOs
+- server-derived persisted state (session/project Query catalogs, favorites, pending notifications) is scoped by the password-free connection scope from `shared/contracts/connection-scope.ts`, so credentials never appear in those keys or DTOs
 - a rewrite must keep the credential split when adding new persisted fields
 
 ### Notification Tracking Storage

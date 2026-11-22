@@ -128,7 +128,7 @@ export const Error: Story = { args: { invalid: true, value: 'invalid' } };
 - [Design system](design-system.md)
 - [Component inventory](component-inventory.md)
 - [Design QA](qa/README.md)
-- [ADR 0007](../adr/0007-storybook-component-catalog.md)
+- [ADR 0013](../adr/0013-source-owned-ui-and-complex-forms.md)
 
 The Vite config applies Tailwind and Uniwind and transforms the JSX published in RN Primitives JavaScript modules. Registry defaults are adapted in source; stories use the same files as the application.
 

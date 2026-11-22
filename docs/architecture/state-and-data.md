@@ -1,8 +1,8 @@
 # State And Data Model
 
-Implementation locations follow [feature boundaries](feature-boundaries.md) and [ADR 0015](../adr/0015-feature-oriented-implementation.md). `runtime/` owns cross-feature state and lifecycle composition; Settings and Onboarding compose public feature UI.
+Implementation locations follow [feature boundaries](feature-boundaries.md) and [ADR 0052](../adr/0052-explicit-overlay-dependencies.md). `runtime/` owns cross-feature state and lifecycle composition; Settings and Onboarding compose public feature UI.
 
-Related ADRs: [0002 provider-centric orchestration](../adr/0002-provider-centric-orchestration.md), [0014 scoped server data and lifecycles](../adr/0014-server-data-and-explicit-lifecycles.md)
+Related ADRs: [0014 scoped server data and lifecycles](../adr/0014-server-data-and-explicit-lifecycles.md), [0051 app core state tiers](../adr/0051-app-core-state-tiers.md), [0052 feature ownership and overlay dependencies](../adr/0052-explicit-overlay-dependencies.md)
 
 ## Read by task
 
@@ -383,7 +383,7 @@ Current fields:
 
 The TTS engine, pack, and speaker are device-local and also excluded from `serverPreferences`. Downloaded voice models live under `opencode-tts/<packId>/` in the document directory and are not represented in preferences; Settings derives their status from the filesystem. Removing a pack deletes that directory, releases the native TTS model, and switches to the system engine when it was active. Temporary synthesis WAVs live in the cache directory and are deleted after playback, on cancel, and on the next Settings visit.
 
-These values combine application behavior settings and output-style preferences that are sent to the model as prompt instructions. An explicit model and variant belong to `Session.model`; the composer changes them with the V2 `session.switchModel` operation, and session refresh/event updates restore each choice when switching sessions. When a session has no explicit model, OpenCode resolves the agent and configuration defaults. Legacy app-level model/provider/variant selections are ignored during preference hydration; they are not migrated because one old value cannot determine choices for multiple sessions. See [ADR 0046](../adr/0046-session-owned-model-selection.md).
+These values combine application behavior settings and output-style preferences that are sent to the model as prompt instructions. An explicit model and variant belong to `Session.model`; the composer changes them with the V2 `session.switchModel` operation, and session refresh/event updates restore each choice when switching sessions. When a session has no explicit model, OpenCode resolves the agent and configuration defaults. Legacy app-level model/provider/variant selections are ignored during preference hydration; they are not migrated because one old value cannot determine choices for multiple sessions. See [ADR 0047](../adr/0047-new-session-last-used-model.md).
 
 `autoModel` is server-scoped with the rest of the catalog and routing preferences. Its tier
 values are `auto` or a model ID; `tierVariants` adds an optional thinking level
@@ -665,7 +665,7 @@ Hydration rules:
 
 - persisted settings validate known string fields and Cloud Link identity before merging over defaults
 - persisted DTOs use `zod` schemas at their storage boundary (session, transcript, capabilities, favorites, onboarding, updates, notifications, connection settings, and chat preferences). Schema parsing strips unknown fields, drops invalid individual entries where the prior parser did, and clears a malformed envelope. Widget snapshots and connection headers remain manual because they enforce bounded projection/redaction and RFC 7230 header rules rather than a record shape.
-- persisted chat preferences validate individual strings, booleans, arrays, maps, and enum values; numeric controls are clamped to their supported ranges before merging over defaults and current provider state
+- persisted chat preferences validate individual strings, booleans, arrays, maps, and enum values; numeric controls are clamped to their supported ranges before merging over defaults and current preferences
 - saved connection profiles are hydrated on demand and fully validated, including `modelPreferences`. Changing a profile’s server identity stages its credentials under a new ID before committing metadata. Session links activate saved profiles using their stored credentials.
 - the active project is never persisted: on connect the retained placeholder runtime derives it from the server catalog (server default location first, then the most recently active project). The retained legacy opened-project and last-session keys are removed once on hydrate
 - hidden-project markers are not project identity: each connection-scoped path list is trimmed, deduped, and capped at 50. A path only hides a matching server catalog row, and a stale path renders nothing rather than hiding a different project or creating a local row
@@ -767,7 +767,7 @@ Credentials:
   the saved profile ID, so retry does not redeem again or create another profile.
 - pending completion-notification records store only a non-secret connection reference (`serverUrl`, `username`, `connectionScope`) and never a password
 
-The provider does not connect until hydration completes.
+The app core does not connect until hydration completes.
 
 ## Derived Data
 
@@ -790,7 +790,6 @@ current selection stays until the next picker open derives the server default.
 The Show archived projects switch is off by default; turning it on reveals the
 hidden rows under "Archived on this device" with Restore. Re-adding the project's
 path through Add project also clears its marker. See
-[ADR 0034](../adr/0034-device-local-project-archive.md) and
 [ADR 0038](../adr/0038-single-archived-projects-switch.md).
 
 On connect the retained placeholder runtime derives the active project from the

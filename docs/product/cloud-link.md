@@ -377,9 +377,9 @@ before onboarding completion.
 that exact ID; a mismatch is rejected before credentials are saved or state is
 migrated. Existing machine hostnames and profile IDs/names/catalog and routing
 preferences are preserved. Device credentials may rotate. The provider copies validated
-connection-scoped caches and migrates remembered sessions, favorites and pending
-notification references to the new credential scope before switching. Old
-non-secret cache/remembered-session copies remain for interruption-safe recovery.
+connection-scoped caches and migrates favorites and pending notification
+references to the new credential scope before switching. Old non-secret cache
+copies remain for interruption-safe recovery.
 
 `GET /v1/machines` exposes owned machines and `access_enabled`, including after
 subscription expiry. Second-device Restore recovers store ownership and obtains
@@ -522,17 +522,8 @@ Store-wrapper tests verify iOS handoff, Android package identity without a guess
 SKU, and unavailable-build/identity errors. Provider-hook checks verify serialized
 management, purchase exclusion, and verified-date exposure. These mocks do not
 establish real store handoff or device accessibility. The added E2E flows require
-explicit human validation under AGENTS.md. The user confirmed human validation
-of the section and its five new E2E flows on 2026-10-09; real native store handoff
-and device accessibility remain separate acceptance checks.
-
-Subscription Settings verification on 2026-10-09: static CI (149 Vitest tests
-plus the script suites), both fake-server self-tests, all 109 web E2E flows and
-FOSS preparation checks passed. Dark/light screenshots at 390, 320 and 1440 px
-showed the selected grouped-action layout without horizontal overflow or
-uncaught browser errors in the new flows. Android development prebuild passed;
-Gradle stopped because no Android SDK location is configured. Live store handoff,
-native larger text and screen-reader acceptance remain unverified.
+explicit human validation under AGENTS.md. Live store handoff, native larger text
+and screen-reader acceptance remain separate checks.
 
 `features/cloud-link/__tests__/connect.test.ts` covers trusted catalog/API/proof/session contracts and the actual
 claim → secure-write → finalization aggregation on both stores, including
@@ -562,89 +553,6 @@ Run `test:ci:static`, `test:fake-server:self`, the affected Playwright flows, an
 a native development build when the environment supports it. The tag release
 runs the full E2E suite and native release verification. E2E changes require
 explicit human validation under AGENTS.md, even when automated checks pass.
-
-Google acknowledgement ownership validation on 2026-10-12: the app no longer
-acknowledges Play purchases. It finishes only the StoreKit transaction on iOS,
-while the control plane owns Google acknowledgement with durable retry.
-`features/cloud-link/__tests__/connect.test.ts` asserts Android never calls `finishTransaction`; Cloud Link E2E
-asserts purchase/Restore/recovery still claim and secure a session without a
-client finalization step. Locally, static CI, both fake-server self-tests and the
-39 Cloud Link E2E flows passed. The updated E2E assertions require explicit human
-validation under AGENTS.md, and live Android license-test acknowledgement remains
-a separate acceptance check.
-
-Purchase initiation/finalization validation on 2026-11-02:
-`features/cloud-link/__tests__/connect.test.ts` drives deferred native requests on
-both Apple and Google fixtures. It covers a listener completing while the request
-is pending, a result-only completion with no listener event, both paths arriving
-for one transaction, AppState recovery during `purchasing`, and a rejected
-request exposing the retryable error. Duplicate taps and late deliveries do not
-claim or finish twice; Apple still finishes StoreKit and Google never does.
-Locally, `npm run validate:commit` passed (147 files, 895 tests) along with the
-focused Cloud Link suites. Real native store-sheet behavior remains a device
-acceptance check.
-
-Renewal resilience validation on 2026-11-08:
-`features/cloud-link/__tests__/connect-recovery.test.ts` covers a transient
-control-plane failure before credential expiry; the still-valid credential and
-connection are retained and the store is not verified again. Purchase/Restore now
-refreshes the focused machine (or the saved machines while another connection is
-active), renewal timers are jittered, unchanged credentials skip SecureStore
-writes, and `cloudlink.access`/`cloudlink.activate` spans expose per-attempt
-timing and failure kind.
-
-Activation readiness validation on 2026-11-08:
-claim/access activation is optional and absence keeps the exact 1033 path.
-Focused tests cover pending approval, tunnel startup, ready, unsupported
-fallback, pairing expiry, background pause, cancellation, no access polling and
-no credential writes. The Cloud Link browser spec adds approval/tunnel/ready,
-unsupported fallback and expiry/rescan flows. E2E changes require explicit human
-validation under AGENTS.md; live connector activation remains a device/service
-acceptance check.
-
-Temporary service sharing validation on 2026-11-09:
-`npm run validate:commit` passed (lint, both typechecks and the full Vitest
-suite), together with `npm run gen:i18n` and the strict i18n parity test, the
-focused services suites (48 tests), both fake-server self-tests, the E2E budget
-(183/183) and all 52 Chromium flows in `tests/e2e/connect.spec.mjs`, including
-the three new flows for a public share (copy, extend, revoke), a password share
-that is never shown again, and the pre-0.20.0 legacy connector. Contract coverage
-parses `access_policy`, `server_time`, `capabilities` and revoke, and the fake
-connector rejects a legacy PUT on a protected service with `409`. Live connector
-behavior, native device acceptance and the new E2E flows still require explicit
-human validation under AGENTS.md.
-
-Cloud Link recovery validation on 2026-10-11: static CI, both fake-server
-self-tests and all 116 web E2E flows passed. The user explicitly confirmed live
-renewal with one active connection row, panel close/reopen and selected-chat
-continuity, plus Android background/resume and full relaunch on a build containing
-this fix. Android development prebuild passed locally; Gradle compilation remains
-unverified here because no Android SDK is configured.
-
-Automatic-routing validation on 2026-10-04: static checks, both fake-server
-self-tests and all 82 Chromium flows passed. Actual provider-hook checks cover
-both stores. The Android development build reached Gradle configuration but
-stopped because no Android SDK is configured on this machine. Live Google
-license-test Purchase/Restore and explicit human E2E validation remain pending.
-
-Stale-entitlement recovery validation on 2026-10-04: static checks, both
-fake-server self-tests and all 89 Chromium flows passed. Provider-hook regressions
-cover both stores, renewed/expired/missing purchases, repeated rejection, exact
-QR preservation and Google test routing across environments. Android development
-prebuild passed; Gradle with the installed JDK 17 stopped because the Android SDK
-location is not configured. Live Android purchase/QR recovery remains unverified.
-
-Validation recorded on 2026-10-02:
-
-- Static checks and both fake-server self-tests passed.
-- Chromium: all 61 E2E flows passed, including subscription recovery, save-only
-  retries and credential rotation. Mobile/desktop screenshots showed no overflow;
-  the purchase flow reported no browser runtime errors.
-- Android development `assembleDebug` passed for ARM64, using the existing JDK 17
-  and a temporary command-line Android SDK. Other Android ABIs were not built.
-- iOS development prebuild/CocoaPods and unsigned Debug simulator compilation
-  passed, including the native IAP integration. Device signing was not tested.
-- Explicit human E2E validation and live store/tunnel acceptance remain pending.
 
 For the simulator compilation after a development prebuild:
 

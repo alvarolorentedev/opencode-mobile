@@ -282,17 +282,14 @@ describe('documentation contract', () => {
 
     for (const file of files) {
       const source = readFileSync(file, 'utf8');
-      if (relative(file).startsWith('docs/adr/') && /^- Status: Superseded by ADR /m.test(source)) continue;
+      // ADRs are immutable history; their Markdown links are checked above,
+      // but old inline paths and scripts are allowed to name removed files.
+      if (relative(file).startsWith('docs/adr/')) continue;
       for (const match of source.matchAll(/`([^`\n]+)`/g)) {
         const raw = match[1].trim();
         if (!isInlinePath(raw)) continue;
         const cleaned = raw.split('#')[0].replace(/[),.;:]+$/, '');
         if (INLINE_PATH_ALLOWLIST.has(cleaned) || INLINE_PATH_ALLOWLIST.has(raw)) continue;
-        if (relative(file).startsWith('docs/adr/')) {
-          const rows = readFileSync(path.join(root, 'docs/architecture/feature-file-map.csv'), 'utf8').trim().split(/\r?\n/).slice(1).map((row) => row.split(','));
-          const moved = rows.filter(([old]) => old === cleaned || cleaned.endsWith('/') && old.startsWith(cleaned));
-          if (moved.length && moved.every(([, target]) => existsSync(path.join(root, target)))) continue;
-        }
         if (!existsSync(path.join(root, cleaned))) {
           missingPaths.push(`${relative(file)} -> ${raw}`);
         }
@@ -326,7 +323,7 @@ describe('documentation contract', () => {
       '## Translations',
       '## Settings section or row',
       '## Fake-server scenario and E2E flow',
-      '## Provider state field or endpoint',
+      '## Domain state field or endpoint',
     ]) {
       assert.ok(recipes.includes(heading), `task-recipes.md needs ${heading}.`);
     }

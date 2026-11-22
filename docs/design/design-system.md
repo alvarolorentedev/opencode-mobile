@@ -20,9 +20,9 @@ Related: [Design section](README.md) · [Component inventory](component-inventor
 | Settings navigation and availability | `buildSettingsSections()` |
 | Searchable controls | `settingsTargets()` |
 
-Use the existing provider-centric architecture. Components render state and
-forward actions; they do not fetch, persist preferences, normalize protocol
-payloads, or create shared domain stores. Presentation state such as a search
+Use the existing feature-owned, core-composed architecture. Components render
+state and forward actions; they do not fetch, persist preferences, normalize
+protocol payloads, or create shared domain stores. Presentation state such as a search
 query, open sheet or expanded group stays local.
 
 ## Foundations
@@ -279,7 +279,7 @@ retains Expo's native slider plus its web keyboard adapter because the RN
 Primitives native slider does not implement drag handling. Terminal accessory
 buttons retain their DOM focus, repeat and modifier behavior.
 
-## Validation and rollback
+## Validation
 
 Use the existing validation gate and owning flow specs. New browser specs and
 mandatory CI jobs are unnecessary for a foundation change covered by these
@@ -316,7 +316,7 @@ xcodebuild -workspace ios/OpenCodeMobile.xcworkspace -scheme OpenCodeMobile \
 
 For development prebuilds, use `OpenCodeMobileDev` for the workspace and scheme.
 Review the rendered production stories; a successful Storybook build alone does
-not verify focus, interactions or provider independence.
+not verify focus, interactions or feature independence.
 
 | Acceptance | Web | Android | iOS |
 | --- | --- | --- | --- |
@@ -330,10 +330,3 @@ not verify focus, interactions or provider independence.
 Device and store acceptance remains a release requirement even when automated
 checks pass. Any edits to existing E2E tests require the explicit human
 validation specified in `AGENTS.md`.
-
-Rollback the migration as one change: revert its commit (or revert its merge
-commit with `git revert -m 1 <merge-commit>`), restore the matching lockfile and
-generated tokens, run `npm ci`, then rebuild web and native artifacts. Publish
-through the existing release process. Persisted settings, credentials, sessions
-and protocol formats are unchanged, so rollback needs no data migration. Keep
-source, configuration and dependency rollback together.

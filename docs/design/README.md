@@ -32,7 +32,7 @@ rule here should map to a token, component, or test in the repository.
 2. **Reuse before adding.** Check the [component inventory](component-inventory.md)
    and the matching area file before creating a new control.
 3. **Build the component in its correct layer.** Presentation and local UI
-   state live in `features/`; provider state and orchestration stay in
+   state live in `features/`; domain state and orchestration stay in
    `runtime/`. See [architecture](../architecture/README.md).
 4. **Add a Storybook story** for reusable primitives and shared controls. See
    [storybook.md](storybook.md).

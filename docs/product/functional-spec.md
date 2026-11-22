@@ -790,7 +790,7 @@ Behavior exposed today:
 - `Rate us on Play Store` opens the Play Store listing, shown only on Android builds without the foss variant
 - `Give us feedback` opens the GitHub issue tracker
 - `Open support page` opens `https://getopencode.app/support/` in the browser
-- no provider state or persistence; the section only opens external URLs
+- no domain state or persistence; the section only opens external URLs
 
 ## Conversation Mode Detailed Behavior
 
@@ -910,7 +910,7 @@ Behavior:
 
 - when a prompt is sent, a pending notification tracker is stored locally with a non-secret connection reference (server URL, username, connection scope) and project path; passwords stay in SecureStore
 - pending records are keyed by connection scope + session ID, so a task started on one server survives switching to another
-- while the app is active, completion can be detected by local provider state and trigger a local notification
+- while the app is active, completion can be detected by local app state and trigger a local notification
 - completion is confirmed against the server before alerting: the shared settlement read classifies the task as running, retrying, blocked, failed, aborted, finished, or unknown, and only a terminal finished/failed result clears the record and notifies. A terminal result also requires an assistant response created after the tracked request, so an accepted prompt that has not started answering (or was never delivered) stays unknown and is retried instead of alerting. A record created in a previous app session waits for that confirmation instead of trusting a cached idle status.
 - completion copy distinguishes finished from failed; interrupted (aborted) runs are dropped without an alert
 - a record that belongs to another project is left in place instead of being cleared from the active project's session list, so switching projects cannot silently drop a completion. It is notified on return or by the background monitor.

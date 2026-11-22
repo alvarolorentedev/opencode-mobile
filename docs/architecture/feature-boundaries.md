@@ -10,7 +10,6 @@ Related: [ADR 0052](../adr/0052-explicit-overlay-dependencies.md) · [State and 
 | Change shared session/workspace lifecycle | `runtime/AGENTS.md` and [state ownership](state-and-data.md#state-ownership-overview) |
 | Change transport or compatibility | `shared/protocol/AGENTS.md` and [API contract](api-contract.md) |
 | Change a generic control | `shared/ui/AGENTS.md` and the [design system](../design/design-system.md) |
-| Check the coordinated rename inventory | [File mapping](feature-file-map.csv), based on commit `1385f8e` |
 
 ## Product ownership
 
@@ -123,29 +122,5 @@ Existing architecture checks still enforce the 60-line provider entrypoint, 500-
 source ceiling, 127-member combined context surface, compatibility isolation,
 keyboard/tab layout and retained-state ownership. New checks enforce public imports,
 feature cycles, presentation IO boundaries and shared dependency direction.
-See the [validation strategy](../engineering/validation/strategy.md) for commands and
-test selection; this migration requires the complete gate and native entrypoint checks.
-
-## Coordinated migration verification
-
-Baseline: local main at `1385f8e`, including the completed state/query migration.
-The rename inventory covers every tracked baseline file. Comparing executed test
-identities (mapped file and full test name) found zero missing or renamed cases:
-132 existing suites and 834 existing cases remain; two new architecture/discovery
-suites add four cases, for 134 suites and 838 passing tests. Existing behavioral
-coverage is sufficient because the migration changes ownership and imports only.
-No E2E or fake-server fixture changes are included.
-
-Validation completed for this migration:
-
-- CI static gate: lint, application/test TypeScript, all Vitest suites, documentation,
-  protocol/size/context ratchets and module/feature dependency checks.
-- All 177 browser flows, unchanged 19-spec budget, fake-server self-tests and Storybook build.
-- Android development compilation and APK assembly; packaging passed on a cached retry.
-- iOS prebuild and bundle export; FOSS Android bundle export and preparation self-test.
-- i18n registry and UI-token generator check modes.
-
-The FOSS preparation test used fresh copies of the installed package versions,
-since the shared local dependency cache had already been prepared. Signed iOS
-archives and physical-device execution were not performed. Revert the coordinated
-migration commits to roll back; serialized data and protocol contracts need no conversion.
+See the [validation strategy](../engineering/validation/strategy.md) for commands
+and test selection.

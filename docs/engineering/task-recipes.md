@@ -90,7 +90,7 @@ npm run test:ci:static
 **Done:** the section is searchable, the preference survives relaunch, the
 control has a story if reusable, and the settings flow passes.
 
-**Pitfalls:** local copies of provider state, search indexing current values or
+**Pitfalls:** local copies of domain state, search indexing current values or
 credentials, and one-off controls that duplicate `setting-rows.tsx`.
 
 ## Fake-server scenario and E2E flow
@@ -134,7 +134,7 @@ feature is in the supported intersection, and the flow fails without the change.
 **Pitfalls:** weakening an existing scenario, relying on wall-clock timing,
 sharing fixed ports across concurrent runs, and testing only the happy path.
 
-## Provider state field or endpoint
+## Domain state field or endpoint
 
 **When:** you add or change a domain state field, a session field, or an API
 endpoint consumed by the app.
@@ -151,9 +151,9 @@ endpoint consumed by the app.
    `runtime/core/commands/`. Bind scoped project inputs only when needed.
 4. Persistence: `runtime/persistence/device-preferences.ts` and
    `shared/storage/persistence-hydration.ts` only if the field survives relaunch.
-5. Context exposure: `features/chat/context.ts` and the domain context type.
+5. Public exposure: `features/chat/context.ts` and its domain value type.
 6. Derived data: `features/sessions/model/selectors.ts`; never duplicate
-   provider-derived state in a component.
+   domain-derived state in a component.
 7. Fake server: `tests/fake-opencode/` for the new endpoint or field.
 8. Tests: targeted Vitest, then E2E if the user flow changed.
 

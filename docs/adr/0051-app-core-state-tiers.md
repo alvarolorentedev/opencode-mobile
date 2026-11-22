@@ -76,8 +76,8 @@ Zustand is an approved dependency for this role. Redux, Redux Toolkit and XState
 - [x] Migrate the legacy suites to native imports and add property tests.
 - [x] Add a fake-server composition harness and fact/command checks.
 - [x] Add the impact script (`npm run impact -- <file>`).
-- [x] Complete the local [validation handoff](../engineering/optimal-state/README.md#validation-handoff).
-      The signed iOS release build and physical-device validation remain pending.
+- [x] Complete the local validation handoff. The signed iOS release build and
+      physical-device validation remain pending.
 
 A prior connection-manager extraction regressed live renewal across panel
 reopening. The full browser checkpoint includes that flow.

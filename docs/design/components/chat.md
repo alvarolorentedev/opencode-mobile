@@ -51,7 +51,7 @@ onboarding, which reopens the existing setup review without clearing settings.
 #### Responsibility
 
 - main chat screen controller
-- bridges provider state to presentational chat subcomponents
+- bridges domain state to presentational chat subcomponents
 - owns local UI state for draft, attachments, menu visibility, speaking state, snackbars, and voice draft capture
 - renders the chat approval alert for `approvals.mcpAuth` (MCP authentication required) with Open link and Dismiss actions
 

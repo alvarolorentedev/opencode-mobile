@@ -15,7 +15,7 @@ Responsibility:
 - General edits language, the opening screen, and Steer/Append delivery (connected V2 only).
 - ready summarizes connection/project plus the applicable providers, enabled models and preferences, then completes first-run setup or closes review mode
 - thin controllers only; connection/project persistence and permission requests are delegated to the provider and existing helpers
-- seeded from current provider state so re-running from Settings reviews rather than resets
+- seeded from current domain state so re-running from Settings reviews rather than resets
 - the project step reads the provider catalog, filters by project name or path, and offers Retry only when it is empty; there is no permanent refresh action in the footer
 
 ### `features/onboarding/ui/onboarding-step.tsx`

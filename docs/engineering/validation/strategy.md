@@ -166,7 +166,7 @@ permanent copy is the GitHub Release asset or store upload.
 
 For SDK or native dependency changes, use the existing gate above and record
 acceptance evidence against the exact commit. A successful development build is
-insufficient to mark the migration ready for release. No additional mandatory CI
+insufficient to mark a native dependency change ready for release. No additional mandatory CI
 workflow or native E2E framework is required.
 
 | Target | Existing automated/build checks | Required native/store acceptance |
@@ -181,7 +181,7 @@ workflow or native E2E framework is required.
 | Android content capture | Config-plugin exact-order/idempotence test; inspect generated and minified release MainActivity | On supported Android with content capture enabled, exercise large transcripts/catalogs; mitigation stays immediately after superclass creation |
 | Cloud Link and secrets | Existing purchase/pairing/recovery tests and full E2E; FOSS exclusion test | Real sandbox/test purchase, restore, cancellation and environment transitions; SecureStore persistence, relaunch and no credentials in captures/logs |
 
-See [native decisions and rollback](../../adr/0017-native-defaults-and-prebuilt-engines.md),
+See [library decisions](../library-extraction.md),
 [build/signing operations](../integrations-and-operations.md),
 [store-update acceptance](../../product/app-updates.md) and
 [F-Droid requirements](../fdroid.md). If the signed builds, eligible store accounts
@@ -258,10 +258,8 @@ offline queued prompt that is delivered once after reconnect. The fake server's
 network injector, all E2E additions, and the web offline transitions require
 explicit human validation under AGENTS.md.
 
-These fake-server and E2E changes require explicit human validation under
-AGENTS.md. Device acceptance still needs Wi-Fi/cellular transitions, sleep/wake
-resume, real revocation, and Cloud Link renewal with a live terminal and editor
-draft.
+Device acceptance still needs Wi-Fi/cellular transitions, sleep/wake resume,
+real revocation, and Cloud Link renewal with a live terminal and editor draft.
 
 The web Cloud Link flows use controlled time and mocked tunnel responses to
 check waiting beyond 15 seconds without recovery controls, automatic connection,
@@ -271,26 +269,12 @@ validation under AGENTS.md. Real-device acceptance remains outstanding: delayed
 desktop approval, approval followed by slow DNS/tunnel startup, denial/TTL expiry
 followed by a regenerated QR, and background/resume during the wait.
 
-Local validation on 2026-10-12 passed `test:ci:static` (including 199 Vitest cases),
-both fake-server self-tests and all 119 web E2E flows against the final export.
-Android development prebuild completed; Gradle compilation stopped with
-`SDK location not found`. Explicit human validation of these E2E changes and
-the physical-device flows remains pending.
-
 Cloud Link subscription checks are described in [connect.md](../../product/cloud-link.md). Provider
 checks cover rejected/false native initialization and billing failures
 during product and existing-purchase queries on both stores. Retry reconnects and
 replays initialization while checkout stays disabled; purchase checkpoints retain
 their existing recovery path. The V2 inbox E2E resets the shared boot backend
 before opening chat so the preceding attachment flow cannot leak its conversation.
-Billing recovery validation (2026-10-13): static CI (291 Vitest checks plus script
-suites), both fake-server self-tests, all 134 web flows and the Android development
-build pass. An earlier full rerun had intermittent V2 terminal, file-diff and
-polling failures; all three passed separately and in the final full run without
-changes to those flows. On 2026-10-13 the user explicitly validated the one-line
-inbox E2E reset in this chat. Real Google Play checkout remains unverified.
-No release version changed.
-
 Static checks validate claim/secure-write ordering, StoreKit finalization on iOS, and
 the backend-owned Google acknowledgement (Android never calls
 `finishTransaction`). Mocked E2E validates explicit Purchase/Restore, silent
@@ -309,13 +293,7 @@ credential access, stale recovery success and failure after switching
 connections, and renewal with Settings mounted. Profile checks distinguish
 machines/environments while preserving manual scope
 matching. The live-renewal E2E checks one active saved row, fresh username, panel
-close/reopen and remembered-session continuity without a document reload.
-On 2026-10-11, the user explicitly confirmed the live-renewal flow and all Android
-background/resume and full-relaunch checks on a build containing this fix,
-satisfying the human validation requirement for these E2E changes under AGENTS.md.
-Static CI, both fake-server self-tests and all 116 web E2E flows passed. Android
-development prebuild passed; local Gradle compilation remains unverified because
-no Android SDK is configured.
+close/reopen and selected-session continuity without a document reload.
 
 The service-domain cutover checks reject both legacy control planes before any
 request or store proof is sent, preserve isolated legacy secure records, and

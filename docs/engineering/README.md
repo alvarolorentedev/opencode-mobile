@@ -12,7 +12,7 @@ build, or understand an operational constraint.
 | Document | Owns |
 | --- | --- |
 | [development.md](development.md) | Requirements, setup, common commands, native builds, configuration, and store update setup |
-| [task-recipes.md](task-recipes.md) | Step-by-step checklists for translations, settings, fake-server/E2E, and provider state |
+| [task-recipes.md](task-recipes.md) | Step-by-step checklists for translations, settings, fake-server/E2E, and domain state |
 | [testing-overview.md](testing-overview.md) | Short testing strategy and merge-gate overview |
 | [testing-and-validation.md](testing-and-validation.md) | Validation index: choose a command, fake server, E2E, or feature coverage |
 | [validation/strategy.md](validation/strategy.md) | Validation principles, costs, CI gates, coverage gaps, commands, and suite map |
@@ -25,7 +25,6 @@ build, or understand an operational constraint.
 | [library-extraction.md](library-extraction.md) | Library replacements, deferred evaluations, and candidate extraction boundaries |
 | [fdroid.md](fdroid.md) | F-Droid/FOSS variant scope, build, and distribution |
 | [known-gaps.md](known-gaps.md) | Deliberately deferred engineering work and its constraints |
-| [optimal-state/README.md](optimal-state/README.md) | Self-contained Phase A–G plan, current status, gates, and Definition of Done for the two-tier architecture |
 
 ## Common entry points
 

@@ -1,6 +1,6 @@
 # ADR 0032: Project picker matches web Used/Other semantics
 
-- Status: Accepted
+- Status: Superseded by ADR 0033
 - Date: 2026-11-05
 - Deciders: maintainers
 - Supersedes: —

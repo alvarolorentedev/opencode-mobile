@@ -17,10 +17,15 @@ and it defines the extraction candidates that could become standalone packages.
   unavailable; iOS can now offer the native App Store review flow. F-Droid
   builds exclude the native Play Review dependency, stub its JS entrypoint, and
   keep the rating action hidden.
-- **Persisted DTO validation**: `zod` schemas now validate the session cache,
-  transcript cache, capabilities cache, favorites, opened projects, remembered
-  sessions, onboarding marker, update preferences, notification records,
-  connection settings, and chat preferences. Existing fail-safe behavior is
+- **App updates**: `expo-in-app-updates` 0.13.0 with one deferred-install patch.
+  Android requests flexible first, keeps immediate for Play priorities 4-5 and
+  refused flexible requests, and retains safety blockers, cancellation cooldown
+  and interrupted recovery. iOS keeps listing validation and intentional
+  external navigation. See [app updates](../product/app-updates.md).
+- **Persisted DTO validation**: `zod` schemas now validate the session and
+  transcript catalogs, capabilities cache, favorites, onboarding marker, update
+  preferences, notification records, connection settings, and chat preferences.
+  Existing fail-safe behavior is
   preserved: malformed envelopes clear the key, malformed individual entries
   are dropped where the previous parser dropped them, unknown fields are
   stripped, and unread keys stay preserved.
@@ -59,17 +64,6 @@ The unused keyboard-height hook has been removed. A new controller needs a concr
 regression and physical-device acceptance across composer, Settings, terminal,
 modals and hardware keyboards; SDK compatibility alone is not a reason to migrate.
 
-### App updates (implemented)
-
-SDK 58 enables `expo-in-app-updates` 0.13.0. Android requests flexible updates
-first, keeps immediate for Play priorities 4-5 and for a refused flexible
-request, and retains safety blockers, cancellation cooldown, explicit install
-behind the restart toast and interrupted recovery.
-Its native error fallback can open Play Store; the attempted candidate is suppressed
-before handoff. iOS keeps its existing listing validation and intentional external
-navigation, using Expo Application's verified production-environment API. The custom
-update module is removed. See [app updates](../product/app-updates.md).
-
 ### Local classifier compatibility
 
 `llama.rn` is pinned exactly to 0.12.9 with its matching upstream Android engine
@@ -102,7 +96,8 @@ and redirect-safe Expo fetch remain app-owned. See
 | Sherpa | 1.3.1 | Android Kotlin/JNI config ABI and iOS TTS key aliases | Stable wrapper contains both fixes; Android/iOS local TTS passes |
 | React Native | 0.88.1 | Forward per-socket `redirect: 'error'` for OIDC WebSockets; use the rendering TextView's default typeface for unstyled Android Fabric text measurement and refresh it on configuration changes ([upstream fix](https://github.com/facebook/react-native/pull/58036)) | Upstream includes both fixes; verify redirect safety and Android text rendering on affected hardware |
 
-These patches apply through patch-package. Android React Native builds from source through Expo BuildProperties so the Android source patches are included; prebuilt AARs cannot include them. Sharing must remain built from source. The updater uses its unmodified upstream implementation.
+These patches apply through patch-package. Android React Native builds from source through Expo BuildProperties so the Android source patches are included; prebuilt AARs cannot include them. Sharing must remain built from source. The updater uses the maintained bridge with
+one deferred-install patch; iOS keeps its own listing validation.
 Upstream Sherpa's beta fixes Android ABI but not the iOS alias handling; do not adopt
 a prerelease only to delete part of a patch. Native source references:
 [Expo Sharing](https://github.com/expo/expo/tree/main/packages/expo-sharing),
@@ -125,7 +120,7 @@ SDK compatibility and a reproducible lockfile do not establish a clean audit.
 
 Deferred because the current sheet behavior is already factored through
 `OverlaySheet` + `useSwipeDismiss`, is covered by flow tests, and integrates
-directly with the primitive portal and the workspace-scope context. Adopt it only if
+directly with the primitive portal and explicit workspace targets. Adopt it only if
 snap points, keyboard behavior, or gesture edge cases become a real problem.
 
 ### Diff rendering: `parse-diff` / `react-native-diffs`
@@ -161,7 +156,7 @@ The package should own the DOM renderer and mobile interaction layer:
 `TerminalDOM`, touch selection/scrolling, input/IME handling, the accessory
 keyboard, key encoding, and the CSS. The app should keep the OpenCode PTY
 transport, ticket acquisition, reconnect policy, workspace lifetime, and
-provider state.
+domain state.
 
 A first API could be:
 

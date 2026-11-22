@@ -142,7 +142,7 @@ Keep these at their reviewed version until the blocker clears:
 
 | Package | Blocker |
 | --- | --- |
-| `llama.rn` 0.12.9, `expo-in-app-updates` 0.13.0 | [ADR 0017](../adr/0017-native-defaults-and-prebuilt-engines.md) requires prebuilt engines and the unmodified updater. |
+| `llama.rn` 0.12.9, `expo-in-app-updates` 0.13.0 | [ADR 0017](../adr/0017-native-defaults-and-prebuilt-engines.md) requires prebuilt engines; [ADR 0036](../adr/0036-flexible-first-with-play-urgency.md) sets the updater policy. |
 | `typescript` 6.0.3 | TypeScript 7 ships no compiler API for the architecture, discovery and iOS config tests, and `typescript-eslint` refuses to load against it. |
 | `eslint` 9 | ESLint 10 removes `context.getFilename()`, which the `eslint-plugin-react` bundled by `eslint-config-expo` 58 still calls. Move with the SDK's config. |
 | `@scure/base` 1.2.6 | v2 freezes the coder objects, so a chat feed test that spies on `base64.decode` cannot load; revisit when that suite no longer needs the spy. |
