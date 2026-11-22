@@ -1,21 +1,14 @@
-import { getConnectCredentialError } from '@/shared/contracts/cloud-link';
-import { getConnectionScope } from '@/shared/contracts/connection-scope';
-import { telemetry } from '@/shared/observability/client';
-import { buildClient, classifyConnectionFailure, detectServerContract, getCertificateErrorMessage, getConnectionError, isContractMismatchError, isRetryableCloudLinkStartupError, type ConnectionFailureKind, type OpencodeConnectionSettings, type ServerContract } from '@/shared/protocol/opencode/client';
-import { isCertificateFailureReason, isTlsTrustSupported, probeConnectionTrust } from '@/shared/platform/tls-trust';
-import { getNormalizedServerUrl, isValidServerUrl } from '@/shared/contracts/server-url';
+import { buildClient, type OpencodeConnectionSettings } from '@/shared/protocol/opencode/client';
 import { isServerConnectedEvent, serverDataResources } from '@/shared/protocol/opencode/server-data-events';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { createContext, useCallback, useContext, useEffect, useLayoutEffect, useMemo, useRef, useState, type PropsWithChildren } from 'react';
+import { createContext, useCallback, useContext, useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore, type PropsWithChildren } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { TFunction } from 'i18next';
 import { AppState } from 'react-native';
 import { useConnectionRetry } from '@/features/connections/runtime';
-import { createConnectionLifecycle } from '@/runtime/connections/connection-lifecycle';
-import type { ConnectionLifecycle } from '@/features/connections/index';
-import type { ConnectionState } from '@/shared/contracts/domain';
+import { createConnection } from '@/runtime/connections/create-connection';
 import { replaceQueryPartition } from '@/shared/server-data/keys';
-import { fetchProjectCatalog, projectsOptions } from '@/features/projects/runtime';
+import { projectsOptions } from '@/features/projects/runtime';
 import { useQueryActivity, useQueryForeground, useQueryIdentity } from '@/shared/server-data/client';
 import { readSessionStats } from '@/shared/protocol/services/session-stats';
 import type { SessionStatsSource } from '@/shared/server-data/session-stats';
@@ -35,176 +28,36 @@ function connectionTranslator(t: TFunction) {
     (options ? t(key, options as never) : t(key)) as string;
 }
 
+const foregroundLifecycle = {
+  isActive: () => AppState.currentState === 'active',
+  subscribe(listener: (active: boolean) => void) {
+    const subscription = AppState.addEventListener('change', (state) => listener(state === 'active'));
+    return () => subscription.remove();
+  },
+};
+
 export function useConnectionLifecycle(entry: ConnectionRecord, setup: ConnectSetup, updateSettings: (id: string, settings: OpencodeConnectionSettings) => void, online: boolean, hydrated: boolean) {
   const { t } = useTranslation();
-  const cache = useQueryClient();
+  const queryClient = useQueryClient();
   const identity = useQueryIdentity();
   const active = useQueryActivity();
-  const [manager] = useState(createConnectionLifecycle);
-  const [state, setState] = useState(manager.getState);
-  useLayoutEffect(() => manager.subscribe(() => setState(manager.getState())), [manager]);
-  const dispatch = manager.dispatch;
-  const latest = useRef({ entry, setup, identity, t, state });
-  useLayoutEffect(() => { latest.current = { entry, setup, identity, t, state }; });
-  const operation = useRef(0);
-  const invalidations = useRef(new Set<() => void>());
-  const onInvalidated = useCallback((listener: () => void) => { invalidations.current.add(listener); return () => { invalidations.current.delete(listener); }; }, []);
-  const invalidateWorkflows = useCallback(() => { for (const listener of invalidations.current) listener(); }, []);
-  const inFlight = useRef<{ revision: number; promise: Promise<ConnectionState> } | undefined>(undefined);
-  const controller = useRef<AbortController | undefined>(undefined);
-  const countedContract = useRef<ServerContract | undefined>(undefined);
-  const preparedUpdate = useRef<{ revision: number; settings: OpencodeConnectionSettings } | undefined>(undefined);
-  const connect = useCallback((): Promise<ConnectionState> => {
-    const { entry, setup, identity } = latest.current;
-    const translate = connectionTranslator(latest.current.t);
-    if (!entry.enabled) return Promise.resolve({ status: 'idle', message: 'Disconnected' });
-    const pending = inFlight.current;
-    if (pending && pending.revision === (entry.revision ?? 0)) return pending.promise;
-    controller.current?.abort();
-    const attempt = new AbortController(); controller.current = attempt;
-    const id = ++operation.current;
-    const current = () => operation.current === id && !attempt.signal.aborted;
-    const connectionKind = entry.settings.connect ? 'cloud-link' : 'direct';
-    dispatch({ type: 'start', operation: id, message: `Connecting to ${getNormalizedServerUrl(entry.settings.serverUrl)}...` });
-    const promise = (async (): Promise<ConnectionState> => {
-      let settings = entry.settings;
-      try {
-        if (settings.connect) settings = await setup.prepareSettings(settings);
-        if (!current()) return latest.current.state.connection;
-        const invalid = getConnectCredentialError(settings.connect, settings.password);
-        if (invalid) throw new Error(invalid);
-        if (!isValidServerUrl(settings.serverUrl)) throw new Error('Invalid server URL.');
-        if (settings !== entry.settings && JSON.stringify(settings) !== JSON.stringify(entry.settings)) {
-          preparedUpdate.current = { revision: (entry.revision ?? 0) + 1, settings };
-          updateSettings(entry.id, settings);
-        }
-        dispatch({ type: 'probe', operation: id });
-        const detected = await detectServerContract(settings, attempt.signal);
-        const candidates: ServerContract[] = detected.contract === 'v1' ? ['v1', 'v2'] : ['v2', 'v1'];
-        let failure: unknown;
-        for (const contract of candidates) {
-          if (!current()) return latest.current.state.connection;
-          const client = buildClient({ ...settings, directory: '' }, contract, attempt.signal);
-          try {
-            await fetchProjectCatalog(cache, { ...identity, connectionScope: getConnectionScope(settings), authRevision: identity.authRevision + (settings.password !== entry.settings.password || settings.username !== entry.settings.username ? 1 : 0) }, client, true);
-            if (!current()) return latest.current.state.connection;
-            const connection: ConnectionState = { status: 'connected', message: `Connected to ${getNormalizedServerUrl(settings.serverUrl)} (OpenCode ${contract === 'v2' ? '2.x' : '1.x'})`, checkedAt: Date.now() };
-            if (countedContract.current !== contract) {
-              countedContract.current = contract;
-              telemetry.counter('server.contract', 1, { contract });
-            }
-            telemetry.info('connection.connected', { kind: connectionKind, connected: true });
-            telemetry.markStartup('connection-ready', { kind: connectionKind });
-            dispatch({ type: 'settle', operation: id, connection, contract });
-            return connection;
-          } catch (error) { failure = error; if (!isContractMismatchError(error)) break; }
-        }
-        throw failure;
-      } catch (error) {
-        if (!current()) return latest.current.state.connection;
-        let kind = classifyConnectionFailure(error);
-        let message = getConnectionError(settings.serverUrl, error, translate);
-        if ((kind === 'unknown' || kind === 'certificate') && settings.serverUrl.startsWith('https:') && isTlsTrustSupported()) {
-          const tls = await probeConnectionTrust(settings);
-          if (!tls.ok && isCertificateFailureReason(tls.reason)) {
-            kind = 'certificate';
-            message = getCertificateErrorMessage(tls.reason, translate);
-          }
-        }
-        const connection: ConnectionState = { status: 'error', kind, message, checkedAt: Date.now(), retryableStartup: Boolean(settings.connect) && isRetryableCloudLinkStartupError(error) };
-        telemetry.warn('connection.failed', { kind: connectionKind, failureKind: connection.kind, retryable: connection.retryableStartup });
-        if (connection.kind === 'auth' || connection.kind === 'entitlement') invalidateWorkflows();
-        dispatch({ type: 'settle', operation: id, connection });
-        return connection;
-      }
-    })().finally(() => { if (inFlight.current?.promise === promise) inFlight.current = undefined; });
-    inFlight.current = { revision: entry.revision ?? 0, promise };
-    return promise;
-  }, [cache, invalidateWorkflows, updateSettings]);
-  useEffect(() => {
-    const prepared = preparedUpdate.current;
-    if (entry.enabled && prepared?.revision === (entry.revision ?? 0) && JSON.stringify(prepared.settings) === JSON.stringify(entry.settings)) {
-      if (inFlight.current) inFlight.current.revision = entry.revision ?? 0;
-      preparedUpdate.current = undefined;
-    } else if (!entry.enabled) {
-      controller.current?.abort(); inFlight.current = undefined;
-      void cache.cancelQueries({ queryKey: ['opencode', entry.id] });
-      cache.removeQueries({ queryKey: ['opencode', entry.id] });
-      dispatch({ type: 'disable', operation: ++operation.current });
-    } else if (hydrated && !getConnectCredentialError(entry.settings.connect, entry.settings.password)) void connect();
-    return () => {
-      const next = latest.current.entry;
-      const pending = preparedUpdate.current;
-      if (next.enabled && pending?.revision === (next.revision ?? 0) && JSON.stringify(pending.settings) === JSON.stringify(next.settings)) return;
-      controller.current?.abort(); inFlight.current = undefined;
-    };
-  }, [cache, connect, entry.id, entry.enabled, entry.revision, entry.settings, hydrated]);
-  const reconnect = useConnectionRetry({ active, paused: Boolean(entry.settings.connect), status: state.connection.status, kind: 'kind' in state.connection ? state.connection.kind : undefined, online, connect });
-  const renewed = useRef('');
+  const [manager] = useState(() => createConnection({ queryClient, foreground: foregroundLifecycle }));
+  const state = useSyncExternalStore(manager.subscribe, manager.getState, manager.getState);
+  useLayoutEffect(() => {
+    manager.setInput({ entry, setup, identity, translate: connectionTranslator(t), hydrated, updateSettings });
+  });
+  useEffect(() => manager.syncConnection(), [entry.enabled, entry.id, entry.revision, entry.settings, hydrated, manager]);
   const renewalPaused = setup.phase === 'waitingForApproval' || setup.phase === 'delayed';
-  useEffect(() => {
-    const metadata = entry.settings.connect;
-    if (!entry.enabled || !metadata) return;
-    let stopped = false;
-    let expiryTimer: ReturnType<typeof setTimeout>;
-    let refreshTimer: ReturnType<typeof setTimeout>;
-    const paused = () => ['waitingForApproval', 'delayed'].includes(latest.current.setup.phase);
-    const schedule = () => {
-      clearTimeout(refreshTimer);
-      if (paused()) return;
-      const key = `${metadata.controlPlaneUrl}:${metadata.machineId}:${metadata.expiresAt}`;
-      const recover = getConnectCredentialError(metadata, entry.settings.password) || latest.current.state.connection.status === 'error';
-      if (!recover && renewed.current === key) return;
-      const remaining = Date.parse(metadata.expiresAt) - Date.now() - 300_000;
-      const capped = !recover && remaining > 2_147_483_647;
-      // Spread renewals across devices; never delay past the pre-expiry window.
-      const jitter = capped ? 0 : Math.floor(Math.random() * 60_000);
-      const delay = recover ? 1000 : Math.min(Math.max(remaining - jitter, 1000), 2_147_483_647);
-      refreshTimer = setTimeout(() => {
-        if (AppState.currentState !== 'active' || paused()) return;
-        renewed.current = key;
-        void connect().then((result) => {
-          if (stopped || AppState.currentState !== 'active') return;
-          if (result.status !== 'connected') { renewed.current = ''; refreshTimer = setTimeout(schedule, 60_000); return; }
-          // A capped timer only wakes to re-arm the remaining lifetime.
-          if (capped) { renewed.current = ''; schedule(); }
-        });
-      }, delay);
-    };
-    const check = () => {
-      const error = getConnectCredentialError(metadata, entry.settings.password);
-      if (error) {
-        if (latest.current.state.connection.status !== 'error' || latest.current.state.connection.message !== error) {
-          controller.current?.abort();
-          void cache.cancelQueries({ queryKey: ['opencode', entry.id] });
-          cache.removeQueries({ queryKey: ['opencode', entry.id] });
-          invalidateWorkflows();
-          dispatch({ type: 'settle', operation: ++operation.current, connection: { status: 'error', kind: 'auth', message: error, checkedAt: Date.now() } });
-        }
-        schedule(); return;
-      }
-      expiryTimer = setTimeout(check, Math.min(Date.parse(metadata.expiresAt) - Date.now(), 2_147_483_647));
-    };
-    check(); schedule();
-    const listener = AppState.addEventListener('change', (state) => {
-      clearTimeout(expiryTimer); clearTimeout(refreshTimer);
-      if (state === 'active') { check(); schedule(); }
-    });
-    return () => { stopped = true; clearTimeout(expiryTimer); clearTimeout(refreshTimer); listener.remove(); };
-  }, [cache, connect, entry.enabled, entry.id, entry.settings.connect, entry.settings.password, invalidateWorkflows, renewalPaused]);
-  const handleStreamAuthFailure = useCallback((kind: ConnectionFailureKind) => {
-    const { entry, state } = latest.current;
-    if (state.connection.status === 'error' && state.connection.kind === kind) return;
-    telemetry.warn('connection.auth-failed', { failureKind: kind });
-    void cache.cancelQueries({ queryKey: ['opencode', entry.id] });
-    cache.removeQueries({ queryKey: ['opencode', entry.id] });
-    if (entry.settings.connect) { void connect(); return; }
-    controller.current?.abort();
-    invalidateWorkflows();
-    const oidcMessage = latest.current.entry.settings.oidc ? latest.current.t('settings:connection.errors.oidcSignIn') : undefined;
-    dispatch({ type: 'settle', operation: ++operation.current, connection: { status: 'error', kind, message: oidcMessage ?? (kind === 'entitlement' ? 'Access was denied. Reconnect or restore access to continue.' : 'Authentication failed. Check the credentials and reconnect.'), checkedAt: Date.now() } });
-  }, [cache, connect, invalidateWorkflows]);
-  return useMemo(() => ({ connection: entry.enabled ? state.connection : { status: 'idle' as const, message: 'Disconnected' }, serverContract: state.contract, connect, handleStreamAuthFailure, onInvalidated, reconnect }), [entry.enabled, state.connection, state.contract, connect, handleStreamAuthFailure, onInvalidated, reconnect]);
+  useEffect(() => manager.syncRenewal(), [entry.enabled, entry.id, entry.settings.connect, entry.settings.password, manager, renewalPaused]);
+  const reconnect = useConnectionRetry({ active, paused: Boolean(entry.settings.connect), status: state.connection.status, kind: 'kind' in state.connection ? state.connection.kind : undefined, online, connect: manager.connect });
+  return useMemo(() => ({
+    connection: entry.enabled ? state.connection : { status: 'idle' as const, message: 'Disconnected' },
+    serverContract: state.contract,
+    connect: manager.connect,
+    handleStreamAuthFailure: manager.handleStreamAuthFailure,
+    onInvalidated: manager.onInvalidated,
+    reconnect,
+  }), [entry.enabled, manager, reconnect, state.connection, state.contract]);
 }
 
 type Handle = ReturnType<typeof useConnectionLifecycle> & { catalogClient: ReturnType<typeof buildClient>; catalog: WorkspaceCatalog; isCurrentCatalogClient: (client: object) => boolean };

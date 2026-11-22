@@ -239,6 +239,11 @@ export function hookRuntime() {
     useMemo: memo,
     useCallback: (callback, deps) => memo(() => callback, deps),
     useEffect: effect('passive'), useLayoutEffect: effect('layout'),
+    useSyncExternalStore(subscribe, getSnapshot) {
+      const [, refresh] = react.useState(0);
+      react.useLayoutEffect(() => subscribe(() => refresh((value) => value + 1)), [subscribe]);
+      return getSnapshot();
+    },
   };
   let hook, props, value;
   const flush = () => {

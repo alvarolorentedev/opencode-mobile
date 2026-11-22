@@ -164,6 +164,11 @@ and foreground gates cancel Mission reads and reject stale responses.
 
 ## Connect recovery
 
+`runtime/connections/create-connection.ts` runs the connection probe and Cloud
+Link renewal with a clock and foreground port. The connection adapter supplies
+the latest settings and listens to the lifecycle snapshot. A prepared rotation
+rekeys the in-flight attempt so reopening a panel cannot launch a second probe.
+
 `features/connections/state/use-connection-retry.ts` retries retryable connect failures while
 the workspace is visible and online:
 

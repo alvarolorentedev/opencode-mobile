@@ -24,7 +24,7 @@ phase you are executing. Do not preload every phase unless you are planning.
 | Phase | Document | Status | Outcome |
 | --- | --- | --- | --- |
 | A | [State evacuation](phase-a-state-evacuation.md) | Complete | No domain data in per-workspace React state |
-| B | [Connection manager](phase-b-connection-manager.md) | Not started | Transport, probe, renewal, SSE and polling are plain TS |
+| B | [Connection manager](phase-b-connection-manager.md) | In progress | Transport, probe, renewal, SSE and polling are plain TS |
 | C | [Command core](phase-c-commands.md) | Not started | Cross-domain commands are plain functions; composition deleted |
 | D | [Transcript](phase-d-transcript.md) | Not started | Per-session infinite messages + store live overlay |
 | E | [Flatten React](phase-e-flatten-react.md) | Not started | No scope/provider tree or shared-UI runtime exception |
@@ -87,11 +87,18 @@ npm run validate:commit
   settings, extensions, projects and auto-model browser tests passed. The
   credential partition test verifies that an old classifier result does not
   carry into a new credential generation.
-- A7 and Phase A gate, `refactor(runtime): finish workspace state evacuation`.
+- A7 and Phase A gate, `97a2e854`.
   Static checks passed with 1,256 tests and one existing skip. The 139 focused
   tests, docs, fake-server self-tests and web export passed. All 95 browser
   checks passed across the Phase A gate and the affected diffs, projects,
   onboarding and settings specs.
+- Phase B baseline from the Phase A export passed the live renewal, credential
+  rotation and second-device Restore scenarios in `connect.spec.mjs`.
+- B1, `refactor(connections): extract probing and renewal into a manager`.
+  The commit gate reported 1,257 passing tests and one existing skip. The
+  focused lifecycle and Cloud Link recovery tests, docs, web export and all 72
+  connection, realtime, network resilience and multi-server browser tests
+  passed, including live renewal across panel reopening.
 
 ## Loop protocol
 

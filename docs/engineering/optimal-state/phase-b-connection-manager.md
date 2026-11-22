@@ -1,6 +1,7 @@
 # Phase B — Connection Manager
 
-Status: **not started**.
+Status: **in progress**. Probe and credential renewal are in the plain manager.
+The app-core registry, retry, SSE and polling wiring remain.
 
 Goal: move probe, credential renewal, SSE, polling, status refresh and event
 dispatch out of React. One plain-TS manager per connection, started and stopped
@@ -16,6 +17,10 @@ regressed live renewal: after extending a Cloud Link entitlement and reopening
 the panel, the Restore action stayed disabled. The attempt was reverted. The
 same failure must be reproduced before the manager is accepted and must stay
 green after it.
+
+The Phase A export passes `connect.spec.mjs` for live renewal across panel
+reopening, credential rotation and second-device Restore. The manager test
+also exercises paused renewal and an immediately published credential revision.
 
 Do not start Phase B until Phase A is complete and the baseline gate is green.
 
