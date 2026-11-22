@@ -1,7 +1,7 @@
 ---
 description: Commits, pushes, and watches CI for the reviewed change
 mode: primary
-model: opencode-go/deepseek-v4.1-flash
+model: opencode-go/deepseek-v4.1-flash#low
 permissions:
   - action: shell
     resource: "*"

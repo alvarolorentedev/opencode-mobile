@@ -1,7 +1,7 @@
 ---
 description: Reviews correctness, tests, docs, boundaries, and scope
 mode: primary
-model: opencode-go/deepseek-v4.1-flash
+model: opencode-go/deepseek-v4.1-flash#max
 permissions:
   - action: shell
     resource: "*"

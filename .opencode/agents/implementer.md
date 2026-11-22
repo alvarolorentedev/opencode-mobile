@@ -1,7 +1,7 @@
 ---
 description: Implements the scoped change with its docs, copy, and tests
 mode: primary
-model: opencode-go/deepseek-v4.1-flash
+model: opencode-go/deepseek-v4.1-flash#high
 permissions:
   - action: shell
     resource: "*"

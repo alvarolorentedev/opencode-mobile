@@ -1,7 +1,7 @@
 ---
 description: Runs the repo gate and checks acceptance and UX adherence
 mode: primary
-model: opencode-go/deepseek-v4.1-flash
+model: opencode-go/deepseek-v4.1-flash#high
 permissions:
   - action: shell
     resource: "*"

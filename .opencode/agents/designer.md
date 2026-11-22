@@ -1,7 +1,7 @@
 ---
 description: Turns the acceptance criteria into a compact UX contract
 mode: primary
-model: opencode-go/deepseek-v4.1-flash
+model: opencode-go/deepseek-v4.1-flash#max
 permissions:
   - action: shell
     resource: "*"
