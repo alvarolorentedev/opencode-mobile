@@ -15,6 +15,7 @@ export function usePermissionRulesState({ client, identity, isCurrentClient, que
   const removeSavedPermission = useCallback(async (id: string) => {
     if (!isCurrentClient(client)) throw new Error('Connect this server before changing its permissions.');
     await cache.cancelQueries({ queryKey });
+    if (!isCurrentClient(client)) throw new Error('Connect this server before changing its permissions.');
     await removeSavedPermissionRule(client, id);
     if (isCurrentClient(client)) { await cache.invalidateQueries({ queryKey, refetchType: 'none' }); await refreshSavedPermissions(); }
   }, [cache, client, isCurrentClient, queryKey, refreshSavedPermissions]);

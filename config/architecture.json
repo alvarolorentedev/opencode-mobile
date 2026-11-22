@@ -321,7 +321,6 @@
       "useMissionActivity",
       "useMissionOverview",
       "useNativeSurfaces",
-      "usePermissionRulesState",
       "useSessionActions",
       "useApprovalsCatalog",
       "useSessionCatalog",
@@ -353,10 +352,6 @@
       "NotificationsSection",
       "useNotificationRoute",
       "useNotificationSetup"
-    ],
-    "features/extensions/runtime.ts": [
-      "useExtensionPromptState",
-      "useMcpState"
     ],
     "features/extensions/index.ts": [
       "ExtensionsContextValue",

@@ -39,7 +39,7 @@ export function useOpencodeProviderReset({
     cancelBootstrap,
     explicitSessionSelectionRef,
     setCurrentSessionId,
-    setMcpAuthPrompt,
+    clearMcpAuthPrompt,
   } = state;
 
   return useCallback(() => {
@@ -55,7 +55,7 @@ export function useOpencodeProviderReset({
     resetTranscript();
     setPendingPermissionsBySession({});
     setPendingQuestionsBySession({});
-    setMcpAuthPrompt(undefined);
+    clearMcpAuthPrompt();
     resetTerminal();
   }, [
     resetTerminal,
@@ -65,7 +65,7 @@ export function useOpencodeProviderReset({
     explicitSessionSelectionRef,
     forgetSessionCreation,
     setCurrentSessionId,
-    setMcpAuthPrompt,
+    clearMcpAuthPrompt,
     setPendingPermissionsBySession,
     setPendingQuestionsBySession,
     setSessions,

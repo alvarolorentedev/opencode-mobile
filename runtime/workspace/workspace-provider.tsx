@@ -63,6 +63,7 @@ export function WorkspaceProvider({ children }: PropsWithChildren) {
   });
   useEffect(() => core.autoApproval.start(), [core]);
   useEffect(() => core.terminal.start(), [core]);
+  useEffect(() => core.events.observeMcpStatus(), [core]);
   const { updateSettings: updateWorkspaceSettings, change, removeConnection: removeWorkspaceConnection, connectedWorkspace, isEnabled } = manager;
   const { setFavoriteSessions, setSettings, setChatPreferences, setHiddenProjects } = shell;
   const { connections, focus, snapshots, resolveKey, switchConnection, disconnect } = manager;

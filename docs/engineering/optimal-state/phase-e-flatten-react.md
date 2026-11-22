@@ -36,6 +36,8 @@ Start only after Phase D is complete and green.
   store, and selects health and MCP results from Query.
 - Diagnostics and extension views resolve their own workspace through a shared
   core selector. Extension mutations check the exact client before a write.
+- MCP controls and saved permission rules select the owning Query entries.
+  The core clears a connection's MCP authorization prompt from scoped status.
 - `runtime/core/workspace-selectors.ts` selects the retained project projection.
 - [ADR 0052](../../adr/0052-explicit-overlay-dependencies.md) records explicit
   portal targets and update blocker callbacks. Shared controls use shared imports.

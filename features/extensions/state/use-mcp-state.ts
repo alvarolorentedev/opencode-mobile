@@ -35,19 +35,22 @@ export function useMcpState({
   }, [active, cache, client, identity, isCurrentClient, scopeKey, store]);
   const refreshChatCapabilities = useCallback(() => cache.invalidateQueries({ predicate: (query) => query.queryKey[0] === 'opencode' && query.queryKey[1] === identity.connectionId && ['capabilities', 'configuration', 'skills', 'references', 'extension-inspection'].includes(String(query.queryKey[7])) }), [cache, identity]);
   const addMcpServer = useCallback(async (name: string, config: McpLocalConfig | McpRemoteConfig) => {
+    if (!isCurrentClient(client)) throw new Error('Refresh extensions before making a change.');
     await svcAddMcpServer(client, name.trim(), config);
     await Promise.all([refreshMcpServers(), refreshChatCapabilities()]);
-  }, [client, refreshChatCapabilities, refreshMcpServers]);
+  }, [client, isCurrentClient, refreshChatCapabilities, refreshMcpServers]);
 
   const connectMcpServer = useCallback(async (name: string) => {
+    if (!isCurrentClient(client)) throw new Error('Refresh extensions before making a change.');
     await svcConnectMcpServer(client, name);
     await refreshMcpServers();
-  }, [client, refreshMcpServers]);
+  }, [client, isCurrentClient, refreshMcpServers]);
 
   const disconnectMcpServer = useCallback(async (name: string) => {
+    if (!isCurrentClient(client)) throw new Error('Refresh extensions before making a change.');
     await svcDisconnectMcpServer(client, name);
     await refreshMcpServers();
-  }, [client, refreshMcpServers]);
+  }, [client, isCurrentClient, refreshMcpServers]);
 
   const mcpOAuth = useMemo<McpContextValue['mcpOAuth']>(() => {
     const names = new Set<string>();

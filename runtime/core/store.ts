@@ -49,6 +49,8 @@ export type SelectionState = {
   pendingDeepLink?: SessionDeepLinkTarget;
 };
 
+type McpAuthPrompt = { mcpName: string; url: string; scopeKey: string; queryKey: readonly unknown[] };
+
 export type ChatUiState = {
   diffScopeBySession: Record<string, DiffScope>;
   selectedDiffMessageBySession: Record<string, string | undefined>;
@@ -164,8 +166,8 @@ export type AppState = {
   localClassifierReady?: boolean;
   fileClipboard: FileClipboardState;
   presentation: Map<string, unknown>;
-  mcpAuthPrompt?: { mcpName: string; url: string };
-  setMcpAuthPrompt: (value: { mcpName: string; url: string } | undefined | ((current: { mcpName: string; url: string } | undefined) => { mcpName: string; url: string } | undefined)) => void;
+  mcpAuthPrompt?: McpAuthPrompt;
+  setMcpAuthPrompt: (value: McpAuthPrompt | undefined | ((current: McpAuthPrompt | undefined) => McpAuthPrompt | undefined)) => void;
   setShellValue: <K extends keyof ShellState>(
     key: K,
     value: ShellState[K] | ((current: ShellState[K]) => ShellState[K]),
@@ -236,9 +238,10 @@ export function createAppStore(defaults: AppStoreDefaults): AppStore {
         },
       };
     }),
-    setMcpAuthPrompt: (value) => set((state) => ({
-      mcpAuthPrompt: typeof value === 'function' ? value(state.mcpAuthPrompt) : value,
-    })),
+    setMcpAuthPrompt: (value) => set((state) => {
+      const next = typeof value === 'function' ? value(state.mcpAuthPrompt) : value;
+      return next === state.mcpAuthPrompt ? state : { mcpAuthPrompt: next };
+    }),
     setChat: (scopeKey, patch) => set((state) => {
       const current = state.chat[scopeKey] ?? EMPTY_CHAT;
       return {
@@ -292,6 +295,7 @@ export function createAppStore(defaults: AppStoreDefaults): AppStore {
     }),
     clearWorkspaceUi: (connectionId) => set((state) => ({
       workspaceUi: Object.fromEntries(Object.entries(state.workspaceUi).filter(([key]) => (JSON.parse(key) as string[])[0] !== connectionId)),
+      ...(state.mcpAuthPrompt && (JSON.parse(state.mcpAuthPrompt.scopeKey) as string[])[0] === connectionId ? { mcpAuthPrompt: undefined } : {}),
     })),
     setLocalClassifierReady: (ready) => set((state) => state.localClassifierReady === ready ? state : { localClassifierReady: ready }),
     setFileClipboard: (patch) => set((state) => ({ fileClipboard: { ...state.fileClipboard, ...patch(state.fileClipboard) } })),

@@ -266,11 +266,15 @@ npm run validate:commit
   for server health and MCP details. The commit gate passed with 1,282 tests and
   one existing skip. All 127 focused tests and 54 network, realtime, Settings,
   Chat, multi-server and Terminal browser flows passed.
-- E9. Extension views use the scope selector and guard writes after cancelling
+- E9, `92e85e6b`. Extension views use the scope selector and guard writes after cancelling
   pending reads. Diagnostics shares the selector. The commit gate passed with
   1,283 tests and one existing skip. All 143 focused tests and 45 extension,
   Settings, Chat and multi-server browser flows passed. The final scope guard
   passed all 13 extension and multi-server flows on a fresh build.
+- E10. MCP controls and saved rules read Query directly. MCP prompt dismissal
+  uses the exact originating credential partition. The commit gate passed with
+  1,283 tests and one existing skip. All 122 focused tests and 62 interaction,
+  extension, Settings, multi-server, Chat and realtime browser flows passed.
 
 ## Loop protocol
 

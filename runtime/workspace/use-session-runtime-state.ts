@@ -10,7 +10,6 @@ import type { ProjectBindingInput } from '@/runtime/workspace/workspace-types';
 
 import { useProjectRuntimeState } from '@/features/projects/runtime';
 import { useSessionState } from '@/features/sessions/runtime';
-import { useExtensionPromptState } from '@/features/extensions/runtime';
 import { useAppCore, useAppStore } from '@/runtime/core';
 import { EMPTY_CHAT, type ChatUiState } from '@/runtime/core/store';
 
@@ -37,7 +36,10 @@ export function useSessionRuntimeState(input: ProjectBindingInput, connection: C
       readPinnedDiffMessage: (sessionId: string) => store.getState().chat[scopeKey]?.selectedDiffMessageBySession[sessionId],
     };
   }, [scopeKey, store]);
-  const { mcpAuthPrompt, setMcpAuthPrompt } = useExtensionPromptState();
+  const mcpAuthPrompt = useAppStore((state) => state.mcpAuthPrompt?.scopeKey === scopeKey ? state.mcpAuthPrompt : undefined);
+  const clearMcpAuthPrompt = useCallback(() => {
+    store.getState().setMcpAuthPrompt((prompt) => prompt?.scopeKey === scopeKey ? undefined : prompt);
+  }, [scopeKey, store]);
 
   const connectionScope = useMemo(
     () => getConnectionScope({ serverUrl: settings.serverUrl, username: settings.username }),
@@ -60,7 +62,7 @@ export function useSessionRuntimeState(input: ProjectBindingInput, connection: C
     activeProjectPath, setActiveProjectPath,
     currentSessionId, setCurrentSessionId,
     diffScopeBySession, selectedDiffMessageBySession, ...chatActions,
-    mcpAuthPrompt, setMcpAuthPrompt,
+    mcpAuthPrompt, clearMcpAuthPrompt,
     isRefreshingMessages, isRefreshingDiffs,
     isBootstrappingChat, cancelBootstrap,
     activeSessionsVisible, setActiveSessionsVisible,

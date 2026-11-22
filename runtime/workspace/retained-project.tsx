@@ -2,13 +2,12 @@
 import { memo, useCallback, useEffect, useLayoutEffect, useMemo, type Dispatch, type SetStateAction } from 'react';
 
 import { buildClient, type OpencodeConnectionSettings } from '@/shared/protocol/opencode/client';
-import { getActiveSessions, MAX_ACTIVE_SESSIONS, useApprovalsCatalog, usePermissionRulesState, useSessionActions, useSessionCatalog, useSessionPresentation } from '@/features/sessions/runtime';
+import { getActiveSessions, MAX_ACTIVE_SESSIONS, useApprovalsCatalog, useSessionActions, useSessionCatalog, useSessionPresentation } from '@/features/sessions/runtime';
 import { useConnectionRuntime } from '@/runtime/connections/connection-runtime';
 import { buildOpencodeProjects, resolveActiveProject, useProjectPresentation, useWorktreeState } from '@/features/projects/runtime';
 import { useActivityNotifications } from '@/features/notifications/runtime';
 import { useCapabilitiesActions, useCapabilitiesPresentation } from '@/features/ai/runtime';
 import { useConversationState } from '@/features/voice/runtime';
-import { useMcpState } from '@/features/extensions/runtime';
 import { useOpencodeProviderEffects } from '@/runtime/composition/use-opencode-provider-effects';
 import { useOpencodeProviderReset } from '@/runtime/composition/use-opencode-provider-reset';
 import { useWorkspaceRealtime } from '@/runtime/realtime/use-workspace-realtime';
@@ -18,6 +17,7 @@ import { useSessionRuntimeState } from '@/runtime/workspace/use-session-runtime-
 import { useWorkspaceServerData } from '@/runtime/composition/use-workspace-server-data';
 import { useAppCore, useAppStore } from '@/runtime/core';
 import { useConnectionQueryIdentity, useQueryForeground } from '@/shared/server-data/client';
+import { mcpOptions } from '@/shared/server-data/diagnostics';
 
 import { workspaceChatPreferences } from '@/runtime/core/commands/connection';
 import type { ChatPreferences } from '@/shared/preferences/opencode-preferences';
@@ -69,7 +69,6 @@ export const RetainedProject = memo(function RetainedProject({ defaults, updateS
   useEffect(() => refreshQueue.clear, [refreshQueue]);
   const isHydrated = input.isHydrated && input.connection.enabled;
   const {
-    setMcpAuthPrompt,
     cancelBootstrap,
     clientGenerationRef,
     scopeGenerationRef,
@@ -87,16 +86,13 @@ export const RetainedProject = memo(function RetainedProject({ defaults, updateS
     cancelBootstrap();
   }, [inputConnection.revision, cancelBootstrap, scopeGenerationRef, serverGenerationRef]);
 
-  const dismissMcpAuth = useCallback(() => {
-    setMcpAuthPrompt(undefined);
-  }, [setMcpAuthPrompt]);
-
   const client = useMemo(
     () => buildClient({ ...state.settings, directory: state.activeProjectPath || '' }, state.serverContract),
     // eslint-disable-next-line react-hooks/exhaustive-deps -- reconnect needs fresh clients so old in-flight requests stay invalid.
     [state.activeProjectPath, state.serverContract, state.settings, input.connection.enabled],
   );
   const { catalogClient, isCurrentCatalogClient, catalog } = connectionRuntime;
+  const mcpQueryKey = useMemo(() => mcpOptions(identity, client).queryKey, [identity, client]);
   // Tag each client instance with the generation current when it is first seen.
   // A layout effect keeps this off the render path while still running before
   // any callback that could consume `isCurrentClient`.
@@ -151,17 +147,6 @@ export const RetainedProject = memo(function RetainedProject({ defaults, updateS
       ? { path: state.activeProjectPath, label: state.activeProjectPath.split('/').filter(Boolean).pop() || state.activeProjectPath } : undefined),
     [projects, state.activeProjectPath, worktree.worktrees],
   );
-  const mcp = useMcpState({ ...domain, client, isCurrentClient });
-  const permissionRules = usePermissionRulesState({ client, identity, isCurrentClient, queryActive: demanded });
-
-  // Clear the MCP auth alert once the named server reports connected. Doing this
-  // here keeps `mcpStatuses` out of the approvals value's dependencies, so
-  // approval consumers do not re-render on MCP status changes.
-  useEffect(() => {
-    if (state.mcpAuthPrompt && mcp.mcpStatuses[state.mcpAuthPrompt.mcpName]?.status === 'connected') {
-      setMcpAuthPrompt(undefined);
-    }
-  }, [mcp.mcpStatuses, setMcpAuthPrompt, state.mcpAuthPrompt]);
   const activeSessions = useMemo(() => getActiveSessions({
     sessions: catalog.sessions,
     statuses: catalog.statuses,
@@ -273,7 +258,7 @@ export const RetainedProject = memo(function RetainedProject({ defaults, updateS
     currentSessionId: state.currentSessionId,
     conversationSessionId,
     onEvent: (event) => events.dispatch(event, {
-      workspaceKey: state.scopeKey, isCurrent: () => isCurrentClient(client), pendingSessionIds,
+      workspaceKey: state.scopeKey, mcpQueryKey, isCurrent: () => isCurrentClient(client), pendingSessionIds,
       actions: {
         refreshSessions: project.refreshSessions,
         scheduleSessionRefresh: project.scheduleSessionRefresh,
@@ -340,23 +325,14 @@ export const RetainedProject = memo(function RetainedProject({ defaults, updateS
     connectionRuntime.connect, input.connectSetup, input.servicesValue]);
   const capabilitiesValue = useCapabilitiesPresentation(serverData, capabilities);
   const { projectsValue, projectFilesValue } = useProjectPresentation({ ...domain, ...project, ...worktree, activeProject, projects });
-  const { mcpAuthPrompt } = state;
-  const { savedPermissions, refreshSavedPermissions, removeSavedPermission } = permissionRules;
-  const approvalsValue = useMemo<WorkspaceValues['approvalsValue']>(() => ({
-    approvals: { mcpAuth: mcpAuthPrompt, dismissMcpAuth, savedPermissions, refreshSavedPermissions, removeSavedPermission },
-  }), [mcpAuthPrompt, dismissMcpAuth, savedPermissions, refreshSavedPermissions, removeSavedPermission]);
   const conversationValue = useMemo<WorkspaceValues['conversationValue']>(() => ({
     conversation, clearConversationFeedback, toggleConversationMode,
   }), [conversation, clearConversationFeedback, toggleConversationMode]);
-  const { mcpStatuses, refreshMcpServers, addMcpServer, connectMcpServer, disconnectMcpServer, mcpOAuth } = mcp;
-  const mcpValue = useMemo<WorkspaceValues['mcpValue']>(() => ({
-    mcpStatuses, refreshMcpServers, addMcpServer, connectMcpServer, disconnectMcpServer, mcpOAuth,
-  }), [mcpStatuses, refreshMcpServers, addMcpServer, connectMcpServer, disconnectMcpServer, mcpOAuth]);
   const values = useMemo<WorkspaceValues>(() => ({
     connectionValue, capabilitiesValue, projectsValue, projectFilesValue,
-    currentSessionValue, sessionLibraryValue, chatValue, approvalsValue, conversationValue, mcpValue,
+    currentSessionValue, sessionLibraryValue, chatValue, conversationValue,
   }), [connectionValue, capabilitiesValue, projectsValue, projectFilesValue,
-    currentSessionValue, sessionLibraryValue, chatValue, approvalsValue, conversationValue, mcpValue]);
+    currentSessionValue, sessionLibraryValue, chatValue, conversationValue]);
 
   const suspend = useCallback(() => {
     scopeGenerationRef.current++; serverGenerationRef.current++;

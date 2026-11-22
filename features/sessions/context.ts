@@ -1,8 +1,11 @@
 import type { WorkspaceTarget } from '@/shared/contracts/workspace';
 import { useCallback, useMemo } from 'react';
+import { hashKey } from '@tanstack/react-query';
 
-import { useAppCore, useWorkspaceDomainValue } from '@/runtime/core';
+import { useAppCore, useAppStore, useProjectScope, useWorkspaceDomainValue } from '@/runtime/core';
 import { getConnectionScope } from '@/shared/contracts/connection-scope';
+import { mcpOptions } from '@/shared/server-data/diagnostics';
+import { usePermissionRulesState } from './state/use-permission-rules-state';
 
 export function useCurrentSession() {
   const value = useWorkspaceDomainValue((values) => values.currentSessionValue, 'useCurrentSession');
@@ -20,5 +23,17 @@ export function useSessionLibrary() {
   return useMemo(() => ({ ...value, openSessionInProject }), [openSessionInProject, value]);
 }
 
-export const useApprovals = (target?: WorkspaceTarget) => useWorkspaceDomainValue((values) => values.approvalsValue, 'useApprovals', target);
+export function useApprovals(target?: WorkspaceTarget) {
+  const scope = useProjectScope(target);
+  const { store } = useAppCore();
+  const { savedPermissions, refreshSavedPermissions, removeSavedPermission } = usePermissionRulesState(scope);
+  const key = hashKey(mcpOptions(scope.identity, scope.client).queryKey);
+  const mcpAuth = useAppStore((state) => state.mcpAuthPrompt && hashKey(state.mcpAuthPrompt.queryKey) === key ? state.mcpAuthPrompt : undefined);
+  const dismissMcpAuth = useCallback(() => {
+    store.getState().setMcpAuthPrompt((current) => current === mcpAuth ? undefined : current);
+  }, [mcpAuth, store]);
+  return useMemo(() => ({ approvals: { mcpAuth, dismissMcpAuth, savedPermissions, refreshSavedPermissions, removeSavedPermission } }),
+    [dismissMcpAuth, mcpAuth, refreshSavedPermissions, removeSavedPermission, savedPermissions]);
+}
+
 export { useServerPendingInteractions } from './state/use-server-pending-interactions';

@@ -155,8 +155,11 @@ describe('app core', () => {
     const scheduleSessionRefresh = vi.fn();
     const scheduleSessionsRefresh = vi.fn();
     const setSessionStatuses = vi.fn();
+    const mcpClient = { __opencode: { contract: 'v1', directory: '/repo' } } as ScopedOpencodeClient;
+    const mcpKey = (connectionId: string, authRevision = 0) =>
+      projectQueryKey({ connectionId, connectionScope: connectionId, authRevision }, mcpClient, 'mcp');
     let current = true;
-    const binding = { workspaceKey, isCurrent: () => current, pendingSessionIds: [], actions: {
+    const binding = { workspaceKey, mcpQueryKey: mcpKey('server'), isCurrent: () => current, pendingSessionIds: [], actions: {
       scheduleSessionRefresh, scheduleSessionsRefresh, setSessionStatuses,
       refreshSessions: async () => {}, refreshPendingInteractions: async () => {}, refreshTerminals: async () => {},
       setDiffsBySession: vi.fn(), setTodosBySession: vi.fn(), setPendingPermissionsBySession: vi.fn(), setPendingQuestionsBySession: vi.fn(),
@@ -182,6 +185,20 @@ describe('app core', () => {
     expect(scheduleSessionsRefresh).toHaveBeenCalledOnce();
     expect(core.store.getState().selection[workspaceKey].explicitSessionId).toBeUndefined();
     expect(core.store.getState().selection[otherKey].explicitSessionId).toBe('chat');
+
+    const stopMcpStatus = core.events.observeMcpStatus();
+    const auth = { type: 'compatibility', payload: { type: 'mcp.browser.open.failed',
+      properties: { mcpName: 'example', url: 'https://example.test/authorize' } } } as OpencodeEvent;
+    core.events.dispatch(auth, binding);
+    expect(core.store.getState().mcpAuthPrompt).toMatchObject({ mcpName: 'example', scopeKey: workspaceKey });
+    const connected = { example: { status: 'connected' } };
+    core.queryClient.setQueryData(mcpKey('other'), connected);
+    core.queryClient.setQueryData(mcpKey('server', 1), connected);
+    expect(core.store.getState().mcpAuthPrompt?.mcpName).toBe('example');
+    core.queryClient.setQueryData(mcpKey('server'), connected);
+    expect(core.store.getState().mcpAuthPrompt).toBeUndefined();
+    stopMcpStatus();
+    core.queryClient.clear();
     core.commands.workspace.dispose();
   });
 

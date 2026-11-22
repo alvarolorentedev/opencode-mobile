@@ -96,6 +96,8 @@ describe('multi-server contracts', () => {
       },
       '@/shared/contracts/connection-scope': identity,
       './state/use-server-pending-interactions': {},
+      './state/use-permission-rules-state': {},
+      '@/shared/server-data/diagnostics': {},
       './state/use-workspace-diagnostics': {},
     });
     const base = {

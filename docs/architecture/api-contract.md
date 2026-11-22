@@ -209,6 +209,11 @@ limits, including partial new directory copies and concurrent external edits.
 
 Native MCP list/add/connect/disconnect operations use the selected location. Runtime additions remain runtime-only; the Extensions surface writes durable MCP entries to the selected project or user-global config and keeps connect/disconnect/OAuth as runtime controls. Persistent enable/disable is not exposed in the extension editor yet.
 
+MCP controls and saved permission rules read their scoped Query entries directly.
+The core records an authorization prompt with the originating workspace and its
+credential partition. A connected status for that MCP server in the same
+partition clears the prompt.
+
 OAuth resolves each MCP server's exposed `integrationID`, then reads that integration's methods and invokes native OAuth connect/complete/status/cancel. The relationship is defined by the [upstream MCP implementation](https://github.com/anomalyco/opencode/blob/dev/packages/core/src/mcp/index.ts); it is never inferred from a server name.
 
 The provider exposes grouped `mcpOAuth.methods/start/complete/wait/cancel` actions carrying the authorization mode. Settings reuses the provider authentication form dialog, supports automatic completion/code entry, cancels on dismissal or connection changes, and guards late results. Native OAuth controls appear only when the server exposes an integration ID. V1 retains remote MCP authorization URLs and code callbacks, plus its browser-open-failure alert.
