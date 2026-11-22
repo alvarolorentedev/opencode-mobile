@@ -2,11 +2,12 @@ import type { WorkspaceTarget } from '@/shared/contracts/workspace';
 import { useCallback, useMemo } from 'react';
 import { hashKey, useQuery } from '@tanstack/react-query';
 
-import { useAppCore, useAppStore, useProjectScope, useWorkspaceConnectionSettings, useWorkspaceDomainValue } from '@/runtime/core';
-import { getConnectionScope } from '@/shared/contracts/connection-scope';
+import { useAppCore, useAppStore, useProjectScope, useWorkspaceDomainValue } from '@/runtime/core';
 import { mcpOptions } from '@/shared/server-data/diagnostics';
+import type { SessionLibraryContextValue } from './model/types';
 import { projectSessionsOptions } from './services/queries';
 import { usePermissionRulesState } from './state/use-permission-rules-state';
+import { useSessionCatalog } from './state/use-session-catalog';
 
 export function useCurrentSession() {
   const value = useWorkspaceDomainValue((values) => values.currentSessionValue, 'useCurrentSession');
@@ -19,14 +20,18 @@ export function useCurrentSession() {
     [activeSession, currentSessionId, openDeepLinkSession, value]);
 }
 
-export function useSessionLibrary() {
-  const value = useWorkspaceDomainValue((values) => values.sessionLibraryValue, 'useSessionLibrary');
-  const settings = useWorkspaceConnectionSettings();
-  const { openSessionInProject: openInProject } = useAppCore().commands.connection;
-  const scope = getConnectionScope(settings);
-  const openSessionInProject = useCallback((projectPath: string, sessionId: string, targetConnectionScope = scope) =>
-    openInProject(projectPath, sessionId, targetConnectionScope), [openInProject, scope]);
-  return useMemo(() => ({ ...value, openSessionInProject }), [openSessionInProject, value]);
+export function useSessionLibrary(): SessionLibraryContextValue {
+  const { identity, client, directory, scopeKey, revision } = useProjectScope();
+  const { connectionId, connectionScope } = identity;
+  const { session, connection: { openSessionInProject: openInProject } } = useAppCore().commands;
+  const { sessions, sessionStatuses } = useSessionCatalog(identity, client);
+  const target = useMemo(() => ({ connectionId, projectPath: directory }), [connectionId, directory]);
+  const { forkSession } = useMemo(() => session.creation(target, scopeKey, revision), [revision, scopeKey, session, target]);
+  const { revertSession, unrevertSession } = useMemo(() => session.editing(target, scopeKey, revision), [revision, scopeKey, session, target]);
+  const openSessionInProject = useCallback((projectPath: string, sessionId: string, targetConnectionScope = connectionScope) =>
+    openInProject(projectPath, sessionId, targetConnectionScope), [connectionScope, openInProject]);
+  return useMemo(() => ({ sessions, sessionStatuses, forkSession, revertSession, unrevertSession, openSessionInProject }),
+    [sessions, sessionStatuses, forkSession, revertSession, unrevertSession, openSessionInProject]);
 }
 
 export function useApprovals(target?: WorkspaceTarget) {

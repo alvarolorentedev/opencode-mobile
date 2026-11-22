@@ -1,13 +1,14 @@
 import { useMemo } from 'react';
 
-import type { ActiveSessionItem , CurrentSessionContextValue, SessionLibraryContextValue } from '@/features/sessions/model/types';
+import type { ActiveSessionItem, CurrentSessionContextValue } from '@/features/sessions/model/types';
 import type { SessionMessageRecord } from '@/shared/presentation/format';
+import type { Session } from '@/shared/protocol/opencode/types';
 
 import { getSessionPreviewById } from '../model/selectors';
 
 type SessionPresentationInput = Omit<CurrentSessionContextValue, 'activeSessions' | 'activeSession'>
-  & Omit<SessionLibraryContextValue, 'sessionPreviewById'>
   & {
+    sessions: Session[];
     activeSessions: ActiveSessionItem[];
     refreshActiveSessions: () => Promise<void>;
     setActiveSessionsVisible: (visible: boolean) => void;
@@ -15,10 +16,8 @@ type SessionPresentationInput = Omit<CurrentSessionContextValue, 'activeSessions
   };
 
 export function useSessionPresentation({
-  activeSessions, refreshActiveSessions, setActiveSessionsVisible, sessions, sessionStatuses, currentSessionId,
-  ensureActiveSession, openDeepLinkSession, openSession, createSession, favoriteSessions, toggleFavoriteSession,
-  isFavoriteSession, clearFavoriteSession, refreshSessions, deleteSession, renameSession, forkSession,
-  revertSession, unrevertSession, openSessionInProject, messagesBySession,
+  activeSessions, refreshActiveSessions, setActiveSessionsVisible, sessions, currentSessionId,
+  ensureActiveSession, openDeepLinkSession, openSession, createSession, messagesBySession,
 }: SessionPresentationInput) {
   const activeSession = useMemo(
     () => sessions.find((session) => session.id === currentSessionId),
@@ -34,10 +33,7 @@ export function useSessionPresentation({
     () => ({ activeSessions: activeSessionsValue, ensureActiveSession, openDeepLinkSession, openSession, createSession }),
     [activeSessionsValue, ensureActiveSession, openDeepLinkSession, openSession, createSession],
   );
-  const sessionLibraryValue = useMemo<SessionLibraryContextValue>(
-    () => ({ sessions, sessionStatuses, favoriteSessions, toggleFavoriteSession, isFavoriteSession, clearFavoriteSession, sessionPreviewById, refreshSessions, deleteSession, renameSession, forkSession, revertSession, unrevertSession, openSessionInProject }),
-    [sessions, sessionStatuses, favoriteSessions, toggleFavoriteSession, isFavoriteSession, clearFavoriteSession, sessionPreviewById, refreshSessions, deleteSession, renameSession, forkSession, revertSession, unrevertSession, openSessionInProject],
-  );
+  const sessionLibraryValue = useMemo(() => ({ sessions, sessionPreviewById }), [sessions, sessionPreviewById]);
 
   return { activeSession, currentSessionValue, sessionLibraryValue };
 }

@@ -2,7 +2,7 @@
 import { memo, useCallback, useEffect, useLayoutEffect, useMemo, type Dispatch, type SetStateAction } from 'react';
 
 import { buildClient, type OpencodeConnectionSettings } from '@/shared/protocol/opencode/client';
-import { getActiveSessions, MAX_ACTIVE_SESSIONS, useApprovalsCatalog, useSessionActions, useSessionCatalog, useSessionPresentation } from '@/features/sessions/runtime';
+import { getActiveSessions, MAX_ACTIVE_SESSIONS, useApprovalsCatalog, useSessionCatalog, useSessionExecutionActions, useSessionPresentation } from '@/features/sessions/runtime';
 import { useConnectionRuntime } from '@/runtime/connections/connection-runtime';
 import { useProjectPresentation, useWorktreeState } from '@/features/projects/runtime';
 import { useActivityNotifications } from '@/features/notifications/runtime';
@@ -176,18 +176,13 @@ export const RetainedProject = memo(function RetainedProject({ defaults, updateS
     [inputConnection.revision, sessionCommands, sessionTarget, state.scopeKey]);
   const sessionCreation = useMemo(() => sessionCommands.creation(sessionTarget, state.scopeKey, inputConnection.revision),
     [inputConnection.revision, sessionCommands, sessionTarget, state.scopeKey]);
-  const sessionEditing = useMemo(() => sessionCommands.editing(sessionTarget, state.scopeKey, inputConnection.revision),
-    [inputConnection.revision, sessionCommands, sessionTarget, state.scopeKey]);
-  const sessionActions = useSessionActions({
+  const sessionActions = useSessionExecutionActions({
     client,
     isCurrentClient,
     availableAgents: serverData.availableAgents,
     commands: serverData.commands,
     currentConfig: serverData.currentConfig,
     chatPreferences: state.chatPreferences,
-    connectionScopeRef: state.connectionScopeRef,
-    favoriteSessions: state.favoriteSessions,
-    setFavoriteSessions: state.setFavoriteSessions,
     refreshMessages: inbox.refreshMessages,
     refreshSessions: project.refreshSessions,
   });
@@ -292,8 +287,8 @@ export const RetainedProject = memo(function RetainedProject({ defaults, updateS
   });
 
   const { activeSession, currentSessionValue, sessionLibraryValue } = useSessionPresentation({
-    ...domain, ...sessionNavigation, ...sessionCreation, ...sessionEditing, ...sessionActions,
-    activeSessions, refreshActiveSessions: catalog.refresh, refreshSessions: project.refreshSessions,
+    ...domain, ...sessionNavigation, ...sessionCreation,
+    activeSessions, refreshActiveSessions: catalog.refresh,
   });
   const chatValue = useChatPresentation({
     ...domain, ...transcript, ...project, ...sessionActions, ...interactions, ...capabilities, ...prompt,

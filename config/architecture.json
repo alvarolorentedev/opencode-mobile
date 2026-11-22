@@ -195,8 +195,7 @@
       "SessionDeepLinkScreen",
       "SessionLibraryContextValue",
       "missionBadge",
-      "useQuickActionRoute",
-      "useSessionActions"
+      "useQuickActionRoute"
     ],
     "features/projects/runtime.ts": [
       "HIDDEN_PROJECTS_MAX",
@@ -323,7 +322,7 @@
       "useMissionActivity",
       "useMissionOverview",
       "useNativeSurfaces",
-      "useSessionActions",
+      "useSessionExecutionActions",
       "useApprovalsCatalog",
       "useSessionCatalog",
       "useSessionState"

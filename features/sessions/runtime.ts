@@ -21,7 +21,7 @@ export { useMissionActivity } from './state/use-mission-activity';
 export { useMissionOverview } from './state/use-mission-overview';
 export type { MissionOverview } from './model/mission-control';
 export { useNativeSurfaces } from './state/use-native-surfaces';
-export { useSessionActions } from './state/use-session-actions';
+export { useSessionExecutionActions } from './state/use-session-execution-actions';
 export { useApprovalsCatalog } from './state/use-approvals-catalog';
 export type { ApprovalsCatalog } from './state/use-approvals-catalog';
 export { useSessionCatalog } from './state/use-session-catalog';

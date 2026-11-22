@@ -50,6 +50,9 @@ credential revision before opening a session.
 Session navigation checks the catalog and project lists in the current
 credential partition. Library and share views consume the connection catalog
 once per server.
+Chat and plugin session views select the scoped lists from Query. Library
+edits call the scoped session commands and favorites update the app store
+using the owning connection scope.
 
 Session selection and startup bootstrap use the scoped app-core command in
 `runtime/core/commands/session-navigation.ts`. Explicit selection commits

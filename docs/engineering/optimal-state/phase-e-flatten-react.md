@@ -50,6 +50,8 @@ Start only after Phase D is complete and green.
   sessions from the app store. The active session row comes from Query.
 - Navigation checks session rows in the current credential partition. The
   library and share views read the connection catalog once per server.
+- Session views read lists and statuses from Query. Library actions use scoped
+  session commands and write favorites at their device owner.
 - `runtime/core/workspace-selectors.ts` selects the retained project projection.
 - [ADR 0052](../../adr/0052-explicit-overlay-dependencies.md) records explicit
   portal targets and update blocker callbacks. Shared controls use shared imports.

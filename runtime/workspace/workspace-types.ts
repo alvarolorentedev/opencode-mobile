@@ -8,9 +8,10 @@ import type { CapabilitiesContextValue } from '@/features/ai/index';
 import type { ChatContextValue } from '@/features/chat/index';
 import type { ProjectFilesContextValue, ProjectsContextValue } from '@/features/projects/index';
 import type { useProjectCatalogActions } from '@/features/projects/runtime';
-import type { ActiveSessionItem, CurrentSessionContextValue, SessionLibraryContextValue } from '@/features/sessions/index';
+import type { ActiveSessionItem, CurrentSessionContextValue } from '@/features/sessions/index';
 import type { ConversationContextValue } from '@/features/voice/index';
 import type { useWidgetState } from '@/features/widgets/runtime';
+import type { Session } from '@/shared/protocol/opencode/types';
 
 import type { WorkspaceShellState } from '@/runtime/workspace/use-workspace-shell-state';
 
@@ -20,7 +21,7 @@ import type { ConnectionRecord, WorkspaceCatalog } from '@/shared/contracts/work
 
 export type SharedWorkspaceState = Pick<WorkspaceShellState,
   'controlPlaneUrl' | 'setControlPlaneUrl' |
-  'favoriteSessions' | 'setFavoriteSessions' | 'hiddenProjects' | 'setHiddenProjects'> & { fileClipboard?: import('@/features/projects/index').FileClipboard };
+  'hiddenProjects' | 'setHiddenProjects'> & { fileClipboard?: import('@/features/projects/index').FileClipboard };
 
 export type ProjectBindingInput = {
   connection: ConnectionRecord;
@@ -55,7 +56,7 @@ export type WorkspaceValues = {
   projectsValue: Pick<ProjectsContextValue, 'addProject' | 'refreshProjectCatalog' | 'refreshProjectStatus'>;
   projectFilesValue: ProjectFilesContextValue;
   currentSessionValue: Omit<CurrentSessionContextValue, 'currentSessionId' | 'activeSession'>;
-  sessionLibraryValue: SessionLibraryContextValue;
+  sessionLibraryValue: { sessions: Session[]; sessionPreviewById: Record<string, string> };
   chatValue: ChatContextValue;
   conversationValue: ConversationContextValue;
 };

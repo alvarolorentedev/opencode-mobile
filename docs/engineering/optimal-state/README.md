@@ -298,11 +298,15 @@ npm run validate:commit
   and one existing skip. All 79 focused tests passed. The full 185-flow browser
   run passed before the final directory binding adjustment. All 32 Sessions,
   Settings, multi-server and share flows passed on the final build.
-- E16. Session navigation reads Query in the active credential partition.
+- E16, `3517e400`. Session navigation reads Query in the active credential partition.
   Library and share views consume one catalog per connection. The commit gate
   passed with 1,283 tests and one existing skip. All 79 focused tests and 52
   browser flows across Sessions, multi-server, Settings, share, Mission Control
   and Chat passed.
+- E17. Session panels read scoped Query lists and statuses. Library edits use
+  core commands and favorites update the app store. The commit gate passed
+  with 1,283 tests and one existing skip. All 100 focused tests and 60 browser
+  flows across Sessions, Chat, multi-server, Extensions, share, diffs and Settings passed.
 
 ## Loop protocol
 

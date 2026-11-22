@@ -139,10 +139,10 @@ export function WorkspaceProvider({ children }: PropsWithChildren) {
   const refreshTargets = useCallback(async () => {
     await Promise.all(Object.values(catalogs).map((catalog) => catalog.refresh()));
   }, [catalogs]);
-  const shareTargets = useMemo(() => librarySessions(connections, snapshots, lifecycles, selections, catalogs, focus)
+  const shareTargets = useMemo(() => librarySessions(connections, snapshots, lifecycles, selections, catalogs, shell.favoriteSessions, focus)
     .filter((row) => !shell.chatPreferences.hideSubagentChats || !row.session.parentID)
     .map((row) => ({ connectionScope: getConnectionScope(connections.find((entry) => entry.id === row.connectionId)!.settings),
-      projectPath: row.projectPath, sessionId: row.sessionId, title: `${row.serverName} · ${row.session.title}` })), [catalogs, connections, snapshots, lifecycles, selections, focus, shell.chatPreferences.hideSubagentChats]);
+      projectPath: row.projectPath, sessionId: row.sessionId, title: `${row.serverName} · ${row.session.title}` })), [catalogs, connections, snapshots, lifecycles, selections, focus, shell.favoriteSessions, shell.chatPreferences.hideSubagentChats]);
   const sharedInput = useShareState({ hydrated: isHydrated, connectionScope: getConnectionScope(settings),
     projectPath: selection?.activeProjectPath ?? (focus?.projectPath || undefined),
     currentSessionId: selection?.currentSessionId,
@@ -158,10 +158,8 @@ export function WorkspaceProvider({ children }: PropsWithChildren) {
   const shared = useMemo<SharedWorkspaceState>(() => ({
     fileClipboard,
     controlPlaneUrl: shell.controlPlaneUrl, setControlPlaneUrl: shell.setControlPlaneUrl,
-    favoriteSessions: shell.favoriteSessions, setFavoriteSessions: shell.setFavoriteSessions,
     hiddenProjects: shell.hiddenProjects, setHiddenProjects: shell.setHiddenProjects,
-  }), [fileClipboard, shell.controlPlaneUrl, shell.setControlPlaneUrl, shell.favoriteSessions, shell.setFavoriteSessions,
-    shell.hiddenProjects, shell.setHiddenProjects]);
+  }), [fileClipboard, shell.controlPlaneUrl, shell.setControlPlaneUrl, shell.hiddenProjects, shell.setHiddenProjects]);
   const voiceSetupTest = useVoiceSetupTest(shell.chatPreferences, Object.values(snapshots).some((snapshot) => snapshot.values.conversationValue.conversation.phase !== 'off'));
   const registry = useMemo<WorkspaceRegistry>(() => ({ ...manager, removeConnection,
     terminalTarget: connections.some((entry) => entry.id === terminalTarget?.connectionId) ? terminalTarget : undefined, selectTerminalTarget,

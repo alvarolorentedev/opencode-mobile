@@ -56,14 +56,6 @@ export type CurrentSessionContextValue = {
 export type SessionLibraryContextValue = {
   sessions: Session[];
   sessionStatuses: Record<string, SessionStatus>;
-  favoriteSessions: FavoriteSession[];
-  toggleFavoriteSession: (sessionId: string, projectPath: string, title?: string) => void;
-  isFavoriteSession: (sessionId: string) => boolean;
-  clearFavoriteSession: (sessionId: string) => void;
-  sessionPreviewById: Record<string, string>;
-  refreshSessions: () => Promise<Session[]>;
-  deleteSession: (sessionId: string) => Promise<void>;
-  renameSession: (sessionId: string, title: string) => Promise<void>;
   forkSession: (sessionId: string, messageId?: string) => Promise<Session>;
   revertSession: (sessionId: string, messageId: string) => Promise<void>;
   unrevertSession: (sessionId: string) => Promise<void>;

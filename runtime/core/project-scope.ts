@@ -66,5 +66,5 @@ export function useProjectScope(explicit?: WorkspaceTarget) {
     return candidate === manager.getProjectClient(selectedDirectory, server);
   }, [authRevision, client, connectionId, connections, manager, revision, scopeKey, settings, store, target]);
   const queryActive = foreground && isDemanded && Boolean(entry?.enabled && manager);
-  return { identity, scopeKey, client, isCurrentClient, settings, queryActive, manager };
+  return { identity, scopeKey, directory, revision, client, isCurrentClient, settings, queryActive, manager };
 }
