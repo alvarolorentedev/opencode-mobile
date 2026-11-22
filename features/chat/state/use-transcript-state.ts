@@ -1,13 +1,14 @@
-import { useCallback, useEffect, useLayoutEffect, useRef, useState, type Dispatch, type SetStateAction } from 'react';
+import { useCallback, useEffect, useRef, type Dispatch, type SetStateAction } from 'react';
 
+import { useAppCore, useAppStore } from '@/runtime/core';
 import { mergeSessionMessageWindow, prependSessionMessageHistory, type SessionMessageRecord } from '@/shared/presentation/format';
-import type { SessionUsageStep } from '@/shared/presentation/usage';
 import type { ScopedOpencodeClient } from '@/shared/protocol/opencode/client';
 import type { TranscriptReadOptions, TranscriptRefreshMode } from '@/shared/contracts/domain';
 import { pruneByKeepIds } from '@/shared/utilities/prune';
 import { hydrateTranscriptCache, persistTranscriptCache } from '@/features/chat/services/transcript-cache';
 import { recordSessionUsageAndTodos } from '@/features/chat/model/session-ledger';
 import { useLiveTranscript } from '@/features/chat/state/use-live-transcript';
+import { useTranscriptMetadata } from '@/features/chat/state/use-transcript-metadata';
 import { coalesceRead } from '@/shared/protocol/opencode/in-flight';
 import { isV2Client } from '@/shared/protocol/opencode/contracts/contract';
 import { toMessageRecord } from '@/shared/protocol/opencode/v2/mappers';
@@ -20,7 +21,9 @@ import { getSessionMessage as svcGetSessionMessage, getSessionMessages as svcGet
 export const INITIAL_TRANSCRIPT_LIMIT = MAX_MESSAGE_PAGE_LIMIT;
 export const OLDER_TRANSCRIPT_LIMIT = MAX_MESSAGE_PAGE_LIMIT;
 
-type MessageWindow = { nextBefore?: string; hasMore: boolean };
+type MessagesBySession = Record<string, SessionMessageRecord[]>;
+type TranscriptFlags = Record<string, boolean>;
+const EMPTY_FLAGS: TranscriptFlags = {};
 
 function replaceMessageRecord(previous: SessionMessageRecord[], record: SessionMessageRecord) {
   const index = previous.findIndex((item) => item.info.id === record.info.id);
@@ -33,50 +36,42 @@ function replaceMessageRecord(previous: SessionMessageRecord[], record: SessionM
   return !tail || record.info.time.created >= tail.info.time.created ? [...previous, record] : previous;
 }
 
-// Owns the paginated transcript for every session: the loaded messages are held
-// by the provider, while this hook owns the pagination cursors, and accumulates
-// completed model calls and V2 plan records so usage and todos survive paging
-// without requiring a full-history read.
+// Coordinates transcript reads and keeps usage and plan ledgers across paging.
 export function useTranscriptState({
+  scopeKey,
   client,
   isCurrentClient,
   currentSessionId,
   connectionScope,
   activeProjectPath,
   messagesBySession,
+  readMessagesBySession,
   setMessagesBySession,
   setIsRefreshingMessages,
 }: {
+  scopeKey: string;
   client: ScopedOpencodeClient;
   isCurrentClient: (candidate: object) => boolean;
   currentSessionId?: string;
   connectionScope: string;
   activeProjectPath?: string;
-  messagesBySession: Record<string, SessionMessageRecord[]>;
-  setMessagesBySession: Dispatch<SetStateAction<Record<string, SessionMessageRecord[]>>>;
+  messagesBySession: MessagesBySession;
+  readMessagesBySession: () => MessagesBySession;
+  setMessagesBySession: Dispatch<SetStateAction<MessagesBySession>>;
   setIsRefreshingMessages: Dispatch<SetStateAction<boolean>>;
 }) {
-  const [messageWindows, setMessageWindows] = useState<Record<string, MessageWindow>>({});
-  const [loadingOlderBySession, setLoadingOlderBySession] = useState<Record<string, boolean>>({});
-  const [hydratingSessionIds, setHydratingSessionIds] = useState<Record<string, boolean>>({});
-  const [usageStepsBySession, setUsageStepsBySession] = useState<Record<string, SessionUsageStep[]>>({});
-  const [todoRecordsBySession, setTodoRecordsBySession] = useState<Record<string, SessionMessageRecord[]>>({});
-
-  const messagesBySessionRef = useRef(messagesBySession);
-  const messageWindowsRef = useRef(messageWindows);
-  const loadingOlderBySessionRef = useRef(loadingOlderBySession);
-  const hydrationRequestRef = useRef<Record<string, number>>({});
+  const { store } = useAppCore();
+  const loadingOlderBySession = useAppStore((state) => state.transcriptUi[scopeKey]?.loadingOlderBySession ?? EMPTY_FLAGS);
+  const hydratingSessionIds = useAppStore((state) => state.transcriptUi[scopeKey]?.hydratingSessionIds ?? EMPTY_FLAGS);
+  const { messageWindows, readMessageWindow, setMessageWindows, usageStepsBySession, setUsageStepsBySession, todoRecordsBySession, setTodoRecordsBySession } = useTranscriptMetadata(client);
+  const hydrationRequestRef = useRef<Record<string, symbol>>({});
+  const olderRequestRef = useRef<Record<string, symbol>>({});
   // Transcript reads can overlap: a cold window, a prompt-send refresh, a
   // history page, and event-driven tails may all be in flight together. A
   // window rewrite starts a new generation so older responses cannot replace
   // it, while tail request ids let a late page fill gaps without adopting an
   // older window over a newer one.
   const readStateRef = useRef<Record<string, { generation: number; tailRequest: number; tailApplied: number }>>({});
-  useLayoutEffect(() => {
-    messagesBySessionRef.current = messagesBySession;
-    messageWindowsRef.current = messageWindows;
-    loadingOlderBySessionRef.current = loadingOlderBySession;
-  });
 
   const readStateFor = useCallback((sessionId: string) => {
     let state = readStateRef.current[sessionId];
@@ -100,24 +95,30 @@ export function useTranscriptState({
   useEffect(() => () => {
     for (const timer of Object.values(persistTimers.current)) clearTimeout(timer);
     persistTimers.current = {};
-  }, []);
+    olderRequestRef.current = {};
+    hydrationRequestRef.current = {};
+    readStateRef.current = {};
+    const view = store.getState().transcriptUi[scopeKey];
+    if (view) store.getState().setTranscriptUi(scopeKey, { loadingOlderBySession: EMPTY_FLAGS, hydratingSessionIds: EMPTY_FLAGS });
+  }, [scopeKey, store]);
 
   const hydratedCacheRef = useRef<Set<string>>(new Set());
 
   const recordUsageAndTodos = useCallback((sessionId: string, records: SessionMessageRecord[]) => {
     recordSessionUsageAndTodos(sessionId, records, setUsageStepsBySession, setTodoRecordsBySession);
-  }, []);
+  }, [setTodoRecordsBySession, setUsageStepsBySession]);
 
-  const live = useLiveTranscript({
+  const { actions: live, displayedMessages, readDisplayedSession } = useLiveTranscript({
+    scopeKey,
     client,
     isCurrentClient,
-    messagesBySessionRef,
-    setMessagesBySession,
+    messagesBySession,
+    readMessagesBySession,
     recordUsageAndTodos,
   });
 
   useEffect(() => {
-    if (!currentSessionId || !activeProjectPath || (messagesBySessionRef.current[currentSessionId]?.length ?? 0) > 0) {
+    if (!currentSessionId || !activeProjectPath || (readMessagesBySession()[currentSessionId]?.length ?? 0) > 0) {
       return;
     }
     const key = `${connectionScope}\u0000${activeProjectPath}\u0000${currentSessionId}`;
@@ -127,37 +128,37 @@ export function useTranscriptState({
     void hydrateTranscriptCache(connectionScope, activeProjectPath, requestedSession, (records) => {
       // A live refresh may have painted first; never let the cache overwrite a
       // fresher window or a session the user has already left.
-      if (currentSessionId !== requestedSession || (messagesBySessionRef.current[requestedSession]?.length ?? 0) > 0) return;
-      messagesBySessionRef.current = { ...messagesBySessionRef.current, [requestedSession]: records };
+      if (currentSessionId !== requestedSession || (readMessagesBySession()[requestedSession]?.length ?? 0) > 0) return;
       setMessagesBySession((current) => (current[requestedSession]?.length ? current : { ...current, [requestedSession]: records }));
       recordUsageAndTodos(requestedSession, records);
     }, () => isCurrentClient(client) && currentSessionId === requestedSession);
-  }, [activeProjectPath, client, connectionScope, currentSessionId, isCurrentClient, recordUsageAndTodos, setMessagesBySession]);
+  }, [activeProjectPath, client, connectionScope, currentSessionId, isCurrentClient, readMessagesBySession, recordUsageAndTodos, setMessagesBySession]);
 
   const beginHydration = useCallback((sessionId: string) => {
-    const request = (hydrationRequestRef.current[sessionId] ?? 0) + 1;
+    const request = Symbol();
     hydrationRequestRef.current[sessionId] = request;
-    setHydratingSessionIds((current) => (
-      current[sessionId] ? current : { ...current, [sessionId]: true }
-    ));
+    store.getState().setTranscriptUi(scopeKey, (current) => ({
+      hydratingSessionIds: { ...current.hydratingSessionIds, [sessionId]: true },
+    }));
     return () => {
       if (hydrationRequestRef.current[sessionId] !== request) {
         return;
       }
       delete hydrationRequestRef.current[sessionId];
-      setHydratingSessionIds((current) => (
-        current[sessionId] ? { ...current, [sessionId]: false } : current
-      ));
+      store.getState().setTranscriptUi(scopeKey, (current) => ({
+        hydratingSessionIds: { ...current.hydratingSessionIds, [sessionId]: false },
+      }));
     };
-  }, []);
+  }, [scopeKey, store]);
 
   const refreshMessages = useCallback(
     async (sessionId: string, silent = false, options?: TranscriptReadOptions) => {
-      const held = messagesBySessionRef.current[sessionId] ?? [];
+      const held = readMessagesBySession()[sessionId] ?? [];
+      const hasHeld = held.length > 0 || live.hasLocalUsers(sessionId);
       // A live V2 turn reconciles its assistant message alone. Reading the newest
       // page here would re-download the sent prompt and any attachment bytes it
       // carries on every check.
-      if (options?.messageId && isV2Client(client) && held.length > 0) {
+      if (options?.messageId && isV2Client(client) && hasHeld) {
         const messageId = options.messageId;
         return coalesceRead(client, `message:${sessionId}:${messageId}`, async () => {
           const generation = readStateFor(sessionId).generation;
@@ -170,37 +171,30 @@ export function useTranscriptState({
             // Older servers without a single-message read keep the live record
             // until the next full reconcile instead of failing the turn.
             if (status === 404 || status === 405) {
-              live.clearMessage(sessionId, messageId);
-              return messagesBySessionRef.current[sessionId] ?? held;
+              if (isCurrentClient(client) && readStateRef.current[sessionId]?.generation === generation) live.deferReconcileToPage(sessionId, messageId);
+              return readDisplayedSession(sessionId);
             }
             throw error;
           }
           if (!isCurrentClient(client) || readStateRef.current[sessionId]?.generation !== generation) {
-            return messagesBySessionRef.current[sessionId] ?? held;
+            return readDisplayedSession(sessionId);
           }
           const record = toMessageRecord(message, sessionId);
-          if (!record) return messagesBySessionRef.current[sessionId] ?? held;
-          live.clearMessage(sessionId, messageId);
-          const previous = messagesBySessionRef.current[sessionId] ?? held;
+          if (!record) return readDisplayedSession(sessionId);
+          const previous = readMessagesBySession()[sessionId] ?? held;
           const canonical = replaceMessageRecord(previous, record);
-          const next = live.overlay(sessionId, canonical);
-          if (next !== previous) {
-            setMessagesBySession((current) => {
-              const latest = current[sessionId] ?? previous;
-              const merged = live.overlay(sessionId, replaceMessageRecord(latest, record));
-              return merged === latest ? current : { ...current, [sessionId]: merged };
-            });
-          }
+          if (canonical !== previous) setMessagesBySession((current) => ({ ...current, [sessionId]: canonical }));
+          live.clearMessage(sessionId, messageId);
           recordUsageAndTodos(sessionId, [record]);
           persist(sessionId, canonical);
-          return next;
+          return live.overlay(sessionId, canonical);
         });
       }
       // Records can already be held without a paging cursor when the transcript
       // cache hydrates before the first network read, or when a refresh is the
       // first pass after a window reset. A tail refresh records that window
       // below, keeping held records when the newest page overlaps them.
-      const windowMissing = messageWindowsRef.current[sessionId] === undefined;
+      const windowMissing = readMessageWindow(sessionId) === undefined;
       // Hydration owns the chat skeleton. Silent event/poll refreshes must never
       // raise it, or an empty session flashes the skeleton on every background
       // read. Explicit opens and the first bootstrap read are non-silent.
@@ -212,13 +206,13 @@ export function useTranscriptState({
       try {
         // Default to a cold load when nothing is held, otherwise merge the
         // newest page into what we have. A requested mode overrides the default.
-        const mode: TranscriptRefreshMode = options?.mode ?? (held.length === 0 ? 'initial' : 'tail');
+        const mode: TranscriptRefreshMode = options?.mode ?? (hasHeld ? 'tail' : 'initial');
 
         // A window rewrite (cold open, repair, compaction, revert) starts a new
         // generation. Responses that started before it can no longer replace
         // the rebuilt window, even when they resolve later.
         const readState = readStateFor(sessionId);
-        const rewrite = mode !== 'tail' || held.length === 0;
+        const rewrite = mode !== 'tail' || !hasHeld;
         if (rewrite) {
           readState.generation += 1;
           readState.tailApplied = 0;
@@ -239,8 +233,8 @@ export function useTranscriptState({
           if (!isCurrentClient(client) || !isCurrentGeneration()) {
             return page.records;
           }
+          setMessagesBySession((current) => ({ ...current, [sessionId]: page.records }));
           live.adopt(sessionId, page.records);
-          setMessagesBySession((current) => ({ ...current, [sessionId]: live.overlay(sessionId, page.records) }));
           setMessageWindows((current) => ({
             ...current,
             [sessionId]: { nextBefore: page.nextBefore, hasMore: page.hasMore },
@@ -269,23 +263,23 @@ export function useTranscriptState({
           if (!staleTail) {
             readState.tailApplied = Math.max(readState.tailApplied, tailRequest);
           }
-          return held;
+          return live.overlay(sessionId, held);
         }
 
-        const currentHeld = messagesBySessionRef.current[sessionId] ?? held;
+        const currentHeld = readMessagesBySession()[sessionId] ?? held;
         if (staleTail) {
-          live.adopt(sessionId, page.records);
           // Older responses may still hold records the newer window dropped.
           // Fill gaps in place, but never adopt their window or move the paging
           // cursor backward, and never roll streamed content back.
           setMessagesBySession((current) => {
             const previous = current[sessionId] ?? held;
-            const next = live.overlay(sessionId, mergeSessionMessageWindow(previous, page.records, {
+            const next = mergeSessionMessageWindow(previous, page.records, {
               applyUpdates: false,
               adoptUnknownWindow: false,
-            }));
+            });
             return next === previous ? current : { ...current, [sessionId]: next };
           });
+          live.adopt(sessionId);
           recordUsageAndTodos(sessionId, page.records);
           return page.records;
         }
@@ -299,8 +293,8 @@ export function useTranscriptState({
           // A burst larger than one page landed. Adopt the fetched page and
           // restart history paging from its oldest record instead of
           // downloading bridging pages.
+          setMessagesBySession((current) => ({ ...current, [sessionId]: page.records }));
           live.adopt(sessionId, page.records);
-          setMessagesBySession((current) => ({ ...current, [sessionId]: live.overlay(sessionId, page.records) }));
           setMessageWindows((current) => ({
             ...current,
             [sessionId]: { nextBefore: page.nextBefore, hasMore: page.hasMore },
@@ -311,15 +305,15 @@ export function useTranscriptState({
         }
 
         const merged = mergeSessionMessageWindow(currentHeld, page.records);
-        live.adopt(sessionId, page.records);
         setMessagesBySession((current) => {
           const previous = current[sessionId] ?? held;
-          const next = live.overlay(sessionId, mergeSessionMessageWindow(previous, page.records));
+          const next = mergeSessionMessageWindow(previous, page.records);
           if (next === previous) {
             return current;
           }
           return { ...current, [sessionId]: next };
         });
+        live.adopt(sessionId, page.records);
         if (windowMissing) {
           // The newest page overlaps the held records, so it is contiguous with
           // them. Keep the held history and resume paging from this page's
@@ -340,19 +334,17 @@ export function useTranscriptState({
         finishHydration?.();
       }
     },
-    [beginHydration, client, isCurrentClient, live, persist, readStateFor, recordUsageAndTodos, setIsRefreshingMessages, setMessagesBySession],
+    [beginHydration, client, isCurrentClient, live, persist, readDisplayedSession, readMessagesBySession, readMessageWindow, readStateFor, recordUsageAndTodos, setIsRefreshingMessages, setMessagesBySession, setMessageWindows],
   );
 
   const loadOlderMessages = useCallback(
     async (sessionId: string) => {
-      const held = messagesBySessionRef.current[sessionId] ?? [];
-      if (loadingOlderBySessionRef.current[sessionId]) {
-        return;
-      }
-
-      setLoadingOlderBySession((current) => ({ ...current, [sessionId]: true }));
+      if (olderRequestRef.current[sessionId]) return;
+      const request = Symbol();
+      olderRequestRef.current[sessionId] = request;
+      store.getState().setTranscriptUi(scopeKey, (current) => ({ loadingOlderBySession: { ...current.loadingOlderBySession, [sessionId]: true } }));
       try {
-        const meta = messageWindowsRef.current[sessionId];
+        const meta = readMessageWindow(sessionId);
         if (!meta) {
           // No cursor can be trusted for this window (for example records
           // restored from cache before the first network read). Repair the
@@ -369,7 +361,7 @@ export function useTranscriptState({
         // A rewrite (compaction, revert, repair) invalidates this cursor; the
         // next scroll repairs the window instead of prepending pre-rewrite
         // history above it.
-        const currentMeta = messageWindowsRef.current[sessionId];
+        const currentMeta = readMessageWindow(sessionId);
         if (!isCurrentClient(client)
           || readStateRef.current[sessionId]?.generation !== generation
           || !currentMeta
@@ -377,7 +369,7 @@ export function useTranscriptState({
           return;
         }
         setMessagesBySession((current) => {
-          const previous = current[sessionId] ?? held;
+          const previous = current[sessionId] ?? [];
           const prepended = prependSessionMessageHistory(previous, page.records);
           if (prepended === previous) {
             return current;
@@ -390,22 +382,25 @@ export function useTranscriptState({
         }));
         recordUsageAndTodos(sessionId, page.records);
       } finally {
-        setLoadingOlderBySession((current) => ({ ...current, [sessionId]: false }));
+        if (olderRequestRef.current[sessionId] === request) {
+          delete olderRequestRef.current[sessionId];
+          store.getState().setTranscriptUi(scopeKey, (current) => ({ loadingOlderBySession: { ...current.loadingOlderBySession, [sessionId]: false } }));
+        }
       }
     },
-    [client, isCurrentClient, readStateFor, recordUsageAndTodos, refreshMessages, setMessagesBySession],
+    [client, isCurrentClient, readMessageWindow, readStateFor, recordUsageAndTodos, refreshMessages, scopeKey, setMessageWindows, setMessagesBySession, store],
   );
 
   const reset = useCallback(() => {
     setMessageWindows({});
-    setLoadingOlderBySession({});
-    setHydratingSessionIds({});
+    store.getState().setTranscriptUi(scopeKey, { loadingOlderBySession: EMPTY_FLAGS, hydratingSessionIds: EMPTY_FLAGS });
     setUsageStepsBySession({});
     setTodoRecordsBySession({});
     hydrationRequestRef.current = {};
+    olderRequestRef.current = {};
     readStateRef.current = {};
     live.reset();
-  }, [live]);
+  }, [live, scopeKey, setMessageWindows, setTodoRecordsBySession, setUsageStepsBySession, store]);
 
   // Drop pagination, usage, and plan state for sessions that are no longer kept
   // in memory, mirroring the provider's transcript-cache pruning.
@@ -415,9 +410,11 @@ export function useTranscriptState({
     setTodoRecordsBySession((current) => pruneByKeepIds(current, keepIds, limit));
     readStateRef.current = pruneByKeepIds(readStateRef.current, keepIds, limit);
     live.prune(keepIds);
-  }, [live]);
+  }, [live, setMessageWindows, setTodoRecordsBySession, setUsageStepsBySession]);
 
   return {
+    messagesBySession: displayedMessages,
+    readDisplayedSession,
     messageWindows,
     loadingOlderBySession,
     hydratingSessionIds,

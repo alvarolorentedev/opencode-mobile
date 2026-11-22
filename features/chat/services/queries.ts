@@ -26,3 +26,7 @@ export function vcsDiffsKey(identity: QueryIdentity, client: ScopedOpencodeClien
 export function promptInboxKey(identity: QueryIdentity, client: ScopedOpencodeClient) {
   return projectQueryKey(identity, client, 'prompt-inbox');
 }
+
+export function transcriptMetadataKey(identity: QueryIdentity, client: ScopedOpencodeClient) {
+  return projectQueryKey(identity, client, 'transcript-metadata');
+}

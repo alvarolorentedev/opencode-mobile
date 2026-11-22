@@ -1,4 +1,4 @@
-import { useCallback, useLayoutEffect, useRef, type Dispatch, type SetStateAction } from 'react';
+import { useCallback, useMemo, type Dispatch, type SetStateAction } from 'react';
 import { skipToken, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import { useQueryIdentity } from '@/shared/server-data/client';
@@ -10,14 +10,13 @@ import { messagesKey, type MessagesBySession } from '../services/queries';
 const EMPTY: MessagesBySession = {};
 
 export function useMessageCatalog(client: ScopedOpencodeClient) {
-  const identity = useQueryIdentity();
+  const { connectionId, connectionScope, authRevision } = useQueryIdentity();
   const queryClient = useQueryClient();
-  const key = messagesKey(identity, client);
+  const key = useMemo(() => messagesKey({ connectionId, connectionScope, authRevision }, client), [authRevision, client, connectionId, connectionScope]);
   const query = useQuery<MessagesBySession>({ queryKey: key, queryFn: skipToken });
   const messagesBySession = query.data ?? EMPTY;
 
-  const messagesBySessionRef = useRef(messagesBySession);
-  useLayoutEffect(() => { messagesBySessionRef.current = messagesBySession; });
+  const readMessagesBySession = useCallback(() => queryClient.getQueryData<MessagesBySession>(key) ?? EMPTY, [key, queryClient]);
 
   const setMessagesBySession = useCallback<Dispatch<SetStateAction<MessagesBySession>>>((value) => {
     queryClient.setQueryData<MessagesBySession>(key, (current) => {
@@ -26,7 +25,7 @@ export function useMessageCatalog(client: ScopedOpencodeClient) {
     });
   }, [key, queryClient]);
 
-  return { messagesBySession, messagesBySessionRef, setMessagesBySession };
+  return { messagesBySession, readMessagesBySession, setMessagesBySession };
 }
 
 export type MessageCatalog = ReturnType<typeof useMessageCatalog>;

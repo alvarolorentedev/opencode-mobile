@@ -180,6 +180,12 @@ caches"; there is no second React copy.
 Canonical message windows, diffs, todos and VCS diffs are Query data: one
 connection-scoped entry per resource holds the per-session maps, and the action
 layer keeps its setter boundary. Diffs and todos are no longer React state.
+The `transcript-metadata` project entry holds pagination cursors and the
+accumulated usage and plan ledgers. The app store holds transcript request
+flags, the streamed overlay, optimistic user records and local send timestamps.
+The displayed transcript combines these sources at paint time. Live deltas
+update the store buffer synchronously and publish a revision at most once per
+50 ms batch. Query holds canonical message records throughout streaming.
 
 OpenCode 2 pending prompts and notices share a project-scoped `prompt-inbox`
 Query entry. Inbox reads, confirmed admissions and confirmed cancellations update

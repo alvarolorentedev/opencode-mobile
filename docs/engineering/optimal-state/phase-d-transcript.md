@@ -14,9 +14,9 @@ Start only after Phase C is complete and green.
 
 - `features/chat/state/use-message-catalog.ts` holds one connection-scoped
   Query map keyed by session.
-- `features/chat/state/use-transcript-state.ts` owns pagination windows and
-  hydration state.
-- `features/chat/state/use-live-transcript.ts` owns the live overlay in refs.
+- `useTranscriptMetadata` reads Query-owned pagination cursors and ledgers;
+  the app store holds the transcript request flags.
+- `useLiveTranscript` renders the app-store overlay alongside canonical windows.
 - `features/chat/model/live-transcript.ts` is the pure event reducer.
 - `features/chat/services/transcript-cache.ts` is the bounded cold-start cache.
 

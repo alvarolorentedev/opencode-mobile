@@ -8,6 +8,8 @@ import type { ConnectionRecord, WorkspaceTarget } from '@/shared/contracts/works
 import type { WorkspaceSnapshot } from '@/runtime/workspace/workspace-types';
 import type { ConversationInputPhase, ConversationReadbackPhase } from '@/features/voice/index';
 import type { TerminalInstance } from '@/features/terminal/index';
+import type { LiveTranscriptMessage } from '@/features/chat/runtime';
+import type { SessionMessageRecord } from '@/shared/presentation/format';
 import type { VoiceRecoveryAction } from '@/shared/platform/voice/speech-errors';
 
 // Device-local state only. Server facts belong to TanStack Query; anything in
@@ -85,6 +87,21 @@ type TerminalDeviceState = {
 
 const EMPTY_TERMINAL: TerminalDeviceState = { instances: [], scope: 0 };
 
+type TranscriptUiState = {
+  loadingOlderBySession: Record<string, boolean>;
+  hydratingSessionIds: Record<string, boolean>;
+  paintRevision: number;
+};
+
+type TranscriptLiveBuffer = {
+  messages: Map<string, Map<string, LiveTranscriptMessage>>;
+  reconcileOnPage: Map<string, Set<string>>;
+  localUsers: Map<string, SessionMessageRecord[]>;
+  localSends: Map<string, number>;
+};
+
+const EMPTY_TRANSCRIPT_UI: TranscriptUiState = { loadingOlderBySession: {}, hydratingSessionIds: {}, paintRevision: 0 };
+
 const EMPTY_CHAT: ChatUiState = {
   diffScopeBySession: {},
   selectedDiffMessageBySession: {},
@@ -110,6 +127,8 @@ export type AppState = {
   prompt: Record<string, PromptUiState>;
   conversation: Record<string, ConversationRuntimeState | undefined>;
   terminal: Record<string, TerminalDeviceState | undefined>;
+  transcriptUi: Record<string, TranscriptUiState | undefined>;
+  transcriptLive: Map<string, TranscriptLiveBuffer>;
   presentation: Map<string, unknown>;
   mcpAuthPrompt?: { mcpName: string; url: string };
   focusedValues?: import('@/runtime/workspace/workspace-types').WorkspaceValues;
@@ -129,6 +148,7 @@ export type AppState = {
   ) => void;
   clearConversation: (scopeKey: string) => void;
   setTerminalState: (scopeKey: string, patch: Partial<TerminalDeviceState> | ((current: TerminalDeviceState) => Partial<TerminalDeviceState>)) => void;
+  setTranscriptUi: (scopeKey: string, patch: Partial<TranscriptUiState> | ((current: TranscriptUiState) => Partial<TranscriptUiState>)) => void;
 };
 
 export type AppStore = StoreApi<AppState>;
@@ -150,6 +170,8 @@ export function createAppStore(defaults: AppStoreDefaults): AppStore {
     prompt: {},
     conversation: {},
     terminal: {},
+    transcriptUi: {},
+    transcriptLive: new Map(),
     mcpAuthPrompt: undefined,
     // Mutated in place; the hook only needs the stable map identity.
     presentation: new Map<string, unknown>(),
@@ -218,6 +240,11 @@ export function createAppStore(defaults: AppStoreDefaults): AppStore {
       const current = state.terminal[scopeKey] ?? EMPTY_TERMINAL;
       const value = typeof patch === 'function' ? patch(current) : patch;
       return { terminal: { ...state.terminal, [scopeKey]: { ...current, ...value } } };
+    }),
+    setTranscriptUi: (scopeKey, patch) => set((state) => {
+      const current = state.transcriptUi[scopeKey] ?? EMPTY_TRANSCRIPT_UI;
+      const value = typeof patch === 'function' ? patch(current) : patch;
+      return { transcriptUi: { ...state.transcriptUi, [scopeKey]: { ...current, ...value } } };
     }),
   }));
 }

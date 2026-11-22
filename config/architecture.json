@@ -303,6 +303,7 @@
       "useMessageCatalog",
       "MessageCatalog",
       "MessagesBySession",
+      "LiveTranscriptMessage",
       "usePromptInbox",
       "usePromptLifecycle",
       "useTranscriptReadErrors",

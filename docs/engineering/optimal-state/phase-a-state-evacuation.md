@@ -1,6 +1,6 @@
 # Phase A — State Evacuation
 
-Status: **in progress**. A1–A4 are complete. A5–A7 remain.
+Status: **in progress**. A1–A5 are complete. A6–A7 remain.
 
 Goal: remove every piece of domain data from the per-workspace React runtime so
 the runtime can be deleted in Phase E without losing retained state.
@@ -45,29 +45,16 @@ Query for PTY inventory and the app store for the opened instances, selection
 and renderer generation. The terminal connection service publishes status into
 the workspace's store entry and keeps the transport handles and replay cursor.
 
-## Remaining work
-
 ### A5 — Transcript state and live overlay
 
-Current:
-- `features/chat/state/use-transcript-state.ts` owns `messageWindows`,
-  `loadingOlderBySession`, `hydratingSessionIds`, `usageStepsBySession` and
-  `todoRecordsBySession` in `useState`.
-- `features/chat/state/use-live-transcript.ts` owns the live message overlay,
-  local sends and local users in refs.
+The [transcript sources](../../architecture/state-and-data.md#session-content-caches)
+are scope-keyed. Query owns pagination cursors and the accumulated usage and
+plan ledgers. The app store owns request flags, the live overlay and optimistic
+local admission. React presents the combined transcript with the existing
+50 ms stream cadence. Phase D replaces the connection-wide canonical window
+with per-session infinite queries and verifies the cold-start path.
 
-Target:
-- Add a scope-keyed transcript slice for pagination windows, hydration flags,
-  usage steps and todo records. These are derived server data; if a Query
-  resource is a better owner, move it there instead of duplicating it.
-- Move live overlay, local send times and local user records to the store.
-- Keep paint timers, generation counters and in-flight read refs as refs.
-- Keep `reduceLiveEvent` pure. The store holds the result, not a second reducer.
-
-Acceptance:
-- No transcript pagination/overlay data in `useState` or authoritative refs.
-- Transcript-policy, live-transcript and prompt tests pass.
-- Chat, diffs and realtime E2E pass.
+## Remaining work
 
 ### A6 — Extensions, MCP, projects and capabilities
 

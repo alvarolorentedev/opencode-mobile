@@ -90,13 +90,16 @@ export function useOpencodeProviderComposition(input: WorkspaceRuntimeInput) {
   const approvalsCatalog = useApprovalsCatalog(client);
   const messageCatalog = useMessageCatalog(client);
   const diffCatalog = useDiffCatalog(client);
-  const domain = { ...state, ...serverData, ...sessionCatalog, ...approvalsCatalog, ...messageCatalog, ...diffCatalog };
+  const transcript = useTranscriptState({ ...state, ...messageCatalog, client, isCurrentClient });
+  const domain = {
+    ...state, ...serverData, ...sessionCatalog, ...approvalsCatalog, ...messageCatalog, ...diffCatalog,
+    messagesBySession: transcript.messagesBySession, readDisplayedSession: transcript.readDisplayedSession,
+  };
   const projects = useMemo(
     () => buildOpencodeProjects(serverData.serverProjects),
     [serverData.serverProjects],
   );
 
-  const transcript = useTranscriptState({ ...domain, client, isCurrentClient });
   const transcriptRead = useTranscriptReadErrors({
     scopeKey: state.scopeKey,
     client,
@@ -236,7 +239,7 @@ export function useOpencodeProviderComposition(input: WorkspaceRuntimeInput) {
     currentSessionId: state.currentSessionId,
     setCurrentSessionId: state.setCurrentSessionId,
     sessionStatuses: sessionCatalog.sessionStatuses,
-    messagesBySession: messageCatalog.messagesBySession,
+    messagesBySession: transcript.messagesBySession,
     pendingPermissionsBySession: approvalsCatalog.pendingPermissionsBySession,
     pendingQuestionsBySession: approvalsCatalog.pendingQuestionsBySession,
     sendingState: prompt.sendingState,

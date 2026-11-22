@@ -23,7 +23,7 @@ phase you are executing. Do not preload every phase unless you are planning.
 
 | Phase | Document | Status | Outcome |
 | --- | --- | --- | --- |
-| A | [State evacuation](phase-a-state-evacuation.md) | In progress — A1–A4 done, A5–A7 open | No domain data in per-workspace React state |
+| A | [State evacuation](phase-a-state-evacuation.md) | In progress — A1–A5 done, A6–A7 open | No domain data in per-workspace React state |
 | B | [Connection manager](phase-b-connection-manager.md) | Not started | Transport, probe, renewal, SSE and polling are plain TS |
 | C | [Command core](phase-c-commands.md) | Not started | Cross-domain commands are plain functions; composition deleted |
 | D | [Transcript](phase-d-transcript.md) | Not started | Per-session infinite messages + store live overlay |
@@ -71,11 +71,17 @@ npm run validate:commit
   voice and provider suites, fake-server self-test, docs, web export and 47
   browser tests across chat, onboarding and settings passed. Physical speech
   recognition and playback still require device acceptance.
-- A4, `refactor(terminal): separate PTY inventory from device state`. The
+- A4, `00539212`. The
   commit gate, focused terminal and provider tests, docs and web export passed.
   All 12 terminal and multi-server browser tests passed, including retained
   renderer and colliding PTY ID coverage. Native terminal input and screen
   reader behavior still require device acceptance.
+- A5, `refactor(chat): separate live transcript from canonical messages`.
+  The commit gate reported 1,256 passing tests and one existing skip. The
+  46 focused tests, docs, web export, and all 35 chat, diffs, realtime and
+  network resilience browser tests passed. A fake-clock test verified one
+  grouped paint at 50 ms with an optimistic attachment. Comparative latency
+  and cold-start measurement remain part of Phase D.
 
 ## Loop protocol
 

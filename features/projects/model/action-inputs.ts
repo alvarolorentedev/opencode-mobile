@@ -42,7 +42,7 @@ export type ProjectActionsInput = {
   selectedDiffMessageBySessionRef: { current: Record<string, string | undefined> };
   diffScopeBySessionRef: { current: Record<string, DiffScope> };
   currentSessionIdRef: { current: string | undefined };
-  messagesBySessionRef: { current: Record<string, SessionMessageRecord[]> };
+  readDisplayedSession: (sessionId: string) => SessionMessageRecord[];
   projectFileRequestRef: { current: number };
   scopeGenerationRef: { current: number };
   sessionRefreshTimeoutsRef: { current: Record<string, ReturnType<typeof setTimeout>> };

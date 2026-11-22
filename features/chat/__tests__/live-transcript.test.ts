@@ -1,6 +1,10 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 import type { ToolPart } from '@/shared/protocol/opencode/types';
+import type { SessionMessageRecord } from '@/shared/presentation/format';
+import { createAppStore, type AppState } from '@/runtime/core/store';
+import { useLiveTranscript } from '@/features/chat/state/use-live-transcript';
+import { hookRuntime } from '../../../tests/helpers/runtime.mjs';
 import {
   liveTranscriptRecord,
   overlayLiveRecords,
@@ -9,6 +13,19 @@ import {
   userMessageRecord,
   type LiveTranscriptMessage,
 } from '@/features/chat/model/live-transcript';
+
+const driver = hookRuntime();
+const store = createAppStore({ settings: { serverUrl: '', username: '', password: '', directory: '' }, chatPreferences: {} as never, controlPlaneUrl: '' });
+vi.mock('react', () => ({
+  useCallback: (...args: unknown[]) => Reflect.apply(driver.react.useCallback, undefined, args),
+  useEffect: (...args: unknown[]) => Reflect.apply(driver.react.useEffect, undefined, args),
+  useMemo: (...args: unknown[]) => Reflect.apply(driver.react.useMemo, undefined, args),
+  useRef: (...args: unknown[]) => Reflect.apply(driver.react.useRef, undefined, args),
+}));
+vi.mock('@/runtime/core', () => ({
+  useAppCore: () => ({ store }),
+  useAppStore: (select: (state: AppState) => unknown) => select(store.getState()),
+}));
 
 const DATA_URL = 'data:video/mp4;base64,AAAA';
 
@@ -21,6 +38,36 @@ function message(previous: LiveTranscriptMessage | undefined, event: Record<stri
   if (result.kind !== 'update') throw new Error(`expected update, got ${result.kind}`);
   return result.message;
 }
+
+it('paints a batch at 50 ms without writing the live reply or local media to the canonical window', () => {
+  vi.useFakeTimers();
+  const scopeKey = 'stream-workspace';
+  const canonical: Record<string, SessionMessageRecord[]> = {};
+  try {
+    const { actions } = driver.mount(useLiveTranscript, {
+      scopeKey, client: {}, isCurrentClient: () => true, messagesBySession: canonical,
+      readMessagesBySession: () => canonical, recordUsageAndTodos: vi.fn(),
+    });
+    const url = `data:video/mp4;base64,${'A'.repeat(1024 * 1024)}`;
+    actions.appendUserMessage('s', { id: 'u', createdAt: 10, text: 'look', attachments: [{ url }] });
+    driver.flush();
+    const before = driver.value.displayedMessages;
+    for (const delta of ['one', ' two', ' three']) {
+      expect(actions.applyEvent({ type: 'session.text.delta', created: 11, data: { sessionID: 's', assistantMessageID: 'a', ordinal: 0, delta } })).toBe(true);
+    }
+    vi.advanceTimersByTime(49);
+    driver.flush();
+    expect(driver.value.displayedMessages).toBe(before);
+    vi.advanceTimersByTime(1);
+    driver.flush();
+    expect(driver.value.displayedMessages.s[0]).toBe(before.s[0]);
+    expect(driver.value.displayedMessages.s[1].parts[0]).toMatchObject({ type: 'text', text: 'one two three' });
+    expect(canonical).toEqual({});
+  } finally {
+    driver.unmount();
+    vi.useRealTimers();
+  }
+});
 
 describe('live V2 transcript reducer', () => {
   it('accumulates text deltas and replaces them with the ended text', () => {

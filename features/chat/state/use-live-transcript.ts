@@ -1,5 +1,6 @@
-import { useCallback, useEffect, useMemo, useRef, type Dispatch, type SetStateAction } from 'react';
+import { useCallback, useEffect, useMemo, useRef } from 'react';
 
+import { useAppCore, useAppStore } from '@/runtime/core';
 import type { SessionMessageRecord } from '@/shared/presentation/format';
 import type { ScopedOpencodeClient } from '@/shared/protocol/opencode/client';
 import type { OpencodeEvent } from '@/shared/protocol/opencode/events';
@@ -18,45 +19,53 @@ import {
 // per streamed chunk.
 const PAINT_INTERVAL_MS = 50;
 const LOCAL_SEND_WINDOW_MS = 15_000;
+const EMPTY_RECORDS: SessionMessageRecord[] = [];
 
 type Input = {
+  scopeKey: string;
   client: ScopedOpencodeClient;
   isCurrentClient: (candidate: object) => boolean;
-  messagesBySessionRef: { current: Record<string, SessionMessageRecord[]> };
-  setMessagesBySession: Dispatch<SetStateAction<Record<string, SessionMessageRecord[]>>>;
+  messagesBySession: Record<string, SessionMessageRecord[]>;
+  readMessagesBySession: () => Record<string, SessionMessageRecord[]>;
   recordUsageAndTodos: (sessionId: string, records: SessionMessageRecord[]) => void;
 };
 
-export function useLiveTranscript({ client, isCurrentClient, messagesBySessionRef, setMessagesBySession, recordUsageAndTodos }: Input) {
-  const liveRef = useRef<Map<string, Map<string, LiveTranscriptMessage>>>(new Map());
+export function useLiveTranscript({ scopeKey, client, isCurrentClient, messagesBySession, readMessagesBySession, recordUsageAndTodos }: Input) {
+  const { store } = useAppCore();
+  const scopes = store.getState().transcriptLive;
+  const paintRevision = useAppStore((state) => state.transcriptUi[scopeKey]?.paintRevision ?? 0);
+  const readBuffer = useCallback(() => scopes.get(scopeKey), [scopeKey, scopes]);
+  // Stream events write synchronously to the store's buffer. Only a paint
+  // revision notifies React, so token deltas do not wake every subscriber.
+  const ensureBuffer = useCallback(() => {
+    const existing = readBuffer();
+    if (existing) return existing;
+    const buffer: NonNullable<ReturnType<typeof readBuffer>> = {
+      messages: new Map(), reconcileOnPage: new Map(), localUsers: new Map(), localSends: new Map(),
+    };
+    scopes.set(scopeKey, buffer);
+    return buffer;
+  }, [readBuffer, scopeKey, scopes]);
+  const paint = useCallback(() => store.getState().setTranscriptUi(scopeKey, (current) => ({ paintRevision: current.paintRevision + 1 })), [scopeKey, store]);
   const timersRef = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
   const ledgerRef = useRef<Set<string>>(new Set());
-  const localSendsRef = useRef<Map<string, number>>(new Map());
-  // A prompt this client admitted is painted immediately. Keep it until a
-  // rewrite or session close so a page read that started before admission
-  // cannot remove it.
-  const localUsersRef = useRef<Map<string, SessionMessageRecord[]>>(new Map());
 
   useEffect(() => () => {
     for (const timer of Object.values(timersRef.current)) clearTimeout(timer);
     timersRef.current = {};
-  }, []);
+    ledgerRef.current.clear();
+    scopes.delete(scopeKey);
+  }, [scopeKey, scopes]);
 
   const flush = useCallback((sessionId: string) => {
     delete timersRef.current[sessionId];
-    const session = liveRef.current.get(sessionId);
+    const session = readBuffer()?.messages.get(sessionId);
     if (!session) return;
-    const messages = [...session.values()];
-    setMessagesBySession((current) => {
-      const previous = current[sessionId];
-      if (!previous?.length) return current;
-      const next = overlayLiveRecords(previous, messages);
-      return next === previous ? current : { ...current, [sessionId]: next };
-    });
+    paint();
     if (ledgerRef.current.delete(sessionId)) {
-      recordUsageAndTodos(sessionId, messages.map(liveTranscriptRecord));
+      recordUsageAndTodos(sessionId, [...session.values()].map(liveTranscriptRecord));
     }
-  }, [recordUsageAndTodos, setMessagesBySession]);
+  }, [paint, readBuffer, recordUsageAndTodos]);
 
   const scheduleFlush = useCallback((sessionId: string) => {
     if (timersRef.current[sessionId]) return;
@@ -69,62 +78,80 @@ export function useLiveTranscript({ client, isCurrentClient, messagesBySessionRe
     const data = event.data as Record<string, unknown>;
     const sessionId = stringField(data.sessionID);
     if (!sessionId) return false;
-    const session = liveRef.current.get(sessionId);
+    const buffer = readBuffer();
+    const session = buffer?.messages.get(sessionId);
     if (event.type === 'session.usage.updated') return true;
     const messageId = stringField(data.assistantMessageID);
     if (!messageId) return false;
-    if (!session?.has(messageId) && !messagesBySessionRef.current[sessionId]?.length) return false;
-    const held = messagesBySessionRef.current[sessionId]?.find((record) => record.info.id === messageId);
+    const records = readMessagesBySession()[sessionId];
+    if (!session?.has(messageId) && !records?.length && !buffer?.localUsers.get(sessionId)?.length) return false;
+    const held = records?.find((record) => record.info.id === messageId);
     const previous = session?.get(messageId) ?? (held ? seedLiveMessage(held) : undefined);
     const result = reduceLiveEvent(previous, event);
     if (result.kind === 'consumed') return true;
     if (result.kind !== 'update') return false;
     const target = session ?? new Map<string, LiveTranscriptMessage>();
     target.set(messageId, result.message);
-    liveRef.current.set(sessionId, target);
+    (buffer ?? ensureBuffer()).messages.set(sessionId, target);
     if (result.ledger) ledgerRef.current.add(sessionId);
     scheduleFlush(sessionId);
     return true;
-  }, [client, isCurrentClient, messagesBySessionRef, scheduleFlush]);
+  }, [client, ensureBuffer, isCurrentClient, readBuffer, readMessagesBySession, scheduleFlush]);
 
   const activeMessageId = useCallback((sessionId: string) => {
     let latest: LiveTranscriptMessage | undefined;
-    for (const message of liveRef.current.get(sessionId)?.values() ?? []) {
+    for (const message of readBuffer()?.messages.get(sessionId)?.values() ?? []) {
       if (!latest || message.created >= latest.created) latest = message;
     }
     return latest?.messageID;
-  }, []);
+  }, [readBuffer]);
 
   const clearMessage = useCallback((sessionId: string, messageId: string) => {
-    const session = liveRef.current.get(sessionId);
-    if (!session) return;
-    session.delete(messageId);
-    if (session.size === 0) liveRef.current.delete(sessionId);
-    const timer = timersRef.current[sessionId];
-    if (timer) {
-      clearTimeout(timer);
+    const buffer = readBuffer();
+    const messages = buffer?.messages;
+    const pending = buffer?.reconcileOnPage.get(sessionId);
+    pending?.delete(messageId);
+    if (pending?.size === 0) buffer?.reconcileOnPage.delete(sessionId);
+    const session = messages?.get(sessionId);
+    if (!session?.delete(messageId)) return;
+    if (session.size === 0) {
+      messages?.delete(sessionId);
+      const timer = timersRef.current[sessionId];
+      if (timer) clearTimeout(timer);
       delete timersRef.current[sessionId];
+      ledgerRef.current.delete(sessionId);
     }
-  }, []);
+    paint();
+  }, [paint, readBuffer]);
+
+  const deferReconcileToPage = useCallback((sessionId: string, messageId: string) => {
+    const buffer = readBuffer();
+    if (!buffer?.messages.get(sessionId)?.has(messageId)) return;
+    const pending = buffer.reconcileOnPage.get(sessionId) ?? new Set();
+    pending.add(messageId);
+    buffer.reconcileOnPage.set(sessionId, pending);
+  }, [readBuffer]);
 
   const clearSession = useCallback((sessionId: string) => {
-    liveRef.current.delete(sessionId);
+    const buffer = readBuffer();
+    const messagesRemoved = buffer?.messages.delete(sessionId);
+    const localRemoved = buffer?.localUsers.delete(sessionId);
+    buffer?.reconcileOnPage.delete(sessionId);
     ledgerRef.current.delete(sessionId);
-    localUsersRef.current.delete(sessionId);
     const timer = timersRef.current[sessionId];
     if (timer) {
       clearTimeout(timer);
       delete timersRef.current[sessionId];
     }
-  }, []);
+    if (messagesRemoved || localRemoved) paint();
+  }, [paint, readBuffer]);
 
   const overlay = useCallback((sessionId: string, records: SessionMessageRecord[]) => {
-    const session = liveRef.current.get(sessionId);
-    const withLive = session ? overlayLiveRecords(records, [...session.values()]) : records;
-    const localUsers = localUsersRef.current.get(sessionId);
-    if (!localUsers?.length) return withLive;
-    let next = withLive;
-    for (const local of localUsers) {
+    const buffer = readBuffer();
+    const session = buffer?.messages.get(sessionId);
+    const localUsers = buffer?.localUsers.get(sessionId);
+    let next = records;
+    for (const local of localUsers ?? EMPTY_RECORDS) {
       const index = next.findIndex((record) => record.info.id === local.info.id);
       if (index >= 0) {
         if (next[index].parts === local.parts) continue;
@@ -135,18 +162,28 @@ export function useLiveTranscript({ client, isCurrentClient, messagesBySessionRe
       const tail = next[next.length - 1];
       if (!tail || local.info.time.created >= tail.info.time.created) next = [...next, local];
     }
-    return next;
-  }, []);
+    return session ? overlayLiveRecords(next, [...session.values()]) : next;
+  }, [readBuffer]);
 
-  const adopt = useCallback((sessionId: string, records: SessionMessageRecord[]) => {
-    const localUsers = localUsersRef.current.get(sessionId);
+  const adopt = useCallback((sessionId: string, page: SessionMessageRecord[] = EMPTY_RECORDS) => {
+    const buffer = readBuffer();
+    const users = buffer?.localUsers;
+    const localUsers = users?.get(sessionId);
+    const pending = buffer?.reconcileOnPage.get(sessionId);
+    if (pending?.size) {
+      for (const { info } of page) {
+        if (info.role === 'assistant' && info.time.completed !== undefined && pending.has(info.id)) clearMessage(sessionId, info.id);
+      }
+    }
     if (!localUsers?.length) return;
+    const records = readMessagesBySession()[sessionId] ?? EMPTY_RECORDS;
     const known = new Set(records.map((record) => record.info.id));
     const remaining = localUsers.filter((record) => !known.has(record.info.id));
     if (remaining.length === localUsers.length) return;
-    if (remaining.length === 0) localUsersRef.current.delete(sessionId);
-    else localUsersRef.current.set(sessionId, remaining);
-  }, []);
+    if (remaining.length === 0) users?.delete(sessionId);
+    else users?.set(sessionId, remaining);
+    paint();
+  }, [clearMessage, paint, readBuffer, readMessagesBySession]);
 
   const appendUserMessage = useCallback((sessionId: string, input: {
     id: string;
@@ -154,45 +191,61 @@ export function useLiveTranscript({ client, isCurrentClient, messagesBySessionRe
     text: string;
     attachments: { url: string; mime?: string; filename?: string }[];
   }) => {
-    const record = userMessageRecord({ sessionID: sessionId, ...input });
-    const local = localUsersRef.current.get(sessionId) ?? [];
-    localUsersRef.current.set(sessionId, [...local.filter((item) => item.info.id !== input.id), record]);
-    setMessagesBySession((current) => {
-      const previous = current[sessionId];
-      if (previous?.some((item) => item.info.id === input.id)) return current;
-      return { ...current, [sessionId]: [...(previous ?? []), record] };
-    });
-  }, [setMessagesBySession]);
+    if (readMessagesBySession()[sessionId]?.some((item) => item.info.id === input.id)) return;
+    const users = ensureBuffer().localUsers;
+    const local = users.get(sessionId) ?? EMPTY_RECORDS;
+    users.set(sessionId, [...local.filter((item) => item.info.id !== input.id), userMessageRecord({ sessionID: sessionId, ...input })]);
+    paint();
+  }, [ensureBuffer, paint, readMessagesBySession]);
+
+  const hasLocalUsers = useCallback((sessionId: string) => Boolean(readBuffer()?.localUsers.get(sessionId)?.length), [readBuffer]);
 
   const markLocalSend = useCallback((sessionId: string) => {
-    localSendsRef.current.set(sessionId, Date.now());
-  }, []);
+    ensureBuffer().localSends.set(sessionId, Date.now());
+  }, [ensureBuffer]);
 
   const isLocalSendRecent = useCallback((sessionId: string) => {
-    const sentAt = localSendsRef.current.get(sessionId);
+    const timestamps = readBuffer()?.localSends;
+    const sentAt = timestamps?.get(sessionId);
     if (sentAt === undefined) return false;
     if (Date.now() - sentAt > LOCAL_SEND_WINDOW_MS) {
-      localSendsRef.current.delete(sessionId);
+      timestamps?.delete(sessionId);
       return false;
     }
     return true;
-  }, []);
+  }, [readBuffer]);
 
   const reset = useCallback(() => {
-    liveRef.current.clear();
+    const hadBuffer = scopes.delete(scopeKey);
     ledgerRef.current.clear();
-    localSendsRef.current.clear();
-    localUsersRef.current.clear();
     for (const timer of Object.values(timersRef.current)) clearTimeout(timer);
     timersRef.current = {};
-  }, []);
+    if (hadBuffer) paint();
+  }, [paint, scopeKey, scopes]);
 
   const prune = useCallback((keepIds: Set<string>) => {
-    for (const sessionId of new Set([...liveRef.current.keys(), ...localUsersRef.current.keys()])) {
+    const buffer = readBuffer();
+    if (!buffer) return;
+    for (const sessionId of new Set([...buffer.messages.keys(), ...buffer.localUsers.keys()])) {
       if (!keepIds.has(sessionId)) clearSession(sessionId);
     }
-  }, [clearSession]);
+  }, [clearSession, readBuffer]);
 
-  return useMemo(() => ({ applyEvent, activeMessageId, clearMessage, clearSession, overlay, adopt, appendUserMessage, markLocalSend, isLocalSendRecent, reset, prune }),
-    [adopt, applyEvent, activeMessageId, appendUserMessage, clearMessage, clearSession, isLocalSendRecent, markLocalSend, overlay, prune, reset]);
+  const actions = useMemo(() => ({ applyEvent, activeMessageId, clearMessage, clearSession, deferReconcileToPage, overlay, adopt, appendUserMessage, hasLocalUsers, markLocalSend, isLocalSendRecent, reset, prune }),
+    [adopt, applyEvent, activeMessageId, appendUserMessage, clearMessage, clearSession, deferReconcileToPage, hasLocalUsers, isLocalSendRecent, markLocalSend, overlay, prune, reset]);
+  const readDisplayedSession = useCallback((sessionId: string) => overlay(sessionId, readMessagesBySession()[sessionId] ?? EMPTY_RECORDS), [overlay, readMessagesBySession]);
+  const displayedMessages = useMemo(() => {
+    const buffer = readBuffer();
+    const canonical = readMessagesBySession();
+    if (!buffer) return canonical;
+    const sessions = new Set([...buffer.messages.keys(), ...buffer.localUsers.keys()]);
+    if (!sessions.size) return canonical;
+    const displayed = { ...canonical };
+    for (const sessionId of sessions) displayed[sessionId] = overlay(sessionId, canonical[sessionId] ?? EMPTY_RECORDS);
+    return displayed;
+  // Query and the paint revision publish changes to their respective sources.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [messagesBySession, overlay, paintRevision, readBuffer, readMessagesBySession]);
+
+  return { actions, displayedMessages, readDisplayedSession };
 }

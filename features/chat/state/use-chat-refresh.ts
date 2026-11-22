@@ -19,11 +19,11 @@ async function withDiffLoading<T>(silent: boolean, setLoading: (value: boolean) 
     if (!silent) setLoading(false);
   }
 }
-export function useChatRefresh({ client, isCurrentClient, setIsRefreshingDiffs, setDiffsBySession, setVcsDiffsByScope, setTodosBySession, setDiffScopeBySession, setSelectedDiffMessageBySession, selectedDiffMessageBySessionRef, diffScopeBySessionRef, currentSessionIdRef, messagesBySessionRef }: ChatRefreshInput) {
+export function useChatRefresh({ client, isCurrentClient, setIsRefreshingDiffs, setDiffsBySession, setVcsDiffsByScope, setTodosBySession, setDiffScopeBySession, setSelectedDiffMessageBySession, selectedDiffMessageBySessionRef, diffScopeBySessionRef, currentSessionIdRef, readDisplayedSession }: ChatRefreshInput) {
 
   const refreshSessionDiff = useCallback(
     async (sessionId: string, silent = false, messageId?: string, records?: SessionMessageRecord[]) => withDiffLoading(silent, setIsRefreshingDiffs, async () => {
-      const messages = records ?? messagesBySessionRef.current[sessionId] ?? [];
+      const messages = records ?? readDisplayedSession(sessionId);
       const pinned = selectedDiffMessageBySessionRef.current[sessionId];
       // Resolve through the same selector the diff surface displays with so a
       // request can never ask the server for a different turn than the one the
@@ -47,7 +47,7 @@ export function useChatRefresh({ client, isCurrentClient, setIsRefreshingDiffs, 
 
       return data;
     }),
-    [client, isCurrentClient, messagesBySessionRef, selectedDiffMessageBySessionRef, setDiffsBySession, setIsRefreshingDiffs],
+    [client, isCurrentClient, readDisplayedSession, selectedDiffMessageBySessionRef, setDiffsBySession, setIsRefreshingDiffs],
   );
 
   const refreshVcsDiff = useCallback(

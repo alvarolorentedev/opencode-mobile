@@ -8,6 +8,7 @@ export type { DiffCatalog } from './state/use-diff-catalog';
 export { useMessageCatalog } from './state/use-message-catalog';
 export type { MessageCatalog } from './state/use-message-catalog';
 export type { MessagesBySession } from './services/queries';
+export type { LiveTranscriptMessage } from './model/live-transcript';
 export { usePromptInbox } from './state/use-prompt-inbox';
 export { usePromptLifecycle } from './state/use-prompt-lifecycle';
 export { useTranscriptReadErrors } from './state/use-transcript-read-errors';

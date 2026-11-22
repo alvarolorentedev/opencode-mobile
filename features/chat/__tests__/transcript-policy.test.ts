@@ -5,6 +5,7 @@ import * as transcript from '@/shared/presentation/transcript';
 import * as usage from '@/shared/presentation/usage';
 import { pruneByKeepIds } from '@/shared/utilities/prune';
 import { recordSessionUsageAndTodos } from '@/features/chat/model/session-ledger';
+import { createAppStore, type AppState } from '@/runtime/core/store';
 import { hookRuntime, loadTs } from '../../../tests/helpers/runtime.mjs';
 
 vi.mock('@/shared/i18n/index', () => ({ getFormatLocale: () => 'en' }));
@@ -42,8 +43,20 @@ async function mountTranscript(
   getSessionMessage: ReturnType<typeof vi.fn> = vi.fn(async () => undefined),
 ) {
   const runtime = hookRuntime();
+  const store = createAppStore({ settings: { serverUrl: 'http://server.test', username: '', password: '', directory: '/repo' }, chatPreferences: {} as never, controlPlaneUrl: '' });
+  const client = { __opencode: { contract: 'v2', directory: '/repo' } };
+  const actions = { applyEvent: () => false, activeMessageId: () => undefined, clearMessage: () => {}, clearSession: () => {}, deferReconcileToPage: () => {}, overlay: (_sessionId: string, records: Message[]) => records, adopt: () => {}, appendUserMessage: () => {}, hasLocalUsers: () => false, markLocalSend: () => {}, isLocalSendRecent: () => false, reset: () => {}, prune: () => {} };
+  let current = initial;
   const { useTranscriptState } = await loadTs('features/chat/state/use-transcript-state.ts', {
     react: runtime.react,
+    '@/runtime/core': {
+      useAppCore: () => ({ store }),
+      useAppStore<T>(select: (state: AppState) => T) {
+        const [, update] = runtime.react.useState(0);
+        runtime.react.useEffect(() => store.subscribe(() => update((version: number) => version + 1)), []);
+        return select(store.getState());
+      },
+    },
     '@/shared/presentation/format': format,
     '@/shared/presentation/transcript': transcript,
     '@/shared/presentation/usage': usage,
@@ -51,28 +64,33 @@ async function mountTranscript(
     "@/shared/protocol/services/session-service": { getSessionMessages, getSessionMessage, TRANSCRIPT_PAGE_LIMIT: 20, MAX_MESSAGE_PAGE_LIMIT: 200 },
     "@/shared/protocol/opencode/contracts/session-adapter": { MAX_MESSAGE_PAGE_LIMIT: 200 },
     "@/features/chat/model/session-ledger": { recordSessionUsageAndTodos },
-    "@/features/chat/state/use-live-transcript": { useLiveTranscript: () => ({ applyEvent: () => false, activeMessageId: () => undefined, clearMessage: () => {}, clearSession: () => {}, overlay: (_sessionId: string, records: unknown[]) => records, adopt: () => {}, appendUserMessage: () => {}, markLocalSend: () => {}, isLocalSendRecent: () => false, reset: () => {}, prune: () => {} }) },
+    "@/features/chat/state/use-live-transcript": { useLiveTranscript: ({ messagesBySession }: { messagesBySession: Record<string, Message[]> }) => ({ actions, displayedMessages: messagesBySession, readDisplayedSession: (id: string) => current[id] ?? [] }) },
     "@/shared/protocol/opencode/v2/mappers": { toMessageRecord: (message: { __record?: unknown }) => message.__record },
     "@/shared/protocol/opencode/in-flight": { coalesceRead: (_client: unknown, _key: string, read: () => unknown) => read() },
     "@/features/chat/services/transcript-cache": { hydrateTranscriptCache: async () => {}, persistTranscriptCache: async () => {} }
   });
   function useHarness() {
-    const [messagesBySession, setMessagesBySession] = runtime.react.useState(initial);
+    const [messagesBySession, publishMessages] = runtime.react.useState(initial);
     const [, setIsRefreshingMessages] = runtime.react.useState(false);
     const state = useTranscriptState({
-      client: {} as never,
+      scopeKey: 'transcript-test-workspace',
+      client,
       isCurrentClient: () => true,
       currentSessionId: 's',
       connectionScope: 'scope',
       activeProjectPath: '/repo',
       messagesBySession,
-      setMessagesBySession,
+      readMessagesBySession: () => current,
+      setMessagesBySession: (change: (previous: typeof current) => typeof current) => {
+        current = change(current);
+        publishMessages(current);
+      },
       setIsRefreshingMessages,
     });
     return { ...state, messagesBySession };
   }
   const value = runtime.mount(useHarness, {});
-  return { runtime, value };
+  return { runtime, value, client };
 }
 
 const ids = (records: Message[]) => records.map((item) => item.info.id);
@@ -92,11 +110,11 @@ describe('transcript refresh policy', () => {
     const getSessionMessages = vi.fn(async () => page([textRecord('a'), textRecord('b')]));
     const live = textRecord('b', 'streamed reply');
     const getSessionMessage = vi.fn(async () => ({ __record: live }));
-    const { runtime, value } = await mountTranscript({ s: [userRecord('u'), textRecord('b', 'partial')] }, getSessionMessages, getSessionMessage);
+    const { runtime, value, client } = await mountTranscript({ s: [userRecord('u'), textRecord('b', 'partial')] }, getSessionMessages, getSessionMessage);
     await value.refreshMessages('s', true, { messageId: 'b' });
     runtime.flush();
     expect(getSessionMessages).not.toHaveBeenCalled();
-    expect(getSessionMessage).toHaveBeenCalledWith({}, 's', 'b');
+    expect(getSessionMessage).toHaveBeenCalledWith(client, 's', 'b');
     expect(runtime.value.messagesBySession.s.find((record: Message) => record.info.id === 'b')?.parts[0].text).toBe('streamed reply');
     expect(runtime.value.messagesBySession.s[0].info.id).toBe('u');
   });

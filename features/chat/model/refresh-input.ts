@@ -31,5 +31,5 @@ export type ChatRefreshInput = {
 
   currentSessionIdRef: { current: string | undefined };
 
-  messagesBySessionRef: { current: Record<string, SessionMessageRecord[]> };
+  readDisplayedSession: (sessionId: string) => SessionMessageRecord[];
 };
