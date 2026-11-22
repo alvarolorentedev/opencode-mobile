@@ -1,7 +1,14 @@
 import assert from 'node:assert/strict';
-import { describe, it } from 'vitest';
+import { describe, it, vi } from 'vitest';
 
-import { loadTs } from '../../../../tests/helpers/runtime.mjs';
+import type { SherpaRuntime } from '@/shared/platform/voice/local-wake-word/types';
+
+const { platform } = vi.hoisted(() => ({ platform: { foss: false } }));
+vi.mock('react-native', () => ({ Platform: { OS: 'android' } }));
+vi.mock('expo-constants', () => ({ default: { expoConfig: { extra: { get foss() { return platform.foss; } } } } }));
+vi.mock('expo-file-system', () => fakeFileSystem());
+vi.mock('expo-crypto', () => ({}));
+vi.mock('@/shared/platform/voice/local-wake-word/sherpa', () => ({ loadSherpaRuntime: () => ({ TTS: {} }) }));
 
 function fakeFileSystem() {
   const join = (parent: string | { path: string }, name?: string) => {
@@ -35,23 +42,11 @@ function fakeFileSystem() {
   return { Directory, File, Paths: { document: '/documents', cache: '/cache' } };
 }
 
-async function loadModels() {
-  const catalog = await loadTs('shared/platform/voice/tts/catalog.ts');
-  const types = await loadTs('shared/platform/voice/tts/types.ts');
-  return loadTs('shared/platform/voice/tts/models.ts', {
-    'expo-file-system': fakeFileSystem(),
-    'react-native': { Platform: { OS: 'android' } },
-    '@/shared/platform/voice/tts/catalog': catalog,
-    '@/shared/platform/voice/tts/types': types,
-    "@/shared/platform/voice/local-wake-word/sherpa": { loadSherpaRuntime: () => ({ TTS: {} }) },
-    "@/shared/platform/voice/model-files": { downloadVerified: async () => undefined }
-  });
-}
-
 describe('on-device voice pack paths', () => {
   it('passes model files as names and directories as absolute paths', async () => {
-    const models = await loadModels();
+    const models = await import('@/shared/platform/voice/tts/models');
     const piper = models.getLocalTtsPackPaths('piper-en');
+    assert.ok(piper);
 
     assert.equal(piper.modelDir, 'file:///documents/opencode-tts/piper-en');
     assert.equal(piper.dataDir, 'file:///documents/opencode-tts/piper-en/espeak-ng-data');
@@ -63,31 +58,34 @@ describe('on-device voice pack paths', () => {
     assert.equal(piper.voicesFile, undefined);
 
     const kokoro = models.getLocalTtsPackPaths('kokoro-en');
+    assert.ok(kokoro);
     assert.equal(kokoro.modelFile, 'model.int8.onnx');
     assert.equal(kokoro.tokensFile, 'tokens.txt');
     assert.equal(kokoro.voicesFile, 'voices.bin');
 
     const chinese = models.getLocalTtsPackPaths('piper-zh');
+    assert.ok(chinese);
     assert.equal(chinese.lexiconFile, 'lexicon.txt');
   });
 });
 
 describe('native Sherpa availability', () => {
   it('does not load the excluded native module in FOSS builds', async () => {
-    const sherpa = await loadTs('shared/platform/voice/local-wake-word/sherpa.native.ts', {
-      'expo-constants': { __esModule: true, default: { expoConfig: { extra: { foss: true } } } },
-    });
+    vi.resetModules();
+    platform.foss = true;
+    const sherpa = await import('@/shared/platform/voice/local-wake-word/sherpa.native');
+    const load = vi.fn(() => assert.fail('FOSS must not load the native module.'));
 
-    assert.equal(sherpa.loadSherpaRuntime(), undefined);
+    assert.equal(sherpa.loadSherpaRuntime(load), undefined);
+    assert.equal(load.mock.calls.length, 0);
   });
 
   it('still loads the native module in non-FOSS builds', async () => {
-    const runtime = { TTS: {} };
-    const sherpa = await loadTs('shared/platform/voice/local-wake-word/sherpa.native.ts', {
-      'expo-constants': { __esModule: true, default: { expoConfig: { extra: { foss: false } } } },
-      '@siteed/sherpa-onnx.rn': { default: runtime },
-    });
+    vi.resetModules();
+    platform.foss = false;
+    const runtime = { TTS: {} } as SherpaRuntime;
+    const sherpa = await import('@/shared/platform/voice/local-wake-word/sherpa.native');
 
-    assert.equal(sherpa.loadSherpaRuntime(), runtime);
+    assert.equal(sherpa.loadSherpaRuntime(() => runtime), runtime);
   });
 });

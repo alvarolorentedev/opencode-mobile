@@ -379,10 +379,16 @@ npm run validate:commit
   Vitest collection retained every prior test identity and added four
   fast-check properties for connection transitions, session statuses and
   transcript merging and ordering. All 25 affected browser flows passed.
-- F3. Prompt inbox recovery and transcript paging tests use the production
+- F3, `d4615f2d`. Prompt inbox recovery and transcript paging tests use the production
   controllers, Zustand store and Query cache. The obsolete React controller
   hooks are deleted. Catalog, notification, favorite and native voice service
   tests import their modules through Vitest. All 34 affected browser flows
+  passed.
+- F4. Keyboard, gesture, icon, list row and voice setup tests now use real
+  React. The background notification and native voice model suites import
+  their implementations directly. Discovery and typechecking now include
+  the existing TSX voice settings suite. Its two cases passed, giving
+  1,295 passing tests and one existing skip. Storybook and FOSS preparation
   passed.
 
 ## Loop protocol

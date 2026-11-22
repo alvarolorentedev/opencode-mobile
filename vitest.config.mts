@@ -9,7 +9,7 @@ const root = path.dirname(fileURLToPath(import.meta.url));
 // protocol modules are replaced with `vi.mock` per suite.
 export default defineConfig({
   test: {
-    include: ['tests/vitest/**/*.test.ts', 'features/**/__tests__/**/*.test.ts', 'shared/**/__tests__/**/*.test.ts', 'runtime/**/__tests__/**/*.test.ts'],
+    include: ['tests/vitest/**/*.test.{ts,tsx}', 'features/**/__tests__/**/*.test.{ts,tsx}', 'shared/**/__tests__/**/*.test.{ts,tsx}', 'runtime/**/__tests__/**/*.test.{ts,tsx}'],
     exclude: [...configDefaults.exclude, '**/._*'],
     environment: 'node',
     globals: false,

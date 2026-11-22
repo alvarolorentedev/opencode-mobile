@@ -57,7 +57,7 @@ describe('voice settings variant visibility', () => {
     expect(all(runtime.value, 'VoiceInputSetup')).toHaveLength(0);
     expect(all(runtime.value, 'VoiceFlowScreen')).toHaveLength(0);
     expect(all(runtime.value, 'LocalTtsSection')).toHaveLength(0);
-    expect(all(runtime.value, 'SettingSelectField')).toHaveLength(2);
+    expect(all(runtime.value, 'Select')).toHaveLength(2);
   });
 
   it('keeps both local mode selectors in non-FOSS builds', async () => {

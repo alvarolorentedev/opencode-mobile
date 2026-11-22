@@ -1,51 +1,46 @@
-import { describe, expect, it, vi } from 'vitest';
+// @vitest-environment happy-dom
 
-import { hookRuntime, loadTs } from '../../../tests/helpers/runtime.mjs';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-async function loadHook() {
-  const runtime = hookRuntime();
-  const dismiss = vi.fn();
-  const { useDismissKeyboardOnOpen } = await loadTs('shared/ui/hooks/use-dismiss-keyboard-on-open.ts', {
-    react: runtime.react,
-    'react-native': { Keyboard: { dismiss } },
-  });
-  return { runtime, dismiss, useDismissKeyboardOnOpen };
-}
+import { useDismissKeyboardOnOpen } from '@/shared/ui/hooks/use-dismiss-keyboard-on-open';
+import { renderHook } from '../../../tests/helpers/render-hook';
+
+const { dismiss } = vi.hoisted(() => ({ dismiss: vi.fn() }));
+vi.mock('react-native', () => ({ Keyboard: { dismiss } }));
 
 type Props = { visible: boolean; enabled?: boolean };
 
-describe('useDismissKeyboardOnOpen', () => {
-  it('dismisses when the overlay opens and again after reopening', async () => {
-    const { runtime, dismiss, useDismissKeyboardOnOpen } = await loadHook();
-    const useHook = (props: Props) => useDismissKeyboardOnOpen(props.visible, props.enabled ?? true);
+function useHook({ visible, enabled = true }: Props) { useDismissKeyboardOnOpen(visible, enabled); }
 
-    runtime.mount(useHook, { visible: false });
+describe('useDismissKeyboardOnOpen', () => {
+  beforeEach(() => dismiss.mockClear());
+  it('dismisses when the overlay opens and again after reopening', async () => {
+
+    const runtime = renderHook(useHook, { visible: false });
     expect(dismiss).not.toHaveBeenCalled();
 
-    runtime.update({ visible: true });
+    runtime.rerender({ visible: true });
     expect(dismiss).toHaveBeenCalledTimes(1);
 
     // Re-rendering an already open overlay must not dismiss the keyboard again.
-    runtime.update({ visible: true });
+    runtime.rerender({ visible: true });
     expect(dismiss).toHaveBeenCalledTimes(1);
 
-    runtime.update({ visible: false });
+    runtime.rerender({ visible: false });
     expect(dismiss).toHaveBeenCalledTimes(1);
 
-    runtime.update({ visible: true });
+    runtime.rerender({ visible: true });
     expect(dismiss).toHaveBeenCalledTimes(2);
   });
 
   it('dismisses when a sheet mounts already visible', async () => {
-    const { runtime, dismiss, useDismissKeyboardOnOpen } = await loadHook();
-    runtime.mount((props: Props) => useDismissKeyboardOnOpen(props.visible, props.enabled ?? true), { visible: true });
+    renderHook(useHook, { visible: true });
     expect(dismiss).toHaveBeenCalledTimes(1);
   });
 
   it('leaves the keyboard alone when the sheet opts out', async () => {
-    const { runtime, dismiss, useDismissKeyboardOnOpen } = await loadHook();
-    runtime.mount((props: Props) => useDismissKeyboardOnOpen(props.visible, props.enabled ?? true), { visible: false, enabled: false });
-    runtime.update({ visible: true });
+    const runtime = renderHook(useHook, { visible: false, enabled: false });
+    runtime.rerender({ visible: true, enabled: false });
     expect(dismiss).not.toHaveBeenCalled();
   });
 });

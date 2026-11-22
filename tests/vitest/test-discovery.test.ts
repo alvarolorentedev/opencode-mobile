@@ -11,7 +11,7 @@ function testFiles(dir: string): string[] {
   return readdirSync(path.join(root, dir), { withFileTypes: true }).flatMap((entry) => {
     if (entry.name.startsWith('._')) return [];
     const file = `${dir}/${entry.name}`;
-    return entry.isDirectory() ? testFiles(file) : file.endsWith('.test.ts') ? [file] : [];
+    return entry.isDirectory() ? testFiles(file) : /\.test\.tsx?$/.test(file) ? [file] : [];
   });
 }
 

@@ -6,7 +6,12 @@ import Constants from 'expo-constants';
 let runtime: SherpaRuntime | undefined;
 let loadAttempted = false;
 
-export function loadSherpaRuntime(): SherpaRuntime | undefined {
+function loadNativeModule(): SherpaRuntime {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  return require('@siteed/sherpa-onnx.rn').default as SherpaRuntime;
+}
+
+export function loadSherpaRuntime(loadModule = loadNativeModule): SherpaRuntime | undefined {
   if (loadAttempted) {
     return runtime;
   }
@@ -16,8 +21,7 @@ export function loadSherpaRuntime(): SherpaRuntime | undefined {
     return undefined;
   }
   try {
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
-    runtime = require('@siteed/sherpa-onnx.rn').default as SherpaRuntime;
+    runtime = loadModule();
   } catch {
     runtime = undefined;
   }
