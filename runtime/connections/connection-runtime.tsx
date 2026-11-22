@@ -1,6 +1,5 @@
 import { buildClient, type OpencodeConnectionSettings } from '@/shared/protocol/opencode/client';
-import { isServerConnectedEvent, serverDataResources } from '@/shared/protocol/opencode/server-data-events';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQuery } from '@tanstack/react-query';
 import { createContext, useCallback, useContext, useEffect, useLayoutEffect, useMemo, useRef, useSyncExternalStore, type PropsWithChildren } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { TFunction } from 'i18next';
@@ -14,7 +13,6 @@ import { useQueryActivity, useQueryForeground, useQueryIdentity } from '@/shared
 import { readSessionStats } from '@/shared/protocol/services/session-stats';
 import type { SessionStatsSource } from '@/shared/server-data/session-stats';
 import { useActiveSessions, useMissionActivity } from '@/features/sessions/runtime';
-import { useCoalescedRefresh } from '@/runtime/realtime/use-coalesced-refresh';
 import type { ConnectSetup } from '@/shared/contracts/cloud-link-setup';
 import type { ConnectionRecord, WorkspaceCatalog } from '@/shared/contracts/workspace';
 import type { Project } from '@/shared/protocol/opencode/types';
@@ -33,7 +31,6 @@ const IDLE: ConnectionLifecycle = { phase: 'idle', operation: 0, connection: { s
 const readIdle = () => IDLE;
 const readNoRetry = () => NO_RETRY;
 const noSubscription = () => () => {};
-const noAuthFailure = () => {};
 
 export function useConnectionRegistryBinding(setup: ConnectSetup, updateSettings: (id: string, settings: OpencodeConnectionSettings) => void, hydrated: boolean) {
   const { connections } = useAppCore();
@@ -66,44 +63,20 @@ function useManagedConnection(entry: ConnectionRecord) {
     connection: entry.enabled ? state.connection : IDLE.connection,
     serverContract: state.contract,
     connect,
-    handleStreamAuthFailure: manager?.handleStreamAuthFailure ?? noAuthFailure,
     onInvalidated: manager?.onInvalidated ?? noSubscription,
     reconnect,
+    manager,
   }), [connect, entry.enabled, manager, reconnect, state.connection, state.contract]);
 }
 
 type Handle = ReturnType<typeof useManagedConnection> & { catalogClient: ReturnType<typeof buildClient>; catalog: WorkspaceCatalog; isCurrentCatalogClient: (client: object) => boolean };
 const ConnectionRuntimeContext = createContext<Handle | null>(null);
 export function ConnectionRuntime({ entry, online, onCatalog, libraryVisible, missionVisible, children }: PropsWithChildren<{ entry: ConnectionRecord; online: boolean; libraryVisible: boolean; missionVisible?: boolean; onCatalog: (id: string, catalog: WorkspaceCatalog) => void }>) {
-  const cache = useQueryClient();
-  const dirty = useRef(new Map<string, Set<string>>());
-  const flush = useCoalescedRefresh(async () => {
-    const changes = new Map(dirty.current); dirty.current.clear();
-    await cache.invalidateQueries({ predicate: (query) => {
-      const key = query.queryKey;
-      if (key[0] !== 'opencode' || key[1] !== entry.id) return false;
-      const resource = String(key[key[5] === 'server' ? 6 : 7]);
-      return key[5] === 'server' ? [...changes.values()].some((resources) => resources.has(resource))
-        : changes.get(String(key[6]))?.has(resource) === true || changes.get('')?.has(resource) === true;
-    } });
-  }, 250);
-  useLayoutEffect(() => {
-    let connected = false;
-    return entry.events.observe((event) => {
-    if (isServerConnectedEvent(event)) {
-      if (!connected) { connected = true; return; }
-    }
-    const resources = serverDataResources(event);
-    if (!resources.length) return;
-    const directory = event.location?.directory ?? '';
-    const pending = dirty.current.get(directory) ?? new Set<string>();
-    resources.forEach((resource) => pending.add(resource)); dirty.current.set(directory, pending); flush();
-  });
-  }, [entry.events, flush]);
   const lifecycle = useManagedConnection(entry);
   const identity = useQueryIdentity();
   const active = useQueryActivity();
-  const catalogClient = useMemo(() => buildClient({ ...entry.settings, directory: '' }, lifecycle.serverContract), [entry.settings, lifecycle.serverContract]);
+  const catalogClient = useMemo(() => lifecycle.manager?.getCatalogClient() ?? buildClient({ ...entry.settings, directory: '' }, lifecycle.serverContract),
+    [entry.settings, lifecycle.manager, lifecycle.serverContract]);
   const current = useRef(catalogClient);
   useLayoutEffect(() => { current.current = catalogClient; });
   const isCurrentCatalogClient = useCallback((client: object) => entry.enabled && client === current.current, [entry.enabled]);
@@ -127,15 +100,6 @@ export function ConnectionRuntime({ entry, online, onCatalog, libraryVisible, mi
   const catalog = useMemo(() => ({ ...sessionCatalog, mission: { ...mission, stats } }), [sessionCatalog, mission, stats]);
   const { refreshActiveSessions } = sessions;
   useEffect(() => { if (lifecycle.connection.status === 'connected') void refreshActiveSessions(); }, [lifecycle.connection.status, refreshActiveSessions]);
-  // Warm the connection-wide project list once per connect. Project queries
-  // are demand-gated per runtime, so without this a picker opened for a
-  // connection the user has not focused yet would stay empty. The list is
-  // small; mounted runtimes pick the cached result up through their shared
-  // query key and realtime invalidation still reconciles it.
-  useEffect(() => {
-    if (lifecycle.connection.status !== 'connected') return;
-    void cache.fetchQuery(projectsOptions(identity, catalogClient)).catch(() => undefined);
-  }, [cache, catalogClient, identity, lifecycle.connection.status]);
   useLayoutEffect(() => { onCatalog(entry.id, catalog); }, [catalog, entry.id, onCatalog]);
   const value = useMemo(() => ({ ...lifecycle, catalogClient, catalog, isCurrentCatalogClient }), [lifecycle, catalogClient, catalog, isCurrentCatalogClient]);
   return <ConnectionRuntimeContext.Provider value={value}>{children}</ConnectionRuntimeContext.Provider>;

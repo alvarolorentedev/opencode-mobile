@@ -24,6 +24,10 @@ vi.mock('@/shared/protocol/opencode/client', () => ({
   isRetryableCloudLinkStartupError: () => false,
 }));
 
+const events = (async function* (_client: unknown, signal: AbortSignal) {
+  if (!signal.aborted) await new Promise<void>((resolve) => signal.addEventListener('abort', () => resolve(), { once: true }));
+}) as ConnectionInput['entry']['events'];
+
 afterEach(() => { vi.useRealTimers(); vi.resetAllMocks(); });
 
 describe('connection manager', () => {
@@ -43,7 +47,7 @@ describe('connection manager', () => {
     let stopConnection: (() => void) | undefined;
     let joined: ReturnType<typeof manager.connect> | undefined;
     const input: ConnectionInput = {
-      entry: { id: 'machine', enabled: true, revision: 0, name: 'Machine', settings, preferences: {}, projects: [''], events: {} as ConnectionInput['entry']['events'] },
+      entry: { id: 'machine', enabled: true, revision: 0, name: 'Machine', settings, preferences: {}, projects: [''], events },
       identity: { connectionId: 'machine', connectionScope: 'original-scope', authRevision: 0 },
       hydrated: false,
       setup: { phase: 'waitingForApproval', prepareSettings },
@@ -75,7 +79,8 @@ describe('connection manager', () => {
 
     stopRenewal?.();
     stopConnection?.();
-    expect(removeForegroundListener).toHaveBeenCalledTimes(2);
+    manager.dispose();
+    expect(removeForegroundListener).toHaveBeenCalledTimes(3);
     expect(vi.getTimerCount()).toBe(0);
     cache.clear();
   });
@@ -94,7 +99,7 @@ describe('connection manager', () => {
       createManager, setup: { phase: 'idle', prepareSettings: async (input) => input },
       translate: (key) => key, hydrated: true, updateSettings: vi.fn(),
     });
-    const a = { id: 'a', name: 'A', enabled: true, settings, projects: [''], preferences: {}, events: {} as ConnectionInput['entry']['events'] };
+    const a = { id: 'a', name: 'A', enabled: true, settings, projects: [''], preferences: {}, events };
     const b = { ...a, id: 'b', name: 'B', enabled: false };
     const { setRegistry, setShellValue } = store.getState();
     setRegistry({ connections: [a, b] });

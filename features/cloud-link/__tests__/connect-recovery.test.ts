@@ -133,10 +133,17 @@ async function fixture({ expired = false, missing = false, storedSession = true,
   const retry = await loadTs('runtime/connections/retry.ts', {
     '@/shared/protocol/opencode/client/errors': { isRetryableConnectionFailure: () => true },
   }, globals);
+  const events = async function* (_client: unknown, signal: AbortSignal) {
+    if (!signal.aborted) await new Promise<void>((resolve) => signal.addEventListener('abort', () => resolve(), { once: true }));
+  };
   const { createConnection } = await loadTs('runtime/connections/create-connection.ts', {
     ...imports,
     './connection-lifecycle': lifecycleManager,
     './retry': retry,
+    '@/shared/protocol/opencode/client/errors': {
+      classifyConnectionFailure: imports['@/shared/protocol/opencode/client'].classifyConnectionFailure,
+      isAuthConnectionFailure: (kind: string) => kind === 'auth' || kind === 'entitlement',
+    },
     "@/shared/protocol/services/session-service": { listServerProjects: async () => { catalogs++; if (catalogFailure) throw new Error(typeof catalogFailure === 'string' ? catalogFailure : 'offline'); return []; }, readCatalogLocation: async () => ({ currentProjectPath: '/fixture', serverRootPath: '/fixture', project: { id: 'p', worktree: '/fixture' } }), combineProjectCatalog: (_: any, serverProjects: any, location: any) => ({ ...location, serverProjects }) }
   }, globals);
   const manager = createConnection({
@@ -177,11 +184,12 @@ async function fixture({ expired = false, missing = false, storedSession = true,
     const state = runtime.react.useSyncExternalStore(manager.subscribe, manager.getState) as { connection: { status: string; message?: string }; contract: string };
     const id = scope.getConnectionUiScope(settings);
     runtime.react.useLayoutEffect(() => manager.setInput({
-      entry: { id, settings, enabled: true, revision: revision.current, projects: ['/fixture'], preferences: {}, events: {} },
+      entry: { id, settings, enabled: true, revision: revision.current, projects: ['/fixture'], preferences: {}, events },
       identity: { connectionId: 'test', connectionScope: 'scope', authRevision: 0 },
       setup: connectSetup, translate: (key: string) => key, hydrated: true, updateSettings: changeSettings,
     }));
     runtime.react.useEffect(() => manager.syncConnection(), [id, revision.current, settings]);
+    runtime.react.useEffect(() => () => manager.dispose(), []);
     const renewalPaused = connectSetup.phase === 'waitingForApproval' || connectSetup.phase === 'delayed';
     runtime.react.useEffect(() => manager.syncRenewal(), [id, settings.connect, settings.password, renewalPaused]);
     const result = { connection: state.connection, serverContract: state.contract, connect: manager.connect, onInvalidated: manager.onInvalidated, handleStreamAuthFailure: manager.handleStreamAuthFailure };

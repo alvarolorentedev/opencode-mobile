@@ -103,10 +103,15 @@ npm run validate:commit
   The 19 focused tests, docs, web export and all 68 Cloud Link, manual
   connection and multi-server browser tests passed. The registry test covers
   revision changes, credential partitions, disable, removal and teardown.
-- B3a. The commit gate reported 1,259 passing tests and one existing skip.
+- B3a, `3c72d13d`. The commit gate reported 1,259 passing tests and one existing skip.
   The 11 focused tests, docs, web export and all 60 Cloud Link, manual
   connection and network resilience browser tests passed. The retry policy
   suite verifies the attempt budget, the radio settling delay and cancellation.
+- B3b. The commit gate, nine focused tests, docs, both fake-server self-tests,
+  and the development web export passed. All 72 connection, realtime,
+  network resilience and multi-server browser tests passed. The realtime
+  test joins a second project to the same SSE subscription and verifies
+  directory isolation.
 
 ## Loop protocol
 

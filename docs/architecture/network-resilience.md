@@ -120,8 +120,11 @@ cancel its own wait without cancelling another caller's token rotation.
 
 ## Realtime and polling
 
-`runtime/realtime/use-opencode-realtime.ts` keeps SSE primary and polling as a safety
-net.
+The connection manager starts one SSE reader in `runtime/realtime/transport.ts`
+while the server is connected and the link is online. Retained projects
+register reconciliation and event callbacks with `runtime/realtime/create-realtime.ts`.
+Project events route by directory, and Mission Control and widgets observe
+the same stream. Polling is the safety net.
 
 - A stream attempt has a first-byte/connect timeout (15 s).
 - Reconnect backoff starts at 1 s and caps at 15 s, with jitter above the first

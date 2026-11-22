@@ -13,6 +13,8 @@ import * as realtimeLiveness from '@/runtime/realtime/liveness';
 import * as realtimePolling from '@/runtime/realtime/polling';
 import * as realtimeReconcile from '@/runtime/realtime/reconcile';
 import { createAppStore, type AppState } from '@/runtime/core/store';
+import type { RealtimeScopeInput } from '@/runtime/realtime/create-realtime';
+import type { ConnectionFailureKind } from '@/shared/protocol/opencode/client';
 
 const realtimeDeps = {
     '@/runtime/realtime/backoff': realtimeBackoff,
@@ -20,6 +22,43 @@ const realtimeDeps = {
     '@/runtime/realtime/polling': realtimePolling,
     '@/runtime/realtime/reconcile': realtimeReconcile
   };
+
+const idleAppState = { currentState: 'active', addEventListener: (_event: string, _callback: (state: string) => void) => ({ remove() {} }) };
+
+async function loadRealtime(runtime: ReturnType<typeof hookRuntime>, appState = idleAppState, now = Date.now,
+  classifyConnectionFailure: (error: unknown) => ConnectionFailureKind = () => 'unknown',
+  onFatalError: (kind: ConnectionFailureKind) => void = () => {}) {
+  const { createRealtime } = await loadTs('runtime/realtime/create-realtime.ts', {
+    ...realtimeDeps,
+    '@/shared/network/realtime-timing': {
+      SSE_STALENESS_MS: 90_000, SSE_BUSY_STALENESS_MS: 90_000, SSE_FOREGROUND_CYCLE_MS: 15_000,
+      WATCHDOG_TICK_MS: 7000, SSE_CONNECT_TIMEOUT_MS: 15_000, SSE_STABLE_MS: 5000,
+    },
+    '@/shared/protocol/opencode/client/errors': {
+      classifyConnectionFailure,
+      isAuthConnectionFailure: (kind: string) => kind === 'auth' || kind === 'entitlement',
+    },
+    '@/shared/observability/client': { telemetry: { warn() {} } },
+  }, { ...runtime.globals, Date: class extends Date { static now() { return now(); } } });
+  const socket = createRealtime({
+    isActive: () => appState.currentState === 'active',
+    subscribe: (callback: (active: boolean) => void) => appState.addEventListener('change', (state) => callback(state === 'active')).remove,
+  }, onFatalError) as ReturnType<typeof import('@/runtime/realtime/create-realtime').createRealtime>;
+  runtime.mount(() => undefined, {});
+  return {
+    ...socket,
+    shouldPoll: realtimePolling.shouldPoll,
+    mount(client: any, initial: RealtimeScopeInput) {
+      let input = initial;
+      const scope = socket.createScope();
+      scope.update(input);
+      socket.setTransport({ client, subscribe: async function* (_instance, signal) {
+        yield* await client.api.event.subscribe({ signal });
+      } });
+      return { update: (patch: Partial<RealtimeScopeInput>) => { input = { ...input, ...patch }; scope.update(input); } };
+    },
+  };
+}
 
 describe('provider runtime actions', () => {
   it('provider runtime actions', async () => {
@@ -256,7 +295,7 @@ assert.equal(ledgerHelpers.deriveTodosFromMessages(todoLedger.s)[0].status, 'com
 assert.equal(usageLedger.s.length, 2, 'updated/replayed calls must not duplicate usage');
 assert.ok(Math.abs(ledgerHelpers.aggregateUsageSteps(usageLedger.s).cost - 0.3) < 1e-10);
 
-// Real realtime hook: connected busy polling, reconnect reconciliation,
+// Real connection realtime manager: connected busy polling, reconnect reconciliation,
 // backpressure, stable subscriptions, and cancellation of reconnect timers.
 const runtime = hookRuntime();
 let events: any[] = [], wake: any, subscriptions = 0, sessionsRefreshed = 0, pendingRefreshed = 0;
@@ -271,42 +310,42 @@ const catalogClient = { api: { event: { async subscribe({ signal }: any) {
     }
   })();
 } } } };
-const realtime = await loadTs('runtime/realtime/use-opencode-realtime.ts', {
-    ...realtimeDeps,
-    react: runtime.react,
-    'react-native': { AppState: { currentState: 'active', addEventListener: () => ({ remove() {} }) } },
-    "@/shared/network/realtime-timing": { SSE_STALENESS_MS: 90000, SSE_FOREGROUND_CYCLE_MS: 15000, WATCHDOG_TICK_MS: 7000 },
-    "@/shared/protocol/opencode/client/errors": { classifyConnectionFailure: () => 'unknown', isAuthConnectionFailure: () => false },
-    "@/shared/protocol/opencode/contracts/events": { subscribeEvents: async function* (client: any, signal: any) { yield* await client.api.event.subscribe({ signal }); } }
-  }, runtime.globals);
+const realtime = await loadRealtime(runtime);
 assert.equal(realtime.shouldPoll(true, false), false);
 assert.equal(realtime.shouldPoll(true, true), true);
 assert.equal(realtime.shouldPoll(false, false), true);
 let nativeSurfacesRefreshed = 0;
 const inputs = {
   refreshNativeSurfaces: async () => { nativeSurfacesRefreshed++; },
-  catalogClient, activeProjectPath: '/repo', connected: true, busy: false, currentSessionId: 's',
+  projectPath: '/repo', busy: false, currentSessionId: 's',
   onEvent: (event: any) => events.push(event.type),
   refreshSessions: async () => { sessionsRefreshed++; await heldRefresh?.promise; },
   refreshPendingInteractions: async () => { pendingRefreshed++; },
   refreshMessages: async () => {}, refreshSessionDiff: async () => {}, refreshSessionTodos: async () => {},
 };
-runtime.mount(realtime.useOpencodeRealtime, inputs); await runtime.settle();
+const scope = realtime.mount(catalogClient, inputs); await runtime.settle();
 wake({ location: { directory: '/repo' }, type: 'server.connected' }); await runtime.settle();
-assert.equal(runtime.value.eventStreamStatus, 'connected'); assert.equal(sessionsRefreshed, 1); assert.equal(pendingRefreshed, 1);
+assert.equal(realtime.getStatus(), 'connected'); assert.equal(sessionsRefreshed, 1); assert.equal(pendingRefreshed, 1);
 assert.equal(runtime.countTimers(5000), 0, 'idle connected SSE needs no safety poll');
-runtime.update({ busy: true }); runtime.fire(10000); await runtime.settle(); assert.equal(sessionsRefreshed, 2);
+scope.update({ busy: true }); runtime.fire(10000); await runtime.settle(); assert.equal(sessionsRefreshed, 2);
 heldRefresh = deferred(); runtime.fire(10000); await runtime.settle(); runtime.fire(10000); await runtime.settle();
 assert.equal(sessionsRefreshed, 3, 'slow reconciliation cannot overlap with another tick');
 heldRefresh.resolve(); heldRefresh = undefined; await runtime.settle();
-runtime.update({ refreshMessages: async () => {} }); await runtime.settle(); assert.equal(subscriptions, 1, 'changing action identities must not reopen SSE');
-wake(null); await runtime.settle(); assert.equal(runtime.value.eventStreamStatus, 'error');
+scope.update({ refreshMessages: async () => {} }); await runtime.settle(); assert.equal(subscriptions, 1, 'changing action identities must not reopen SSE');
+wake(null); await runtime.settle(); assert.equal(realtime.getStatus(), 'error');
 runtime.fire(1000); await runtime.settle(); assert.equal(subscriptions, 2);
 wake({ location: { directory: '/another-project' }, type: 'server.connected' }); await runtime.settle();
 assert.equal(sessionsRefreshed, 4); assert.equal(pendingRefreshed, 4, 'reconnection always recovers pending interactions');
 assert.equal(nativeSurfacesRefreshed, 4, 'widget reconciliation follows first connect, safety polls and reconnects');
 assert.deepEqual(events, ['server.connected'], 'other-project events are filtered');
-wake(null); await runtime.settle(); runtime.unmount(); assert.equal(runtime.countTimers(1000), 0);
+const secondaryEvents: string[] = [];
+const secondary = realtime.createScope();
+secondary.update({ ...inputs, projectPath: '/another-project', onEvent: (event) => secondaryEvents.push(event.type) });
+wake({ location: { directory: '/another-project' }, type: 'session.updated' }); await runtime.settle();
+assert.equal(subscriptions, 2, 'a second retained project joins the existing stream');
+assert.deepEqual(secondaryEvents, ['session.updated']);
+assert.deepEqual(events, ['server.connected'], 'retained projects still filter by directory');
+wake(null); await runtime.settle(); realtime.dispose(); assert.equal(runtime.countTimers(1000), 0);
 
 // SSE liveness: a stream that goes silent without an error is re-established
 // once per staleness window, a long background return re-verifies the stream,
@@ -327,31 +366,24 @@ wake(null); await runtime.settle(); runtime.unmount(); assert.equal(runtime.coun
     })();
   } } } };
   const appState = { currentState: 'active', addEventListener: (_event: any, listener: any) => { listeners.add(listener); return { remove: () => listeners.delete(listener) }; } };
-  const hook = await loadTs('runtime/realtime/use-opencode-realtime.ts', {
-    ...realtimeDeps,
-    react: liveness.react,
-    'react-native': { AppState: appState },
-    "@/shared/network/realtime-timing": { SSE_STALENESS_MS: 90000, SSE_FOREGROUND_CYCLE_MS: 15000, WATCHDOG_TICK_MS: 7000 },
-    "@/shared/protocol/opencode/client/errors": { classifyConnectionFailure: () => 'unknown', isAuthConnectionFailure: () => false },
-    "@/shared/protocol/opencode/contracts/events": { subscribeEvents: async function* (instance: any, signal: any) { yield* await instance.api.event.subscribe({ signal }); } }
-  }, { ...liveness.globals, Date: class extends Date { static now() { return now; } } });
+  const socket = await loadRealtime(liveness, appState, () => now);
   const inputs = {
-    catalogClient: client, activeProjectPath: '/repo', connected: true, busy: false, currentSessionId: 's',
+    projectPath: '/repo', busy: false, currentSessionId: 's',
     onEvent: () => {}, refreshSessions: async () => { sessions++; await heldSessions?.promise; },
     refreshPendingInteractions: async () => { pending++; },
     refreshMessages: async (_id: any, _silent: any, options: any) => { messageModes.push(options?.mode); },
     refreshSessionDiff: async () => {}, refreshSessionTodos: async () => {},
   };
-  liveness.mount(hook.useOpencodeRealtime, inputs); await liveness.settle();
+  const scope = socket.mount(client, inputs); await liveness.settle();
   wake({ location: { directory: '/repo' }, type: 'server.connected' }); await liveness.settle();
-  assert.equal(liveness.value.eventStreamStatus, 'connected');
+  assert.equal(socket.getStatus(), 'connected');
   assert.equal(subscriptions, 1); assert.equal(sessions, 1); assert.equal(pending, 1);
   now += 89_000; liveness.fire(7000); await liveness.settle();
   assert.equal(subscriptions, 1, 'a stream inside the staleness window is left alone');
   now += 2_000; liveness.fire(7000); await liveness.settle();
   assert.equal(subscriptions, 2, 'a silent stream is re-established after the window');
   wake({ location: { directory: '/repo' }, type: 'server.connected' }); await liveness.settle();
-  assert.equal(liveness.value.eventStreamStatus, 'connected');
+  assert.equal(socket.getStatus(), 'connected');
   [...listeners].forEach((listener: any) => listener('background'));
   now += 16_000;
   [...listeners].forEach((listener: any) => listener('active'));
@@ -360,7 +392,7 @@ wake(null); await runtime.settle(); runtime.unmount(); assert.equal(runtime.coun
   wake({ location: { directory: '/repo' }, type: 'server.connected' }); await liveness.settle();
   messageModes.length = 0;
   heldSessions = deferred<void>();
-  liveness.update({ busy: true }); liveness.fire(10000); await liveness.settle();
+  scope.update({ busy: true }); liveness.fire(10000); await liveness.settle();
   assert.deepEqual(messageModes, [], 'the busy safety poll trusts the live stream');
   wake(null); await liveness.settle(); liveness.fire(1000); await liveness.settle();
   assert.equal(subscriptions, 4);
@@ -377,7 +409,7 @@ wake(null); await runtime.settle(); runtime.unmount(); assert.equal(runtime.coun
   await liveness.settle();
   assert.equal(subscriptions, 4, 'a short background return keeps the live stream');
   assert.ok(sessions > sessionsBeforeForeground, 'a foreground return re-asserts sessions without a restart');
-  liveness.unmount();
+  socket.dispose();
 }
 
 // Revocation: an authentication failure stops the stream, notifies the
@@ -386,27 +418,21 @@ wake(null); await runtime.settle(); runtime.unmount(); assert.equal(runtime.coun
   const revoked = hookRuntime();
   let fatal = 0, subscriptions = 0;
   const client = { api: { event: { async subscribe() { subscriptions++; throw new Error('401 credentials rejected'); } } } };
-  const hook = await loadTs('runtime/realtime/use-opencode-realtime.ts', {
-    ...realtimeDeps,
-    react: revoked.react,
-    'react-native': { AppState: { currentState: 'active', addEventListener: () => ({ remove() {} }) } },
-    "@/shared/network/realtime-timing": { SSE_STALENESS_MS: 90000, SSE_FOREGROUND_CYCLE_MS: 15000, WATCHDOG_TICK_MS: 7000 },
-    "@/shared/protocol/opencode/client/errors": { classifyConnectionFailure: (error: any) => /401|credential/i.test(String(error?.message)) ? 'auth' : 'unknown', isAuthConnectionFailure: (kind: any) => kind === 'auth' || kind === 'entitlement' },
-    "@/shared/protocol/opencode/contracts/events": { subscribeEvents: async function* (instance: any, signal: any) { yield* await instance.api.event.subscribe({ signal }); } }
-  }, revoked.globals);
-  revoked.mount(hook.useOpencodeRealtime, {
-    catalogClient: client, activeProjectPath: '/repo', connected: true, busy: true, currentSessionId: 's',
-    onFatalError: (kind: any) => { fatal++; assert.equal(kind, 'auth'); },
+  const socket = await loadRealtime(revoked, idleAppState, Date.now,
+    (error) => /401|credential/i.test(String((error as Error)?.message)) ? 'auth' : 'unknown',
+    (kind) => { fatal++; assert.equal(kind, 'auth'); });
+  socket.mount(client, {
+    projectPath: '/repo', busy: true, currentSessionId: 's',
     onEvent: () => {}, refreshSessions: async () => {}, refreshPendingInteractions: async () => {},
     refreshMessages: async () => {}, refreshSessionDiff: async () => {}, refreshSessionTodos: async () => {},
   });
   await revoked.settle();
-  assert.equal(revoked.value.eventStreamStatus, 'error');
+  assert.equal(socket.getStatus(), 'error');
   assert.equal(fatal, 1); assert.equal(subscriptions, 1);
   revoked.fire(1000); await revoked.settle(); revoked.fire(15000); await revoked.settle();
   assert.equal(subscriptions, 1, 'revoked credentials must not retry the stream');
   assert.equal(fatal, 1, 'the provider is notified once');
-  revoked.unmount();
+  socket.dispose();
 }
 
 // Conversation state machine runs against stubbed speech/platform boundaries.

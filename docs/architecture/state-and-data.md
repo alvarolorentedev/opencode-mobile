@@ -1144,7 +1144,7 @@ A rewrite that only mirrors persisted values would still miss important runtime 
 
 ## Realtime Recovery Ownership
 
-`use-opencode-realtime.ts`, composed by the provider, reconciles session/status,
+The connection's `createRealtime` coordinator reconciles session/status,
 pending permission/question lists, and selected/conversation message, diff, and
 todo snapshots on the first envelope of every subscription, including reconnects.
 Only one reconciliation runs at a time, and a reconnect pass is queued behind an

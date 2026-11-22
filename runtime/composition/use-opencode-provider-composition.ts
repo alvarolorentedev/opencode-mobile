@@ -18,7 +18,7 @@ import { useConversationState } from '@/features/voice/runtime';
 import { useExtensionsState , useMcpState } from '@/features/extensions/runtime';
 import { useOpencodeProviderEffects } from '@/runtime/composition/use-opencode-provider-effects';
 import { useOpencodeProviderReset } from '@/runtime/composition/use-opencode-provider-reset';
-import { useOpencodeRealtime } from '@/runtime/realtime/use-opencode-realtime';
+import { useWorkspaceRealtime } from '@/runtime/realtime/use-workspace-realtime';
 import { useProjectActions } from '@/runtime/composition/use-project-actions';
 import { useDiffCatalog , useMessageCatalog , usePromptInbox , usePromptLifecycle , useTranscriptReadErrors , useTranscriptState } from '@/features/chat/runtime';
 import { useTerminalState } from '@/features/terminal/runtime';
@@ -302,12 +302,8 @@ export function useOpencodeProviderComposition(input: WorkspaceRuntimeInput) {
     streamConnectedRef,
   });
 
-  const { eventStreamStatus } = useOpencodeRealtime({
-    catalogClient,
-    subscribe: input.connection.events,
-    activeProjectPath: state.activeProjectPath,
-    connected: state.connection.status === 'connected',
-    online: network.online,
+  const eventStreamStatus = useWorkspaceRealtime(connectionRuntime.manager?.realtime, {
+    projectPath: state.activeProjectPath,
     constrained: network.constrained,
     pendingSessionIds: Object.keys(inbox.pendingPromptsBySession).filter((id) => inbox.pendingPromptsBySession[id].length > 0),
     busy: Object.values(inbox.pendingPromptsBySession).some((prompts) => prompts.length > 0) || prompt.sendingState.active || conversationPhase !== 'off' || Object.values(sessionCatalog.sessionStatuses).some((status) => status.type !== 'idle'),
@@ -315,7 +311,6 @@ export function useOpencodeProviderComposition(input: WorkspaceRuntimeInput) {
     conversationSessionId,
     onEvent: handleEvent,
     onGlobalEvent: handleActivityEvent,
-    onFatalError: connectionActions.handleStreamAuthFailure,
     refreshSessions: project.refreshSessions,
     refreshSessionStatuses: project.refreshSessionStatuses,
     refreshPendingInteractions: project.refreshPendingInteractions,

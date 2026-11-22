@@ -331,8 +331,8 @@ The completion version, preference schema and first-run migration are unchanged.
 - `features/voice/state/use-conversation-state.ts`
   Conversation input/readback orchestration, wake-phrase-gated speech
   submission, immediate input re-arm, timers, and cleanup.
-- `runtime/realtime/use-opencode-realtime.ts`
-  SSE transport/backoff, first-connect and reconnect reconciliation, and the
+- `runtime/realtime/transport.ts` and `runtime/realtime/create-realtime.ts`
+  Connection SSE/backoff, project first-connect and reconnect reconciliation, and the
   safety poll (adaptive while busy; 5s/10s base by stream state, offline pause).
   The stream has a first-byte timeout, jittered backoff, stable-stream reset,
   and a 45s busy / 60s idle keepalive-based staleness window. See

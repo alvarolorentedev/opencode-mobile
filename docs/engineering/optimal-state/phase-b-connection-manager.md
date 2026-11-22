@@ -2,8 +2,9 @@
 
 Status: **in progress**. The plain managers own probe and credential renewal.
 The app-core registry owns their lifetimes and credential partitions. Managers
-schedule direct reconnect retry and demand-driven stale Query refresh. SSE,
-event invalidation and polling wiring remain.
+schedule direct reconnect retry, demand-driven stale Query refresh, a single
+SSE subscription, event invalidation and project polling. The connection
+catalog projection still wraps each group of retained project adapters.
 
 Goal: move probe, credential renewal, SSE, polling, status refresh and event
 dispatch out of React. One plain-TS manager per connection, started and stopped

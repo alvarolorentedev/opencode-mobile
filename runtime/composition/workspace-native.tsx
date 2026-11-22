@@ -24,16 +24,8 @@ export function WorkspaceNative({ runtime, preferences, ready, busy, active = tr
   useEffect(() => {
     const entry = registry.connections.find((item) => item.settings === runtime.native.settings);
     if (!entry || !connected) return;
-    const controller = new AbortController();
-    void (async () => {
-      while (!controller.signal.aborted) {
-        try { for await (const event of entry.events(runtime.catalogClient, controller.signal)) handleWidgetEvent(event); }
-        catch { /* Keep the last widget snapshot during transport recovery. */ }
-        if (!controller.signal.aborted) await new Promise((resolve) => setTimeout(resolve, 1000));
-      }
-    })();
-    return () => controller.abort();
-  }, [registry.connections, runtime.catalogClient, runtime.native.settings, connected, handleWidgetEvent]);
+    return entry.events.observe(handleWidgetEvent);
+  }, [registry.connections, runtime.native.settings, connected, handleWidgetEvent]);
   useEffect(() => { if (ready) changeAppLanguage(preferences.language); }, [preferences.language, ready]);
   const phase = runtime.values.conversationValue.conversation.phase;
   useEffect(() => {

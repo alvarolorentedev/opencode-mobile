@@ -77,7 +77,6 @@ export function createConnectionRegistry({ store, queryClient }: { store: AppSto
       const next: ConnectionInput = { ...environment, entry, identity };
       slot.input = next;
       slot.manager.setInput(next);
-      slot.manager.setDemand(queryForeground && activeId === entry.id, online);
       if (previous && (previous.identity.connectionScope !== identity.connectionScope || previous.identity.authRevision !== identity.authRevision)) {
         const old = previous.entry.settings;
         const current = entry.settings;
@@ -93,6 +92,7 @@ export function createConnectionRegistry({ store, queryClient }: { store: AppSto
         slot.stopRenewal?.();
         slot.stopRenewal = slot.manager.syncRenewal();
       }
+      slot.manager.setDemand(queryForeground && activeId === entry.id, online);
     }
     if (changed) notify();
   }

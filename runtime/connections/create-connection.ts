@@ -9,10 +9,13 @@ import { getNormalizedServerUrl, isValidServerUrl } from '@/shared/contracts/ser
 import type { ConnectionRecord } from '@/shared/contracts/workspace';
 import { telemetry } from '@/shared/observability/client';
 import { isCertificateFailureReason, isTlsTrustSupported, probeConnectionTrust } from '@/shared/platform/tls-trust';
-import { buildClient, classifyConnectionFailure, detectServerContract, getCertificateErrorMessage, getConnectionError, isContractMismatchError, isRetryableCloudLinkStartupError, type ConnectionFailureKind, type OpencodeConnectionSettings, type ServerContract } from '@/shared/protocol/opencode/client';
+import { buildClient, classifyConnectionFailure, detectServerContract, getCertificateErrorMessage, getConnectionError, isContractMismatchError, isRetryableCloudLinkStartupError, type ConnectionFailureKind, type OpencodeConnectionSettings, type ScopedOpencodeClient, type ServerContract } from '@/shared/protocol/opencode/client';
 import type { QueryIdentity } from '@/shared/server-data/keys';
+import { createRealtime } from '@/runtime/realtime/create-realtime';
+import type { Foreground } from '@/runtime/realtime/transport';
 
 import { createConnectionLifecycle } from './connection-lifecycle';
+import { createEventInvalidation } from './event-invalidation';
 import { createConnectionRetry } from './retry';
 
 export type ConnectionInput = {
@@ -22,11 +25,6 @@ export type ConnectionInput = {
   hydrated: boolean;
   translate: NonNullable<Parameters<typeof getConnectionError>[2]>;
   updateSettings: (id: string, settings: OpencodeConnectionSettings) => void;
-};
-
-type Foreground = {
-  isActive: () => boolean;
-  subscribe: (listener: (active: boolean) => void) => () => void;
 };
 
 const systemClock = {
@@ -61,9 +59,23 @@ export function createConnection({ queryClient, foreground, clock = systemClock 
   let active = false;
   let online = true;
   let refreshingStale = false;
+  let catalog: { settings: OpencodeConnectionSettings; contract: ServerContract; client: ScopedOpencodeClient } | undefined;
 
   const connectionState = () => lifecycle.getState().connection;
   const retry = createConnectionRetry(connect, clock);
+  const eventInvalidation = createEventInvalidation(queryClient);
+  const realtime = createRealtime(foreground, handleStreamAuthFailure, (event) => {
+    if (input) eventInvalidation.receive(event, input.identity);
+  });
+  function getCatalogClient() {
+    if (!input) return undefined;
+    const { settings } = input.entry;
+    const { contract } = lifecycle.getState();
+    if (catalog?.settings !== settings || catalog.contract !== contract) {
+      catalog = { settings, contract, client: buildClient({ ...settings, directory: '' }, contract) };
+    }
+    return catalog.client;
+  }
   const updateActivity = () => {
     const state = connectionState();
     retry.update(state, active && Boolean(input?.entry.enabled) && !input?.entry.settings.connect, online);
@@ -73,6 +85,8 @@ export function createConnection({ queryClient, foreground, clock = systemClock 
       void queryClient.refetchQueries({ queryKey: ['opencode', entry.id], stale: true, type: 'active' }, { cancelRefetch: false });
     }
     refreshingStale = refresh;
+    const client = entry?.enabled && online && state.status === 'connected' ? getCatalogClient() : undefined;
+    realtime.setTransport(entry && client ? { client, subscribe: entry.events } : undefined);
   };
   const stopActivity = lifecycle.subscribe(updateActivity);
   const invalidateWorkflows = () => { for (const listener of invalidations) listener(); };
@@ -249,14 +263,20 @@ export function createConnection({ queryClient, foreground, clock = systemClock 
   return {
     getState: lifecycle.getState,
     subscribe: lifecycle.subscribe,
-    setInput: (next: ConnectionInput) => { input = next; updateActivity(); },
+    setInput(next: ConnectionInput) {
+      if (input?.entry.events !== next.entry.events || input?.identity.authRevision !== next.identity.authRevision
+        || input?.identity.connectionScope !== next.identity.connectionScope) eventInvalidation.reset();
+      input = next;
+    },
     setDemand(nextActive: boolean, nextOnline: boolean) {
       active = nextActive;
       online = nextOnline;
       updateActivity();
     },
     retry,
-    dispose() { stopActivity(); retry.dispose(); },
+    realtime,
+    getCatalogClient,
+    dispose() { stopActivity(); retry.dispose(); realtime.dispose(); eventInvalidation.reset(); },
     onInvalidated: (listener: () => void) => { invalidations.add(listener); return () => { invalidations.delete(listener); }; },
     connect,
     syncConnection,

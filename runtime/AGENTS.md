@@ -11,8 +11,9 @@ and [feature boundaries](../docs/architecture/feature-boundaries.md).
 - `runtime/workspace/workspace-provider.tsx`: coordinates the app-store registry/focus, root persistence,
   native coordinators, and the single connectivity monitor.
 - `runtime/connections/connection-lifecycle.ts`: plain connection state
-  machine. `create-connection.ts` owns probing and credential renewal. The
-  app core's `registry.ts` follows enabled connections and credential revisions.
+  machine. `create-connection.ts` owns probing, credential renewal, retry, the
+  catalog client, realtime transport and Query invalidation. The app core's
+  `registry.ts` follows enabled connections and credential revisions.
   `connection-runtime.tsx` subscribes to managers and coordinates catalog demand.
 - `runtime/workspace/workspace-runtime.tsx`: retained connection/project branch.
 - `runtime/composition/`: domain wiring, values, reset and cross-feature effects.
