@@ -1,142 +1,181 @@
+// @vitest-environment happy-dom
+
+import { act } from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { deferred, hookRuntime, loadTs } from '../../../tests/helpers/runtime.mjs';
+import { deferred, controlledClock, settleReact } from '../../../tests/helpers/controlled-clock';
+import { renderHook } from '../../../tests/helpers/render-hook';
+import { i18n } from '@/shared/i18n/index';
+import { useShareState } from '@/features/sharing/state/use-share-state';
+import { redirectSystemPath } from '@/features/sharing/model/native-intent';
 import { mergeSharedDraft, parseIncomingShare, type IncomingShareItem } from '@/features/sharing/model/parse';
 
 vi.mock('expo/fetch', () => ({ fetch: (...args: any[]) => (globalThis.fetch as any)(...args) }));
-vi.mock('@/shared/protocol/opencode/client/types', () => ({ defaultConnectionSettings: { serverUrl: 'http://localhost' } }));
-vi.mock('react-native', () => ({ Platform: { OS: 'android' } }));
+const native = vi.hoisted(() => ({
+  getSharedPayloads: vi.fn(),
+  getResolvedSharedPayloadsAsync: vi.fn(),
+  clearSharedPayloads: vi.fn(),
+  listener: undefined as ((state: string) => void) | undefined,
+}));
+vi.mock('react-native', () => ({
+  Platform: { OS: 'android' },
+  AppState: { addEventListener: (_: string, callback: NonNullable<typeof native.listener>) => {
+    native.listener = callback;
+    return { remove() { native.listener = undefined; } };
+  } },
+}));
+vi.mock('expo-sharing', () => native);
+vi.mock('expo-localization', () => ({ getLocales: () => [{ languageTag: 'en-US' }] }));
+
 const item: IncomingShareItem = { value: 'content://1', shareType: 'image', contentUri: 'file:/cache/one%20photo.png', contentType: 'image', originalName: 'photo.png', contentSize: 100 };
-let runtime: ReturnType<typeof hookRuntime>;
-let native: any;
-let input: any;
-let listener: (state: string) => void;
-async function mount(patch = {}) {
-  input = { hydrated: true, connectionScope: 'server', projectPath: '/repo', currentSessionId: 'current',
-    sessions: [{ id: 'current', directory: '/repo', title: 'Current', time: {} }, { id: 'other', directory: '/other', title: 'Other', time: {} }],
-    hideSubagentChats: false, refreshTargets: vi.fn(async () => {}), createSession: vi.fn(async () => ({ id: 'created' })),
-    openSession: vi.fn(async () => ({ ok: true })), ...patch };
-  const { useShareState } = await loadTs('features/sharing/state/use-share-state.ts', {
-    react: runtime.react,
-    'expo-sharing': native,
-    'react-native': { Platform: { OS: 'android' }, AppState: { addEventListener: (_: string, callback: typeof listener) => { listener = callback; return { remove() {} }; } } },
-    "@/shared/i18n/index": { i18n: { t: (key: string) => key } },
-    "@/features/sharing/model/parse": { parseIncomingShare }
-  }, { ...runtime.globals, Date: class extends Date { static now() { return 1000; } } });
-  runtime.mount(useShareState, input);
-  await runtime.settle();
+type Input = Parameters<typeof useShareState>[0];
+let runtime: ReturnType<typeof renderHook<Input, ReturnType<typeof useShareState>>>;
+let input: Input;
+let clock: ReturnType<typeof controlledClock>;
+
+function update(patch: Partial<Input>) {
+  input = { ...input, ...patch };
+  runtime.rerender(input);
+}
+
+function add() {
+  let pending!: Promise<boolean>;
+  act(() => { pending = runtime.result.current.addToChat(); });
+  return pending;
+}
+
+async function addAndSettle() {
+  let result = false;
+  await act(async () => { result = await runtime.result.current.addToChat(); });
+  return result;
+}
+
+async function mount(patch: Partial<Input> = {}) {
+  clock = controlledClock(1000);
+  const sessions = [
+    { id: 'current', directory: '/repo', title: 'Current', time: { created: 0, updated: 0 } },
+    { id: 'other', directory: '/other', title: 'Other', time: { created: 0, updated: 0 } },
+  ] as Input['sessions'];
+  input = {
+    hydrated: true, connectionScope: 'server', projectPath: '/repo', currentSessionId: 'current',
+    sessions, hideSubagentChats: false, refreshTargets: vi.fn(async () => {}),
+    createSession: vi.fn(async () => ({ ...sessions[0], id: 'created' })),
+    openSession: vi.fn(async () => ({ ok: true })), ...patch,
+  };
+  runtime = renderHook(useShareState, input);
+  await settleReact();
 }
 beforeEach(() => {
-  runtime = hookRuntime();
-  native = { getSharedPayloads: vi.fn(() => [item]), getResolvedSharedPayloadsAsync: vi.fn(async () => [item]),
-    clearSharedPayloads: vi.fn(() => native.getSharedPayloads.mockReturnValue([])) };
+  native.getSharedPayloads.mockReset().mockReturnValue([item]);
+  native.getResolvedSharedPayloadsAsync.mockReset().mockResolvedValue([item]);
+  native.clearSharedPayloads.mockReset().mockImplementation(() => native.getSharedPayloads.mockReturnValue([]));
 });
 
 describe('confirmed share handoff', () => {
   it('waits for hydration and adopts a delayed current session without creating a chat', async () => {
     await mount({ hydrated: false, currentSessionId: undefined });
-    expect(runtime.value.target).toBeUndefined();
-    runtime.update({ hydrated: true });
-    runtime.update({ currentSessionId: 'restored' });
-    expect(runtime.value.target.sessionId).toBe('restored');
+    expect(runtime.result.current.target).toBeUndefined();
+    update({ hydrated: true });
+    update({ currentSessionId: 'restored' });
+    expect(runtime.result.current.target?.sessionId).toBe('restored');
     expect(input.createSession).not.toHaveBeenCalled();
     runtime.unmount();
   });
   it('does not consume before Add and consumes the confirmed destination exactly once', async () => {
     await mount();
-    const target = runtime.value.target;
-    expect(runtime.value.consumeShared(target)).toBeNull();
-    expect(await runtime.value.addToChat()).toBe(true);
+    const target = runtime.result.current.target!;
+    expect(runtime.result.current.consumeShared(target)).toBeNull();
+    expect(await addAndSettle()).toBe(true);
     const wrong = { ...target, connectionScope: 'another' };
-    expect(runtime.value.consumeShared(wrong)).toBeNull();
-    expect(runtime.value.consumeShared({ ...target, projectPath: '/wrong' })).toBeNull();
-    const payload = runtime.value.consumeShared(target);
-    expect(payload.attachments[0].uri).toBe('file:///cache/one%20photo.png');
-    expect(runtime.value.consumeShared(target)).toBeNull();
+    expect(runtime.result.current.consumeShared(wrong)).toBeNull();
+    expect(runtime.result.current.consumeShared({ ...target, projectPath: '/wrong' })).toBeNull();
+    const payload = runtime.result.current.consumeShared(target);
+    expect(payload?.attachments[0].uri).toBe('file:///cache/one%20photo.png');
+    expect(runtime.result.current.consumeShared(target)).toBeNull();
     expect(native.clearSharedPayloads).toHaveBeenCalledOnce();
     expect(input.openSession).toHaveBeenCalledWith(expect.objectContaining(target), expect.any(AbortSignal));
     runtime.unmount();
   });
   it('selects another project conversation without changing its destination during bootstrap', async () => {
     await mount();
-    const other = runtime.value.targets[1];
-    runtime.value.selectTarget(other); runtime.flush();
-    runtime.update({ currentSessionId: undefined });
-    expect(runtime.value.target).toEqual(other);
-    expect(await runtime.value.addToChat()).toBe(true);
-    expect(runtime.value.consumeShared({ ...other, sessionId: 'current' })).toBeNull();
-    expect(runtime.value.consumeShared(other)).not.toBeNull();
+    const other = runtime.result.current.targets[1];
+    act(() => runtime.result.current.selectTarget(other));
+    update({ currentSessionId: undefined });
+    expect(runtime.result.current.target).toEqual(other);
+    expect(await addAndSettle()).toBe(true);
+    expect(runtime.result.current.consumeShared({ ...other, sessionId: 'current' })).toBeNull();
+    expect(runtime.result.current.consumeShared(other)).not.toBeNull();
     expect(input.createSession).not.toHaveBeenCalled();
     runtime.unmount();
   });
   it('creates New chat once and retains it for retry if opening fails', async () => {
     await mount();
-    input.openSession.mockResolvedValueOnce({ ok: false, error: 'offline' });
-    runtime.value.selectTarget({ connectionScope: 'server', projectPath: '/repo' }); runtime.flush();
-    expect(await runtime.value.addToChat()).toBe(false); runtime.flush();
-    expect(runtime.value.error).toBe('offline');
-    expect(runtime.value.pending).not.toBeNull();
-    expect(await runtime.value.addToChat()).toBe(true);
+    vi.mocked(input.openSession).mockResolvedValueOnce({ ok: false, error: 'offline' });
+    act(() => runtime.result.current.selectTarget({ connectionScope: 'server', projectPath: '/repo' }));
+    expect(await addAndSettle()).toBe(false);
+    expect(runtime.result.current.error).toBe('offline');
+    expect(runtime.result.current.pending).not.toBeNull();
+    expect(await addAndSettle()).toBe(true);
     expect(input.createSession).toHaveBeenCalledOnce();
     runtime.unmount();
   });
   it('serializes taps and invalidates navigation when discarded', async () => {
-    const waiting = deferred();
+    const waiting = deferred<Awaited<ReturnType<Input['openSession']>>>();
     await mount({ openSession: vi.fn(() => waiting.promise) });
-    const first = runtime.value.addToChat();
-    expect(await runtime.value.addToChat()).toBe(false);
-    runtime.value.clearShared(); runtime.flush();
+    const first = add();
+    expect(await addAndSettle()).toBe(false);
+    act(() => runtime.result.current.clearShared());
     waiting.resolve({ ok: true });
-    expect(await first).toBe(false);
-    expect(input.openSession.mock.calls[0][1].aborted).toBe(true);
-    expect(runtime.value.pending).toBeNull();
+    expect(await first).toBe(false); await settleReact();
+    expect(vi.mocked(input.openSession).mock.calls[0][1]?.aborted).toBe(true);
+    expect(runtime.result.current.pending).toBeNull();
     runtime.unmount();
   });
   it('cannot resurrect a receipt discarded while native resolution was running', async () => {
-    const waiting = deferred(); native.getResolvedSharedPayloadsAsync.mockReturnValue(waiting.promise);
+    const waiting = deferred<IncomingShareItem[]>(); native.getResolvedSharedPayloadsAsync.mockReturnValue(waiting.promise);
     await mount();
-    expect(runtime.value.resolving).toBe(true);
-    runtime.value.clearShared(); runtime.flush();
-    waiting.resolve([item]); await runtime.settle();
-    expect(runtime.value.pending).toBeNull();
+    expect(runtime.result.current.resolving).toBe(true);
+    act(() => runtime.result.current.clearShared());
+    waiting.resolve([item]); await settleReact();
+    expect(runtime.result.current.pending).toBeNull();
     runtime.unmount();
   });
   it('keeps the receipt on a connection change and rejects the old operation', async () => {
-    const waiting = deferred();
+    const waiting = deferred<Awaited<ReturnType<Input['openSession']>>>();
     await mount({ openSession: vi.fn(() => waiting.promise) });
-    const operation = runtime.value.addToChat();
-    runtime.update({ connectionScope: 'new-server', currentSessionId: 'new-chat' });
+    const operation = add();
+    update({ connectionScope: 'new-server', currentSessionId: 'new-chat' });
     waiting.resolve({ ok: true });
-    expect(await operation).toBe(false); runtime.flush();
-    expect(runtime.value.pending).not.toBeNull();
-    expect(runtime.value.target.connectionScope).toBe('new-server');
+    expect(await operation).toBe(false); await settleReact();
+    expect(runtime.result.current.pending).not.toBeNull();
+    expect(runtime.result.current.target?.connectionScope).toBe('new-server');
     runtime.unmount();
   });
   it('expires staged content and does not reset its lifetime on foreground returns', async () => {
-    await mount(); listener('active'); await runtime.settle();
+    await mount(); act(() => native.listener?.('active')); await settleReact();
     expect(native.getResolvedSharedPayloadsAsync).toHaveBeenCalledOnce();
-    runtime.fire(10 * 60 * 1000);
-    expect(runtime.value.pending).toBeNull();
-    expect(runtime.value.emptyReason).toBe('expired');
+    await clock.advance(10 * 60 * 1000);
+    expect(runtime.result.current.pending).toBeNull();
+    expect(runtime.result.current.emptyReason).toBe('expired');
     runtime.unmount();
   });
 
   it('records an explicit discard separately from expiry', async () => {
     await mount();
-    runtime.value.clearShared(); runtime.flush();
-    expect(runtime.value.pending).toBeNull();
-    expect(runtime.value.emptyReason).toBe('discarded');
+    act(() => runtime.result.current.clearShared());
+    expect(runtime.result.current.pending).toBeNull();
+    expect(runtime.result.current.emptyReason).toBe('discarded');
     runtime.unmount();
   });
 
   it('surfaces target loading failures and recovers on retry', async () => {
     const refreshTargets = vi.fn().mockRejectedValueOnce(new Error('offline')).mockResolvedValue(undefined);
     await mount({ refreshTargets });
-    expect(runtime.value.targetsLoading).toBe(false);
-    expect(runtime.value.targetsError).toBe('share:targetsUnavailable');
+    expect(runtime.result.current.targetsLoading).toBe(false);
+    expect(runtime.result.current.targetsError).toBe(i18n.t('share:targetsUnavailable'));
 
-    await runtime.value.refreshTargets(); await runtime.settle();
-    expect(runtime.value.targetsLoading).toBe(false);
-    expect(runtime.value.targetsError).toBeUndefined();
+    await act(() => runtime.result.current.refreshTargets()); await settleReact();
+    expect(runtime.result.current.targetsLoading).toBe(false);
+    expect(runtime.result.current.targetsError).toBeUndefined();
     expect(refreshTargets).toHaveBeenCalledTimes(2);
     runtime.unmount();
   });
@@ -144,16 +183,16 @@ describe('confirmed share handoff', () => {
   it('keeps the picker loading until target refresh settles', async () => {
     const waiting = deferred();
     await mount({ refreshTargets: vi.fn(() => waiting.promise) });
-    expect(runtime.value.targetsLoading).toBe(true);
-    waiting.resolve(undefined); await runtime.settle();
-    expect(runtime.value.targetsLoading).toBe(false);
+    expect(runtime.result.current.targetsLoading).toBe(true);
+    waiting.resolve(undefined); await settleReact();
+    expect(runtime.result.current.targetsLoading).toBe(false);
     runtime.unmount();
   });
   it('keeps warnings when every item is rejected and refuses Add', async () => {
     native.getResolvedSharedPayloadsAsync.mockResolvedValue([{ ...item, contentSize: 11 * 1024 * 1024 }]);
     await mount();
-    expect(runtime.value.pending.skipped).toEqual(['photo.png']);
-    expect(await runtime.value.addToChat()).toBe(false);
+    expect(runtime.result.current.pending?.skipped).toEqual(['photo.png']);
+    expect(await addAndSettle()).toBe(false);
     runtime.unmount();
   });
 });
@@ -183,19 +222,18 @@ it('keeps text/plain and HTML file streams as attachments, including identical d
 });
 
 it('re-ingests a new intent received while native resolution is pending', async () => {
-  const waiting = deferred();
+  const waiting = deferred<IncomingShareItem[]>();
   native.getResolvedSharedPayloadsAsync.mockReturnValueOnce(waiting.promise).mockResolvedValue([{ ...item, contentUri: 'file:/cache/second.png' }]);
   await mount();
   native.getSharedPayloads.mockReturnValue([{ ...item, value: 'content://second' }]);
-  await runtime.value.refreshShared();
-  waiting.resolve([item]); await runtime.settle();
+  await act(() => runtime.result.current.refreshShared());
+  waiting.resolve([item]); await settleReact();
   expect(native.getResolvedSharedPayloadsAsync).toHaveBeenCalledTimes(2);
-  expect(runtime.value.pending.attachments[0].uri).toBe('file:///cache/second.png');
+  expect(runtime.result.current.pending?.attachments[0].uri).toBe('file:///cache/second.png');
   runtime.unmount();
 });
 
 it('routes repeated warm shares with distinct receipt keys and preserves other links', async () => {
-  const { redirectSystemPath } = await loadTs('features/sharing/model/native-intent.ts');
   const first = await redirectSystemPath({ path: 'opencodemobile://expo-sharing', initial: false });
   const second = await redirectSystemPath({ path: 'opencodemobile://expo-sharing', initial: false });
   expect(first).toMatch(/^\/share\?receipt=/); expect(second).not.toBe(first);
@@ -204,14 +242,14 @@ it('routes repeated warm shares with distinct receipt keys and preserves other l
 
 it('confirms a captured destination on another server even as chat focus changes', async () => {
   const destination = { connectionScope: 'server-b', projectPath: '/repo', sessionId: 'current', title: 'B' };
-  const waiting = deferred();
+  const waiting = deferred<Awaited<ReturnType<Input['openSession']>>>();
   await mount({ availableTargets: [destination], openSession: vi.fn(() => waiting.promise) });
-  runtime.value.selectTarget(destination); runtime.flush();
-  const operation = runtime.value.addToChat();
-  runtime.update({ connectionScope: 'server-b', currentSessionId: 'current' });
+  act(() => runtime.result.current.selectTarget(destination));
+  const operation = add();
+  update({ connectionScope: 'server-b', currentSessionId: 'current' });
   waiting.resolve({ ok: true });
-  expect(await operation).toBe(true); runtime.flush();
-  expect(runtime.value.consumeShared({ ...destination, connectionScope: 'server' })).toBeNull();
-  expect(runtime.value.consumeShared(destination)).not.toBeNull();
+  expect(await operation).toBe(true); await settleReact();
+  expect(runtime.result.current.consumeShared({ ...destination, connectionScope: 'server' })).toBeNull();
+  expect(runtime.result.current.consumeShared(destination)).not.toBeNull();
   runtime.unmount();
 });

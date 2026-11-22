@@ -1,42 +1,23 @@
+// @vitest-environment happy-dom
+
+import { audioFixture } from '../../../../tests/helpers/local-audio-probe';
 import { describe, expect, it, vi } from 'vitest';
-import { hookRuntime, loadTs } from '../../../../tests/helpers/runtime.mjs';
+
+import { useLocalCommandCapture } from '@/shared/platform/voice/use-local-command-capture';
+import { settleReact } from '../../../../tests/helpers/controlled-clock';
+import { renderHook } from '../../../../tests/helpers/render-hook';
 
 async function captureHarness() {
-  const runtime = hookRuntime();
-  let onBuffer: ((buffer: any) => void) | undefined;
-  const stream = { start: vi.fn(async () => undefined), stop: vi.fn() };
-  const vadResults: any[] = [];
+  const { clock, feed, native } = audioFixture();
+  const vadResults: unknown[] = [];
   const recognized: Float32Array[] = [];
-  const onCommand = vi.fn();
-  const onNoCommand = vi.fn();
-  const onError = vi.fn();
-  const pcm = await loadTs('shared/platform/voice/local-wake-word/pcm.ts');
-  const similarity = await loadTs('shared/platform/voice/local-wake-word/similarity.ts');
-  const types = await loadTs('shared/platform/voice/local-wake-word/types.ts');
-  const { useLocalCommandCapture } = await loadTs('shared/platform/voice/use-local-command-capture.ts', {
-    react: runtime.react,
-    'react-native': { Platform: { OS: 'android' } },
-    'expo-audio': {
-      useAudioStream: (options: any) => {
-        onBuffer = options.onBuffer;
-        return { stream, isStreaming: true };
-      },
-    },
-    '@/shared/platform/voice/permissions': {
-      ensureLocalVoicePermissionAsync: async () => ({ granted: true }),
-    },
-    '@/shared/platform/voice/local-wake-word/pcm': pcm,
-    '@/shared/platform/voice/local-wake-word/similarity': similarity,
-    '@/shared/platform/voice/local-wake-word/types': types,
-    "@/shared/platform/voice/local-wake-word/audio-session": { activateLocalWakeRecordingAsync: async () => undefined, deactivateLocalWakeRecordingAsync: async () => undefined },
-    "@/shared/platform/voice/local-wake-word/runtime": { acceptVadSamples: async () => vadResults.shift() ?? { success: true, isSpeechDetected: false, segments: [] }, computeLocalSpeakerEmbedding: async () => [1, 0], ensureLocalCommandRuntime: async () => undefined, recognizeLocalCommand: async (samples: Float32Array) => {
-        recognized.push(samples);
-        return 'open settings';
-      }, resetVad: async () => undefined },
-    "@/shared/platform/voice/local-wake-word/speaker-profile": { loadLocalSpeakerProfile: async () => undefined }
-  }, runtime.globals);
-
-  runtime.mount(useLocalCommandCapture, {
+  native.accept.mockImplementation(async () => vadResults.shift() ?? { success: true, isSpeechDetected: false, segments: [] });
+  native.recognize.mockImplementation(async (samples: Float32Array) => {
+    recognized.push(samples);
+    return 'open settings';
+  });
+  const onCommand = vi.fn(), onNoCommand = vi.fn(), onError = vi.fn();
+  const runtime = renderHook(useLocalCommandCapture, {
     commandModel: 'moonshine-tiny-en',
     onCommand,
     onError,
@@ -46,20 +27,16 @@ async function captureHarness() {
     speakerThreshold: 0.5,
     verifySpeaker: false,
   });
-  await runtime.settle();
+  await settleReact();
 
   const start = async (samples?: Float32Array) => {
-    const pending = runtime.value.start(samples);
-    await runtime.settle();
-    runtime.fire(80);
+    const pending = runtime.result.current.start(samples);
+    await settleReact();
+    await clock.advance(80);
     await expect(pending).resolves.toBe(true);
-    await runtime.settle();
+    await settleReact();
   };
-  const feed = (value = 1000, length = 160) => {
-    const data = new Int16Array(length).fill(value);
-    onBuffer?.({ data: data.buffer, sampleRate: 16000, channels: 1, timestamp: 0 });
-  };
-  return { runtime, stream, vadResults, recognized, onCommand, onNoCommand, onError, start, feed };
+  return { clock, vadResults, recognized, onCommand, onNoCommand, onError, start, feed };
 }
 
 describe('local command capture handoff', () => {
@@ -72,13 +49,13 @@ describe('local command capture handoff', () => {
     );
     await view.start(handoff);
     view.feed(1000);
-    await view.runtime.settle();
-    await view.runtime.settle();
+    await settleReact();
+    await settleReact();
 
     expect(view.recognized).toHaveLength(1);
     expect(view.recognized[0].length).toBeGreaterThan(6000);
-    view.runtime.fire(1200);
-    await view.runtime.settle();
+    await view.clock.advance(1200);
+    await settleReact();
     expect(view.onCommand).toHaveBeenCalledWith('open settings');
   });
 
@@ -90,12 +67,12 @@ describe('local command capture handoff', () => {
     );
     await view.start(new Float32Array(400).fill(0.2));
     view.feed(1000, 80);
-    await view.runtime.settle();
-    await view.runtime.settle();
+    await settleReact();
+    await settleReact();
 
-    expect(view.runtime.countTimers(6000)).toBeGreaterThan(0);
-    view.runtime.fire(6000);
-    await view.runtime.settle();
+    expect(view.clock.countTimers(6000)).toBeGreaterThan(0);
+    await view.clock.advance(6000);
+    await settleReact();
     expect(view.onNoCommand).toHaveBeenCalledOnce();
     expect(view.onCommand).not.toHaveBeenCalled();
   });

@@ -395,13 +395,19 @@ npm run validate:commit
   imports. The Mission hydration case reads and writes the real persisted
   record through the platform storage fixture.
 
-- F6. Connection method selection, camera permissions and pairing recovery,
+- F6, `e1bd2373`. Connection method selection, camera permissions and pairing recovery,
   chat diff recycling, queued prompts, agent suggestions, subagent status,
   project file virtualization and voice settings now exercise the production
   components with React. Voice setup illustrations use static Metro imports.
   Model-download retry tests use the native file boundary and Vitest timers.
   All 44 focused cases, the static gate and 27 onboarding and settings browser
   flows passed.
+
+- F7. Chat composer, markdown, voice and native layout probes exercise real
+  React and render the app's controls. Share handoff and local audio capture,
+  enrollment and wake-word tests use their production hooks and controlled
+  timers with platform fakes. All 83 focused cases retained their executed
+  test identities and passed.
 
 ## Loop protocol
 

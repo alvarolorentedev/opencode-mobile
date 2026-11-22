@@ -1,5 +1,12 @@
+// @vitest-environment happy-dom
+
+import { audioFixture } from '../../../../tests/helpers/local-audio-probe';
 import { describe, expect, it, vi } from 'vitest';
-import { deferred, hookRuntime, loadTs } from '../../../../tests/helpers/runtime.mjs';
+
+import { useLocalWakeWord } from '@/shared/platform/voice/use-local-wake-word';
+import { deferred, settleReact } from '../../../../tests/helpers/controlled-clock';
+import { i18n } from '@/shared/i18n/index';
+import { renderHook } from '../../../../tests/helpers/render-hook';
 
 type WakeResult = { success: boolean; detected: boolean; keyword: string };
 
@@ -16,39 +23,14 @@ async function wakeWordHarness({
   ensureRuntime?: () => Promise<unknown>;
   startStream?: () => Promise<unknown>;
 } = {}) {
-  const runtime = hookRuntime();
-  const stream = { start: vi.fn(startStream), stop: vi.fn() };
-  const deactivate = vi.fn(async () => undefined);
-  let onBuffer: ((buffer: any) => void) | undefined;
-  const accept = vi.fn().mockResolvedValue({ success: true, detected: false, keyword: '' });
-  const embedding = vi.fn();
-  const onWake = vi.fn();
-  const onRejected = vi.fn();
-  const onError = vi.fn();
-  const pcm = await loadTs('shared/platform/voice/local-wake-word/pcm.ts');
-  const similarity = await loadTs('shared/platform/voice/local-wake-word/similarity.ts');
-  const types = await loadTs('shared/platform/voice/local-wake-word/types.ts');
-  const { useLocalWakeWord } = await loadTs('shared/platform/voice/use-local-wake-word.ts', {
-    react: runtime.react,
-    'react-native': { AppState: { currentState: 'active' }, Platform: { OS: 'android' } },
-    'expo-audio': {
-      useAudioStream: (options: any) => {
-        onBuffer = options.onBuffer;
-        return { stream };
-      },
-    },
-    '@/shared/platform/voice/permissions': {
-      ensureLocalVoicePermissionAsync: async () => ({ granted: true }),
-    },
-    '@/shared/platform/voice/local-wake-word/pcm': pcm,
-    '@/shared/platform/voice/local-wake-word/similarity': similarity,
-    '@/shared/platform/voice/local-wake-word/types': types,
-    "@/shared/platform/voice/local-wake-word/audio-session": { activateLocalWakeRecordingAsync: async () => undefined, deactivateLocalWakeRecordingAsync: deactivate },
-    "@/shared/platform/voice/local-wake-word/models": { getLocalVoiceModelStatus: () => 'ready' },
-    "@/shared/platform/voice/local-wake-word/runtime": { acceptWakeWordSamples: accept, computeLocalSpeakerEmbedding: embedding, ensureLocalCommandRuntime: async () => undefined, ensureLocalVoiceRuntime: ensureRuntime, resetWakeWordStream: async () => undefined },
-    "@/shared/platform/voice/local-wake-word/speaker-profile": { loadLocalSpeakerProfile: async () => profile }
-  }, runtime.globals);
-  runtime.mount(useLocalWakeWord, {
+  const { clock, feed, native } = audioFixture();
+  native.stream.start.mockImplementation(startStream);
+  native.ensure.mockImplementation(ensureRuntime);
+  native.profile.mockResolvedValue(profile);
+  native.accept.mockResolvedValue({ success: true, detected: false, keyword: '' });
+  const { accept, embedding, stream, deactivate } = native;
+  const onWake = vi.fn(), onRejected = vi.fn(), onError = vi.fn();
+  const runtime = renderHook(useLocalWakeWord, {
     commandModel: 'moonshine-tiny-en',
     onError,
     onRejected,
@@ -57,20 +39,16 @@ async function wakeWordHarness({
     speakerThreshold: threshold,
     verifySpeaker,
   });
-  await runtime.settle();
-  const feed = (value = 1000, length = 160) => {
-    const samples = new Int16Array(length).fill(value);
-    onBuffer?.({ data: samples.buffer, sampleRate: 16000, channels: 1, timestamp: 0 });
-  };
+  await settleReact();
   const start = async () => {
-    const starting = runtime.value.start();
-    await runtime.settle();
+    const starting = runtime.result.current.start();
+    await settleReact();
     feed(0);
-    expect(await starting).toBe(true);
-    await runtime.settle();
+    expect(await starting, JSON.stringify(onError.mock.calls)).toBe(true);
+    await settleReact();
     accept.mockClear();
   };
-  return { runtime, stream, accept, deactivate, embedding, onWake, onRejected, onError, feed, start };
+  return { runtime, clock, stream, accept, deactivate, embedding, onWake, onRejected, onError, feed, start };
 }
 
 describe('on-device wake word capture', () => {
@@ -89,7 +67,7 @@ describe('on-device wake word capture', () => {
     expect(view.accept).toHaveBeenCalledTimes(1);
 
     first.resolve({ success: true, detected: false, keyword: '' });
-    await view.runtime.settle();
+    await settleReact();
 
     expect(view.accept).toHaveBeenCalledTimes(2);
     expect(Array.from(view.accept.mock.calls[1][0])).toEqual(
@@ -105,13 +83,13 @@ describe('on-device wake word capture', () => {
     view.embedding.mockImplementationOnce(() => firstEmbedding.promise);
     view.accept.mockResolvedValueOnce({ success: true, detected: true, keyword: '▁HE Y ▁CO DE' });
     view.feed(1000);
-    await view.runtime.settle();
+    await settleReact();
 
     view.feed(2000);
     expect(view.accept).toHaveBeenCalledTimes(1);
 
     firstEmbedding.resolve([1, 0]);
-    await view.runtime.settle();
+    await settleReact();
 
     expect(view.onWake).toHaveBeenCalledOnce();
     expect(Array.from(view.onWake.mock.calls[0][0])).toEqual(
@@ -126,11 +104,11 @@ describe('on-device wake word capture', () => {
 
     view.accept.mockRejectedValue(new Error('native KWS failed'));
     view.feed(1000);
-    await view.runtime.settle();
+    await settleReact();
     view.feed(2000);
-    await view.runtime.settle();
+    await settleReact();
     view.feed(3000);
-    await view.runtime.settle();
+    await settleReact();
 
     expect(view.onError).toHaveBeenCalled();
     expect(view.onWake).not.toHaveBeenCalled();
@@ -144,7 +122,7 @@ describe('on-device wake word capture', () => {
     view.embedding.mockResolvedValue([0, 1]);
     view.accept.mockResolvedValueOnce({ success: true, detected: true, keyword: '▁HE Y ▁CO DE' });
     view.feed(1000);
-    await view.runtime.settle();
+    await settleReact();
 
     expect(view.onRejected).toHaveBeenCalledOnce();
     expect(view.onWake).not.toHaveBeenCalled();
@@ -154,7 +132,7 @@ describe('on-device wake word capture', () => {
     view.embedding.mockResolvedValue([1, 0]);
     view.accept.mockResolvedValueOnce({ success: true, detected: true, keyword: '▁HE Y ▁CO DE' });
     view.feed(1000);
-    await view.runtime.settle();
+    await settleReact();
 
     expect(view.onWake).toHaveBeenCalledOnce();
     expect(view.stream.stop).toHaveBeenCalledOnce();
@@ -174,14 +152,14 @@ describe('on-device wake word capture', () => {
       .mockResolvedValueOnce({ success: true, detected: true, keyword: '▁HE Y ▁CO DE' });
 
     view.feed(1000);
-    await view.runtime.settle();
+    await settleReact();
     expect(view.embedding).toHaveBeenCalledTimes(1);
 
     view.feed(2000);
     expect(view.accept).toHaveBeenCalledTimes(1);
 
     firstEmbedding.resolve([0, 1]);
-    await view.runtime.settle();
+    await settleReact();
 
     expect(view.onRejected).toHaveBeenCalledOnce();
     expect(view.embedding).toHaveBeenCalledTimes(2);
@@ -194,42 +172,42 @@ describe('on-device wake word capture', () => {
   it('waits for a valid frame and preserves a frame arriving before native start resolves', async () => {
     const nativeStart = deferred<void>();
     const view = await wakeWordHarness({ startStream: () => nativeStart.promise });
-    const starting = view.runtime.value.start();
-    await view.runtime.settle();
+    const starting = view.runtime.result.current.start();
+    await settleReact();
     view.feed(1000);
     expect(view.accept).not.toHaveBeenCalled();
 
     nativeStart.resolve();
     await expect(starting).resolves.toBe(true);
-    await view.runtime.settle();
+    await settleReact();
 
     expect(view.accept).toHaveBeenCalledOnce();
-    expect(view.runtime.countTimers(3000)).toBe(0);
+    expect(view.clock.countTimers(3000)).toBe(0);
   });
 
   it('releases the recorder and reports failure when native start produces no frames', async () => {
     const view = await wakeWordHarness();
-    const starting = view.runtime.value.start();
-    await view.runtime.settle();
-    expect(view.runtime.countTimers(3000)).toBe(1);
+    const starting = view.runtime.result.current.start();
+    await settleReact();
+    expect(view.clock.countTimers(3000)).toBe(1);
     view.feed(0, 0);
-    view.runtime.fire(3000);
+    await view.clock.advance(3000);
 
     await expect(starting).resolves.toBe(false);
     expect(view.stream.stop).toHaveBeenCalledOnce();
     expect(view.deactivate).toHaveBeenCalledOnce();
-    expect(view.onError).toHaveBeenCalledWith('settings:voice.localWake.microphoneStartFailed');
+    expect(view.onError).toHaveBeenCalledWith(i18n.t('settings:voice.localWake.microphoneStartFailed'));
     expect(view.onWake).not.toHaveBeenCalled();
   });
 
   it('cancels the frame wait on stop and ignores late audio', async () => {
     const view = await wakeWordHarness();
-    const starting = view.runtime.value.start();
-    await view.runtime.settle();
-    await view.runtime.value.stop();
+    const starting = view.runtime.result.current.start();
+    await settleReact();
+    await view.runtime.result.current.stop();
     view.feed();
     await expect(starting).resolves.toBe(false);
-    expect(view.runtime.countTimers(3000)).toBe(0);
+    expect(view.clock.countTimers(3000)).toBe(0);
     expect(view.accept).not.toHaveBeenCalled();
     expect(view.onError).not.toHaveBeenCalled();
   });
@@ -240,9 +218,9 @@ describe('on-device wake word capture', () => {
     const decode = deferred<WakeResult>();
     view.accept.mockImplementationOnce(() => decode.promise);
     view.feed();
-    await view.runtime.value.stop();
+    await view.runtime.result.current.stop();
     decode.reject(new Error('stale decode'));
-    await view.runtime.settle();
+    await settleReact();
     expect(view.onError).not.toHaveBeenCalled();
     expect(view.onWake).not.toHaveBeenCalled();
   });
@@ -251,13 +229,13 @@ describe('on-device wake word capture', () => {
     const ensure = deferred<void>();
     const view = await wakeWordHarness({ ensureRuntime: () => ensure.promise });
 
-    const starting = view.runtime.value.start();
-    await view.runtime.settle();
-    await view.runtime.value.stop();
+    const starting = view.runtime.result.current.start();
+    await settleReact();
+    await view.runtime.result.current.stop();
 
     ensure.resolve();
     await expect(starting).resolves.toBe(false);
-    await view.runtime.settle();
+    await settleReact();
 
     expect(view.stream.start).not.toHaveBeenCalled();
   });
