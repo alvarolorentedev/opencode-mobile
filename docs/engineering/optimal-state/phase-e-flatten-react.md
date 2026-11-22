@@ -44,6 +44,8 @@ Start only after Phase D is complete and green.
   Sessions and native surfaces read lifecycle state from the connection manager.
 - Worktree writes run in the owning service. The core gets the root project's
   guarded client when creating a chat in a new checkout.
+- Project headers and pickers read catalog, location, worktree and VCS data
+  from Query. The remaining project projection still supplies action handles.
 - `runtime/core/workspace-selectors.ts` selects the retained project projection.
 - [ADR 0052](../../adr/0052-explicit-overlay-dependencies.md) records explicit
   portal targets and update blocker callbacks. Shared controls use shared imports.

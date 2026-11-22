@@ -4,7 +4,7 @@ import { memo, useCallback, useEffect, useLayoutEffect, useMemo, type Dispatch, 
 import { buildClient, type OpencodeConnectionSettings } from '@/shared/protocol/opencode/client';
 import { getActiveSessions, MAX_ACTIVE_SESSIONS, useApprovalsCatalog, useSessionActions, useSessionCatalog, useSessionPresentation } from '@/features/sessions/runtime';
 import { useConnectionRuntime } from '@/runtime/connections/connection-runtime';
-import { buildOpencodeProjects, resolveActiveProject, useProjectPresentation, useWorktreeState } from '@/features/projects/runtime';
+import { useProjectPresentation, useWorktreeState } from '@/features/projects/runtime';
 import { useActivityNotifications } from '@/features/notifications/runtime';
 import { useCapabilitiesActions, useCapabilitiesPresentation } from '@/features/ai/runtime';
 import { useConversationState } from '@/features/voice/runtime';
@@ -114,10 +114,6 @@ export const RetainedProject = memo(function RetainedProject({ defaults, updateS
     ...state, ...serverData, ...sessionCatalog, ...approvalsCatalog, ...diffCatalog,
     messagesBySession: transcript.messagesBySession, readDisplayedSession: transcript.readDisplayedSession,
   };
-  const projects = useMemo(
-    () => buildOpencodeProjects(serverData.serverProjects),
-    [serverData.serverProjects],
-  );
 
   const transcriptRead = useTranscriptReadErrors({
     scopeKey: state.scopeKey,
@@ -141,11 +137,6 @@ export const RetainedProject = memo(function RetainedProject({ defaults, updateS
     await refreshInboxMessages(sessionId, false).catch(() => undefined);
   }, [refreshInboxMessages, state.currentSessionId]);
   const worktree = useWorktreeState({ ...domain, client, isCurrentClient, connected: state.connection.status === 'connected' });
-  const activeProject = useMemo(
-    () => resolveActiveProject(projects, state.activeProjectPath, worktree.worktrees) ?? (state.activeProjectPath
-      ? { path: state.activeProjectPath, label: state.activeProjectPath.split('/').filter(Boolean).pop() || state.activeProjectPath } : undefined),
-    [projects, state.activeProjectPath, worktree.worktrees],
-  );
   const activeSessions = useMemo(() => getActiveSessions({
     sessions: catalog.sessions,
     statuses: catalog.statuses,
@@ -313,7 +304,7 @@ export const RetainedProject = memo(function RetainedProject({ defaults, updateS
   });
 
   const capabilitiesValue = useCapabilitiesPresentation(serverData, capabilities);
-  const { projectsValue, projectFilesValue } = useProjectPresentation({ ...domain, ...project, ...worktree, activeProject, projects });
+  const { projectsValue, projectFilesValue } = useProjectPresentation({ ...domain, ...project, ...worktree });
   const conversationValue = useMemo<WorkspaceValues['conversationValue']>(() => ({
     conversation, clearConversationFeedback, toggleConversationMode,
   }), [conversation, clearConversationFeedback, toggleConversationMode]);

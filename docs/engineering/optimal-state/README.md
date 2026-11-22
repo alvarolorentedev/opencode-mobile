@@ -284,10 +284,14 @@ npm run validate:commit
   shell. The commit gate passed with 1,283 tests and one existing skip.
   All 164 focused tests and 117 browser flows across Connect, manual connection,
   multi-server, Sessions, Projects, Settings, Onboarding and Mission Control passed.
-- E13. Worktree writes use the Projects service. The app core creates a worktree
+- E13, `0685de5b`. Worktree writes use the Projects service. The app core creates a worktree
   chat with the exact root client and opens the returned checkout. The commit
   gate passed with 1,283 tests and one existing skip. All 56 focused tests and
   37 browser flows across Projects, Sessions, diffs and multi-server passed.
+- E14. Project headers and pickers read the catalog, location, worktree and VCS
+  Query entries directly. The commit gate passed with 1,283 tests and one
+  existing skip. All 56 focused tests and 84 browser flows across Projects,
+  Onboarding, Terminal, multi-server, Settings, Extensions, Chat and Sessions passed.
 
 ## Loop protocol
 

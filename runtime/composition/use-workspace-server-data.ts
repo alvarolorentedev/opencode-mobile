@@ -81,7 +81,7 @@ export function useWorkspaceServerData(identity: QueryIdentity, client: ScopedOp
     availableSkills: capabilities?.skills ?? EMPTY, availableReferences: capabilities?.references ?? EMPTY,
     serverProjects: catalog?.serverProjects ?? EMPTY,
     currentProjectPath: catalog?.currentProjectPath, serverRootPath: catalog?.serverRootPath,
-    isRefreshingProjectCatalog: Boolean(projects?.isFetching || location?.isFetching), commands: commands?.data ?? EMPTY,
+    commands: commands?.data ?? EMPTY,
     projectFileStatuses: statuses?.data ?? EMPTY, vcsInfo: vcs?.data,
   };
 }

@@ -10,5 +10,5 @@ export type { ProjectsContextValue } from './model/types';
 export { default as ProjectsScreen } from './ui/projects-screen';
 export { useProjectCheckouts } from './state/use-project-checkouts';
 export { useWorkspaceProjects } from './state/use-workspace-projects';
-export type { WorktreeCatalog } from './state/use-worktree-state';
+export type { WorktreeCatalog } from './model/types';
 export type { DiffScope, HiddenProjectsByConnection } from './model/types';

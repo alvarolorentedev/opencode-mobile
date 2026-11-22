@@ -4,9 +4,7 @@
 
 import type { Project } from '@/shared/protocol/opencode/types';
 
-import type { OpencodeProject } from '@/features/projects/model/types';
-
-import type { WorktreeCatalog } from '@/features/projects/state/use-worktree-state';
+import type { OpencodeProject, WorktreeCatalog } from '@/features/projects/model/types';
 
 export function getProjectLabel(path: string) {
   const normalized = path.trim().replace(/\/$/, '');
@@ -47,4 +45,15 @@ export function resolveActiveProject(projects: OpencodeProject[], activeProjectP
     return { id: worktree.id, label: worktree.label, path: activeProjectPath };
   }
   return projects.find((project) => project.path === activeProjectPath);
+}
+
+export function describeWorktrees(data: { entries: WorktreeCatalog['entries']; project: Project } | undefined,
+  serverProjects: readonly Project[], loading = false, error?: string): WorktreeCatalog {
+  const project = data?.project;
+  return {
+    entries: (data?.entries ?? []).filter(({ directory }) => !serverProjects.some(({ worktree }) => worktree === directory)),
+    project: project && { id: project.id, root: project.worktree, label: getProjectLabel(project.worktree) },
+    loading,
+    error,
+  };
 }

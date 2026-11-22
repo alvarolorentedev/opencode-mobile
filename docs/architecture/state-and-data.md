@@ -38,6 +38,10 @@ Worktree mutations use the owning project service. Creating a worktree chat
 gets the guarded root client from the connection manager, creates the worktree,
 then creates and opens the chat in the returned checkout.
 
+Project headers and pickers derive their rows from the scoped location,
+connection catalog, worktree and VCS Query entries. The app store supplies
+the selected directory and the connection manager supplies its lifecycle.
+
 Session selection and startup bootstrap use the scoped app-core command in
 `runtime/core/commands/session-navigation.ts`. Explicit selection commits
 before transcript hydration and cancels any in-flight bootstrap for that

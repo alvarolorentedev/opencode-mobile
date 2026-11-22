@@ -4,7 +4,7 @@ import type { ProjectFile } from '@/shared/protocol/opencode/project-file';
 
 import type { ProjectFilesContextValue, ProjectsContextValue } from '../model/types';
 
-type ProjectPresentationInput = Omit<ProjectsContextValue, 'refreshProjectStatus'> &
+type ProjectPresentationInput = Pick<ProjectsContextValue, 'activeProjectPath' | 'addProject' | 'refreshProjectCatalog'> &
   Omit<ProjectFilesContextValue, 'projectFile'> & {
     refreshServerFeatures: ProjectsContextValue['refreshProjectStatus'];
     selectedProjectFile?: ProjectFile;
@@ -15,14 +15,14 @@ type ProjectPresentationInput = Omit<ProjectsContextValue, 'refreshProjectStatus
   };
 
 export function useProjectPresentation({
-  projects, activeProjectPath, activeProject, selectProject, addProject, isRefreshingProjectCatalog, refreshProjectCatalog,
+  activeProjectPath, addProject, refreshProjectCatalog,
   refreshServerFeatures, selectedProjectFile, openProjectFile, saveProjectFile, closeProjectFile, downloadProjectFile,
   browser, projectFileStatuses, vcsInfo, worktrees, refreshWorktrees, removeWorktree,
 }: ProjectPresentationInput) {
-  const projectsValue = useMemo<ProjectsContextValue>(() => ({
-    projects, activeProjectPath, activeProject, selectProject, addProject, isRefreshingProjectCatalog, refreshProjectCatalog,
+  const projectsValue = useMemo(() => ({
+    activeProjectPath, addProject, refreshProjectCatalog,
     refreshProjectStatus: refreshServerFeatures,
-  }), [projects, activeProjectPath, activeProject, selectProject, addProject, isRefreshingProjectCatalog, refreshProjectCatalog, refreshServerFeatures]);
+  }), [activeProjectPath, addProject, refreshProjectCatalog, refreshServerFeatures]);
 
   const projectFile = useMemo(() => ({
     selected: selectedProjectFile, open: openProjectFile, save: saveProjectFile, close: closeProjectFile, download: downloadProjectFile,

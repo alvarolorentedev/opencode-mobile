@@ -90,6 +90,7 @@ describe('multi-server contracts', () => {
     };
     const connectionControls = { connectionProfiles: [], connectSetup: {}, services: {} };
     const lifecycle = { connection: { status: 'connected' }, contract: 'v2' };
+    const projectInventory = { activeProjectPath: '/repo', projects: [] };
     const { useConnection, useProjects, useCurrentSession, useSessionLibrary, useOnboarding, useChat } = await loadTs([
       'features/connections/context.ts', 'features/projects/context.ts', 'features/sessions/context.ts',
       'features/onboarding/context.ts', 'features/chat/context.ts',
@@ -106,6 +107,7 @@ describe('multi-server contracts', () => {
       },
       '@/runtime/workspace': { useWorkspaces: () => ({ connectionControls }) },
       '@/shared/protocol/opencode/capabilities': { getServerCapabilities: () => ({ contract: 'v2' }) },
+      './state/use-project-inventory': { useProjectInventory: () => projectInventory },
       '@/shared/contracts/connection-scope': identity,
       './state/use-server-pending-interactions': {},
       './state/use-permission-rules-state': {},

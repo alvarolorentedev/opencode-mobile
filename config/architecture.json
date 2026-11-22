@@ -201,7 +201,6 @@
     "features/projects/runtime.ts": [
       "HIDDEN_PROJECTS_MAX",
       "useProjectPresentation",
-      "buildOpencodeProjects",
       "createWorktreeCommands",
       "fetchProjectCatalog",
       "fileStatusOptions",
@@ -209,7 +208,6 @@
       "locationOptions",
       "parseHiddenProjects",
       "projectsOptions",
-      "resolveActiveProject",
       "serializeHiddenProjects",
       "useFileClipboard",
       "FileClipboardEntry",

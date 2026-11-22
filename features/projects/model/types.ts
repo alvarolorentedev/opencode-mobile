@@ -1,8 +1,7 @@
 import type { useProjectBrowser } from '@/features/projects/state/use-project-browser';
 
-import type { WorktreeCatalog } from '@/features/projects/state/use-worktree-state';
-
 import type { ProjectFile } from '@/shared/protocol/opencode/project-file';
+import type { ProjectWorktree } from '@/shared/protocol/opencode/project';
 
 import type { File, Project, VcsInfo } from '@/shared/protocol/opencode/types';
 
@@ -28,6 +27,13 @@ export type ProjectCatalog = {
   currentProjectPath?: string;
   serverRootPath?: string;
   serverProjects: Project[];
+};
+
+export type WorktreeCatalog = {
+  entries: ProjectWorktree[];
+  project?: { id: string; root: string; label: string };
+  loading: boolean;
+  error?: string;
 };
 
 export type ProjectsContextValue = {

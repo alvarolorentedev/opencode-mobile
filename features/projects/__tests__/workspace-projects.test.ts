@@ -1,34 +1,31 @@
 import { describe, expect, it } from 'vitest';
 
-import { buildWorkspaceProjectGroups } from '@/features/projects/model/workspace-project-groups';
+import { buildWorkspaceProjectGroups, type ProjectGroupInventory } from '@/features/projects/model/workspace-project-groups';
 
 const online: { connection: { status: string }; contract: 'v2' } = { connection: { status: 'connected' }, contract: 'v2' };
 const connected = new Map([['server-1', online]]);
 
-function snapshot({ path, root = '/repo', entries = [], branch = 'main', activePath = path, projects = [] }: {
+function inventory({ path, root = '/repo', entries = [], branch = 'main', activePath = path, projects = [] }: {
   path: string;
   root?: string;
   entries?: { directory: string; name: string; branch?: string }[];
   branch?: string;
   activePath?: string;
   projects?: { id?: string; label: string; path: string }[];
-}) {
+}): ProjectGroupInventory {
   return {
-    values: {
-      projectsValue: { activeProjectPath: activePath, activeProject: { id: 'project-1', label: 'repo', path }, projects },
-      projectFilesValue: {
-        worktrees: { entries, project: { id: 'project-1', root, label: 'repo' }, loading: false },
-        vcsInfo: { branch },
-      },
-    },
-  } as never;
+    activeProjectPath: activePath,
+    projects,
+    worktrees: { entries, project: { id: 'project-1', root, label: 'repo' }, loading: false },
+    branch,
+  };
 }
 
 describe('workspace project groups', () => {
   it('merges the main runtime and a worktree runtime into one project with two checkouts', () => {
     const groups = buildWorkspaceProjectGroups([{ id: 'server-1', name: 'Server', enabled: true } as never], {
-      '["server-1","/repo"]': snapshot({ path: '/repo' }),
-      '["server-1","/repo/wt"]': snapshot({
+      '["server-1","/repo"]': inventory({ path: '/repo' }),
+      '["server-1","/repo/wt"]': inventory({
         path: '/repo/wt',
         entries: [{ directory: '/repo/wt', name: 'wt', branch: 'feature/wt' }],
         branch: 'feature/wt',
@@ -45,7 +42,7 @@ describe('workspace project groups', () => {
 
   it('groups a worktree-only runtime under its owning project root', () => {
     const groups = buildWorkspaceProjectGroups([{ id: 'server-1', name: 'Server', enabled: true } as never], {
-      '["server-1","/repo/wt"]': snapshot({
+      '["server-1","/repo/wt"]': inventory({
         path: '/repo/wt',
         entries: [{ directory: '/repo/wt', name: 'wt', branch: 'feature/wt' }],
         branch: 'feature/wt',
@@ -58,7 +55,7 @@ describe('workspace project groups', () => {
 
   it('lists every server project alongside the opened runtime', () => {
     const groups = buildWorkspaceProjectGroups([{ id: 'server-1', name: 'Server', enabled: true } as never], {
-      '["server-1","/repo"]': snapshot({
+      '["server-1","/repo"]': inventory({
         path: '/repo',
         projects: [
           { id: 'project-1', label: 'repo', path: '/repo' },
@@ -76,7 +73,7 @@ describe('workspace project groups', () => {
 
   it('drops retained runtimes the server catalog no longer reports', () => {
     const groups = buildWorkspaceProjectGroups([{ id: 'server-1', name: 'Server', enabled: true } as never], {
-      '["server-1","/gone"]': snapshot({
+      '["server-1","/gone"]': inventory({
         path: '/gone',
         root: '/gone',
         activePath: '/gone',
@@ -92,9 +89,9 @@ describe('workspace project groups', () => {
       { id: 'disabled', name: 'Disabled', enabled: false } as never,
       { id: 'unavailable', name: 'Unavailable', enabled: true } as never,
     ], {
-      '["connected","/repo"]': snapshot({ path: '/repo' }),
-      '["disabled","/repo"]': snapshot({ path: '/repo' }),
-      '["unavailable","/repo"]': snapshot({ path: '/repo' }),
+      '["connected","/repo"]': inventory({ path: '/repo' }),
+      '["disabled","/repo"]': inventory({ path: '/repo' }),
+      '["unavailable","/repo"]': inventory({ path: '/repo' }),
     }, new Map([
       ['connected', online],
       ['disabled', online],

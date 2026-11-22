@@ -56,7 +56,7 @@ export type WorkspaceSnapshot = {
 
 export type WorkspaceValues = {
   capabilitiesValue: CapabilitiesContextValue;
-  projectsValue: ProjectsContextValue;
+  projectsValue: Pick<ProjectsContextValue, 'activeProjectPath' | 'addProject' | 'refreshProjectCatalog' | 'refreshProjectStatus'>;
   projectFilesValue: ProjectFilesContextValue;
   currentSessionValue: CurrentSessionContextValue;
   sessionLibraryValue: SessionLibraryContextValue;

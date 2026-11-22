@@ -2,8 +2,7 @@ import { useMemo } from 'react';
 
 import { projectCheckouts, type ProjectCheckout } from '@/shared/protocol/opencode/project';
 import { useProjectFiles, useProjects } from '@/features/projects/context';
-import type { OpencodeProject } from '@/features/projects/model/types';
-import type { WorktreeCatalog } from '@/features/projects/state/use-worktree-state';
+import type { OpencodeProject, WorktreeCatalog } from '@/features/projects/model/types';
 
 export type ProjectCheckoutState = {
   activeProject?: OpencodeProject;
