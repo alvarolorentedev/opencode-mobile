@@ -426,10 +426,14 @@ npm run validate:commit
   component or hook lifecycles. The connection form uses React Hook Form
   and the production Zod resolver.
 
-- F11. Speech recognizer ownership, voice command confirmation and app update
+- F11, `2a188dc5`. Speech recognizer ownership, voice command confirmation and app update
   safety now exercise real React lifecycles and explicit native boundaries.
   Timer tests advance a controlled clock, and store update checks use the
   actual Android and Apple adapters.
+
+- F12. Workspace catalog demand and write cancellation use real TanStack Query
+  observers. Project file actions use the production shell adapter, clipboard
+  store and native clipboard boundary. Plugin GUI remains disabled in web.
 
 ## Loop protocol
 
