@@ -2,7 +2,7 @@ import type { WorkspaceTarget } from '@/shared/contracts/workspace';
 import { useCallback, useMemo } from 'react';
 import { hashKey, useQuery } from '@tanstack/react-query';
 
-import { useAppCore, useAppStore, useProjectScope } from '@/runtime/core';
+import { useActiveWorkspaceTarget, useAppCore, useAppStore, useProjectScope } from '@/runtime/core';
 import { mcpOptions } from '@/shared/server-data/diagnostics';
 import type { CurrentSessionContextValue, SessionLibraryContextValue } from './model/types';
 import { projectSessionsOptions } from './services/queries';
@@ -52,6 +52,13 @@ export function useApprovals(target?: WorkspaceTarget) {
   }, [mcpAuth, store]);
   return useMemo(() => ({ approvals: { mcpAuth, dismissMcpAuth, savedPermissions, refreshSavedPermissions, removeSavedPermission } }),
     [dismissMcpAuth, mcpAuth, refreshSavedPermissions, removeSavedPermission, savedPermissions]);
+}
+
+export function useAutoApprove(target?: WorkspaceTarget) {
+  const connectionId = useActiveWorkspaceTarget(target)?.connectionId ?? '';
+  const revision = useAppStore((state) => state.registry.connections.find(({ id }) => id === connectionId)?.revision);
+  const { setAutoApprove } = useAppCore().commands.connection;
+  return useCallback((enabled: boolean) => setAutoApprove(connectionId, revision, enabled), [connectionId, revision, setAutoApprove]);
 }
 
 export { useServerPendingInteractions } from './state/use-server-pending-interactions';

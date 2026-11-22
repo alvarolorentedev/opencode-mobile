@@ -7,6 +7,7 @@ import { useProjectInventory } from './state/use-project-inventory';
 import { useProjectFileActions } from './state/use-project-file-actions';
 import { useFileClipboard } from './state/use-file-clipboard';
 import { fileStatusOptions, vcsInfoOptions } from './services/queries/status';
+import { searchProjectFiles } from './services/queries/files';
 import { refreshProjectFeatures } from './services/project-status-refresh';
 import type { ProjectFilesContextValue } from './model/types';
 
@@ -30,6 +31,16 @@ export function useProjects(target?: WorkspaceTarget) {
     if (connectionId) void activate({ connectionId, projectPath });
   }, [activate, connectionId]);
   return useMemo(() => ({ ...actions, ...project, selectProject, refreshProjectStatus }), [actions, project, refreshProjectStatus, selectProject]);
+}
+
+export function useProjectFileSearch() {
+  const { identity, client, isCurrentClient } = useProjectScope();
+  const { queryClient } = useAppCore();
+  return useCallback(async (query: string) => {
+    if (!isCurrentClient(client)) return [];
+    const files = await searchProjectFiles(queryClient, identity, client, query);
+    return isCurrentClient(client) ? files : [];
+  }, [client, identity, isCurrentClient, queryClient]);
 }
 
 export function useProjectFiles(): ProjectFilesContextValue {

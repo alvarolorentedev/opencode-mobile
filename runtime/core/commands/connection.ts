@@ -286,6 +286,17 @@ export function createConnectionCommands(
     updatePreferences(entry.id, patchModelPreferences(workspaceChatPreferences(shell.chatPreferences, entry.preferences), patch, models));
   }
 
+  async function setAutoApprove(id: string, revision: number | undefined, enabled: boolean) {
+    const { registry, shell } = store.getState();
+    const entry = registry.connections.find((item) => item.id === id);
+    const manager = connections.get(id);
+    if (!entry?.enabled || !manager || (entry.revision ?? 0) !== (revision ?? 0)) {
+      throw new Error('This server is no longer available.');
+    }
+    if (manager.getState().contract !== 'v2') throw new Error('Auto-approve is available on OpenCode 2 only.');
+    updatePreferences(id, { ...workspaceChatPreferences(shell.chatPreferences, entry.preferences), autoApprove: enabled });
+  }
+
   function hiddenScope(connectionId: string) {
     const entry = registry().connections.find((item) => item.id === connectionId);
     return entry ? getConnectionScope(entry.settings) : undefined;
@@ -356,6 +367,6 @@ export function createConnectionCommands(
 
   return {
     hydrate, persist, observeFocus, connect, switchConnection, connectSavedProfile, disconnect,
-    retry, removeConnection, updateSettings, updatePreferences, patchPreferences, hideProject, restoreProject, openSession, openSessionInProject,
+    retry, removeConnection, updateSettings, updatePreferences, patchPreferences, setAutoApprove, hideProject, restoreProject, openSession, openSessionInProject,
   };
 }

@@ -209,7 +209,6 @@
       "serializeHiddenProjects",
       "createFileClipboard",
       "invalidateProjectFileReads",
-      "searchProjectFiles",
       "FileClipboardEntry",
       "useProjectCatalogActions",
       "useProjectRuntimeState",

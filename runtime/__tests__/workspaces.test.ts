@@ -87,7 +87,7 @@ describe('multi-server contracts', () => {
     store.getState().setShellValue('onboardingVersion', CURRENT_ONBOARDING_VERSION);
     const commands = {
       connection: { retry: vi.fn(), openSession: vi.fn(), openSessionInProject: vi.fn() },
-      workspace: { activate: vi.fn() },
+      workspace: { activate: vi.fn(), resolveKey: () => scopeKey },
       session: {
         creation: () => ({ createSession: vi.fn(), forkSession: vi.fn() }),
         editing: () => ({ revertSession: vi.fn(), unrevertSession: vi.fn() }),
@@ -100,7 +100,7 @@ describe('multi-server contracts', () => {
     const projectScope = { scopeKey, directory: '/repo', identity: { connectionId: 'http://a:', connectionScope: 'http://a:' } };
     const projectSessions = [{ id: 's' }];
     const sessionCatalog = { sessions: projectSessions, sessionStatuses: {} };
-    const { useConnection, useProjects, useCurrentSession, useSessionLibrary, useOnboarding, useChat } = await loadTs([
+    const { useConnection, useProjects, useCurrentSession, useSessionLibrary, useOnboarding, useChat, useChatBootstrap } = await loadTs([
       'features/connections/context.ts', 'features/projects/context.ts', 'features/sessions/context.ts',
       'features/onboarding/context.ts', 'features/chat/context.ts',
     ], {
@@ -122,6 +122,7 @@ describe('multi-server contracts', () => {
       './state/use-project-file-actions': {},
       './state/use-file-clipboard': {},
       './services/queries/status': {},
+      './services/queries/files': {},
       './services/project-status-refresh': {},
       './services/queries': { projectSessionsOptions: () => ({}) },
       './state/use-session-catalog': { useSessionCatalog: () => sessionCatalog },
@@ -139,7 +140,7 @@ describe('multi-server contracts', () => {
       current = values;
       return {
         connectionValue: useConnection(), projectsValue: useProjects(), currentSessionValue: useCurrentSession(),
-        sessionLibraryValue: useSessionLibrary(), onboardingValue: useOnboarding(), chatValue: useChat(),
+        sessionLibraryValue: useSessionLibrary(), onboardingValue: useOnboarding(), chatValue: useChat(), bootstrapping: useChatBootstrap(),
       };
     }, { values: base });
     const first = driver.value;
@@ -152,6 +153,13 @@ describe('multi-server contracts', () => {
     expect(next.projectsValue).toBe(first.projectsValue);
     expect(next.currentSessionValue).toBe(first.currentSessionValue);
     expect(next.sessionLibraryValue).toBe(first.sessionLibraryValue);
+    expect(next.bootstrapping).toBe(false);
+
+    store.getState().setRegistry({ focus: { connectionId: 'http://a:', projectPath: '/repo' } });
+    store.getState().setSelection(scopeKey, { isBootstrappingChat: true });
+    driver.update({ values: base });
+    expect(driver.value.bootstrapping).toBe(true);
+    expect(driver.value.chatValue).toBe(base.chatValue);
 
     first.onboardingValue.startOnboardingReview();
     driver.update({ values: base });
@@ -417,7 +425,7 @@ it('keeps lifecycle decisions current without resetting retained runtimes', asyn
   queryClient.clear();
 });
 
-it('persists the focused auto-model choice and ignores background workspace copies', async () => {
+it('keeps auto-model and auto-approval preferences on the owning server', async () => {
   const driver = hookRuntime();
   const entries = ['a', 'b'].map((id) => ({ id, name: id, settings: { serverUrl: `http://${id}`, username: '', password: '', directory: '' }, projects: ['/repo'], enabled: true, preferences: {} }));
   const paths = { 'http://a:': ['/repo'], 'http://b:': ['/repo'] };
@@ -466,7 +474,30 @@ it('persists the focused auto-model choice and ignores background workspace copi
   expect(driver.value.connections.find((entry: any) => entry.id === 'b').preferences.autoModel.enabled).toBe(false);
   expect(store.getState().shell.chatPreferences.autoModel.enabled).toBe(true);
   expect(store.getState().shell.chatPreferences.autoModel.classifier).toBe('server');
+
+  const queryClient = new QueryClient();
+  let contract: 'v2' | 'v1' = 'v2';
+  const connections: TestConnections = {
+    get: () => ({ getState: () => ({ contract }) }) as ReturnType<TestConnections['get']>,
+    subscribeState: () => () => {},
+  };
+  const workspace = createWorkspaceCommands({ store, queryClient, connections }, {
+    navigation: unexpectedSessionCommand, creation: unexpectedSessionCommand,
+  });
+  const { setAutoApprove } = createConnectionCommands({ store, queryClient, connections }, workspace);
+  await expect(setAutoApprove('b', 1, true)).rejects.toThrow('no longer available');
+  contract = 'v1';
+  await expect(setAutoApprove('b', undefined, true)).rejects.toThrow('OpenCode 2 only');
+  contract = 'v2';
+  await setAutoApprove('b', undefined, true);
+  expect(store.getState().registry.connections.find(({ id }) => id === 'b')?.preferences).toMatchObject({
+    autoApprove: true, autoModel: { enabled: false, classifier: 'local' },
+  });
+  expect(store.getState().registry.connections.find(({ id }) => id === 'a')?.preferences?.autoApprove).toBeFalsy();
+  expect(store.getState().shell.chatPreferences.autoApprove).toBeFalsy();
+
   driver.unmount();
+  queryClient.clear();
 });
 
 it('selects a connected fallback for failover and prefers the last healthy server', async () => {

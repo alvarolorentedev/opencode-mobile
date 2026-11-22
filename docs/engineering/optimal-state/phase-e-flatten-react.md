@@ -64,6 +64,9 @@ Start only after Phase D is complete and green.
   selection.
 - Catalog commands run in a plain Projects service. Project status refreshes
   select their scoped Query keys directly.
+- Chat observes its bootstrap flag in the app store and searches files through
+  the scoped Projects API. Chat and Settings bind the same connection command
+  for auto-approval.
 - `runtime/core/workspace-selectors.ts` selects the retained project projection.
 - [ADR 0052](../../adr/0052-explicit-overlay-dependencies.md) records explicit
   portal targets and update blocker callbacks. Shared controls use shared imports.

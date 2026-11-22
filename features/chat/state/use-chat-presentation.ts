@@ -21,6 +21,7 @@ type ChatPresentationInput = Omit<ChatContextValue,
   'currentPendingPermissions' | 'currentPendingQuestions' | 'transcriptPaging' | 'commands'
 > & {
   currentSessionId?: string;
+  isBootstrappingChat: boolean;
   activeSession?: Session;
   sessions: Session[];
   commands: Command[];
@@ -101,11 +102,9 @@ export function useChatPresentation({
   rejectQuestion,
   availableSkills,
   availableReferences,
-  searchProjectFiles,
   switchSessionModel,
   sendPrompt,
   abortSession,
-  setAutoApprove,
   sendingState,
   promptError,
   clearPromptError,
@@ -221,17 +220,17 @@ export function useChatPresentation({
       pendingPrompts, cancelPrompt, currentMessages, currentTranscript, currentUsage, latestAssistantTurnUsage,
       currentDiffs, currentDiffScope, setDiffScope, diffTurns, selectedDiffMessageId, selectDiffMessage, refreshDiffs,
       currentTodos, currentPendingPermissions, currentPendingQuestions, isRefreshingMessages: chatRefreshingMessages,
-      transcriptReadError, retryTranscript, isRefreshingDiffs, isBootstrappingChat, replyToPermission, replyToQuestion,
+      transcriptReadError, retryTranscript, isRefreshingDiffs, replyToPermission, replyToQuestion,
       rejectQuestion, commands: { available: commands, execute: executeCommand, executeShell }, availableSkills,
-      availableReferences, searchProjectFiles, switchSessionModel, sendPrompt, abortSession, setAutoApprove, sendingState,
+      availableReferences, switchSessionModel, sendPrompt, abortSession, sendingState,
       promptError: visiblePromptError, clearPromptError, transcriptPaging,
     }),
     [pendingPrompts, cancelPrompt, currentMessages, currentTranscript, currentUsage, latestAssistantTurnUsage,
       currentDiffs, currentDiffScope, setDiffScope, diffTurns, selectedDiffMessageId, selectDiffMessage, refreshDiffs,
       currentTodos, currentPendingPermissions, currentPendingQuestions, chatRefreshingMessages, transcriptReadError,
-      retryTranscript, isRefreshingDiffs, isBootstrappingChat, replyToPermission, replyToQuestion, rejectQuestion, commands,
-      availableSkills, availableReferences, searchProjectFiles, executeCommand, executeShell, switchSessionModel, sendPrompt,
-      abortSession, setAutoApprove, sendingState, visiblePromptError, clearPromptError, transcriptPaging],
+      retryTranscript, isRefreshingDiffs, replyToPermission, replyToQuestion, rejectQuestion, commands,
+      availableSkills, availableReferences, executeCommand, executeShell, switchSessionModel, sendPrompt,
+      abortSession, sendingState, visiblePromptError, clearPromptError, transcriptPaging],
   );
 
 }

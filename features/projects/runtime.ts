@@ -6,7 +6,7 @@ export { parseHiddenProjects, serializeHiddenProjects } from './services/hidden-
 export { locationOptions } from './services/queries/catalog';
 export { projectsOptions } from './services/queries/catalog';
 export { createFileClipboard, type FileClipboardEntry } from './services/file-clipboard';
-export { invalidateProjectFileReads, searchProjectFiles } from './services/queries/files';
+export { invalidateProjectFileReads } from './services/queries/files';
 export { useProjectCatalogActions } from './state/use-project-catalog-actions';
 export { useProjectRuntimeState } from './state/use-project-runtime-state';
 export { vcsInfoOptions } from './services/queries/status';

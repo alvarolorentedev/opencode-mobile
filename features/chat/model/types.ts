@@ -40,7 +40,6 @@ export type ChatContextValue = {
   transcriptReadError?: string;
   retryTranscript: () => Promise<void>;
   isRefreshingDiffs: boolean;
-  isBootstrappingChat: boolean;
   // Grouped so the domain context surface does not grow one member per paging
   // concern.
   transcriptPaging: {
@@ -58,11 +57,9 @@ export type ChatContextValue = {
   };
   availableSkills: import('@/shared/protocol/opencode/types').Skill[];
   availableReferences: import('@/shared/protocol/opencode/types').Reference[];
-  searchProjectFiles: (query: string) => Promise<string[]>;
   switchSessionModel: (sessionId: string, model: NonNullable<import('@/shared/protocol/opencode/types').Session['model']>) => Promise<void>;
   sendPrompt: SendPrompt;
   abortSession: (sessionId: string) => Promise<void>;
-  setAutoApprove: (enabled: boolean) => Promise<void>;
   sendingState: SendingState;
   promptError?: { message: string; occurredAt: number; sessionId?: string; sourceTitle?: string };
   clearPromptError: () => void;

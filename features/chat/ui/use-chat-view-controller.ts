@@ -23,13 +23,13 @@ import { useChatDraft } from '@/features/chat/ui/use-chat-draft';
 import { useChatViewActions } from '@/features/chat/ui/use-chat-view-actions';
 import { useChatViewVoice } from '@/features/chat/ui/use-chat-view-voice';
 import { useComposerSuggestions } from '@/features/chat/ui/use-composer-suggestions';
-import { useApprovals, useCurrentSession, useSessionLibrary } from '@/features/sessions/context';
+import { useApprovals, useAutoApprove, useCurrentSession, useSessionLibrary } from '@/features/sessions/context';
 import { useCapabilities } from '@/features/ai/context';
-import { useChat } from '@/features/chat/context';
+import { useChat, useChatBootstrap } from '@/features/chat/context';
 import { useConnection } from '@/features/connections/context';
 import { useConversation } from '@/features/voice/context';
 import { useWorkspacePreferences } from '@/runtime/workspace';
-import { useProjects } from '@/features/projects/context';
+import { useProjectFileSearch, useProjects } from '@/features/projects/context';
 import { useUpdateBlocker, useUpdates } from '@/features/updates/context';
 
 export function useChatViewController() {
@@ -44,16 +44,19 @@ export function useChatViewController() {
   const { connection, settings, serverCapabilities } = useConnection();
   const connectionScope = getConnectionScope(settings);
   const { approvals } = useApprovals();
+  const setAutoApprove = useAutoApprove();
+  const isBootstrappingChat = useChatBootstrap();
+  const searchProjectFiles = useProjectFileSearch();
   const conversationContext = useConversation();
   const { conversation, clearConversationFeedback, toggleConversationMode } = conversationContext;
   const {
     pendingPrompts, cancelPrompt, abortSession, clearPromptError, commands: commandActions, currentDiffs, currentDiffScope, currentMessages,
     currentPendingPermissions, currentPendingQuestions, currentTodos, currentTranscript, currentUsage,
-    diffTurns, isBootstrappingChat, isRefreshingDiffs, isRefreshingMessages,
+    diffTurns, isRefreshingDiffs, isRefreshingMessages,
     latestAssistantTurnUsage, promptError, refreshDiffs, rejectQuestion,
     replyToPermission, replyToQuestion, retryTranscript, selectDiffMessage, selectedDiffMessageId, sendPrompt, switchSessionModel,
-    sendingState, setAutoApprove, setDiffScope, transcriptPaging, transcriptReadError,
-    availableSkills, availableReferences, searchProjectFiles,
+    sendingState, setDiffScope, transcriptPaging, transcriptReadError,
+    availableSkills, availableReferences,
   } = useChat();
   const commands = commandActions.available;
   const executeCommand = commandActions.execute;

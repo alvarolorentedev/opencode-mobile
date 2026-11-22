@@ -428,17 +428,10 @@ Abort behavior:
 
 ## Auto-Approve Behavior
 
-The auto-approve toggle updates the server config, not just local UI state.
-
-Enabled means these permissions are set to `allow`:
-
-- `edit`
-- `bash`
-- `webfetch`
-- `doom_loop`
-- `external_directory`
-
-Disabled sets them back to `ask`.
+On OpenCode 2, Chat and the server's Approvals settings change the same
+device-local policy for that connection. When enabled, the app approves pending
+requests once. Changing the toggle leaves server configuration and saved
+permission grants intact.
 
 ## Provider / Model / Reasoning Selection
 
@@ -1066,7 +1059,7 @@ Any reimplementation should preserve these functional outcomes:
 - diagnostics
 - provider discovery and auth configuration from server metadata
 - enabled-model filtering separate from model selection
-- auto-approve writing back to server permissions config
+- OpenCode 2 auto-approval scoped to the selected connection
 - attachment conversion from mobile-local URIs to data URLs
 - attachment capability enforcement and 10 MB local-file limit
 - reconnecting global SSE filtered to the active project, with polling fallback for refreshable session data

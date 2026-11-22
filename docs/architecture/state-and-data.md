@@ -1400,6 +1400,10 @@ Chat focus is validated against live runtimes. When the focused connection error
 
 Enabled and recent catalog models, agent mode, auto-routing tiers, and auto-approve are scoped to a server. Explicit composer model and variant choices are owned by each server session. New servers default to auto-approve off. V2 auto-approve is a local per-server policy that answers each pending request once, using the existing permission service; persistent grants keep the server's actual semantics. General UI, language and voice device preferences remain app-wide. Hide subagents defaults to true when missing; a saved false is retained.
 
+The Chat and Settings toggles use a connection command bound to the selected
+connection revision. Updating a background server preserves the focused
+server's preferences.
+
 Chat focus, terminal target and Settings inspection target are independent composite references. The presentation map holds composer text/attachments, failed input, editor baseline/current text and transcript offsets. Hidden dirty drafts and PTYs participate in update blocking. Removing a connection names unsaved drafts in its confirmation. Drafts are intentionally not written to disk.
 
 When a server URL edit replaces the displayed connection, the workspace

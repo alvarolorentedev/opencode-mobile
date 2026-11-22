@@ -273,14 +273,6 @@ export function useCapabilitiesActions({
     await refreshChatCapabilities();
   }, [client, requireClient, refreshChatCapabilities]);
 
-  const setAutoApprove = useCallback(
-    async (enabled: boolean) => {
-      if (client.__opencode.contract !== 'v2') throw new Error('Auto-approve is available on OpenCode 2 only.');
-      setChatPreferences((current) => ({ ...current, autoApprove: enabled }));
-    },
-    [client, setChatPreferences],
-  );
-
   const modelRouting = useMemo(() => ({
     available: chatPreferences.autoModel.classifier === 'local' ? localReady === true : serverClassifierStatus === 'available',
     serverStatus: serverClassifierStatus,
@@ -300,7 +292,6 @@ export function useCapabilitiesActions({
     addProviderAccount,
     activateProviderAccount,
     removeProviderAccount,
-    setAutoApprove,
     modelRouting,
   };
 }

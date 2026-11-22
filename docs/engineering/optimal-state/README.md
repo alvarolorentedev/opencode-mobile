@@ -335,6 +335,10 @@ npm run validate:commit
   passed with 1,284 tests and one existing skip. All 59 focused tests passed.
   All 79 affected browser flows passed before the refresh module extraction.
   All 40 Projects, Onboarding and Settings flows passed on the final build.
+- E24. Chat bootstrap and file search read their owners directly. Chat and
+  Settings share a revision-guarded approval preference command. The commit
+  gate passed with 1,285 tests and one existing skip. All 300 focused tests
+  and 61 affected browser flows passed.
 
 ## Loop protocol
 

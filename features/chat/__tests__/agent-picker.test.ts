@@ -71,4 +71,28 @@ describe('agent mention discovery', () => {
     expect(runtime.value.groups[0].items[0].context).toEqual({ kind: 'agent', name: 'custom-task', token: '@custom-task' });
     runtime.unmount();
   });
+
+  it('drops file suggestions immediately when the same query changes project', async () => {
+    const runtime = hookRuntime();
+    let runSearch = () => {};
+    const { useComposerSuggestions } = await loadTs('features/chat/ui/use-composer-suggestions.ts', { react: runtime.react }, {
+      setTimeout: (callback: () => void) => { runSearch = callback; return 1; },
+      clearTimeout: () => {},
+    });
+    const props = {
+      draft: '@src', selection: { start: 4, end: 4 }, enabled: true, commands: [],
+      agents: [], skills: [], references: [], searchFiles: async () => ['src/previous.ts'],
+    };
+    runtime.mount(useComposerSuggestions, props);
+    runSearch();
+    await runtime.settle();
+    expect(runtime.value.groups[0].items[0].label).toBe('@src/previous.ts');
+
+    runtime.update({ ...props, searchFiles: async () => ['src/current.ts'] });
+    expect(runtime.value.groups).toEqual([]);
+    runSearch();
+    await runtime.settle();
+    expect(runtime.value.groups[0].items[0].label).toBe('@src/current.ts');
+    runtime.unmount();
+  });
 });

@@ -4,7 +4,6 @@ import { memo, useCallback, useEffect, useLayoutEffect, useMemo, type Dispatch, 
 import { buildClient, type OpencodeConnectionSettings } from '@/shared/protocol/opencode/client';
 import { getActiveSessions, MAX_ACTIVE_SESSIONS, useApprovalsCatalog, useSessionCatalog, useSessionExecutionActions, useSessionPreviews } from '@/features/sessions/runtime';
 import { useConnectionRuntime } from '@/runtime/connections/connection-runtime';
-import { searchProjectFiles as searchFiles } from '@/features/projects/runtime';
 import { useActivityNotifications } from '@/features/notifications/runtime';
 import { useCapabilitiesActions, useCapabilitiesPresentation } from '@/features/ai/runtime';
 import { useConversationState } from '@/features/voice/runtime';
@@ -34,7 +33,7 @@ type Props = Omit<ProjectBindingInput, 'setSettings' | 'setChatPreferences' | 'p
   forget: (key: string) => void;
 };
 export const RetainedProject = memo(function RetainedProject({ defaults, updateSettings, updatePreferences, publish, forget, ...props }: Props) {
-  const { store, queryClient, commands: { session: sessionCommands }, events, terminal } = useAppCore();
+  const { store, commands: { session: sessionCommands }, events, terminal } = useAppCore();
   const id = props.connection.id;
   const key = workspaceKey({ connectionId: id, projectPath: props.projectPath ?? '' });
   const hasTerminal = useAppStore((state) => Boolean(state.terminal[key]?.instances.length));
@@ -285,11 +284,9 @@ export const RetainedProject = memo(function RetainedProject({ defaults, updateS
 
   const activeSession = sessionCatalog.sessions.find(({ id }) => id === state.currentSessionId);
   const sessionPreviews = useSessionPreviews(transcript.messagesBySession);
-  const searchProjectFiles = useCallback((query: string) => isCurrentClient(client) ? searchFiles(queryClient, identity, client, query) : Promise.resolve([]),
-    [client, identity, isCurrentClient, queryClient]);
   const chatValue = useChatPresentation({
     ...domain, ...transcript, ...project, ...sessionActions, ...interactions, ...capabilities, ...prompt,
-    activeSession, searchProjectFiles,
+    activeSession,
     transcriptReadError: state.currentSessionId ? transcriptRead.errors[state.currentSessionId] : undefined,
     retryTranscript, pendingPromptsBySession: inbox.pendingPromptsBySession, pendingNoticesBySession: inbox.pendingNoticesBySession,
     cancelPrompt: inbox.cancelPrompt,

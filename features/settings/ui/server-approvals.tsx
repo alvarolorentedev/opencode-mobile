@@ -9,8 +9,7 @@ import { View } from 'react-native';
 
 import { useTranslation } from 'react-i18next';
 import { useRouter } from 'expo-router';
-import { useApprovals, useServerPendingInteractions } from '@/features/sessions/context';
-import { useChat } from '@/features/chat/context';
+import { useApprovals, useAutoApprove, useServerPendingInteractions } from '@/features/sessions/context';
 import { useConnection } from '@/features/connections/context';
 import { useWorkspacePreferences, useWorkspaces } from '@/runtime/workspace';
 
@@ -22,7 +21,7 @@ export function ServerApprovals({ workspace }: { workspace: WorkspaceTarget }) {
   const router = useRouter();
   const palette = usePalette();
   const { approvals } = useApprovals(workspace);
-  const { setAutoApprove } = useChat(workspace);
+  const setAutoApprove = useAutoApprove(workspace);
   const { chatPreferences } = useWorkspacePreferences(workspace);
   const { settings, connection } = useConnection(workspace);
   const registry = useWorkspaces();

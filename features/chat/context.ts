@@ -1,4 +1,8 @@
-import type { WorkspaceTarget } from '@/shared/contracts/workspace';
-import { useWorkspaceDomainValue } from '@/runtime/core';
+import { useAppCore, useAppStore, useWorkspaceDomainValue } from '@/runtime/core';
 
-export const useChat = (target?: WorkspaceTarget) => useWorkspaceDomainValue((values) => values.chatValue, 'useChat', target);
+export const useChat = () => useWorkspaceDomainValue((values) => values.chatValue, 'useChat');
+
+export function useChatBootstrap() {
+  const { resolveKey } = useAppCore().commands.workspace;
+  return useAppStore(({ registry: { focus }, selection }) => focus ? selection[resolveKey(focus)]?.isBootstrappingChat ?? false : false);
+}
