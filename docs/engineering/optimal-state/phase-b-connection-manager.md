@@ -43,8 +43,7 @@ runtime/connections/registry.ts
 
 Existing owners:
 - `runtime/connections/connection-lifecycle.ts` — state machine; keep and test.
-- `runtime/connections/connection-runtime.tsx` — current React owner; delete or
-  reduce to a thin unused-free bridge by the end of the phase.
+- `runtime/connections/connection-catalog.tsx` — current React catalog binding; `connection-binding.ts` owns registry/demand hooks.
 - `runtime/workspace/use-workspace-connections.ts` — registry/focus; remove
   connection-local concerns that move here.
 - `runtime/persistence/connection-refresh.ts` — credential-scope migration.

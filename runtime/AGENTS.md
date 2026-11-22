@@ -18,7 +18,7 @@ and [feature boundaries](../docs/architecture/feature-boundaries.md).
   machine. `create-connection.ts` owns probing, credential renewal, retry, the
   catalog client, realtime transport and Query invalidation. The app core's
   `registry.ts` follows enabled connections and credential revisions.
-  `connection-runtime.tsx` adapts lifecycle and connection catalog data for React.
+  `connection-catalog.tsx` binds lifecycle and catalog data for React; `connection-binding.ts` owns registry/demand hooks.
 - `runtime/core/project-runtimes.ts` and `project-binding.ts`: bind retained project
   keys to commands and reconciliation on the connection's realtime manager.
 - `runtime/shell/`: app entrypoint, workspace/native/conversation hosts; `runtime/workspace/use-workspace-server-data.ts` owns scoped query demand.

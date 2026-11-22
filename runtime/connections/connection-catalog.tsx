@@ -1,10 +1,6 @@
-import { buildClient, type OpencodeConnectionSettings } from '@/shared/protocol/opencode/client';
+import { buildClient } from '@/shared/protocol/opencode/client';
 import { useQuery } from '@tanstack/react-query';
 import { useCallback, useEffect, useLayoutEffect, useMemo, useSyncExternalStore } from 'react';
-import { useTranslation } from 'react-i18next';
-import type { TFunction } from 'i18next';
-import { AppState } from 'react-native';
-import { createConnection } from '@/runtime/connections/create-connection';
 import { useAppCore, useAppStore } from '@/runtime/core';
 import { useActivityNotifications } from '@/features/notifications/runtime';
 import type { SendingState } from '@/shared/contracts/prompt-actions';
@@ -14,43 +10,13 @@ import { useConnectionQueryIdentity, useQueryForeground } from '@/shared/server-
 import { readSessionStats } from '@/shared/protocol/services/session-stats';
 import type { SessionStatsSource } from '@/shared/server-data/session-stats';
 import { useActiveSessions, useMissionActivity } from '@/features/sessions/runtime';
-import type { ConnectSetup } from '@/shared/contracts/cloud-link-setup';
 import { workspaceKey, type ConnectionRecord, type WorkspaceCatalog } from '@/shared/contracts/workspace';
 import type { Project } from '@/shared/protocol/opencode/types';
 
 const EMPTY_PROJECTS: Project[] = [];
-
-// i18next's TFunction no longer accepts a plain options record, and the protocol
-// layer must not type itself against i18next generics, so adapt at this boundary.
-// The protocol layer only ever asks for plain strings, never key details.
-function connectionTranslator(t: TFunction) {
-  return (key: string, options?: Record<string, unknown>): string =>
-    (options ? t(key, options as never) : t(key)) as string;
-}
-
 const readIdle = () => idleConnection;
 const noSubscription = () => () => {};
 const IDLE: SendingState = { active: false };
-
-export function useConnectionRegistryBinding(setup: ConnectSetup, updateSettings: (id: string, settings: OpencodeConnectionSettings) => void, hydrated: boolean) {
-  const { connections } = useAppCore();
-  const { t } = useTranslation();
-  const { phase, prepareSettings } = setup;
-  useLayoutEffect(() => {
-    connections.setForeground(AppState.currentState === 'active');
-    const subscription = AppState.addEventListener('change', (state) => connections.setForeground(state === 'active'));
-    return () => { subscription.remove(); connections.dispose(); };
-  }, [connections]);
-  useLayoutEffect(() => {
-    connections.configure({ setup: { phase, prepareSettings }, translate: connectionTranslator(t), hydrated, updateSettings, createManager: createConnection });
-  }, [connections, hydrated, phase, prepareSettings, t, updateSettings]);
-}
-
-export function useConnectionDemand(activeId: string | undefined) {
-  const { connections } = useAppCore();
-  const foreground = useQueryForeground();
-  useLayoutEffect(() => { connections.setDemand(activeId, foreground); }, [activeId, connections, foreground]);
-}
 
 function useManagedConnection(entry: ConnectionRecord) {
   const { connections, commands } = useAppCore();

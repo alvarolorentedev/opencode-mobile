@@ -299,8 +299,9 @@ The completion version, preference schema and first-run migration are unchanged.
   Provider auth/OAuth, preference reconciliation, and auto-approve; capability responses live in Query.
 - `runtime/connections/create-connection.ts`
   Connection lifecycle, retry, renewal, the shared event stream and routine
-  invalidation. `connection-runtime.tsx` provides React bindings and the
-  catalog view and connection-level activity and Mission Control observers.
+  invalidation. `connection-catalog.tsx` provides the React catalog binding and
+  connection-level activity and Mission Control observers; `connection-binding.ts`
+  owns registry/demand binding.
 - `runtime/workspace/workspace-lifecycle.ts`
   Cancellable readiness promises resolved by committed runtime publications.
 - `features/cloud-link/state/connect/`

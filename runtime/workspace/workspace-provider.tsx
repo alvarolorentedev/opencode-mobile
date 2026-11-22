@@ -2,7 +2,8 @@
 // See docs/architecture/state-and-data.md#state-ownership-overview.
 import type { ConnectionProfile } from '@/shared/contracts/connection-profiles';
 import { getConnectionScope, getConnectionUiScope } from '@/shared/contracts/connection-scope';
-import { ConnectionCatalog, useConnectionDemand, useConnectionRegistryBinding } from '@/runtime/connections/connection-runtime';
+import { ConnectionCatalog } from '@/runtime/connections/connection-catalog';
+import { useConnectionDemand, useConnectionRegistryBinding } from '@/runtime/connections/connection-binding';
 import { CURRENT_ONBOARDING_VERSION } from '@/features/onboarding/runtime';
 import type { ConnectionContextValue } from '@/features/connections/index';
 import { useAppUpdates } from '@/features/updates/runtime';
