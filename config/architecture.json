@@ -202,6 +202,7 @@
       "HIDDEN_PROJECTS_MAX",
       "useProjectPresentation",
       "buildOpencodeProjects",
+      "createWorktreeCommands",
       "fetchProjectCatalog",
       "fileStatusOptions",
       "getVcsDiff",

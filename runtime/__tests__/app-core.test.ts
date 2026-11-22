@@ -19,6 +19,7 @@ const protocol = vi.hoisted(() => ({
   switchSessionModel: vi.fn(),
   deleteSession: vi.fn(),
   updateSessionTitle: vi.fn(),
+  createWorktree: vi.fn(),
 }));
 
 vi.mock('@/shared/protocol/opencode/client', () => ({
@@ -49,6 +50,11 @@ vi.mock('@/features/ai/runtime', () => ({
 }));
 vi.mock('@/features/projects/runtime', async () => ({
   HIDDEN_PROJECTS_MAX: (await import('@/features/projects/model/types')).HIDDEN_PROJECTS_MAX,
+  createWorktreeCommands: (await import('@/features/projects/services/worktree-commands')).createWorktreeCommands,
+}));
+vi.mock('@/features/projects/services/project-service', () => ({
+  createWorktree: protocol.createWorktree,
+  listWorktrees: vi.fn(), findFiles: vi.fn(), listFiles: vi.fn(), removeWorktree: vi.fn(),
 }));
 vi.mock('@/features/terminal/runtime', () => ({ createProjectTerminal: vi.fn() }));
 vi.mock('@/shared/server-data/catalogs', () => ({ configurationOptions: () => ({ queryKey: ['configuration'] }) }));
@@ -64,22 +70,29 @@ const newCore = () => createAppCore({ settings, chatPreferences: {} as ChatPrefe
 function connectedProject(core: ReturnType<typeof newCore>, connectionId: string, projectPath: string) {
   const target: WorkspaceTarget = { connectionId, projectPath };
   const state = { status: 'connected', message: 'Connected' };
-  const manager = { getState: () => ({ connection: state }), connect: async () => state } as unknown as NonNullable<ReturnType<typeof core.connections.get>>;
   const previous = core.connections.get;
+  const manager = {
+    getState: () => ({ connection: state }),
+    connect: async () => state,
+    getProjectAccess: (path: string) => path === projectPath ? {
+      identity: { connectionId, connectionScope: getConnectionScope(settings), authRevision: 0 },
+      client: { __opencode: { contract: 'v2', directory: path } },
+      isCurrent: () => true,
+    } : previous(connectionId)?.getProjectAccess(path),
+    realtime: { getProjectSources: () => undefined },
+  } as unknown as NonNullable<ReturnType<typeof core.connections.get>>;
   core.connections.get = (id) => id === connectionId && core.store.getState().registry.connections.find((entry) => entry.id === id)?.enabled
     ? manager : previous(id);
   const openSession = vi.fn(async (_id: string) => {});
   const created = { id: 'new-session' };
   const createSession = vi.fn(async () => created);
   const openDeepLinkSession = vi.fn(async (_link: unknown, _signal: AbortSignal) => ({ ok: true }));
-  const createWorktree = vi.fn(async (_name?: string) => ({ directory: '/checkout' }));
   const snapshot = {
     enabled: true, catalogSessions: [{ id: 'rendered', directory: projectPath }], suspend: vi.fn(),
     values: {
       projectsValue: { activeProjectPath: projectPath },
       conversationValue: { conversation: { active: false } },
       currentSessionValue: { openSession, openDeepLinkSession, createSession },
-      projectFilesValue: { createWorktree },
       sessionLibraryValue: { sessions: [] },
     },
   } as unknown as WorkspaceSnapshot;
@@ -90,7 +103,7 @@ function connectedProject(core: ReturnType<typeof newCore>, connectionId: string
     return [...current, { id: connectionId, settings, name: connectionId, enabled: true, preferences: {}, projects: [projectPath] }];
   });
   commands.publish(workspaceKey(target), snapshot);
-  return { target, openSession, openDeepLinkSession, createSession, createWorktree, created };
+  return { target, openSession, openDeepLinkSession, createSession, created };
 }
 
 describe('app core', () => {
@@ -248,11 +261,12 @@ describe('app core', () => {
   it('creates and opens worktree chats in the checkout and returns the checkout on session failure', async () => {
     const core = newCore();
     const commands = core.commands.workspace;
+    protocol.createWorktree.mockReset().mockResolvedValue({ directory: '/checkout' });
     const root = connectedProject(core, 'a', '/root');
     const checkout = connectedProject(core, 'a', '/checkout');
     const target = { connectionId: 'a', projectRoot: '/root', name: 'fix' };
     await expect(commands.createChatInWorktree(target)).resolves.toEqual({ session: checkout.created, checkout: { directory: '/checkout' } });
-    expect(root.createWorktree).toHaveBeenCalledExactlyOnceWith('fix');
+    expect(protocol.createWorktree).toHaveBeenCalledExactlyOnceWith(expect.objectContaining({ __opencode: expect.objectContaining({ directory: '/root' }) }), 'fix');
     expect(root.createSession).not.toHaveBeenCalled();
     expect(checkout.openSession).toHaveBeenCalledExactlyOnceWith(checkout.created.id);
     expect(core.store.getState().registry.focus).toEqual(checkout.target);

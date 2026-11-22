@@ -56,6 +56,5 @@ export type ProjectFilesContextValue = {
   vcsInfo?: VcsInfo;
   worktrees: WorktreeCatalog;
   refreshWorktrees: () => Promise<void>;
-  createWorktree: (name?: string) => Promise<import('@/shared/protocol/opencode/project').ProjectWorktree>;
   removeWorktree: (directory: string) => Promise<void>;
 };

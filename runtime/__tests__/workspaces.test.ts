@@ -21,8 +21,9 @@ function mountWorkspaceConnections(driver: ReturnType<typeof hookRuntime>, useWo
 ) {
   const store = createAppStore({ settings: shell.settings, chatPreferences: shell.chatPreferences, controlPlaneUrl: '' });
   store.getState().setShellValue('onboardingVersion', shell.onboardingVersion);
-  const workspace = createWorkspaceCommands({ store, connections });
-  const commands = { workspace, connection: createConnectionCommands({ store, connections, queryClient: new QueryClient() }, workspace) };
+  const queryClient = new QueryClient();
+  const workspace = createWorkspaceCommands({ store, connections, queryClient });
+  const commands = { workspace, connection: createConnectionCommands({ store, connections, queryClient }, workspace) };
   const getRegistry = () => store.getState().registry;
   driver.mount(() => {
     const registry = driver.react.useSyncExternalStore(store.subscribe, getRegistry);

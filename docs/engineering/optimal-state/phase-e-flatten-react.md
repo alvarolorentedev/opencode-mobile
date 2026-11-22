@@ -42,6 +42,8 @@ Start only after Phase D is complete and green.
   projection still signals project readiness during a focus change.
 - Connection controls are composed at the app shell. Profiles, Projects,
   Sessions and native surfaces read lifecycle state from the connection manager.
+- Worktree writes run in the owning service. The core gets the root project's
+  guarded client when creating a chat in a new checkout.
 - `runtime/core/workspace-selectors.ts` selects the retained project projection.
 - [ADR 0052](../../adr/0052-explicit-overlay-dependencies.md) records explicit
   portal targets and update blocker callbacks. Shared controls use shared imports.

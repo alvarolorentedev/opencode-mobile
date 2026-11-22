@@ -1,4 +1,5 @@
 import type { CommandContext } from '@/runtime/core/commands/context';
+import { createWorktreeCommands } from '@/features/projects/runtime';
 import { createWorkspaceWaiters } from '@/runtime/workspace/workspace-lifecycle';
 import type { WorkspaceSnapshot } from '@/runtime/workspace/workspace-types';
 import { getConnectionScope } from '@/shared/contracts/connection-scope';
@@ -7,7 +8,7 @@ import { findSessionForNavigation } from '@/shared/protocol/services/session-ser
 
 type ReadinessOptions = { signal?: AbortSignal; waitForProject?: boolean };
 
-export function createWorkspaceCommands({ store, connections }: Pick<CommandContext, 'store'> & {
+export function createWorkspaceCommands({ store, connections, queryClient }: Pick<CommandContext, 'store' | 'queryClient'> & {
   connections: Pick<CommandContext['connections'], 'get' | 'subscribeState'>;
 }) {
   const waiters = createWorkspaceWaiters();
@@ -259,8 +260,19 @@ export function createWorkspaceCommands({ store, connections }: Pick<CommandCont
   async function createChatInWorktree(target: NewWorktreeChatTarget): Promise<NewWorktreeChatResult> {
     let checkout: NewWorktreeChatResult['checkout'];
     try {
-      const root = await connectedWorkspace({ connectionId: target.connectionId, projectPath: target.projectRoot });
-      checkout = await root.values.projectFilesValue.createWorktree(target.name);
+      const root = { connectionId: target.connectionId, projectPath: target.projectRoot };
+      await connectedWorkspace(root);
+      const scopeKey = resolveKey(root);
+      const readDirectory = () => store.getState().selection[scopeKey]?.activeProjectPath ?? root.projectPath;
+      const directory = readDirectory();
+      const manager = connections.get(root.connectionId);
+      const access = manager?.getProjectAccess(directory);
+      if (!manager || !access) throw new Error('This server is no longer available.');
+      checkout = await createWorktreeCommands({ ...access, cache: queryClient,
+        isCurrent: () => access.isCurrent() && manager === connections.get(root.connectionId)
+          && resolveKey(root) === scopeKey && readDirectory() === directory,
+        shouldRefresh: () => manager.realtime.getProjectSources(directory, scopeKey)?.demanded === true,
+      }).createWorktree(target.name);
       const project = { connectionId: target.connectionId, projectPath: checkout.directory };
       const session = await createChat(project);
       return { session, checkout };

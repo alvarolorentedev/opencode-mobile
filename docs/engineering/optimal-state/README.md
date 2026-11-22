@@ -279,11 +279,15 @@ npm run validate:commit
   The commit gate passed with 1,283 tests and one existing skip. All 42 focused
   tests and 110 Connect, manual connection, multi-server, Sessions, Projects,
   Settings and realtime browser flows passed.
-- E12. Connections, Projects, Sessions and native surfaces read lifecycle state
+- E12, `5b2693d1`. Connections, Projects, Sessions and native surfaces read lifecycle state
   from the manager. Profile, setup and service controls mount once at the app
   shell. The commit gate passed with 1,283 tests and one existing skip.
   All 164 focused tests and 117 browser flows across Connect, manual connection,
   multi-server, Sessions, Projects, Settings, Onboarding and Mission Control passed.
+- E13. Worktree writes use the Projects service. The app core creates a worktree
+  chat with the exact root client and opens the returned checkout. The commit
+  gate passed with 1,283 tests and one existing skip. All 56 focused tests and
+  37 browser flows across Projects, Sessions, diffs and multi-server passed.
 
 ## Loop protocol
 

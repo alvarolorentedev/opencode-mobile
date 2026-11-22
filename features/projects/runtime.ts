@@ -1,5 +1,6 @@
 export { buildOpencodeProjects } from './model/project-utils';
 export { fetchProjectCatalog } from './services/queries/catalog';
+export { createWorktreeCommands } from './services/worktree-commands';
 export { fileStatusOptions } from './services/queries/status';
 export { getVcsDiff } from './services/project-service';
 export { parseHiddenProjects, serializeHiddenProjects } from './services/hidden-projects-storage';

@@ -34,6 +34,10 @@ own navigation cancellation, chat and worktree creation, and independent
 terminal and inspection targets. A newer navigation cancels an older external
 link before it can change focus.
 
+Worktree mutations use the owning project service. Creating a worktree chat
+gets the guarded root client from the connection manager, creates the worktree,
+then creates and opens the chat in the returned checkout.
+
 Session selection and startup bootstrap use the scoped app-core command in
 `runtime/core/commands/session-navigation.ts`. Explicit selection commits
 before transcript hydration and cancels any in-flight bootstrap for that
