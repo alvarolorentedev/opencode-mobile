@@ -6,6 +6,7 @@ import { startRealtimeTransport, type Foreground, type StreamStatus } from '@/ru
 
 export type RealtimeScopeInput = Omit<ReconcileSources, 'pendingSessionIds' | 'streamConnected'> & {
   workspaceKey?: string;
+  demanded?: boolean;
   projectPath?: string;
   pendingSessionIds?: string[];
   busy: boolean;

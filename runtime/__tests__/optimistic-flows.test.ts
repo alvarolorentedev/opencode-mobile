@@ -2,6 +2,9 @@ import { describe, expect, it, vi } from 'vitest';
 import { QueryClient } from '@tanstack/react-query';
 
 import { createSessionNavigationCommands } from '@/runtime/core/commands/session-navigation';
+import { forgetSessionCreation, recentlyCreatedSessionIds, sessionCreationCommands } from '@/features/sessions/services/session-creation';
+import { sessionCatalogAccess } from '@/features/sessions/services/session-catalog-access';
+import type { ModelOption } from '@/shared/contracts/model-options';
 import { createAppStore } from '@/runtime/core/store';
 import type { CommandContext } from '@/runtime/core/commands/context';
 import type { RealtimeScopeInput } from '@/runtime/realtime/create-realtime';
@@ -14,6 +17,27 @@ vi.mock('@/features/sessions/runtime', () => ({
   projectSessionsKey: (identity: Parameters<typeof connectionQueryKey>[0], client: ScopedOpencodeClient) =>
     [...connectionQueryKey(identity, client.__opencode.contract), 'sessions', 'project', client.__opencode.directory],
 }));
+
+const sessionService = vi.hoisted(() => ({
+  createSession: vi.fn(),
+  forkSession: vi.fn(),
+  switchSessionModel: vi.fn(),
+}));
+vi.mock('@/shared/protocol/services/session-service', () => sessionService);
+vi.mock('@/shared/protocol/opencode/client', () => ({ withReadSignal: (client: ScopedOpencodeClient) => client }));
+
+function sessionCreationFixture({ api = false, preferred = false }: { api?: boolean; preferred?: boolean } = {}) {
+  sessionService.createSession.mockReset().mockResolvedValue({ id: 'new', title: '' });
+  sessionService.forkSession.mockReset().mockResolvedValue({ id: 'fork', title: '' });
+  sessionService.switchSessionModel.mockReset().mockResolvedValue(undefined);
+  const cache = new QueryClient({ defaultOptions: { queries: { gcTime: Infinity } } });
+  const identity = { connectionId: 'server', connectionScope: 'scope', authRevision: 0 };
+  const client = { __opencode: { contract: 'v2', directory: '/repo' }, ...(api ? { api: {} } : {}) } as ScopedOpencodeClient;
+  const catalog = sessionCatalogAccess(cache, identity, client);
+  const model = { id: 'openai/gpt-5', providerID: 'openai', modelID: 'gpt-5' } as ModelOption;
+  const commands = sessionCreationCommands({ cache, identity, client, isCurrent: () => true, clock: () => 1_000, recentModel: () => preferred ? model : undefined });
+  return { ...commands, cache, catalog, client, identity };
+}
 
 function sessionNavigationFixture(sessions: { id: string }[] = [], overrides: Partial<RealtimeScopeInput> = {}) {
   const target = { connectionId: 'server', projectPath: '/repo' };
@@ -42,7 +66,7 @@ function sessionNavigationFixture(sessions: { id: string }[] = [], overrides: Pa
   };
   const commands = createSessionNavigationCommands({ store, queryClient, clock: Date.now,
     connections: { get: () => manager } as unknown as CommandContext['connections'],
-  });
+  }, async () => { throw new Error('The fixture did not expect a session to be created.'); });
   writeSessions(sessions);
   return {
     ...commands.navigation(target, scopeKey, 0),
@@ -96,11 +120,9 @@ function sessionCrudInput(patch: Record<string, unknown> = {}) {
   let currentSessionId: string | undefined = patch.currentSessionId as string | undefined;
   const currentSessionIdRef: { current: string | undefined } = { current: currentSessionId };
   const explicitSessionSelectionRef: { current: string | undefined } = { current: undefined };
-  const locallyCreatedSessionsRef = { current: new Map<string, number>() };
   return {
     currentSessionIdRef,
     explicitSessionSelectionRef,
-    locallyCreatedSessionsRef,
     state: {
       get sessions() { return sessions; },
       get statuses() { return statuses; },
@@ -120,10 +142,9 @@ function sessionCrudInput(patch: Record<string, unknown> = {}) {
       sessions,
       sessionStatuses: statuses,
       commands: [],
-        currentSessionIdRef,
+      currentSessionIdRef,
       explicitSessionSelectionRef,
-      locallyCreatedSessionsRef,
-      openSession: vi.fn(async () => {}),
+        forgetSessionCreation: vi.fn(),
       setCurrentSessionId: (value: any) => {
         currentSessionId = typeof value === 'function' ? value(currentSessionId) : value;
         currentSessionIdRef.current = currentSessionId;
@@ -256,58 +277,54 @@ describe('local-first session selection', () => {
   });
 
   it('createSession shows the returned session before the list refresh resolves', async () => {
-    const runtime = hookRuntime();
-    const { useSessionCrudActions, services } = await loadSessionCrud(runtime);
-    const refresh = deferredGate();
-    const { state, input } = sessionCrudInput({
-      refreshSessions: async () => { await refresh.promise; return []; },
-    });
-    runtime.mount(useSessionCrudActions, input);
+    const fixture = sessionCreationFixture();
+    const { cache, catalog, client, identity } = fixture;
+    const refresh = deferredGate<{ id: string; title: string }[]>();
+    const list = cache.fetchQuery({ queryKey: catalog.projectKey, queryFn: () => refresh.promise });
 
-    await expect(runtime.value.createSession()).resolves.toEqual({ id: 'new', title: '' });
-    expect(services.createSession).toHaveBeenCalledOnce();
-    expect(services.switchSessionModel).not.toHaveBeenCalled();
-    expect(state.sessions).toEqual([{ id: 'new', title: '' }]);
-    expect(state.statuses.new).toEqual({ type: 'idle' });
+    await expect(fixture.createSession()).resolves.toEqual({ id: 'new', title: '' });
+    expect(sessionService.createSession).toHaveBeenCalledOnce();
+    expect(sessionService.switchSessionModel).not.toHaveBeenCalled();
+    expect(catalog.readSessions()).toEqual([{ id: 'new', title: '' }]);
+    expect(cache.getQueryState(catalog.projectKey)?.fetchStatus).toBe('fetching');
+    expect(cache.getQueryData(catalog.catalogKey)).toEqual({ sessions: [], statuses: { new: { type: 'idle' } } });
+    expect(recentlyCreatedSessionIds(cache, identity, client, new Set(), 1001)).toEqual(new Set(['new']));
 
-    refresh.resolve();
-    await runtime.settle();
-    runtime.unmount();
+    refresh.resolve([{ id: 'new', title: '' }]);
+    await list;
+    expect(recentlyCreatedSessionIds(cache, identity, client, new Set(['new']), 1002)).toEqual(new Set());
+    expect(recentlyCreatedSessionIds(cache, identity, client, new Set(), 1003)).toEqual(new Set());
+    cache.clear();
   });
 
   it('createSession starts on the model the user last picked', async () => {
-    const runtime = hookRuntime();
-    const { useSessionCrudActions, services } = await loadSessionCrud(runtime);
-    const { state, input } = sessionCrudInput({
-      client: { __opencode: { contract: 'v2' }, api: {} },
-      availableModels: [{ id: 'openai/gpt-5', providerID: 'openai', modelID: 'gpt-5' }],
-      chatPreferences: { mode: 'build', promptDelivery: 'steer', recentModelIds: ['openai/gpt-5'] },
-    });
-    runtime.mount(useSessionCrudActions, input);
-
+    const fixture = sessionCreationFixture({ api: true, preferred: true });
     const model = { providerID: 'openai', id: 'gpt-5' };
-    await expect(runtime.value.createSession()).resolves.toEqual({ id: 'new', title: '', model });
-    expect(services.switchSessionModel).toHaveBeenCalledWith(input.client, 'new', model);
-    expect(state.sessions[0].model).toEqual(model);
-
-    runtime.unmount();
+    await expect(fixture.createSession()).resolves.toEqual({ id: 'new', title: '', model });
+    expect(sessionService.switchSessionModel).toHaveBeenCalledWith(fixture.client, 'new', model);
+    expect(fixture.catalog.readSessions()[0].model).toEqual(model);
+    fixture.cache.clear();
   });
 
   it('createSession keeps the server default when the last model cannot be applied', async () => {
-    const runtime = hookRuntime();
-    const { useSessionCrudActions, services } = await loadSessionCrud(runtime);
-    services.switchSessionModel.mockRejectedValueOnce(new Error('model unavailable'));
-    const { state, input } = sessionCrudInput({
-      client: { __opencode: { contract: 'v2' }, api: {} },
-      availableModels: [{ id: 'openai/gpt-5', providerID: 'openai', modelID: 'gpt-5' }],
-      chatPreferences: { mode: 'build', promptDelivery: 'steer', recentModelIds: ['openai/gpt-5'] },
-    });
-    runtime.mount(useSessionCrudActions, input);
+    const fixture = sessionCreationFixture({ api: true, preferred: true });
+    sessionService.switchSessionModel.mockRejectedValueOnce(new Error('model unavailable'));
 
-    await expect(runtime.value.createSession()).resolves.toEqual({ id: 'new', title: '' });
-    expect(state.sessions[0].model).toBeUndefined();
+    await expect(fixture.createSession()).resolves.toEqual({ id: 'new', title: '' });
+    expect(fixture.catalog.readSessions()[0].model).toBeUndefined();
+    fixture.cache.clear();
+  });
 
-    runtime.unmount();
+  it('publishes the returned fork and removes the grace entry when the session is removed', async () => {
+    const fixture = sessionCreationFixture();
+    const { cache, catalog, client, identity } = fixture;
+    await expect(fixture.forkSession('source', 'point')).resolves.toEqual({ id: 'fork', title: '' });
+    expect(sessionService.forkSession).toHaveBeenCalledExactlyOnceWith(client, 'source', 'point');
+    expect(catalog.readSessions()).toEqual([{ id: 'fork', title: '' }]);
+    expect(recentlyCreatedSessionIds(cache, identity, client, new Set(), 1001)).toEqual(new Set(['fork']));
+    forgetSessionCreation(cache, identity, client, 'fork');
+    expect(recentlyCreatedSessionIds(cache, identity, client, new Set(), 1002)).toEqual(new Set());
+    cache.clear();
   });
 
   it('renameSession echoes the title and rolls back on failure', async () => {

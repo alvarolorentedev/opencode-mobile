@@ -1,4 +1,4 @@
-import { createSession as svcCreateSession, compactSession as svcCompactSession, deleteSession as svcDeleteSession, executeCommand as svcExecuteCommand, executeShell as svcExecuteShell, forkSession as svcForkSession, generateSessionText as svcGenerateSessionText, interruptSession as svcInterruptSession, revertSession as svcRevertSession, switchSessionModel as svcSwitchSessionModel, unrevertSession as svcUnrevertSession, updateSessionTitle as svcUpdateSessionTitle, waitForSessionIdle as svcWaitForSessionIdle } from '@/shared/protocol/services/session-service';
+import { compactSession as svcCompactSession, deleteSession as svcDeleteSession, executeCommand as svcExecuteCommand, executeShell as svcExecuteShell, generateSessionText as svcGenerateSessionText, interruptSession as svcInterruptSession, revertSession as svcRevertSession, unrevertSession as svcUnrevertSession, updateSessionTitle as svcUpdateSessionTitle, waitForSessionIdle as svcWaitForSessionIdle } from '@/shared/protocol/services/session-service';
 import { useCallback } from 'react';
 
 import type { Session, SessionStatus } from '@/shared/protocol/opencode/types';
@@ -14,15 +14,13 @@ export function useSessionCrudActions({
   connectionScopeRef,
   currentSessionId,
   explicitSessionSelectionRef,
-  locallyCreatedSessionsRef,
+  forgetSessionCreation,
   availableAgents,
-  availableModels,
   commands,
   currentConfig,
   sessions,
   sessionStatuses,
   setCurrentSessionId,
-  openSession,
   setSessions,
   setSessionStatuses,
   setMessagesBySession,
@@ -37,41 +35,6 @@ export function useSessionCrudActions({
   refreshActiveSessions,
   chatPreferences,
 }: SessionCrudInput) {
-  const createSession = useCallback(
-    async (title?: string) => {
-      const trimmedTitle = title?.trim();
-      const created = await svcCreateSession(client, trimmedTitle);
-      if (!created) {
-        throw new Error('OpenCode did not return the created session.');
-      }
-      if (!isCurrentClient(client)) {
-        throw new Error('The active project changed before the session was created.');
-      }
-      // A new chat starts from the model the user last picked in the picker.
-      // The server keeps owning the choice; if the switch fails or the model is
-      // gone, the chat still opens on the server's agent/config default.
-      const recentModelId = chatPreferences.recentModelIds[0];
-      const preferred = recentModelId ? availableModels.find((model) => model.id === recentModelId) : undefined;
-      let session = created;
-      if (preferred && client.__opencode?.contract === 'v2' && client.api) {
-        try {
-          const model = { providerID: preferred.providerID, id: preferred.modelID };
-          await svcSwitchSessionModel(client, created.id, model);
-          session = { ...created, model };
-        } catch {
-          // Keep the server default.
-        }
-      }
-      // The server already returned the session. Show it immediately and let a
-      // background read reconcile ordering/status instead of delaying the chat.
-      locallyCreatedSessionsRef.current.set(session.id, Date.now());
-      setSessions((current) => [session, ...current.filter((item) => item.id !== session.id)]);
-      setSessionStatuses((current) => ({ ...current, [session.id]: { type: 'idle' } }));
-      return session;
-    },
-    [availableModels, chatPreferences.recentModelIds, client, isCurrentClient, locallyCreatedSessionsRef, setSessionStatuses, setSessions],
-  );
-
   const deleteSession = useCallback(
     async (sessionId: string) => {
       await svcDeleteSession(client, sessionId);
@@ -106,7 +69,7 @@ export function useSessionCrudActions({
       setFavoriteSessions((current) => current.filter(
         (favorite) => !(favorite.connectionScope === connectionScopeRef.current && favorite.sessionId === sessionId),
       ));
-      locallyCreatedSessionsRef.current.delete(sessionId);
+      forgetSessionCreation(sessionId);
       setSessions((current) => current.filter((session) => session.id !== sessionId));
       setSessionStatuses((current) => {
         const next = { ...current };
@@ -119,7 +82,7 @@ export function useSessionCrudActions({
       }
       void refreshActiveSessions().catch(() => undefined);
     },
-    [client, connectionScopeRef, currentSessionId, explicitSessionSelectionRef, isCurrentClient, locallyCreatedSessionsRef, refreshActiveSessions, setCurrentSessionId, setDiffsBySession, setFavoriteSessions, setMessagesBySession, setPendingPermissionsBySession, setPendingQuestionsBySession, setSessionStatuses, setSessions, setTodosBySession],
+    [client, connectionScopeRef, currentSessionId, explicitSessionSelectionRef, isCurrentClient, forgetSessionCreation, refreshActiveSessions, setCurrentSessionId, setDiffsBySession, setFavoriteSessions, setMessagesBySession, setPendingPermissionsBySession, setPendingQuestionsBySession, setSessionStatuses, setSessions, setTodosBySession],
   );
 
   const renameSession = useCallback(async (sessionId: string, title: string) => {
@@ -145,21 +108,6 @@ export function useSessionCrudActions({
       throw error;
     }
   }, [client, isCurrentClient, setSessions]);
-
-  const forkSession = useCallback(async (sessionId: string, messageId?: string) => {
-    const forked = await svcForkSession(client, sessionId, messageId);
-    if (!forked) {
-      throw new Error('OpenCode did not return the forked session.');
-    }
-    if (!isCurrentClient(client)) {
-      throw new Error('The active project changed before the session was forked.');
-    }
-    locallyCreatedSessionsRef.current.set(forked.id, Date.now());
-    setSessions((current) => [forked, ...current.filter((session) => session.id !== forked.id)]);
-    setSessionStatuses((current) => ({ ...current, [forked.id]: { type: 'idle' } }));
-    await openSession(forked.id);
-    return forked;
-  }, [client, isCurrentClient, locallyCreatedSessionsRef, openSession, setSessionStatuses, setSessions]);
 
   const revertSession = useCallback(async (sessionId: string, messageId: string) => {
     // A revert cannot be staged while the session is running. Interrupt first,
@@ -207,11 +155,8 @@ export function useSessionCrudActions({
   }, [client, refreshMessages, refreshSessions]);
 
   return {
-    openSession,
-    createSession,
-    deleteSession,
+      deleteSession,
     renameSession,
-    forkSession,
     revertSession,
     unrevertSession,
     executeCommand,

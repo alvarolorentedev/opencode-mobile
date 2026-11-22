@@ -10,10 +10,7 @@ import { getActiveSessionStatuses as svcGetActiveSessionStatuses, listSessions a
 
 import type { SessionRefreshInput } from '@/features/sessions/model/refresh-input';
 
-// A list read that started before a session was created can resolve after it.
-// Keep just-created sessions visible for a short grace period.
-const LOCAL_SESSION_GRACE_MS = 10_000;
-export function useSessionRefresh({ activeProjectPath, client, isCurrentClient, setSessions, sessionsRef, setSessionStatuses, locallyCreatedSessionsRef, setPendingPermissionsBySession, setPendingQuestionsBySession, isPermissionReplyPending }: SessionRefreshInput) {
+export function useSessionRefresh({ activeProjectPath, client, isCurrentClient, setSessions, sessionsRef, setSessionStatuses, recentlyCreatedSessionIds, setPendingPermissionsBySession, setPendingQuestionsBySession, isPermissionReplyPending }: SessionRefreshInput) {
 
   const refreshSessions = useCallback(
     async () => {
@@ -27,17 +24,9 @@ export function useSessionRefresh({ activeProjectPath, client, isCurrentClient, 
       if (!isCurrentClient(client)) {
         return result.sessions;
       }
-      const now = Date.now();
       const resultIds = new Set(result.sessions.map((session) => session.id));
-      const localIds = new Set<string>();
-      for (const [id, createdAt] of locallyCreatedSessionsRef.current) {
-        if (resultIds.has(id) || now - createdAt > LOCAL_SESSION_GRACE_MS) {
-          locallyCreatedSessionsRef.current.delete(id);
-        } else {
-          localIds.add(id);
-        }
-      }
-      const retained = localIds.size
+      const localIds = recentlyCreatedSessionIds?.(resultIds);
+      const retained = localIds?.size
         ? sessionsRef.current.filter((session) => localIds.has(session.id) && !resultIds.has(session.id))
         : [];
       const nextSessions = retained.length ? [...retained, ...result.sessions] : result.sessions;
@@ -51,7 +40,7 @@ export function useSessionRefresh({ activeProjectPath, client, isCurrentClient, 
       });
       return nextSessions;
     },
-    [activeProjectPath, client, isCurrentClient, locallyCreatedSessionsRef, sessionsRef, setSessionStatuses, setSessions],
+    [activeProjectPath, client, isCurrentClient, recentlyCreatedSessionIds, sessionsRef, setSessionStatuses, setSessions],
   );
 
   const refreshSessionStatuses = useCallback(async () => {

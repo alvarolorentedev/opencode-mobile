@@ -1083,7 +1083,7 @@ const bootstrap = createSessionNavigationCommands({
       refreshMessages: async () => {}, refreshSessionDiff: async () => {}, refreshSessionTodos: async () => {}, refreshPendingInteractions: async () => {},
     }) },
   }) },
-}).navigation({ connectionId: 'a', projectPath: '/repo' }, bootstrapKey, 0);
+}, async () => { createdSessions++; return { id: 'created' }; }).navigation({ connectionId: 'a', projectPath: '/repo' }, bootstrapKey, 0);
 bootstrapStore.getState().setSelection(bootstrapKey, { pendingDeepLink: { sessionId: 'target', projectPath: '/repo' } });
 fetchedSessions = 0;
 assert.equal(await bootstrap.ensureActiveSession(), 'target'); assert.equal(fetchedSessions, 1);

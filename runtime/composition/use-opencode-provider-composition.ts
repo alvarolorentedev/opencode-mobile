@@ -25,7 +25,7 @@ import { useTerminalState } from '@/features/terminal/runtime';
 import { useWorkspaceRuntimeState } from '@/runtime/workspace/use-workspace-runtime-state';
 import { useWorkspaceServerData } from '@/runtime/composition/use-workspace-server-data';
 import { useAppCore } from '@/runtime/core';
-import { useQueryIdentity } from '@/shared/server-data/client';
+import { useQueryActivity, useQueryIdentity } from '@/shared/server-data/client';
 
 import type { WorkspaceRuntimeInput } from '@/runtime/workspace/workspace-types';
 
@@ -39,6 +39,7 @@ export function useOpencodeProviderComposition(input: WorkspaceRuntimeInput) {
   const { connection: inputConnection } = input;
   const sessionCommands = useAppCore().commands.session;
   const identity = useQueryIdentity();
+  const demanded = useQueryActivity();
   const isHydrated = input.isHydrated && input.connection.enabled;
   const {
     setOnboardingVersion,
@@ -175,6 +176,7 @@ export function useOpencodeProviderComposition(input: WorkspaceRuntimeInput) {
   const streamConnectedRef = useRef(false);
   const { resetTerminal } = terminal;
   const { reset: resetTranscript } = transcript;
+  const forgetSessionCreation = useCallback((id?: string) => sessionCommands.forgetSessionCreation(identity, client, id), [client, identity, sessionCommands]);
   const clearProjectState = useOpencodeProviderReset({
     state,
     resetTerminal,
@@ -186,10 +188,12 @@ export function useOpencodeProviderComposition(input: WorkspaceRuntimeInput) {
     setVcsDiffsByScope: diffCatalog.setVcsDiffsByScope,
     setPendingPermissionsBySession: approvalsCatalog.setPendingPermissionsBySession,
     setPendingQuestionsBySession: approvalsCatalog.setPendingQuestionsBySession,
+    forgetSessionCreation,
   });
 
   const isPermissionReplyPending = useCallback((id: string) => sessionCommands.isPermissionReplyPending(identity, client, id), [client, identity, sessionCommands]);
-  const project = useProjectActions({ ...domain, connectionId: inputConnection.id, connected: state.connection.status === 'connected', client, catalogClient, isCurrentClient, isCurrentCatalogClient, clearProjectState, isHydrated, refreshMessages: inbox.refreshMessages, isPermissionReplyPending });
+  const recentlyCreatedSessionIds = useCallback((seen: ReadonlySet<string>) => sessionCommands.recentlyCreatedSessionIds(identity, client, seen), [client, identity, sessionCommands]);
+  const project = useProjectActions({ ...domain, connectionId: inputConnection.id, connected: state.connection.status === 'connected', client, catalogClient, isCurrentClient, isCurrentCatalogClient, clearProjectState, isHydrated, refreshMessages: inbox.refreshMessages, isPermissionReplyPending, recentlyCreatedSessionIds });
 
   const capabilities = useCapabilitiesActions({ ...domain, client, isCurrentClient, isHydrated });
   // Event bursts (rename + update, config fan-out, file-save VCS events) share
@@ -207,6 +211,8 @@ export function useOpencodeProviderComposition(input: WorkspaceRuntimeInput) {
   }), [inputConnection.id, state.activeProjectPath]);
   const sessionNavigation = useMemo(() => sessionCommands.navigation(sessionTarget, state.scopeKey, inputConnection.revision),
     [inputConnection.revision, sessionCommands, sessionTarget, state.scopeKey]);
+  const sessionCreation = useMemo(() => sessionCommands.creation(sessionTarget, state.scopeKey, inputConnection.revision),
+    [inputConnection.revision, sessionCommands, sessionTarget, state.scopeKey]);
   const sessionActions = useSessionActions({
     ...domain,
     ...project,
@@ -217,7 +223,7 @@ export function useOpencodeProviderComposition(input: WorkspaceRuntimeInput) {
     refreshMessages: inbox.refreshMessages,
     refreshActiveSessions: catalog.refresh,
     refreshChatCapabilities: capabilities.refreshChatCapabilities,
-    openSession: sessionNavigation.openSession,
+    forgetSessionCreation,
   });
   const interactions = useMemo(() => sessionCommands.interactions(sessionTarget, inputConnection.revision),
     [inputConnection.revision, sessionCommands, sessionTarget]);
@@ -239,7 +245,7 @@ export function useOpencodeProviderComposition(input: WorkspaceRuntimeInput) {
     setSendingState({ active: false });
   }), [clearProjectState, onInvalidated, setSendingState, scopeGenerationRef]);
   const linkActions = useConnectionLinkActions({ client, isCurrentClient, connectionScope: state.connectionScope,
-    connection: state.connection, activeProjectPath: state.activeProjectPath, openSession: sessionActions.openSession, connect: connectionRuntime.connect });
+    connection: state.connection, activeProjectPath: state.activeProjectPath, openSession: sessionNavigation.openSession, connect: connectionRuntime.connect });
   const connectionActions = { ...connectionRuntime, ...linkActions,
     updateSettings: (patch: Partial<typeof state.settings>) => input.setSettings((current) => ({ ...current, ...patch })),
     switchConnection: input.switchConnection, connectSetup: input.connectSetup, connectionProfiles: input.connectionProfiles, servicesValue: input.servicesValue };
@@ -313,6 +319,7 @@ export function useOpencodeProviderComposition(input: WorkspaceRuntimeInput) {
 
   const eventStreamStatus = useWorkspaceRealtime(connectionRuntime.manager?.realtime, {
     workspaceKey: state.scopeKey,
+    demanded,
     projectPath: state.activeProjectPath,
     constrained: network.constrained,
     pendingSessionIds: Object.keys(inbox.pendingPromptsBySession).filter((id) => inbox.pendingPromptsBySession[id].length > 0),
@@ -369,6 +376,7 @@ export function useOpencodeProviderComposition(input: WorkspaceRuntimeInput) {
     ...project,
     ...sessionActions,
     ...sessionNavigation,
+    ...sessionCreation,
     ...interactions,
     ...capabilities,
     ...prompt,

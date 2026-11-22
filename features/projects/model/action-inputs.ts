@@ -30,7 +30,7 @@ export type ProjectActionsInput = {
   setSessions: Dispatch<SetStateAction<Session[]>>;
   sessionsRef: { current: Session[] };
   setSessionStatuses: Dispatch<SetStateAction<Record<string, SessionStatus>>>;
-  locallyCreatedSessionsRef: { current: Map<string, number> };
+  recentlyCreatedSessionIds?: (seen: ReadonlySet<string>) => ReadonlySet<string>;
   setIsRefreshingDiffs: Dispatch<SetStateAction<boolean>>;
   setDiffsBySession: Dispatch<SetStateAction<Record<string, FileDiff[]>>>;
   setVcsDiffsByScope: Dispatch<SetStateAction<Record<'uncommitted' | 'branch', FileDiff[]>>>;

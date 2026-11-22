@@ -17,6 +17,7 @@ type ResetInput = {
   setVcsDiffsByScope: Dispatch<SetStateAction<Record<'uncommitted' | 'branch', FileDiff[]>>>;
   setPendingPermissionsBySession: ApprovalsCatalog['setPendingPermissionsBySession'];
   setPendingQuestionsBySession: ApprovalsCatalog['setPendingQuestionsBySession'];
+  forgetSessionCreation: () => void;
 };
 
 // Connection switches must discard every value scoped to the previous server
@@ -34,6 +35,7 @@ export function useOpencodeProviderReset({
   setVcsDiffsByScope,
   setPendingPermissionsBySession,
   setPendingQuestionsBySession,
+  forgetSessionCreation,
 }: ResetInput) {
   const {
     cancelBootstrap,
@@ -41,7 +43,6 @@ export function useOpencodeProviderReset({
     sessionRefreshTimeoutsRef,
     sessionRefreshOptionsRef,
     explicitSessionSelectionRef,
-    locallyCreatedSessionsRef,
     setCurrentSessionId,
     setMcpAuthPrompt,
   } = state;
@@ -53,7 +54,7 @@ export function useOpencodeProviderReset({
     sessionRefreshTimeoutsRef.current = {};
     sessionRefreshOptionsRef.current = {};
     explicitSessionSelectionRef.current = undefined;
-    locallyCreatedSessionsRef.current.clear();
+    forgetSessionCreation();
     setCurrentSessionId(undefined);
     setSessions([]);
     setMessagesBySession({});
@@ -73,7 +74,7 @@ export function useOpencodeProviderReset({
     sessionRefreshOptionsRef,
     sessionRefreshTimeoutsRef,
     explicitSessionSelectionRef,
-    locallyCreatedSessionsRef,
+    forgetSessionCreation,
     setCurrentSessionId,
     setMcpAuthPrompt,
     setPendingPermissionsBySession,

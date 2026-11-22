@@ -12,6 +12,9 @@ const protocol = vi.hoisted(() => ({
   replyToPendingQuestion: vi.fn(),
   rejectPendingQuestion: vi.fn(),
   listPendingInteractions: vi.fn(),
+  createSession: vi.fn(),
+  forkSession: vi.fn(),
+  switchSessionModel: vi.fn(),
 }));
 
 vi.mock('@/shared/protocol/opencode/client', () => ({
@@ -22,8 +25,19 @@ vi.mock('@/shared/protocol/opencode/client', () => ({
 vi.mock('@/features/sessions/runtime', async () => ({
   approvalsAccess: (await import('@/features/sessions/services/approvals')).approvalsAccess,
   createInteractionCommands: (await import('@/features/sessions/services/interaction-commands')).createInteractionCommands,
+  ...(await import('@/features/sessions/services/session-creation')),
   ...(await import('@/features/sessions/services/queries')),
 }));
+vi.mock('@/shared/protocol/services/session-service', () => ({
+  createSession: protocol.createSession,
+  forkSession: protocol.forkSession,
+  switchSessionModel: protocol.switchSessionModel,
+}));
+vi.mock('@/features/ai/runtime', () => ({
+  agentsOptions: () => ({ queryKey: ['agents'] }),
+  capabilitiesOptions: () => ({ queryKey: ['capabilities'] }),
+}));
+vi.mock('@/shared/server-data/catalogs', () => ({ configurationOptions: () => ({ queryKey: ['configuration'] }) }));
 
 const settings = { serverUrl: 'http://127.0.0.1:4096', username: '', password: '', directory: '' };
 const newCore = () => createAppCore({ settings, chatPreferences: {} as ChatPreferences, controlPlaneUrl: '' });
@@ -173,6 +187,47 @@ describe('app core', () => {
     expect(queryClient.getQueryData(latest)).toEqual({ ...initial, questions: { s: [] } });
     expect(refreshMessages).toHaveBeenCalledExactlyOnceWith('/a', 's', true);
     core.commands.workspace.dispose();
+    queryClient.clear();
+  });
+
+  it('creates and forks sessions with the current project client and opens a fork in that workspace', async () => {
+    const core = newCore();
+    const { queryClient, commands } = core;
+    const target = { connectionId: 'server', projectPath: '/a' };
+    const scopeKey = workspaceKey(target);
+    const identity = { connectionId: 'server', connectionScope: 'scope', authRevision: 1 };
+    const client = { __opencode: { contract: 'v2', directory: '/a' }, api: {} } as ScopedOpencodeClient;
+    const sources = {
+      demanded: true, refreshMessages: vi.fn(async () => []), refreshSessionDiff: vi.fn(async () => []),
+      refreshSessionTodos: vi.fn(async () => []), refreshPendingInteractions: vi.fn(async () => undefined),
+    };
+    const manager = {
+      getProjectAccess: vi.fn(() => ({ client, identity, revision: 3, isCurrent: () => true })),
+      realtime: { getProjectSources: (_path: string, key: string) => key === scopeKey ? sources : undefined },
+    } as unknown as NonNullable<ReturnType<typeof core.connections.get>>;
+    vi.spyOn(core.connections, 'get').mockReturnValue(manager);
+    commands.workspace.change(() => [{
+      id: target.connectionId, name: 'Server', settings, enabled: true, projects: [target.projectPath], revision: 3,
+      authRevision: 1, preferences: { recentModelIds: ['provider/model'] },
+    }]);
+    queryClient.setQueryData(['agents'], []);
+    queryClient.setQueryData(['configuration'], {});
+    queryClient.setQueryData(['capabilities'], { models: [{ id: 'provider/model', providerID: 'provider', modelID: 'model' }] });
+    protocol.createSession.mockResolvedValueOnce({ id: 'created' });
+    protocol.forkSession.mockResolvedValueOnce({ id: 'forked' });
+    protocol.switchSessionModel.mockResolvedValueOnce(undefined);
+    const creation = commands.session.creation(target, scopeKey, 3);
+    await expect(creation.createSession(' Title ')).resolves.toMatchObject({
+      id: 'created', model: { providerID: 'provider', id: 'model' },
+    });
+    expect(protocol.createSession).toHaveBeenCalledExactlyOnceWith(client, 'Title');
+    await expect(creation.forkSession('created', 'later')).resolves.toMatchObject({ id: 'forked' });
+    expect(protocol.forkSession).toHaveBeenCalledExactlyOnceWith(client, 'created', 'later');
+    expect(core.store.getState().selection[scopeKey].currentSessionId).toBe('forked');
+    expect(sources.refreshMessages).toHaveBeenCalledExactlyOnceWith('forked', false);
+    await expect(commands.session.creation(target, scopeKey, 2).createSession()).rejects.toThrow('no longer available');
+    expect(protocol.createSession).toHaveBeenCalledTimes(1);
+    commands.workspace.dispose();
     queryClient.clear();
   });
 });

@@ -40,8 +40,5 @@ export function useSessionState(scopeKey: string) {
     set current(explicitSessionId: string | undefined) { write({ explicitSessionId }); },
   }), [scopeKey, store, write]);
 
-  // Request correlation while a new session waits to appear in the catalog.
-  const locallyCreatedSessionsRef = useRef<Map<string, number>>(new Map());
-
-  return { currentSessionId, setCurrentSessionId, isBootstrappingChat, activeSessionsVisible, setActiveSessionsVisible, currentSessionIdRef, pendingDeepLinkTargetRef, deepLinkOperationRef, explicitSessionSelectionRef, locallyCreatedSessionsRef };
+  return { currentSessionId, setCurrentSessionId, isBootstrappingChat, activeSessionsVisible, setActiveSessionsVisible, currentSessionIdRef, pendingDeepLinkTargetRef, deepLinkOperationRef, explicitSessionSelectionRef };
 }

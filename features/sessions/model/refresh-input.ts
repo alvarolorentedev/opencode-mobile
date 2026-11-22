@@ -18,7 +18,7 @@ export type SessionRefreshInput = {
 
   setSessionStatuses: Dispatch<SetStateAction<Record<string, SessionStatus>>>;
 
-  locallyCreatedSessionsRef: { current: Map<string, number> };
+  recentlyCreatedSessionIds?: (seen: ReadonlySet<string>) => ReadonlySet<string>;
 
   setPendingPermissionsBySession: Dispatch<SetStateAction<Record<string, PendingPermissionRequest[]>>>;
 

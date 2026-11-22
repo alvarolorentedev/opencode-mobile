@@ -18,7 +18,8 @@ function hydrate(sources: RealtimeScopeInput, sessionId: string) {
   ]);
 }
 
-export function createSessionNavigationCommands({ store, queryClient, connections }: CommandContext) {
+export function createSessionNavigationCommands({ store, queryClient, connections }: CommandContext,
+  createSession: (target: WorkspaceTarget, scopeKey: string, revision?: number) => Promise<Session>) {
   const bootstraps = new Map<string, { token: object; promise: Promise<string | undefined> }>();
   const selection = (key: string) => store.getState().selection[key];
   const { setSelection } = store.getState();
@@ -80,12 +81,9 @@ export function createSessionNavigationCommands({ store, queryClient, connection
         if (!hasTarget) await sources.refreshSessions();
         if (!isCurrent()) return undefined;
         const refreshed = queryClient.getQueryData<Session[]>(key) ?? [];
-        // The retained adapter still supplies creation until CRUD is migrated.
-        const create: ((title?: string) => Promise<Session>) | undefined =
-          store.getState().registry.snapshots[scopeKey]?.values.currentSessionValue.createSession;
         const session = pendingTarget
           ? refreshed.find(({ id }) => id === pendingTarget.sessionId)
-          : refreshed[0] ?? await create?.();
+          : refreshed[0] ?? await createSession(target, scopeKey, revision);
         if (!session || !isCurrent()) return undefined;
         setSelection(scopeKey, { currentSessionId: session.id });
         void hydrate(sources, session.id).catch(() => undefined);

@@ -501,9 +501,10 @@ actions, and OS links) keep using `openDeepLinkSession()` from
 `features/sessions/ui/session-link-screen.tsx`, which resolves the connection and validates the target
 before switching.
 
-A session created or forked locally is retained for a short grace period if a
-list read that started before creation resolves afterward. This prevents a
-stale cursor page from dropping the new chat before the list catches up.
+The app-core session commands publish the server's created or forked session
+immediately. Query retains the mutation's session ID for up to ten seconds so
+an older list response cannot drop the new chat before the catalog catches up.
+The project list remains the single cached session record.
 Session-list workflow refreshes and connection-owned routine Query invalidations are
 coalesced independently; `session.deleted` removes its row immediately before reconciliation.
 The focused workspace's overridden domains are memoized independently, so a

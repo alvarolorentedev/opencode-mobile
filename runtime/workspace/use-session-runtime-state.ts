@@ -21,7 +21,7 @@ export function useSessionRuntimeState(input: WorkspaceRuntimeInput, connection:
   const connectionId = input.connection.id;
   const scopeKey = workspaceKey({ connectionId: input.connection.id, projectPath: input.projectPath ?? '' });
   const { activeProjectPath, setActiveProjectPath, activeProjectPathRef, projectFileRequestRef } = useProjectRuntimeState(scopeKey, input.projectPath);
-  const { currentSessionId, setCurrentSessionId, isBootstrappingChat, activeSessionsVisible, setActiveSessionsVisible, currentSessionIdRef, pendingDeepLinkTargetRef, deepLinkOperationRef, explicitSessionSelectionRef, locallyCreatedSessionsRef } = useSessionState(scopeKey);
+  const { currentSessionId, setCurrentSessionId, isBootstrappingChat, activeSessionsVisible, setActiveSessionsVisible, currentSessionIdRef, pendingDeepLinkTargetRef, deepLinkOperationRef, explicitSessionSelectionRef } = useSessionState(scopeKey);
   const { store, commands } = useAppCore();
   const cancelBootstrap = useCallback(() => commands.session.cancelBootstrap(scopeKey), [commands, scopeKey]);
   const { diffScopeBySession, selectedDiffMessageBySession, isRefreshingMessages, isRefreshingDiffs } = useAppStore((state) => state.chat[scopeKey] ?? EMPTY_CHAT);
@@ -84,7 +84,6 @@ export function useSessionRuntimeState(input: WorkspaceRuntimeInput, connection:
     sessionRefreshOptionsRef,
     busyNotificationsRef,
     explicitSessionSelectionRef,
-    locallyCreatedSessionsRef,
     promptSubmissionRef,
     projectFileRequestRef,
   };

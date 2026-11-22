@@ -37,7 +37,7 @@ export type SessionActionsInput = {
   setCurrentSessionId: Dispatch<SetStateAction<string | undefined>>;
   setSessions: Dispatch<SetStateAction<Session[]>>;
   setSessionStatuses: Dispatch<SetStateAction<Record<string, SessionStatus>>>;
-  locallyCreatedSessionsRef: { current: Map<string, number> };
+  forgetSessionCreation: (sessionId: string) => void;
   setMessagesBySession: Dispatch<SetStateAction<Record<string, SessionMessageRecord[]>>>;
   setDiffsBySession: Dispatch<SetStateAction<Record<string, FileDiff[]>>>;
   setTodosBySession: Dispatch<SetStateAction<Record<string, Todo[]>>>;
@@ -45,7 +45,6 @@ export type SessionActionsInput = {
   setPendingQuestionsBySession: Dispatch<SetStateAction<Record<string, PendingQuestionRequest[]>>>;
   setFavoriteSessions: Dispatch<SetStateAction<FavoriteSession[]>>;
   pendingDeepLinkTargetRef: { current: SessionDeepLinkTarget | undefined };
-  openSession: (sessionId: string) => Promise<void>;
   refreshSessions: () => Promise<Session[]>;
   refreshMessages: (sessionId: string, silent?: boolean, options?: TranscriptReadOptions) => Promise<SessionMessageRecord[]>;
   refreshSessionDiff: (sessionId: string, silent?: boolean, messageId?: string, records?: SessionMessageRecord[]) => Promise<FileDiff[]>;
@@ -61,9 +60,9 @@ export type SessionActionsInput = {
 
 export type SessionCrudInput = Pick<SessionActionsInput,
   'client' | 'isCurrentClient' | 'activeProjectPath' | 'connectionScopeRef' | 'currentSessionId' |
-  'currentSessionIdRef' | 'explicitSessionSelectionRef' | 'locallyCreatedSessionsRef' | 'availableAgents' | 'availableModels' | 'currentConfig' |
+  'currentSessionIdRef' | 'explicitSessionSelectionRef' | 'forgetSessionCreation' | 'availableAgents' | 'currentConfig' |
   'sessions' | 'sessionStatuses' | 'commands' |
-  'setCurrentSessionId' | 'openSession' |
+  'setCurrentSessionId' |
   'setSessions' | 'setSessionStatuses' | 'setMessagesBySession' | 'setDiffsBySession' | 'setTodosBySession' |
   'setPendingPermissionsBySession' | 'setPendingQuestionsBySession' | 'setFavoriteSessions' | 'refreshSessions' |
   'refreshMessages' | 'refreshSessionDiff' | 'refreshActiveSessions' | 'chatPreferences'>;

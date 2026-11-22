@@ -127,11 +127,15 @@ npm run validate:commit
   The commit gate passed with 1,262 tests and one existing skip. The 28
   focused tests, docs, web export and all 27 interaction, multi-server and
   realtime browser tests passed, including colliding approvals on two servers.
-- C2b. Session opening and bootstrap are app-core commands. The static gate
+- C2b, `1ee42b32`. Session opening and bootstrap are app-core commands. The static gate
   passed with 1,262 tests and one existing skip. The 27 focused tests, docs,
   web export and all 67 browser tests across chat, sessions, projects,
   multi-server and onboarding passed. The tests retain checks for a
   superseded bootstrap, cached windows and delayed hydration.
+- C2c. Session creation and forking use app-core commands and a shared
+  Query catalog writer. The commit gate passed with 1,264 tests and one
+  existing skip. The 29 focused tests, docs, web export and all 67 owning
+  browser tests passed, including server defaults and model selection.
 
 ## Loop protocol
 
