@@ -76,9 +76,9 @@ AI exposes the pure `getInitialMode` resolver through its named `index.ts` and
 command actions share eligible-agent fallback rules without private imports.
 The enforced export list includes only this additional named API.
 
-- `runtime/core.ts`: the public app-core API (`useAppCore`, `useAppStore` and
-  its state/value types). Features may import this entrypoint; they must not
-  import `runtime/core/` internals.
+- `runtime/core.ts`: the public app-core API. `useProjectScope` resolves an
+  explicit or focused target from the app store and connection manager, then
+  supplies its Query identity and demand. Features import this entrypoint.
 - `index.ts`: named consumer UI, helpers and types used outside the feature.
 - `context.ts`: narrow domain subscription hooks and existing app-wide context
   objects.

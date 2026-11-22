@@ -74,11 +74,12 @@ export function useExtensionsState({
   const run = useCallback(async (key: string, action: (current: ExtensionSnapshot) => Promise<void>) => {
     if (store.getState().workspaceUi[scopeKey]?.extensionMutation) throw new Error('Another extension change is already in progress.');
     const current = snapshot;
-    if (!current) throw new Error('Refresh extensions before making a change.');
+    if (!current || !isCurrentClient(client)) throw new Error('Refresh extensions before making a change.');
     const mutation = { name: key };
     store.getState().setWorkspaceUi(scopeKey, { extensionMutation: mutation, extensionError: undefined });
     try {
       await cache.cancelQueries({ queryKey: ['opencode', identity.connectionId] });
+      if (!isCurrentClient(client)) throw new Error('Refresh extensions before making a change.');
       await action(current);
       if (!isCurrentClient(client)) return;
       await cache.invalidateQueries({ predicate: (query) => query.queryKey[0] === 'opencode' && query.queryKey[1] === identity.connectionId

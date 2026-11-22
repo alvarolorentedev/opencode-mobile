@@ -7,7 +7,7 @@ import type { ChatPreferences } from '@/shared/preferences/opencode-preferences'
 import type { CapabilitiesContextValue } from '@/features/ai/index';
 import type { ChatContextValue } from '@/features/chat/index';
 import type { ConnectionContextValue } from '@/features/connections/index';
-import type { ExtensionsContextValue, McpContextValue } from '@/features/extensions/index';
+import type { McpContextValue } from '@/features/extensions/index';
 import type { ProjectFilesContextValue, ProjectsContextValue } from '@/features/projects/index';
 import type { useProjectCatalogActions } from '@/features/projects/runtime';
 import type { ApprovalsContextValue, CurrentSessionContextValue, SessionLibraryContextValue , ActiveSessionItem } from '@/features/sessions/index';
@@ -71,5 +71,4 @@ export type WorkspaceValues = {
   approvalsValue: ApprovalsContextValue;
   conversationValue: ConversationContextValue;
   mcpValue: McpContextValue;
-  extensionsValue: ExtensionsContextValue;
 };

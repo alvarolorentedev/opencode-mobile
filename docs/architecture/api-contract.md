@@ -177,6 +177,10 @@ Every config or Markdown mutation is transactional: schema/frontmatter validatio
 
 Structured extension editors serialize into the existing drafts and mutation interfaces; no endpoint or compatibility path is added. Skill edits use the YAML document codec to preserve unknown frontmatter and comments. Permission rows preserve V2 rule order and serialize to the row’s JSON/YAML format; legacy and custom shapes stay in source mode. Unchanged JSONC object models retain their original object and variant. See [ADR 0023](../adr/0023-focused-extension-editors.md).
 
+Extension readers bind to the focused or explicit workspace through the app
+core. The mutation guard checks the workspace and credential partition again
+after cancelling outstanding reads and before writing extension files.
+
 ## Approvals And Forms
 
 Native permission requests use `permission.request.list`, preserving session ID, action/resources/save, metadata and tool source. Replies use `permission.reply({ sessionID, requestID, decision })`. Saved always-allow rules use `permission.saved.list/remove`.

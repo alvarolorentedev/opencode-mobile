@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 
 import { hookRuntime, loadTs } from '../../../tests/helpers/runtime.mjs';
+import { queryRuntime } from '../../../tests/helpers/query-runtime.mjs';
 
 const identity = { connectionId: 'test', connectionScope: 'scope', authRevision: 0 };
 const client = { __opencode: { contract: 'v2', directory: '/repo' } };
@@ -10,7 +11,7 @@ function queryOptions(key: string, queryFn: () => Promise<unknown>) {
   return { queryKey: ['opencode', 'test', key], queryFn };
 }
 
-async function load(active: () => boolean) {
+async function load(active: () => boolean, isCurrentClient = () => true) {
   const driver = hookRuntime();
   const plugins = vi.fn(async () => [{
     id: 'flowgraph',
@@ -43,11 +44,26 @@ async function load(active: () => boolean) {
     },
     '@/shared/utilities/error-message': { getErrorMessage: (error: unknown) => String(error) },
   });
-  driver.mount(() => useExtensionsState({ identity, queryActive: active(), scopeKey: 'extensions-test-workspace', client, isCurrentClient: () => true, settings }), {});
-  return { driver, plugins };
+  driver.mount(() => useExtensionsState({ identity, queryActive: active(), scopeKey: 'extensions-test-workspace', client, isCurrentClient, settings }), {});
+  return { driver, plugins, mutate: unchanged };
 }
 
 describe('plugin GUI state', () => {
+  it('cancels an extension write when the connection changes while reads are being cancelled', async () => {
+    let current = true;
+    const { driver, mutate } = await load(() => true, () => current);
+    try {
+      await driver.value.extensions.refresh();
+      await driver.settle();
+      const cache = queryRuntime(driver.react).useQueryClient();
+      vi.spyOn(cache, 'cancelQueries').mockImplementationOnce(async () => { current = false; });
+      await expect(driver.value.extensions.addPlugin('project', 'flowgraph')).rejects.toThrow('Refresh extensions before making a change.');
+      expect(mutate).not.toHaveBeenCalled();
+    } finally {
+      driver.unmount();
+    }
+  });
+
   it('observes the plugin list when the workspace activates, before the launcher loads', async () => {
     let active = true;
     const { driver, plugins } = await load(() => active);

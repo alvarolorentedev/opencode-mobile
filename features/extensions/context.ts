@@ -1,5 +1,8 @@
 import type { WorkspaceTarget } from '@/shared/contracts/workspace';
-import { useWorkspaceDomainValue } from '@/runtime/core';
+import { useProjectScope, useWorkspaceDomainValue } from '@/runtime/core';
+import { useExtensionsState } from './state/use-extensions-state';
 
 export const useMcp = (target?: WorkspaceTarget) => useWorkspaceDomainValue((values) => values.mcpValue, 'useMcp', target);
-export const useExtensions = (target?: WorkspaceTarget) => useWorkspaceDomainValue((values) => values.extensionsValue, 'useExtensions', target);
+export function useExtensions(target?: WorkspaceTarget) {
+  return useExtensionsState(useProjectScope(target));
+}

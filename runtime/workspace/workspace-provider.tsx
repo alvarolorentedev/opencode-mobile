@@ -15,6 +15,7 @@ import { HIDDEN_PROJECTS_MAX, useFileClipboard } from '@/features/projects/runti
 import { useNetworkStatus } from '@/shared/network/use-network-status';
 import { useOpencodePersistence } from '@/runtime/persistence/use-opencode-persistence';
 import { useAppCore, useAppStore } from '@/runtime/core/context';
+import { workspaceReadTarget } from '@/runtime/core/project-scope';
 import { useShareState } from '@/features/sharing/runtime';
 import { useVoiceSetupTest, VoiceSetupTestContext } from '@/features/voice/runtime';
 import { useWorkspaceConnections } from '@/runtime/workspace/use-workspace-connections';
@@ -170,8 +171,7 @@ export function WorkspaceProvider({ children }: PropsWithChildren) {
       return JSON.stringify(serverPreferences(previous)) === JSON.stringify(serverPreferences(next)) ? previous : next;
     });
   }, [focusedSettings, focusedPreferences, setSettings, setChatPreferences]);
-  const readTarget = pathname === '/service' ? undefined : pathname === '/settings' ? inspectionTarget ?? focus
-    : pathname === '/terminal' ? terminalTarget ?? focus : focus;
+  const readTarget = workspaceReadTarget(pathname, registryState);
   useConnectionDemand(readTarget?.connectionId);
   return <VoiceSetupTestContext.Provider value={voiceSetupTest}>
     <WorkspaceContext.Provider value={registry}>

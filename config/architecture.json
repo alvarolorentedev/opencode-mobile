@@ -101,6 +101,7 @@
       "useActiveWorkspaceTarget",
       "useAppCore",
       "useAppStore",
+      "useProjectScope",
       "useWorkspaceDomainValue"
     ],
     "features/updates/index.ts": [
@@ -355,7 +356,6 @@
     ],
     "features/extensions/runtime.ts": [
       "useExtensionPromptState",
-      "useExtensionsState",
       "useMcpState"
     ],
     "features/extensions/index.ts": [

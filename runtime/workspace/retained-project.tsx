@@ -8,7 +8,7 @@ import { buildOpencodeProjects, resolveActiveProject, useProjectPresentation, us
 import { useActivityNotifications } from '@/features/notifications/runtime';
 import { useCapabilitiesActions, useCapabilitiesPresentation } from '@/features/ai/runtime';
 import { useConversationState } from '@/features/voice/runtime';
-import { useExtensionsState, useMcpState } from '@/features/extensions/runtime';
+import { useMcpState } from '@/features/extensions/runtime';
 import { useOpencodeProviderEffects } from '@/runtime/composition/use-opencode-provider-effects';
 import { useOpencodeProviderReset } from '@/runtime/composition/use-opencode-provider-reset';
 import { useWorkspaceRealtime } from '@/runtime/realtime/use-workspace-realtime';
@@ -196,14 +196,6 @@ export const RetainedProject = memo(function RetainedProject({ defaults, updateS
   const project = useProjectActions({ ...domain, connectionId: inputConnection.id, connected: state.connection.status === 'connected', client, catalogClient, isCurrentClient, isCurrentCatalogClient, clearProjectState, isHydrated, refreshMessages: inbox.refreshMessages }, sessionRefresh, refreshQueue);
 
   const capabilities = useCapabilitiesActions({ ...domain, client, isCurrentClient, isHydrated });
-  const extensions = useExtensionsState({
-    identity,
-    queryActive: demanded,
-    scopeKey: state.scopeKey,
-    client,
-    isCurrentClient,
-    settings: state.settings,
-  });
 
   const sessionNavigation = useMemo(() => sessionCommands.navigation(sessionTarget, state.scopeKey, inputConnection.revision),
     [inputConnection.revision, sessionCommands, sessionTarget, state.scopeKey]);
@@ -360,13 +352,11 @@ export const RetainedProject = memo(function RetainedProject({ defaults, updateS
   const mcpValue = useMemo<WorkspaceValues['mcpValue']>(() => ({
     mcpStatuses, refreshMcpServers, addMcpServer, connectMcpServer, disconnectMcpServer, mcpOAuth,
   }), [mcpStatuses, refreshMcpServers, addMcpServer, connectMcpServer, disconnectMcpServer, mcpOAuth]);
-  const extensionItems = extensions.extensions;
-  const extensionsValue = useMemo(() => ({ extensions: extensionItems }), [extensionItems]);
   const values = useMemo<WorkspaceValues>(() => ({
     connectionValue, capabilitiesValue, projectsValue, projectFilesValue,
-    currentSessionValue, sessionLibraryValue, chatValue, approvalsValue, conversationValue, mcpValue, extensionsValue,
+    currentSessionValue, sessionLibraryValue, chatValue, approvalsValue, conversationValue, mcpValue,
   }), [connectionValue, capabilitiesValue, projectsValue, projectFilesValue,
-    currentSessionValue, sessionLibraryValue, chatValue, approvalsValue, conversationValue, mcpValue, extensionsValue]);
+    currentSessionValue, sessionLibraryValue, chatValue, approvalsValue, conversationValue, mcpValue]);
 
   const suspend = useCallback(() => {
     scopeGenerationRef.current++; serverGenerationRef.current++;

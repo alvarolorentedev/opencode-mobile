@@ -261,11 +261,16 @@ npm run validate:commit
   The commit gate passed with 1,282 tests and one existing skip. All 58 focused
   tests and 32 Terminal, multi-server, Settings, auto-model and update browser
   flows passed. Android retained the displayed output and one WebSocket across tabs.
-- E8. The single NetInfo listener publishes connectivity into the app store.
+- E8, `f347f1b9`. The single NetInfo listener publishes connectivity into the app store.
   Diagnostics reads connection retry and stream state directly and uses Query
   for server health and MCP details. The commit gate passed with 1,282 tests and
   one existing skip. All 127 focused tests and 54 network, realtime, Settings,
   Chat, multi-server and Terminal browser flows passed.
+- E9. Extension views use the scope selector and guard writes after cancelling
+  pending reads. Diagnostics shares the selector. The commit gate passed with
+  1,283 tests and one existing skip. All 143 focused tests and 45 extension,
+  Settings, Chat and multi-server browser flows passed. The final scope guard
+  passed all 13 extension and multi-server flows on a fresh build.
 
 ## Loop protocol
 

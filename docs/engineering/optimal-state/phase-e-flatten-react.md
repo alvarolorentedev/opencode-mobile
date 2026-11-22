@@ -34,6 +34,8 @@ Start only after Phase D is complete and green.
   partitions.
 - Diagnostics reads transport state from the connection manager and the app
   store, and selects health and MCP results from Query.
+- Diagnostics and extension views resolve their own workspace through a shared
+  core selector. Extension mutations check the exact client before a write.
 - `runtime/core/workspace-selectors.ts` selects the retained project projection.
 - [ADR 0052](../../adr/0052-explicit-overlay-dependencies.md) records explicit
   portal targets and update blocker callbacks. Shared controls use shared imports.
