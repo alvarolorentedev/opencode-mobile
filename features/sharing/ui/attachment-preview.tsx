@@ -1,3 +1,4 @@
+import { UpdateBlockingSheet as OverlaySheet } from '@/features/updates/index';
 import { cn } from '@/shared/ui/cn';
 import { Text } from '@/shared/ui/text';
 import { Spinner } from '@/shared/ui/spinner';
@@ -7,7 +8,6 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { AppState, Platform, View } from 'react-native';
 
-import { OverlaySheet } from '@/shared/ui/overlay-sheet';
 import { AudioPreview, VideoPreview } from '@/shared/ui/media-preview';
 import { attachmentKind, openAttachmentExternally, prepareAttachmentFile, readAttachmentText, validateAttachmentUri } from '@/shared/platform/attachments';
 import type { PromptAttachment } from '@/shared/protocol/opencode/prompt-inbox';

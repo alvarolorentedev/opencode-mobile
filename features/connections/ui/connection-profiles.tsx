@@ -1,6 +1,6 @@
+import { useUpdateBlockingConfirmation as useConfirmation, UpdateBlockingSheet as OverlaySheet } from '@/features/updates/index';
 import type { WorkspaceTarget } from '@/shared/contracts/workspace';
 import { cn } from '@/shared/ui/cn';
-import { useConfirmation } from '@/shared/ui/use-confirmation';
 import { Icon } from '@/shared/ui/icon';
 import { Text } from '@/shared/ui/text';
 import { Button } from '@/shared/ui/button';
@@ -15,7 +15,6 @@ import { Pressable, View } from 'react-native';
 import { ConnectionProfileDialog, type ConnectionProfileFormValues } from '@/features/connections/ui/connection-profile-dialog';
 import { ConnectionMethodChooser } from '@/features/connections/ui/connection-method-chooser';
 import { ConnectionScanFlow } from '@/features/connections/ui/connection-scan-flow';
-import { OverlaySheet } from '@/shared/ui/overlay-sheet';
 import { Colors } from '@/shared/ui/theme/theme';
 import { findMatchingProfile, type ConnectionProfile } from '@/shared/contracts/connection-profiles';
 import { hasWorkspaceDrafts , useWorkspacePresentation, useWorkspaces } from '@/runtime/workspace';

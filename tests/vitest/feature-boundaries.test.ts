@@ -3,19 +3,14 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, it } from 'vitest';
-import { cycles, moduleGraph, parseImports, reachable, resolveImport } from '../helpers/architecture.mts';
+import { cycles, moduleGraph, parseImports, resolveImport } from '../helpers/architecture.mts';
 import policy from '../../config/architecture.json';
 
 const root = fileURLToPath(new URL('../../', import.meta.url));
 const owner = (file: string) => file.match(/^features\/([^/]+)\//)?.[1];
-const uiException: Record<string, string[]> = {
-  'shared/ui/overlay-sheet.tsx': ['useUpdateBlocker'],
-  'shared/ui/catalog-select.tsx': ['useUpdateBlocker'],
-  'shared/ui/use-confirmation.tsx': ['useUpdateBlocker'],
-};
 const isUi = (file: string) => file.startsWith('app/') || file.startsWith('shared/ui/') || /^features\/[^/]+\/ui\//.test(file);
 
-export function importViolations(from: string, target: string, symbols: string[], typeOnly: boolean): string[] {
+export function importViolations(from: string, target: string, typeOnly: boolean): string[] {
   const problems: string[] = [];
   const a = owner(from), b = owner(target);
   if (a && b && a !== b) {
@@ -25,11 +20,9 @@ export function importViolations(from: string, target: string, symbols: string[]
   }
   if (from.startsWith('shared/')) {
     if (b) problems.push('shared depends on a feature');
-    if (target.startsWith('runtime/')) {
-      if (target !== 'runtime/ui.ts' || !uiException[from] || !symbols.length || symbols.some((name) => !uiException[from].includes(name))) problems.push('unauthorized shared runtime import');
-    }
+    if (target.startsWith('runtime/')) problems.push('unauthorized shared runtime import');
   }
-  if (a && target.startsWith('runtime/') && !['runtime/ui.ts', 'runtime/workspace.ts', 'runtime/core.ts'].includes(target)) problems.push('runtime private import');
+  if (a && target.startsWith('runtime/') && !['runtime/workspace.ts', 'runtime/core.ts'].includes(target)) problems.push('runtime private import');
   if (isUi(from) && !typeOnly && target.startsWith('modules/')) problems.push('native module in presentation');
   if (isUi(from) && !typeOnly && target === 'runtime/core.ts') problems.push('app store in presentation');
   if (isUi(from) && !typeOnly && (target.startsWith('shared/protocol/') || target.startsWith('shared/storage/') || target.startsWith('shared/server-data/'))) problems.push('IO in presentation');
@@ -38,15 +31,15 @@ export function importViolations(from: string, target: string, symbols: string[]
 
 describe('feature boundaries', () => {
   it('rejects private/aliased imports, secret access and UI exception expansion', () => {
-    assert.deepEqual(importViolations('features/chat/ui/example.tsx', 'features/sessions/state/private.ts', ['useSession'], false), ['private feature import']);
-    assert.deepEqual(importViolations('shared/ui/button.tsx', 'runtime/ui.ts', ['WorkspaceScope'], false), ['unauthorized shared runtime import']);
-    assert.deepEqual(importViolations('shared/ui/portal.tsx', 'runtime/ui.ts', ['WorkspaceScope'], false), ['unauthorized shared runtime import']);
-    assert.deepEqual(importViolations('shared/ui/overlay-sheet.tsx', 'runtime/ui.ts', ['useUpdateBlocker'], false), []);
-    assert.deepEqual(importViolations('shared/ui/portal.tsx', 'runtime/ui.ts', ['*'], false), ['unauthorized shared runtime import']);
-    assert.deepEqual(importViolations('shared/ui/portal.tsx', 'runtime/workspace/workspace-context.tsx', ['WorkspaceScope'], false), ['unauthorized shared runtime import']);
-    assert.deepEqual(importViolations('features/chat/ui/example.tsx', 'modules/opencode-activity/index.ts', ['default'], false), ['native module in presentation']);
-    assert.deepEqual(importViolations('features/chat/ui/example.tsx', 'runtime/core.ts', ['useAppStore'], false), ['app store in presentation']);
-    assert.deepEqual(importViolations('features/chat/ui/example.tsx', 'shared/storage/connection-password.ts', ['getPassword'], false), ['IO in presentation']);
+    assert.deepEqual(importViolations('features/chat/ui/example.tsx', 'features/sessions/state/private.ts', false), ['private feature import']);
+    assert.deepEqual(importViolations('shared/ui/button.tsx', 'runtime/ui.ts', false), ['unauthorized shared runtime import']);
+    assert.deepEqual(importViolations('shared/ui/portal.tsx', 'runtime/ui.ts', false), ['unauthorized shared runtime import']);
+    assert.deepEqual(importViolations('shared/ui/overlay-sheet.tsx', 'runtime/ui.ts', false), ['unauthorized shared runtime import']);
+    assert.deepEqual(importViolations('shared/ui/overlay-sheet.tsx', 'features/updates/context.ts', false), ['shared depends on a feature']);
+    assert.deepEqual(importViolations('shared/ui/portal.tsx', 'runtime/workspace/workspace-context.tsx', false), ['unauthorized shared runtime import']);
+    assert.deepEqual(importViolations('features/chat/ui/example.tsx', 'modules/opencode-activity/index.ts', false), ['native module in presentation']);
+    assert.deepEqual(importViolations('features/chat/ui/example.tsx', 'runtime/core.ts', false), ['app store in presentation']);
+    assert.deepEqual(importViolations('features/chat/ui/example.tsx', 'shared/storage/connection-password.ts', false), ['IO in presentation']);
     const names = new Set(['features/sessions/state/private.ts']);
     assert.equal(resolveImport('features/chat/ui/example.tsx', '../../sessions/state/private', names), 'features/sessions/state/private.ts');
     assert.equal(parseImports('x.ts', "export * from '@/features/sessions';")[0].symbols[0], '*');
@@ -80,7 +73,7 @@ describe('feature boundaries', () => {
           if (edge.target.startsWith('@/') && !/\.(?:json|css|png|jpg|mp4)$/.test(edge.target)) problems.push(`${mod.file}: unresolved ${edge.target}`);
           continue;
         }
-        for (const issue of importViolations(mod.file, target, edge.symbols, edge.typeOnly)) problems.push(`${mod.file} -> ${target}: ${issue}`);
+        for (const issue of importViolations(mod.file, target, edge.typeOnly)) problems.push(`${mod.file} -> ${target}: ${issue}`);
         if (!edge.typeOnly) values.add(target);
         const a = owner(mod.file), b = owner(target);
         if (a && b && a !== b) { if (!featureGraph.has(a)) featureGraph.set(a, new Set()); featureGraph.get(a)!.add(b); }
@@ -95,9 +88,7 @@ describe('feature boundaries', () => {
     assert.deepEqual(problems, []);
     assert.deepEqual(cycles(featureGraph), [], 'Feature dependencies, including type imports, must be acyclic.');
     assert.deepEqual(cycles(graph), [], 'Value imports must not create module cycles.');
-    const uiReachable = [...reachable(graph, 'runtime/ui.ts')];
-    assert.deepEqual(uiReachable.filter((file) => file.startsWith('runtime/shell/') || file.startsWith('runtime/composition/') || /workspace-provider|retained-project|connection-runtime/.test(file) || /^features\/[^/]+\/ui\//.test(file)), [], 'The blocker API must not reach root composition or feature presentation.');
-    assert.deepEqual(modules.find((mod) => mod.file === 'runtime/ui.ts')!.imports.flatMap((edge) => edge.symbols).sort(), ['useUpdateBlocker']);
+    assert.ok(!files.has('runtime/ui.ts'), 'Shared controls receive interaction registration through props.');
   });
 
   it('keeps native inventory and retired frameworks deliberate', () => {

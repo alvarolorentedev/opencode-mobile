@@ -1,3 +1,4 @@
+import { UpdateBlockingSheet as OverlaySheet } from '@/features/updates/index';
 import { cn } from '@/shared/ui/cn';
 import { Text } from '@/shared/ui/text';
 import { Button } from '@/shared/ui/button';
@@ -10,7 +11,6 @@ import { Pressable, SectionList, View } from 'react-native';
 import { ChangedFilesCard, SessionDiffCollapsedRow, SessionDiffHeader, SessionDiffLineRow } from '@/features/chat/ui/chat-cards';
 import { buildDiffDisplayRows, type CollapsedDiffBlock, type DiffLine } from '@/features/chat/ui/chat-diff';
 import { styles, stylesClasses } from '@/features/chat/ui/chat-view-styles';
-import { OverlaySheet } from '@/shared/ui/overlay-sheet';
 import { Colors } from '@/shared/ui/theme/theme';
 import type { TranscriptEntry } from '@/shared/presentation/format';
 import type { FileDiff } from '@/shared/protocol/opencode/types';

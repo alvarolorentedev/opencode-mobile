@@ -1,9 +1,10 @@
+import { UpdateBlockingSettingSelectField as SettingSelectField } from '@/features/updates/index';
 import { cn } from '@/shared/ui/cn';
 import { Text } from '@/shared/ui/text';
 import { Button } from '@/shared/ui/button';
 import { Spinner } from '@/shared/ui/spinner';
 import { FieldDescription } from '@/shared/ui/text-field';
-import { SettingSelectField, SettingSwitchRow, type Palette } from '@/shared/ui/settings/setting-rows';
+import { SettingSwitchRow, type Palette } from '@/shared/ui/settings/setting-rows';
 import { useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Platform, View } from 'react-native';

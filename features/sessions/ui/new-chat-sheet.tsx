@@ -1,3 +1,4 @@
+import { UpdateBlockingSheet as OverlaySheet, UpdateBlockingWorkspaceSelect as WorkspaceSelect } from '@/features/updates/index';
 import { cn } from '@/shared/ui/cn';
 import { Text } from '@/shared/ui/text';
 import { ListRow } from '@/shared/ui/list-row';
@@ -10,9 +11,7 @@ import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ScrollView, View } from 'react-native';
 
-import { OverlaySheet } from '@/shared/ui/overlay-sheet';
 
-import { WorkspaceSelect } from '@/shared/ui/workspace-select';
 import { usePalette } from '@/shared/ui/theme/use-palette';
 import type { ProjectCheckout, ProjectWorktree } from '@/shared/protocol/opencode/project';
 import { useWorkspaceActions } from '@/runtime/workspace';

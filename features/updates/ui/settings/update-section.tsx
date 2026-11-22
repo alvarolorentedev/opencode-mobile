@@ -1,3 +1,4 @@
+import { UpdateBlockingSettingSelectField as SettingSelectField } from '@/features/updates/ui/interaction-controls';
 import { cn } from '@/shared/ui/cn';
 import { Text } from '@/shared/ui/text';
 import { FieldDescription } from '@/shared/ui/text-field';
@@ -7,7 +8,7 @@ import { View } from 'react-native';
 import { UPDATE_CHECK_PERIOD_OPTIONS } from '@/features/updates/model/settings-options';
 import type { CatalogOption } from '@/shared/ui/catalog-select';
 import type { UpdateCheckPeriod } from '@/features/updates/model/app-update-policy';
-import { SettingSelectField, SettingSwitchRow, type Palette } from '@/shared/ui/settings/setting-rows';
+import { SettingSwitchRow, type Palette } from '@/shared/ui/settings/setting-rows';
 
 export function UpdateSection({ enabled, checkPeriod, onEnabledChange, onCheckPeriodChange, palette }: {
   enabled: boolean;

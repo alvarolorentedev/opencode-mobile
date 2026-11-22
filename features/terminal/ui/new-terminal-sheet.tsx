@@ -1,3 +1,4 @@
+import { UpdateBlockingSheet as OverlaySheet, UpdateBlockingWorkspaceSelect as WorkspaceSelect } from '@/features/updates/index';
 import { cn } from '@/shared/ui/cn';
 import { Text } from '@/shared/ui/text';
 import { Button } from '@/shared/ui/button';
@@ -6,8 +7,6 @@ import { useState } from 'react';
 import { View } from 'react-native';
 
 import { useTranslation } from 'react-i18next';
-import { OverlaySheet } from '@/shared/ui/overlay-sheet';
-import { WorkspaceSelect } from '@/shared/ui/workspace-select';
 import { useWorkspaceProjects } from '@/features/projects/index';
 import { useWorkspaces } from '@/runtime/workspace';
 import type { WorkspaceTarget } from '@/shared/contracts/workspace';

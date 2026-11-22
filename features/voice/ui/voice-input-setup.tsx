@@ -1,3 +1,4 @@
+import { UpdateBlockingSettingSelectField as SettingSelectField } from '@/features/updates/index';
 import { cn } from '@/shared/ui/cn';
 import { Progress } from '@/shared/ui/progress';
 import { Text } from '@/shared/ui/text';
@@ -16,7 +17,7 @@ import { LOCAL_WAKE_PHRASES } from '@/shared/platform/voice/local-wake-word/type
 import type { ChatPreferences } from '@/shared/preferences/opencode-preferences';
 import type { VoiceSetupTest } from '@/features/voice/state/use-voice-setup-test';
 import { SettingTarget, SettingsDisclosure } from '@/shared/ui/settings/settings-panel';
-import { SettingSelectField, SettingSwitchRow, type Palette } from '@/shared/ui/settings/setting-rows';
+import { SettingSwitchRow, type Palette } from '@/shared/ui/settings/setting-rows';
 import type { LocalVoiceState } from '@/features/voice/ui/use-voice-setup';
 import { voiceLanguageOptions } from '@/features/voice/ui/voice-language';
 import { VoiceFlowScreen } from '@/features/voice/ui/voice-flow-screen';

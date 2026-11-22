@@ -1,4 +1,4 @@
-import { useConfirmation } from '@/shared/ui/use-confirmation';
+import { useUpdateBlockingConfirmation as useConfirmation } from '@/features/updates/index';
 import { ActionSheetIOS, Platform } from 'react-native';
 import type { Dispatch, SetStateAction } from 'react';
 

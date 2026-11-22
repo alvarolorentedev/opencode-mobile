@@ -1,3 +1,4 @@
+import { UpdateBlockingSheet as OverlaySheet, UpdateBlockingWorkspaceSelect as WorkspaceSelect, useUpdateBlockingConfirmation as useConfirmation } from '@/features/updates/index';
 import { cn } from '@/shared/ui/cn';
 import { Spinner } from '@/shared/ui/spinner';
 import { Text } from '@/shared/ui/text';
@@ -11,13 +12,10 @@ import { useTranslation } from 'react-i18next';
 import { Switch } from '@/shared/ui/switch';
 import { Pressable, View } from 'react-native';
 
-import { OverlaySheet } from '@/shared/ui/overlay-sheet';
 import { SwipeRow } from '@/shared/ui/swipe-row';
 
 import { ProjectPicker, ProjectPickerButton } from '@/features/projects/index';
-import { WorkspaceSelect } from '@/shared/ui/workspace-select';
 import { formatRelativeTime } from '@/shared/presentation/format';
-import { useConfirmation } from '@/shared/ui/use-confirmation';
 import { usePreferences } from '@/shared/preferences/context';
 import { useProjects } from '@/features/projects/context';
 import { useWorkspaces } from '@/runtime/workspace';

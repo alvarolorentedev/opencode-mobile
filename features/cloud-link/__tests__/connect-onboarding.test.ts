@@ -29,12 +29,12 @@ async function pairing(guided = true, entitled = false) {
     "@/shared/ui/theme/use-color-scheme": { useColorScheme: () => 'light' },
     "@/shared/ui/theme/use-palette": { usePalette: () => ({}) },
     "@/shared/ui/hooks/use-dismiss-on-back": { useDismissOnBack: vi.fn() },
-    "@/runtime/presentation/use-update-blocker": { useUpdateBlocker: vi.fn() },
+    "@/features/updates/context": { useUpdateBlocker: vi.fn() },
     "@/shared/platform/camera/connect-camera-gate": { ConnectCameraGate: 'CameraGate' },
     "@/shared/platform/camera/connect-scanner": { ConnectScanner: 'Scanner' },
     "@/features/cloud-link/ui/connect-subscription": { ConnectSubscription: 'Subscription' },
     "@/features/cloud-link/ui/connect-onboarding": { ConnectOnboarding: 'Onboarding' },
-    "@/shared/ui/overlay-sheet": { OverlaySheet: 'Overlay' }
+    "@/features/updates/index": { ...uiImports['@/features/updates/index'], UpdateBlockingSheet: 'Overlay' }
   });
   runtime.mount(ConnectPairing, { setup, guided, onConnected, onClose: vi.fn(), onManage: vi.fn() });
   const step = () => find(runtime.value, 'Onboarding')?.props.step;

@@ -41,7 +41,8 @@ async function voice(os = 'android', ready = false) {
     "@/features/voice/ui/settings/local-tts-section": { LocalTtsSection: 'LocalTts' },
     "@/features/voice/ui/settings/voice-more-settings": { VoiceMoreSettings: 'More' },
     "./setting-rows": { Button: 'Button' },
-    "@/shared/ui/settings/setting-rows": { SettingSelectField: 'Select', SettingSwitchRow: 'Switch' },
+    "@/shared/ui/settings/setting-rows": { SettingSwitchRow: 'Switch' },
+    "@/features/updates/index": { ...uiImports['@/features/updates/index'], UpdateBlockingSettingSelectField: 'Select' },
     "@/shared/ui/settings/settings-panel": { SettingTarget: 'Target', useSettingsTarget: () => undefined }
   });
   runtime.mount(VoiceSection, {

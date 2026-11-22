@@ -1,6 +1,6 @@
 # Feature ownership and import boundaries
 
-Related: [ADR 0015](../adr/0015-feature-oriented-implementation.md) · [State and data](state-and-data.md) · [Runtime overview](overview.md)
+Related: [ADR 0052](../adr/0052-explicit-overlay-dependencies.md) · [State and data](state-and-data.md) · [Runtime overview](overview.md)
 
 ## Read by task
 
@@ -50,8 +50,7 @@ app store for device facts ([ADR 0051](../adr/0051-app-core-state-tiers.md)).
 A workspace is a key, not a React provider subtree. Features read the focused
 or scoped values through selector hooks in `runtime/core/workspace-selectors.ts`;
 retained Terminal and Settings panes pass workspace targets explicitly. Sheets
-and other portals receive the same target in their child props. The remaining
-shared-UI exception covers update blockers.
+and other portals receive the same target in their child props.
 
 One application owner retains registry/focus, persisted preferences and the stable
 presentation map. One connection owner supplies lifecycle, event transport and
@@ -98,20 +97,14 @@ Use the existing `@/*` alias. There are no aliases or forwarding modules for ret
 technical directories. Tests may import the internals they exercise without widening
 the production API.
 
-## Shared UI runtime exception
+## Shared UI dependencies
 
-Shared code is feature-independent. The following existing controls
-alone may import `runtime/ui.ts`:
-
-| File under `shared/ui/` | Exact permitted imports |
-| --- | --- |
-| `overlay-sheet.tsx` | `useUpdateBlocker` |
-| `catalog-select.tsx` | `useUpdateBlocker` |
-| `use-confirmation.tsx` | `useUpdateBlocker` |
-
-The API tracks interaction lifetimes. Its value imports reach only the update
-blocker and the app-wide update context. No other shared file can import runtime, including through a relative
-path or re-export. There is no additional bridge context or duplicated state.
+Shared code is feature-independent. Its controls receive any interaction
+registration callbacks through props. The Updates feature supplies those
+callbacks from its wrappers and tracks open and closed interactions.
+Generic controls keep portal hosting and dismissal independent of the update
+policy. The architecture test checks imports from shared, including relative
+paths and re-exports.
 
 ## Validation
 
@@ -123,7 +116,7 @@ trees and proves every suite matches Vitest and TypeScript test configuration.
 Existing architecture checks still enforce the 60-line provider entrypoint, 500-line
 source ceiling, 127-member combined context surface, compatibility isolation,
 keyboard/tab layout and retained-state ownership. New checks enforce public imports,
-feature cycles, presentation IO boundaries and the exact shared UI exception.
+feature cycles, presentation IO boundaries and shared dependency direction.
 See the [validation strategy](../engineering/validation/strategy.md) for commands and
 test selection; this migration requires the complete gate and native entrypoint checks.
 

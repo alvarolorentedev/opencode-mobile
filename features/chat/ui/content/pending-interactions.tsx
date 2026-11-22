@@ -1,3 +1,4 @@
+import { UpdateBlockingSheet as OverlaySheet } from '@/features/updates/index';
 import { cn } from '@/shared/ui/cn';
 import { Text } from '@/shared/ui/text';
 import { Button } from '@/shared/ui/button';
@@ -9,7 +10,6 @@ import { ScrollView, View } from 'react-native';
 
 import { PermissionActions, PermissionRequestDetails, QuestionFlow } from '@/features/sessions/index';
 import { styles, stylesClasses } from '@/features/chat/ui/chat-view-styles';
-import { OverlaySheet } from '@/shared/ui/overlay-sheet';
 import { Colors } from '@/shared/ui/theme/theme';
 import type { PendingPermission, PendingQuestion, PendingQuestionAnswer } from '@/shared/protocol/opencode/client';
 import type { Todo } from '@/shared/protocol/opencode/types';

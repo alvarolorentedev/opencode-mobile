@@ -4,16 +4,18 @@ import { useConnection } from '@/features/connections/context';
 import { usePreferences } from '@/shared/preferences/context';
 import { usePalette } from '@/shared/ui/theme/use-palette';
 import { OpeningScreenField } from '@/features/sessions/index';
+import { useUpdates } from '@/features/updates/context';
 
 export function OnboardingGeneralSettings() {
   const palette = usePalette();
+  const { block } = useUpdates();
   const { chatPreferences, updateChatPreferences } = usePreferences();
   const { connection, serverCapabilities } = useConnection();
   const connected = connection.status === 'connected';
 
   return (
     <>
-      <LanguageSection showDescription={false} chatPreferences={chatPreferences} palette={palette} updateChatPreferences={updateChatPreferences} />
+      <LanguageSection block={block} showDescription={false} chatPreferences={chatPreferences} palette={palette} updateChatPreferences={updateChatPreferences} />
       <OpeningScreenField value={chatPreferences.openingScreen} onChange={(openingScreen) => updateChatPreferences({ openingScreen })} />
       {connected && serverCapabilities.promptDeliveryAvailable ? <PromptDeliveryField chatPreferences={chatPreferences} palette={palette} updateChatPreferences={updateChatPreferences} /> : null}
     </>

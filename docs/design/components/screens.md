@@ -182,8 +182,9 @@ selection action. Terminal follows that directory.
   notice in chat for offline, connecting, automatic reconnect, polling fallback,
   and constrained links. It never replaces a populated transcript and reads only
   provider-owned connection/diagnostics state.
-- `runtime/presentation/use-update-blocker.ts`: registers open/busy local surfaces with the
-  existing provider without sharing their content.
+- `features/updates/context.ts` and `features/updates/ui/interaction-controls.tsx`:
+  register open or busy surfaces with the app updater. Shared controls receive
+  the registration callback through props.
 - `shared/platform/app-updates.ts`: maintained flexible-first Android updates and
   Expo-verified iOS eligibility with explicit App Store navigation. See [app updates](../../product/app-updates.md).
 

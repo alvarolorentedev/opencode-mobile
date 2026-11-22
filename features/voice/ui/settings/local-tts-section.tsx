@@ -1,3 +1,4 @@
+import { UpdateBlockingSettingSelectField as SettingSelectField } from '@/features/updates/index';
 import { cn } from '@/shared/ui/cn';
 import { Text } from '@/shared/ui/text';
 import { Button } from '@/shared/ui/button';
@@ -12,7 +13,7 @@ import { isPackLanguageCompatible, LOCAL_TTS_SYSTEM_ONLY_LANGUAGES } from '@/sha
 import type { LocalTtsPackId } from '@/shared/platform/voice/tts/types';
 import type { ChatPreferences } from '@/shared/preferences/opencode-preferences';
 import type { useTtsSetup } from '@/features/voice/ui/use-tts-setup';
-import { SettingSelectField, type Palette } from '@/shared/ui/settings/setting-rows';
+import { type Palette } from '@/shared/ui/settings/setting-rows';
 
 export function LocalTtsSection({ chatPreferences, initialPackId, onSelected, palette, ttsSetup }: {
   chatPreferences: ChatPreferences; initialPackId?: LocalTtsPackId; onSelected: () => void;

@@ -2,8 +2,8 @@
 
 Status: **in progress**. Retained Terminal and Settings panes pass explicit
 workspace targets through their screens and dialogs. Shared portal components
-keep named modal hosts. The projection registry and update-blocker exception
-remain.
+keep named modal hosts and receive interaction registration through props.
+The projection registry remains.
 
 Goal: remove the remaining scope/provider carriers from React. The app mounts
 one core provider and one Query provider; workspaces are keys, not mounted
@@ -22,7 +22,8 @@ Start only after Phase D is complete and green.
   `retainedFocus`, `publish`, `forget`, `valuesFor` and per-workspace
   `WorkspaceRuntime` mounts.
 - `runtime/core/workspace-selectors.ts` selects the retained project projection.
-- Three shared controls still import the update blocker through `runtime/ui.ts`.
+- [ADR 0052](../../adr/0052-explicit-overlay-dependencies.md) records explicit
+  portal targets and update blocker callbacks. Shared controls use shared imports.
 - `shared/contracts/domain.ts` is still a type hub.
 
 ## Target shape
@@ -58,7 +59,7 @@ allowlisted exception must disappear from the architecture tests.
 3. Remove the per-workspace snapshot registry and runtime mounts. Commands and
    selectors read store/Query directly.
 4. Update shared controls and their feature wrappers so no shared file imports
-   runtime. Remove `runtime/ui.ts` and its exception from the architecture test.
+   runtime. Delete the shared UI blocker bridge and its architecture exception.
 5. Distribute the `shared/contracts/domain.ts` types to their owners.
 6. Verify portals, sheets, dialogs, selects, confirmations and update blockers
    on native and web.

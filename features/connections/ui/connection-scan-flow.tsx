@@ -18,7 +18,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ConnectCameraGate } from '@/shared/platform/camera/connect-camera-gate';
 import { ConnectScanner } from '@/shared/platform/camera/connect-scanner';
 import type { ConnectionProfileFormValues } from '@/features/connections/ui/connection-profile-dialog';
-import { useUpdateBlocker } from '@/runtime/ui';
+import { useUpdateBlocker } from '@/features/updates/context';
 import { usePalette } from '@/shared/ui/theme/use-palette';
 import { LocalPairingError } from '@/shared/contracts/pairing-error';
 import { useConnection } from '@/features/connections/context';

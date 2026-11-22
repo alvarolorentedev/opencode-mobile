@@ -1,11 +1,11 @@
+import { UpdateBlockingSettingSelectField as SettingSelectField, useUpdateBlockingConfirmation as useConfirmation } from '@/features/updates/index';
 import type { WorkspaceTarget } from '@/shared/contracts/workspace';
 import { cn } from '@/shared/ui/cn';
 import { Badge } from '@/shared/ui/badge';
 import { Button } from '@/shared/ui/button';
 import { ListRow } from '@/shared/ui/list-row';
 import { Text } from '@/shared/ui/text';
-import { SettingSelectField, SettingSwitchRow } from '@/shared/ui/settings/setting-rows';
-import { useConfirmation } from '@/shared/ui/use-confirmation';
+import { SettingSwitchRow } from '@/shared/ui/settings/setting-rows';
 import { usePalette } from '@/shared/ui/theme/use-palette';
 import { shareDiagnosticReport } from '@/shared/platform/diagnostics-share';
 import { useObservabilitySnapshot, observability } from '@/shared/observability';

@@ -1,3 +1,4 @@
+import { useUpdateBlockingConfirmation as useConfirmation } from '@/features/updates/index';
 import { cn } from '@/shared/ui/cn';
 import { TextField } from '@/shared/ui/text-field';
 import { Button } from '@/shared/ui/button';
@@ -16,7 +17,6 @@ import { View, type StyleProp, type ViewStyle } from 'react-native';
 import { SwipeRow } from '@/shared/ui/swipe-row';
 import { EntryActionSheet } from '@/features/projects/ui/entry-action-sheet';
 import { FileClipboardStrip } from '@/features/projects/ui/file-clipboard-strip';
-import { useConfirmation } from '@/shared/ui/use-confirmation';
 import { longPressHaptic } from '@/shared/platform/haptics';
 import type { ProjectFileEntry } from '@/shared/protocol/opencode/project';
 

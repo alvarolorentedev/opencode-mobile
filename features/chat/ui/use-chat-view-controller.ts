@@ -5,7 +5,6 @@ import { useTranslation } from 'react-i18next';
 import { Keyboard } from 'react-native';
 
 import { getEffectiveSessionModel, getInitialMode, getSelectedModelVariant, getVisibleModels, recordRecentModelId } from '@/features/ai/index';
-import { useUpdateBlocker } from '@/runtime/ui';
 import { mergeSharedDraft } from '@/features/sharing/index';
 import { workspaceKey } from '@/shared/contracts/workspace';
 import { getConnectionScope, getConnectionUiScope } from '@/shared/contracts/connection-scope';
@@ -32,7 +31,7 @@ import { useConnection } from '@/features/connections/context';
 import { useConversation } from '@/features/voice/context';
 import { usePreferences } from '@/shared/preferences/context';
 import { useProjects } from '@/features/projects/context';
-import { useUpdates } from '@/features/updates/context';
+import { useUpdateBlocker, useUpdates } from '@/features/updates/context';
 
 export function useChatViewController() {
   const { t } = useTranslation();

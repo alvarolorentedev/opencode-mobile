@@ -5,7 +5,7 @@ import { usePortalHost, useOverlayDismiss } from '@/shared/ui/portal';
 import { Icon } from '@/shared/ui/icon';
 import { Text } from '@/shared/ui/text';
 import { type ReactNode } from 'react';
-import { useUpdateBlocker } from '@/runtime/ui';
+import { useInteractionBlock, type InteractionBlock } from '@/shared/ui/hooks/use-interaction-block';
 import { useTranslation } from 'react-i18next';
 import { KeyboardAvoidingView, Pressable, ScrollView, StyleSheet, useWindowDimensions, View } from 'react-native';
 import { GestureDetector } from 'react-native-gesture-handler';
@@ -18,7 +18,7 @@ import { getLanguageDirection } from '@/shared/i18n/languages';
 import { usePalette } from '@/shared/ui/theme/use-palette';
 import { useSwipeDismiss } from '@/shared/ui/use-swipe-dismiss';
 
-export function OverlaySheet({ visible, title, onClose, children, headerAction, testID, fitContent = false, scrollable = true, compact = false, expanded = false, onToggleExpanded, blockUpdates = true, dismissible = true, dismissKeyboard = true }: {
+export function OverlaySheet({ visible, title, onClose, children, headerAction, testID, fitContent = false, scrollable = true, compact = false, expanded = false, onToggleExpanded, block, dismissible = true, dismissKeyboard = true }: {
   visible: boolean;
   title: string;
   onClose: () => void;
@@ -30,13 +30,13 @@ export function OverlaySheet({ visible, title, onClose, children, headerAction, 
   compact?: boolean;
   expanded?: boolean;
   onToggleExpanded?: () => void;
-  blockUpdates?: boolean;
+  block?: InteractionBlock;
   dismissible?: boolean;
   dismissKeyboard?: boolean;
 }) {
   const portalHost = usePortalHost();
   const insets = useSafeAreaInsets();
-  useUpdateBlocker(visible && blockUpdates);
+  useInteractionBlock(visible, block);
   const { height } = useWindowDimensions();
   const { t, i18n } = useTranslation();
   const direction = getLanguageDirection(i18n.resolvedLanguage || i18n.language);

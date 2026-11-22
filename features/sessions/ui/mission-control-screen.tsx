@@ -1,3 +1,4 @@
+import { UpdateBlockingSheet as OverlaySheet, UpdateBlockingWorkspaceSelect as WorkspaceSelect } from '@/features/updates/index';
 import { useFocusEffect, useIsFocused, useLocalSearchParams, useRouter } from 'expo-router';
 import { useCallback, useMemo, useState } from 'react';
 import { FlatList, ScrollView, View } from 'react-native';
@@ -9,10 +10,8 @@ import { deriveTodosFromMessages } from '@/shared/presentation/format';
 import { Button } from '@/shared/ui/button';
 import { Icon } from '@/shared/ui/icon';
 import { ListRow } from '@/shared/ui/list-row';
-import { OverlaySheet } from '@/shared/ui/overlay-sheet';
 import { HeaderTitle, ScreenHeader } from '@/shared/ui/screen-header';
 import { Text } from '@/shared/ui/text';
-import { WorkspaceSelect } from '@/shared/ui/workspace-select';
 import { useWorkspaces } from '@/runtime/workspace';
 import { countMissionRows } from '@/features/sessions/model/mission-control';
 import type { MissionStatsHours } from '@/features/sessions/model/mission-stats';

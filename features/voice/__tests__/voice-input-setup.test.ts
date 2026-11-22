@@ -29,7 +29,8 @@ async function setup({ ready = false, profile = false, initialStep = 1 } = {}) {
     "@/shared/platform/voice/permissions": { isVoicePermissionPromptActive: () => false },
     "@/shared/ui/settings/settings-panel": { SettingsDisclosure: 'Disclosure', SettingTarget: 'Target' },
     "./sections/setting-rows": { Button: 'Button' },
-    "@/shared/ui/settings/setting-rows": { SettingSelectField: 'Select', SettingSwitchRow: 'Switch' },
+    "@/shared/ui/settings/setting-rows": { SettingSwitchRow: 'Switch' },
+    "@/features/updates/index": { ...uiImports['@/features/updates/index'], UpdateBlockingSettingSelectField: 'Select' },
     "@/features/voice/ui/voice-language": { voiceLanguageOptions: () => [{ value: '', label: 'System' }, { value: 'en', label: 'English' }] },
     "@/features/voice/ui/voice-flow-screen": { VoiceFlowScreen: 'Flow' }
   }, runtime.globals);

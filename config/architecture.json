@@ -1,27 +1,36 @@
 {
   "features": {
-    "connections": [],
-    "projects": [
-      "connections"
+    "connections": [
+      "updates"
     ],
-    "voice": [],
+    "projects": [
+      "connections",
+      "updates"
+    ],
+    "voice": [
+      "updates"
+    ],
     "updates": [],
     "ai": [
-      "connections"
+      "connections",
+      "updates"
     ],
     "sessions": [
       "projects",
       "ai",
-      "connections"
+      "connections",
+      "updates"
     ],
     "cloud-link": [
-      "connections"
+      "connections",
+      "updates"
     ],
     "extensions": [
       "projects",
       "connections",
       "ai",
-      "sessions"
+      "sessions",
+      "updates"
     ],
     "notifications": [
       "sessions"
@@ -32,12 +41,14 @@
     "sharing": [
       "projects",
       "sessions",
-      "connections"
+      "connections",
+      "updates"
     ],
     "terminal": [
       "projects",
       "sessions",
-      "connections"
+      "connections",
+      "updates"
     ],
     "chat": [
       "sessions",
@@ -58,7 +69,8 @@
       "sessions",
       "voice",
       "notifications",
-      "chat"
+      "chat",
+      "updates"
     ],
     "settings": [
       "ai",
@@ -95,7 +107,12 @@
       "UpdateNotice",
       "UpdatesContextValue",
       "UpdateSection",
-      "useAppUpdates"
+      "useAppUpdates",
+      "UpdateBlockingSheet",
+      "UpdateBlockingCatalogSelect",
+      "UpdateBlockingWorkspaceSelect",
+      "UpdateBlockingSettingSelectField",
+      "useUpdateBlockingConfirmation"
     ],
     "features/chat/index.ts": [
       "ChatContextValue",

@@ -1,4 +1,4 @@
-import { useConfirmation } from '@/shared/ui/use-confirmation';
+import { useUpdateBlockingConfirmation as useConfirmation } from '@/features/updates/index';
 import { withAlpha } from '@/shared/ui/theme/color';
 import { useCallback, useEffect, useMemo, useRef } from 'react';
 import { useTranslation } from 'react-i18next';

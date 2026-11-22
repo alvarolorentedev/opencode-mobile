@@ -18,7 +18,7 @@ import { KeyboardAvoidingView, ScrollView, StyleSheet, View } from 'react-native
 
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { useUpdateBlocker } from '@/runtime/ui';
+import { useUpdateBlocker } from '@/features/updates/context';
 import { usePalette } from '@/shared/ui/theme/use-palette';
 
 import { MAX_CONNECTION_HEADERS, parseConnectionHeaders } from '@/shared/contracts/connection-headers';

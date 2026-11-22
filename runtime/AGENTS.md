@@ -37,9 +37,5 @@ Preserve query partitions, cancellation, foreground/demand gates, explicit readi
 connection-wide catalogs/streams, and independent Settings/Terminal/Chat targets.
 Keep one owner per value and the existing provider/context ordering.
 
-`ui.ts` exports only the existing update-blocker hook.
-Its value imports must never reach root composition, mounts or feature presentation.
-No bridge context, state duplication or broader shared UI exception is allowed.
-
 Validate with runtime Vitest, architecture/discovery checks and the owning E2E flows.
 The tag release runs full E2E; browser/fake-server edits need human validation.

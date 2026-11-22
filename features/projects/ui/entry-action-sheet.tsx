@@ -1,6 +1,6 @@
+import { UpdateBlockingSheet as OverlaySheet } from '@/features/updates/index';
 import type { ComponentProps } from 'react';
 import { useTranslation } from 'react-i18next';
-import { OverlaySheet } from '@/shared/ui/overlay-sheet';
 import { EntryActionContent } from '@/features/projects/ui/entry-action-content';
 
 export function EntryActionSheet(props: ComponentProps<typeof EntryActionContent>) {

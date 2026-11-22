@@ -1,3 +1,4 @@
+import { useUpdateBlockingConfirmation as useConfirmation } from '@/features/updates/index';
 import type { WorkspaceTarget } from '@/shared/contracts/workspace';
 import { Feedback } from '@/shared/ui/feedback';
 import { Portal } from '@/shared/ui/portal';
@@ -6,7 +7,6 @@ import { useTranslation } from 'react-i18next';
 import { useIsFocused } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { useConfirmation } from '@/shared/ui/use-confirmation';
 import { findMatchingProfile } from '@/shared/contracts/connection-profiles';
 import { AiDefaultsSection } from '@/features/ai/ui/settings/ai-defaults-section';
 import { AutoModelSection } from '@/features/ai/ui/settings/auto-model-section';

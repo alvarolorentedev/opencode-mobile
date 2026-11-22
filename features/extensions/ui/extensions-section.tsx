@@ -1,3 +1,4 @@
+import { useUpdateBlockingConfirmation as useConfirmation } from '@/features/updates/index';
 import type { WorkspaceTarget } from '@/shared/contracts/workspace';
 import { useEffect, useState } from 'react';
 import { View } from 'react-native';
@@ -21,7 +22,6 @@ import { Button } from '@/shared/ui/button';
 import { Spinner } from '@/shared/ui/spinner';
 import { FieldDescription } from '@/shared/ui/text-field';
 import { usePalette } from '@/shared/ui/theme/use-palette';
-import { useConfirmation } from '@/shared/ui/use-confirmation';
 import { getErrorMessage } from '@/shared/utilities/error-message';
 import type { ExtensionScope } from '@/shared/protocol/opencode/extensions/types';
 

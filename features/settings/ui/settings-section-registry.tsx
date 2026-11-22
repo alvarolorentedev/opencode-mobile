@@ -222,7 +222,7 @@ export function buildSettingsSections({
     },
     {
       id: 'language', group: 'app', icon: 'translate', title: t('settings:language.title'), summary: t('settings:language.description'),
-      onPress: () => setOpenSection('language'), render: () => <LanguageSection chatPreferences={chatPreferences} palette={palette} updateChatPreferences={updateChatPreferences} />,
+      onPress: () => setOpenSection('language'), render: () => <LanguageSection block={updates.block} chatPreferences={chatPreferences} palette={palette} updateChatPreferences={updateChatPreferences} />,
     },
     {
       id: 'advanced', group: 'server' as const,

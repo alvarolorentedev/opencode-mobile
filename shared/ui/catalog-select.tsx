@@ -7,7 +7,7 @@ import { Text } from '@/shared/ui/text';
 import { Icon } from '@/shared/ui/icon';
 import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger } from '@/shared/ui/select';
 import { useDismissKeyboardOnOpen } from '@/shared/ui/hooks/use-dismiss-keyboard-on-open';
-import { useUpdateBlocker } from '@/runtime/ui';
+import { useInteractionBlock, type InteractionBlock } from '@/shared/ui/hooks/use-interaction-block';
 import { usePalette } from '@/shared/ui/theme/use-palette';
 
 export type CatalogOption<T extends string = string> = {
@@ -17,7 +17,8 @@ export type CatalogOption<T extends string = string> = {
   leadingIcon?: (props: { size: number; color: string; selected: boolean }) => ReactNode;
 };
 
-export function CatalogSelect<T extends string>({ disabled = false, onValueChange, options, renderTrigger, searchable = false, selectedValue, title }: {
+export function CatalogSelect<T extends string>({ block, disabled = false, onValueChange, options, renderTrigger, searchable = false, selectedValue, title }: {
+  block?: InteractionBlock;
   disabled?: boolean; onValueChange: (value: T) => void; options: CatalogOption<T>[];
   selectedValue?: T; title?: string; searchable?: boolean;
   renderTrigger: (props: { disabled: boolean; open: () => void; openState: boolean; selectedOption?: CatalogOption<T> }) => ReactNode;
@@ -28,7 +29,7 @@ export function CatalogSelect<T extends string>({ disabled = false, onValueChang
   const [query, setQuery] = useState('');
   const selected = options.find((option) => option.value === selectedValue);
   const blocked = disabled || options.length === 0;
-  useUpdateBlocker(open);
+  useInteractionBlock(open, block);
   useDismissKeyboardOnOpen(open);
   const filtered = useMemo(() => {
     const needle = query.trim().toLocaleLowerCase();

@@ -31,7 +31,7 @@ async function mount({
   const { useChatViewActions } = await loadTs('features/chat/ui/use-chat-view-actions.ts', {
     react: runtime.react,
     'react-native': { ActionSheetIOS: { showActionSheetWithOptions: actionSheet }, Platform: { OS: platform } },
-    '@/shared/ui/use-confirmation': { useConfirmation: () => ({ confirmAction: vi.fn(), confirmation: null }) },
+    '@/features/updates/index': { useUpdateBlockingConfirmation: () => ({ confirmAction: vi.fn(), confirmation: null }) },
     '@/features/updates/context': { useUpdates: () => ({ block: () => release }) },
     '@/shared/platform/attachments': {
       pickedAttachment: (asset: { uri: string; name: string; mimeType?: string }) => ({

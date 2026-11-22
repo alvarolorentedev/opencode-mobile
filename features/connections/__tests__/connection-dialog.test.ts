@@ -51,7 +51,7 @@ async function form(onSubmit = vi.fn()) {
     "@/features/connections/ui/connection-oidc-fields": { ConnectionOidcFields: 'OidcFields' },
     "@/shared/ui/settings/setting-rows": { SettingField: 'Input', SettingSwitchRow: 'SwitchRow' },
     "@/shared/ui/theme/theme": { Colors: { light: {} } },
-    "@/runtime/presentation/use-update-blocker": { useUpdateBlocker: () => {} },
+    "@/features/updates/context": { useUpdateBlocker: () => {} },
     "@/shared/ui/theme/use-color-scheme": { useColorScheme: () => 'light' },
     "@/shared/ui/theme/use-palette": { usePalette: () => ({}) },
     "@/shared/contracts/server-url": { isValidServerUrl: () => true, getServerHostname: () => '192.168.1.10', normalizeServerUrl },

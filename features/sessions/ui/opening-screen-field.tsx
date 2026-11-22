@@ -1,7 +1,7 @@
+import { UpdateBlockingSettingSelectField as SettingSelectField } from '@/features/updates/index';
 import { useTranslation } from 'react-i18next';
 
 import { OPENING_SCREENS, type OpeningScreen } from '@/shared/preferences/opencode-preferences';
-import { SettingSelectField } from '@/shared/ui/settings/setting-rows';
 import { usePalette } from '@/shared/ui/theme/use-palette';
 
 export function OpeningScreenField({ value, onChange }: { value: OpeningScreen; onChange: (value: OpeningScreen) => void }) {

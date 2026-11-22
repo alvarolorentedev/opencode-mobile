@@ -1,3 +1,4 @@
+import { useUpdateBlockingConfirmation as useConfirmation } from '@/features/updates/index';
 import { cn } from '@/shared/ui/cn';
 import { ModalSurface } from '@/shared/ui/portal';
 import { Button } from '@/shared/ui/button';
@@ -16,11 +17,10 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { AudioPreview, VideoPreview } from '@/shared/ui/media-preview';
 import { useRetainedState } from '@/runtime/workspace';
-import { useUpdateBlocker } from '@/runtime/ui';
+import { useUpdateBlocker } from '@/features/updates/context';
 import { usePalette } from '@/shared/ui/theme/use-palette';
 import { useConnection } from '@/features/connections/context';
 import { getConnectionUiScope } from '@/shared/contracts/connection-scope';
-import { useConfirmation } from '@/shared/ui/use-confirmation';
 import { prepareAttachmentBytes } from '@/shared/platform/attachments';
 import { formatDataUsage } from '@/shared/network/data-usage';
 import { MAX_PROJECT_PREVIEW_BYTES } from '@/shared/contracts/project-preview';

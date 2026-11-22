@@ -28,7 +28,7 @@ async function mount() {
     'react-native-safe-area-context': { useSafeAreaInsets: () => ({ top: 0 }) },
     "@/features/sharing/ui/attachment-strip": { AttachmentStrip: 'Attachments' },
     "@/features/projects/ui/project-picker": { ProjectPicker: 'ProjectPicker' },
-    "@/shared/ui/overlay-sheet": { OverlaySheet: 'Sheet' },
+    "@/features/updates/index": { ...uiImports['@/features/updates/index'], UpdateBlockingSheet: 'Sheet' },
     "@/shared/ui/theme/theme": { Colors: { light: { background: '#fff', surface: '#fff', text: '#111', muted: '#666', tint: '#080', warning: '#a60', danger: '#f00' } }, Fonts: {} },
     "@/shared/ui/theme/use-color-scheme": { useColorScheme: () => 'light' },
     "@/shared/ui/theme/use-palette": { usePalette: () => ({ background: '#fff', surface: '#fff', text: '#111', muted: '#666', tint: '#080', warning: '#a60', danger: '#f00' }) },

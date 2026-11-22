@@ -1,3 +1,4 @@
+import { UpdateBlockingCatalogSelect as CatalogSelect } from '@/features/updates/index';
 import { cn } from '@/shared/ui/cn';
 import { ToggleGroup, ToggleGroupItem } from '@/shared/ui/toggle-group';
 import { useWatch, useForm, useController, type Control } from 'react-hook-form';
@@ -21,8 +22,7 @@ import { KeyboardAvoidingView, Linking, Pressable, ScrollView, StyleSheet, View 
 
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { useUpdateBlocker } from '@/runtime/ui';
-import { CatalogSelect } from '@/shared/ui/catalog-select';
+import { useUpdateBlocker } from '@/features/updates/context';
 
 import { Colors } from '@/shared/ui/theme/theme';
 import { extractPairingCode } from '@/shared/contracts/provider-oauth';

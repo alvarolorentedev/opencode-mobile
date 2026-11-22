@@ -1,8 +1,9 @@
+import { UpdateBlockingSettingSelectField as SettingSelectField } from '@/features/updates/index';
 import { View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { Button } from '@/shared/ui/button';
 import { Text } from '@/shared/ui/text';
-import { SettingField, SettingSelectField } from '@/shared/ui/settings/setting-rows';
+import { SettingField } from '@/shared/ui/settings/setting-rows';
 import { FieldDescription } from '@/shared/ui/text-field';
 import { usePalette } from '@/shared/ui/theme/use-palette';
 import type { PermissionRule } from '@/shared/protocol/opencode/extensions/permission-draft';

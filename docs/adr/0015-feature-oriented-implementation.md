@@ -1,6 +1,6 @@
 # ADR 0015: Feature-oriented implementation with shared runtime ownership
 
-- Status: Accepted
+- Status: Superseded by ADR 0052
 - Date: 2026-10-31
 - Deciders: maintainers
 - Supersedes: ADR 0002, ADR 0005

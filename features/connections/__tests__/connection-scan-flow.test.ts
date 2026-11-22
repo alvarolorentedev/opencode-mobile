@@ -29,7 +29,7 @@ async function flow(platform = 'android', foss = false, onSubmit = vi.fn()) {
     "@/shared/platform/camera/connect-camera-gate": { ConnectCameraGate: 'Gate' },
     "@/shared/platform/camera/connect-scanner": { ConnectScanner: 'Scanner' },
     "@/shared/ui/theme/theme": { Colors: { light: {} } },
-    "@/runtime/presentation/use-update-blocker": { useUpdateBlocker: () => {} },
+    "@/features/updates/context": { useUpdateBlocker: () => {} },
     "@/shared/ui/theme/use-color-scheme": { useColorScheme: () => 'light' },
     "@/shared/ui/theme/use-palette": { usePalette: () => ({}) },
     "@/shared/contracts/pairing-error": { LocalPairingError },

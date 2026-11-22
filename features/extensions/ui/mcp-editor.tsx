@@ -1,3 +1,4 @@
+import { UpdateBlockingSettingSelectField as SettingSelectField } from '@/features/updates/index';
 import { View } from 'react-native';
 import { Controller, useFieldArray, useForm, useWatch } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -5,7 +6,7 @@ import { useTranslation } from 'react-i18next';
 import { useExtensions } from '@/features/extensions/context';
 import { mcpEditorSchema, type McpEditorDraft } from '@/features/extensions/model/extension-schemas';
 import { ExtensionEditor, type EditorProps } from '@/features/extensions/ui/extension-editor';
-import { SettingField, SettingSelectField } from '@/shared/ui/settings/setting-rows';
+import { SettingField } from '@/shared/ui/settings/setting-rows';
 import { Text } from '@/shared/ui/text';
 import { Button } from '@/shared/ui/button';
 import { FieldDescription } from '@/shared/ui/text-field';

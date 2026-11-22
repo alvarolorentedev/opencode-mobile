@@ -1,3 +1,4 @@
+import { useUpdateBlockingConfirmation as useConfirmation, UpdateBlockingSheet as OverlaySheet } from '@/features/updates/index';
 import { cn } from '@/shared/ui/cn';
 import { Text } from '@/shared/ui/text';
 import { Button } from '@/shared/ui/button';
@@ -13,16 +14,14 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useRouter, useIsFocused } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { useConfirmation } from '@/shared/ui/use-confirmation';
 import { Fonts } from '@/shared/ui/theme/theme';
 import { RetainedTerminals } from '@/features/terminal/ui/retained-terminals';
 import { NewTerminalSheet } from '@/features/terminal/ui/new-terminal-sheet';
 import { useWorkspaceTerminals } from '@/features/terminal/ui/use-workspace-terminals';
 import { useRetainedWorkspaceTarget, useWorkspacePreferences, useWorkspaces } from '@/runtime/workspace';
 import type { WorkspaceTarget } from '@/shared/contracts/workspace';
-import { OverlaySheet } from '@/shared/ui/overlay-sheet';
 import { SwipeRow } from '@/shared/ui/swipe-row';
-import { useUpdateBlocker } from '@/runtime/ui';
+import { useUpdateBlocker } from '@/features/updates/context';
 import { usePalette } from '@/shared/ui/theme/use-palette';
 import { useConnection } from '@/features/connections/context';
 import { useProjects } from '@/features/projects/context';

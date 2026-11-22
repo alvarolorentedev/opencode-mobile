@@ -1,3 +1,4 @@
+import { UpdateBlockingSheet as OverlaySheet } from '@/features/updates/index';
 import type { WorkspaceTarget } from '@/shared/contracts/workspace';
 import { cn } from '@/shared/ui/cn';
 import { Text } from '@/shared/ui/text';
@@ -20,7 +21,6 @@ import { SettingsHome } from '@/features/settings/ui/settings-home';
 import { SettingsPanel } from '@/shared/ui/settings/settings-panel';
 import type { SettingsTarget } from '@/shared/ui/settings/target';
 import { getVisibleModels } from '@/features/ai/index';
-import { OverlaySheet } from '@/shared/ui/overlay-sheet';
 import { useLastJsError } from '@/features/connections/index';
 import { usePalette } from '@/shared/ui/theme/use-palette';
 import { getSpeechPlayback } from '@/shared/platform/voice/speech-config';

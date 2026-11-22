@@ -1,5 +1,5 @@
+import { useUpdateBlockingConfirmation as useConfirmation, UpdateBlockingSettingSelectField as SettingSelectField } from '@/features/updates/index';
 import { cn } from '@/shared/ui/cn';
-import { useConfirmation } from '@/shared/ui/use-confirmation';
 import { Text } from '@/shared/ui/text';
 import { FieldDescription } from '@/shared/ui/text-field';
 import { Button } from '@/shared/ui/button';
@@ -7,7 +7,7 @@ import { Spinner } from '@/shared/ui/spinner';
 import { Icon } from '@/shared/ui/icon';
 import { ListRow } from '@/shared/ui/list-row';
 import { Badge } from '@/shared/ui/badge';
-import { SettingSelectField, type Palette } from '@/shared/ui/settings/setting-rows';
+import { type Palette } from '@/shared/ui/settings/setting-rows';
 import * as Clipboard from '@/shared/platform/clipboard';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';

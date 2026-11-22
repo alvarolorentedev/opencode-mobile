@@ -64,7 +64,7 @@ coverage, and documentation links.
 | [0013](0013-source-owned-ui-and-complex-forms.md) | Source-owned Reusables, Uniwind tokens and complex forms | Accepted |
 | [0014](0014-server-data-and-explicit-lifecycles.md) | Scoped server data and explicit application lifecycles | Accepted |
 
-| [0015](0015-feature-oriented-implementation.md) | Feature ownership with shared runtime composition | Accepted |
+| [0015](0015-feature-oriented-implementation.md) | Feature ownership with shared runtime composition | Superseded by ADR 0052 |
 
 | [0016](0016-supported-expo-native-integrations.md) | Supported Expo native integrations and agent tooling | Superseded by ADR 0017 |
 | [0017](0017-native-defaults-and-prebuilt-engines.md) | Upstream update defaults and pinned prebuilt engines | Superseded by ADR 0031 |
@@ -103,6 +103,7 @@ coverage, and documentation links.
 | [0049](0049-bounded-mission-stats-snapshots.md) | Bounded Mission Control statistics snapshots | Accepted |
 | [0050](0050-live-v2-transcript-with-reconciliation.md) | Live V2 transcript with boundary reconciliation | Accepted |
 | [0051](0051-app-core-state-tiers.md) | App core with Query for server facts and Zustand for device facts | Accepted |
+| [0052](0052-explicit-overlay-dependencies.md) | Feature ownership and explicit overlay dependencies | Accepted |
 
 ## Template
 
