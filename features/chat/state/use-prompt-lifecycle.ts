@@ -1,8 +1,9 @@
 import { interruptSession, readSessionSettlement, switchSessionModel as switchSessionModelService } from '@/shared/protocol/services/session-service';
 import { prepareAttachment } from '@/shared/protocol/opencode/attachment';
 import type { Config, FilePartInput, TextPartInput, Session, SessionStatus } from '@/shared/protocol/opencode/types';
-import { useCallback, useEffect, useRef, useState, type Dispatch, type SetStateAction } from 'react';
+import { useCallback, useEffect, useRef, type Dispatch, type SetStateAction } from 'react';
 
+import { useAppCore, useAppStore } from '@/runtime/core';
 import type { OpencodeConnectionSettings, ScopedOpencodeClient } from '@/shared/protocol/opencode/client';
 import type { SessionMessageRecord } from '@/shared/presentation/format';
 import type { PromptContextItem, PromptDelivery, PromptInput, PendingPrompt } from '@/shared/protocol/opencode/prompt-inbox';
@@ -18,6 +19,7 @@ import type { ProviderOption } from '@/features/ai/index';
 
 type PromptLifecycleInput = {
   submitPrompt: (input: PromptInput, delivery: PromptDelivery) => Promise<PendingPrompt | undefined>;
+  scopeKey: string;
   client: ScopedOpencodeClient;
   isCurrentClient: (candidate: object) => boolean;
   activeProjectPath?: string;
@@ -43,6 +45,7 @@ type PromptLifecycleInput = {
 
 export function usePromptLifecycle({
   submitPrompt,
+  scopeKey,
   client,
   isCurrentClient,
   activeProjectPath,
@@ -65,7 +68,14 @@ export function usePromptLifecycle({
   refreshSessionTodos,
   scheduleSessionRefresh,
 }: PromptLifecycleInput) {
-  const [sendingState, setSendingState] = useState<{ sessionId?: string; active: boolean }>({ active: false });
+  const { store } = useAppCore();
+  const prompt = useAppStore((state) => state.prompt[scopeKey]) ?? { sending: { active: false } };
+  const sendingState = prompt.sending;
+  const setSendingState = useCallback<Dispatch<SetStateAction<{ sessionId?: string; active: boolean }>>>((value) => {
+    store.getState().setPrompt(scopeKey, (current) => ({
+      sending: typeof value === 'function' ? value(current.sending) : value,
+    }));
+  }, [scopeKey, store]);
   const routePrompt = usePromptRouting({
     client,
     isCurrentClient,
@@ -78,7 +88,12 @@ export function usePromptLifecycle({
     sessionStatuses,
     messagesBySession,
   });
-  const [promptError, setPromptError] = useState<{ message: string; occurredAt: number; sessionId?: string }>();
+  const promptError = prompt.error;
+  const setPromptError = useCallback<Dispatch<SetStateAction<{ message: string; occurredAt: number; sessionId?: string } | undefined>>>((value) => {
+    store.getState().setPrompt(scopeKey, (current) => ({
+      error: typeof value === 'function' ? value(current.error) : value,
+    }));
+  }, [scopeKey, store]);
   const requestedAtRef = useRef(0);
   const latestSubmissionRef = useRef<{ active: boolean; sessionId: string; requestedAt: number; owner: string } | undefined>(undefined);
 

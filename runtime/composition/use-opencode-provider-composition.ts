@@ -99,6 +99,7 @@ export function useOpencodeProviderComposition(input: WorkspaceRuntimeInput) {
 
   const transcript = useTranscriptState({ ...domain, client, isCurrentClient });
   const transcriptRead = useTranscriptReadErrors({
+    scopeKey: state.scopeKey,
     client,
     isCurrentClient,
     refreshMessages: transcript.refreshMessages,

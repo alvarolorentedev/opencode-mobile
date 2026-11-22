@@ -9,6 +9,7 @@ const EMPTY: ChatUiState = {
   selectedDiffMessageBySession: {},
   isRefreshingMessages: false,
   isRefreshingDiffs: false,
+  readErrors: {},
 };
 
 function apply<T>(value: SetStateAction<T>, previous: T): T {

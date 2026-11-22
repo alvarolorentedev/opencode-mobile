@@ -54,6 +54,46 @@ export async function loadTs(relative, imports = {}, globals = {}) {
     AFTER_FIRST_UNLOCK_THIS_DEVICE_ONLY: 0,
   };
   if (imports.react) {
+    // Default app-core stand-in for legacy hook tests. New tests use native
+    // imports and a real createAppStore; this only keeps the remaining
+    // loadTs suites exercising the same hook code until they migrate.
+    const coreListeners = new Set();
+    const coreState = {
+      prompt: {}, chat: {}, selection: {},
+      registry: { connections: [], ready: false, snapshots: {} },
+      focusedValues: undefined, mcpAuthPrompt: undefined,
+      setPrompt(scope, patch) {
+        const current = coreState.prompt[scope] ?? {};
+        coreState.prompt = { ...coreState.prompt, [scope]: { ...current, ...(typeof patch === 'function' ? patch(current) : patch) } };
+        for (const listener of coreListeners) listener();
+      },
+      setChat(scope, patch) {
+        const current = coreState.chat[scope] ?? { diffScopeBySession: {}, selectedDiffMessageBySession: {}, isRefreshingMessages: false, isRefreshingDiffs: false, readErrors: {} };
+        coreState.chat = { ...coreState.chat, [scope]: { ...current, ...(typeof patch === 'function' ? patch(current) : patch) } };
+        for (const listener of coreListeners) listener();
+      },
+      setSelection(scope, patch) {
+        const current = coreState.selection[scope] ?? { isBootstrappingChat: false, activeSessionsVisible: false };
+        coreState.selection = { ...coreState.selection, [scope]: { ...current, ...(typeof patch === 'function' ? patch(current) : patch) } };
+        for (const listener of coreListeners) listener();
+      },
+      setRegistry(patch) {
+        coreState.registry = { ...coreState.registry, ...(typeof patch === 'function' ? patch(coreState.registry) : patch) };
+        for (const listener of coreListeners) listener();
+      },
+      setFocusedValues(values) { coreState.focusedValues = values; for (const listener of coreListeners) listener(); },
+      setMcpAuthPrompt(value) { coreState.mcpAuthPrompt = typeof value === 'function' ? value(coreState.mcpAuthPrompt) : value; for (const listener of coreListeners) listener(); },
+      setShellValue() {},
+    };
+    const coreStore = { getState: () => coreState, setState: (next) => { Object.assign(coreState, typeof next === 'function' ? next(coreState) : next); for (const listener of coreListeners) listener(); }, subscribe: (listener) => { coreListeners.add(listener); return () => coreListeners.delete(listener); } };
+    const useCoreStore = (selector) => {
+      const [, force] = imports.react.useState(0);
+      imports.react.useEffect(() => { const listener = () => force((value) => value + 1); coreListeners.add(listener); return () => { coreListeners.delete(listener); }; }, []);
+      return selector(coreState);
+    };
+    resolved['@/runtime/core/context'] ??= { useAppCore: () => ({ store: coreStore }), useAppStore: useCoreStore, AppCoreProvider: ({ children }) => children };
+    resolved['@/runtime/core'] ??= resolved['@/runtime/core/context'];
+    resolved['@/runtime/core/store'] ??= { createAppStore: () => coreStore };
     resolved['@/features/ai/services/capabilities-snapshot'] ??= { clearCapabilitiesSnapshots: async () => {} };
     resolved['@/shared/protocol/services/session-service'] ??= {};
     resolved['@tanstack/react-query'] ??= queryRuntime(imports.react);

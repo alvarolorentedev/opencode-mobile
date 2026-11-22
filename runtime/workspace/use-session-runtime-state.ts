@@ -52,6 +52,7 @@ export function useSessionRuntimeState(input: WorkspaceRuntimeInput, connection:
   });
 
   return {
+    scopeKey,
     settings, setSettings,
     connection,
     serverContract,

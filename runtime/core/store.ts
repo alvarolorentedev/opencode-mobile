@@ -38,6 +38,12 @@ export type ChatUiState = {
   selectedDiffMessageBySession: Record<string, string | undefined>;
   isRefreshingMessages: boolean;
   isRefreshingDiffs: boolean;
+  readErrors: Record<string, string>;
+};
+
+export type PromptUiState = {
+  sending: { sessionId?: string; active: boolean };
+  error?: { message: string; occurredAt: number; sessionId?: string };
 };
 
 const EMPTY_CHAT: ChatUiState = {
@@ -45,7 +51,10 @@ const EMPTY_CHAT: ChatUiState = {
   selectedDiffMessageBySession: {},
   isRefreshingMessages: false,
   isRefreshingDiffs: false,
+  readErrors: {},
 };
+
+const EMPTY_PROMPT: PromptUiState = { sending: { active: false } };
 
 const EMPTY_SELECTION: SelectionState = {
   activeProjectPath: undefined,
@@ -59,6 +68,7 @@ export type AppState = {
   registry: RegistryState;
   selection: Record<string, SelectionState>;
   chat: Record<string, ChatUiState>;
+  prompt: Record<string, PromptUiState>;
   presentation: Map<string, unknown>;
   mcpAuthPrompt?: { mcpName: string; url: string };
   focusedValues?: import('@/runtime/workspace/workspace-types').WorkspaceValues;
@@ -71,6 +81,7 @@ export type AppState = {
   setRegistry: (patch: Partial<RegistryState> | ((current: RegistryState) => Partial<RegistryState>)) => void;
   setSelection: (scopeKey: string, patch: Partial<SelectionState> | ((current: SelectionState) => Partial<SelectionState>)) => void;
   setChat: (scopeKey: string, patch: Partial<ChatUiState> | ((current: ChatUiState) => Partial<ChatUiState>)) => void;
+  setPrompt: (scopeKey: string, patch: Partial<PromptUiState> | ((current: PromptUiState) => Partial<PromptUiState>)) => void;
 };
 
 export type AppStore = StoreApi<AppState>;
@@ -89,6 +100,7 @@ export function createAppStore(defaults: AppStoreDefaults): AppStore {
     registry: { connections: [], ready: false, snapshots: {} },
     selection: {},
     chat: {},
+    prompt: {},
     mcpAuthPrompt: undefined,
     // Mutated in place; the hook only needs the stable map identity.
     presentation: new Map<string, unknown>(),
@@ -122,6 +134,15 @@ export function createAppStore(defaults: AppStoreDefaults): AppStore {
       return {
         chat: {
           ...state.chat,
+          [scopeKey]: { ...current, ...(typeof patch === 'function' ? patch(current) : patch) },
+        },
+      };
+    }),
+    setPrompt: (scopeKey, patch) => set((state) => {
+      const current = state.prompt[scopeKey] ?? EMPTY_PROMPT;
+      return {
+        prompt: {
+          ...state.prompt,
           [scopeKey]: { ...current, ...(typeof patch === 'function' ? patch(current) : patch) },
         },
       };
