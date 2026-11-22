@@ -75,8 +75,9 @@ items remain open and require their own focused pass with the full browser suite
   ports; remove `eventActionsRef` and the composition.
 - [ ] Move canonical messages to per-session infinite queries with a
   store-backed live overlay and an explicit retention policy.
-- [ ] Adopt Query persistence and remove the custom session/transcript caches,
-  or record a measured decision to keep them.
+- [x] Adopt Query persistence for session and project catalogs and remove the
+  custom session cache. The transcript cache remains by design because messages
+  carry inline media that must not enter the persisted Query cache.
 - [ ] Migrate `loadTs` suites to native imports and add `fast-check` invariants.
 - [ ] Add the full fake-server composition harness (connect, project, session,
   prompt, SSE, reconnect, scope switch).

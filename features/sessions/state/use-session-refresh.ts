@@ -6,8 +6,6 @@ import type { SessionStatus } from '@/shared/protocol/opencode/types';
 
 import { areSessionListsEqual, areSessionStatusMapsEqual, groupPendingRequestsBySession, mergeSessionStatuses } from '@/features/sessions/model/session-utils';
 
-import { persistSessionCache } from '@/features/sessions/services/session-cache';
-
 import { getActiveSessionStatuses as svcGetActiveSessionStatuses, listSessions as svcListSessions } from '@/shared/protocol/services/session-service';
 
 import type { SessionRefreshInput } from '@/features/sessions/model/refresh-input';
@@ -15,7 +13,7 @@ import type { SessionRefreshInput } from '@/features/sessions/model/refresh-inpu
 // A list read that started before a session was created can resolve after it.
 // Keep just-created sessions visible for a short grace period.
 const LOCAL_SESSION_GRACE_MS = 10_000;
-export function useSessionRefresh({ activeProjectPath, client, isCurrentClient, setSessions, sessionsRef, setSessionStatuses, locallyCreatedSessionsRef, setPendingPermissionsBySession, setPendingQuestionsBySession, suppressedPendingRequestIdsRef, connectionScope }: SessionRefreshInput) {
+export function useSessionRefresh({ activeProjectPath, client, isCurrentClient, setSessions, sessionsRef, setSessionStatuses, locallyCreatedSessionsRef, setPendingPermissionsBySession, setPendingQuestionsBySession, suppressedPendingRequestIdsRef }: SessionRefreshInput) {
 
   const refreshSessions = useCallback(
     async () => {
@@ -51,11 +49,9 @@ export function useSessionRefresh({ activeProjectPath, client, isCurrentClient, 
         }
         return areSessionStatusMapsEqual(current, next) ? current : next;
       });
-      const statuses = Object.fromEntries(nextSessions.map((session) => [session.id, result.statuses[session.id] ?? { type: 'idle' as const }]));
-      void persistSessionCache(connectionScope, activeProjectPath, nextSessions, statuses);
       return nextSessions;
     },
-    [activeProjectPath, client, connectionScope, isCurrentClient, locallyCreatedSessionsRef, sessionsRef, setSessionStatuses, setSessions],
+    [activeProjectPath, client, isCurrentClient, locallyCreatedSessionsRef, sessionsRef, setSessionStatuses, setSessions],
   );
 
   const refreshSessionStatuses = useCallback(async () => {

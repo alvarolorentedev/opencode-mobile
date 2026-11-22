@@ -510,30 +510,20 @@ Persisted values:
 - `opencode-mobile.onboarding-version` (completion-only first-run marker; see below)
 - `opencode-mobile.pending-notification-sessions` (non-secret connection references, keyed by connection scope + session ID)
 - `opencode-mobile.widget-snapshot` (bounded Android replies, awaiting-action and plan snapshot: connection scope, language/privacy preference, per-surface observation times, three rows/steps, counts, validated links and optional 160-character previews; no authentication credentials, raw request metadata or tool output)
-- `opencode-mobile.sessions.<connectionScope>.<projectPath>` / `opencode-mobile.session-statuses.<connectionScope>.<projectPath>` (per connection + project cache)
+- `opencode-mobile.query-cache.v1` (persisted TanStack Query cache for session and project catalogs; 24-hour max age; messages, diffs, todos, inbox and notices are never persisted)
 - `opencode-mobile.transcript.<connectionScope>.<projectPath>.<sessionId>` (bounded newest transcript tail: 24 records, 200k-character cap, 7-day TTL, 64 snapshots across connections)
 - `opencode-mobile.capabilities.<connectionScope>.<projectPath>` (last-known config/runtime/models/agents/auth methods, 300k-character cap, 7-day TTL)
 - `opencode-mobile.favorite-sessions` (cross-project favorites, each carrying its connection scope)
 - `opencode-mobile.hidden-projects` (device-local archived project paths per connection scope; only hides matching server catalog rows and never archives on the server)
 
-### Session cache DTO
+### Query cache persistence
 
-The per connection + project session cache never stores raw SDK `Session` objects. It writes
-an explicit, validated DTO (`CachedSession` in `features/sessions/services/session-cache.ts`) with
-only `id`, `title`, `createdAt`, `updatedAt`, and optional `parentID`. A field
-added upstream is not persisted unless the DTO mapping is updated. Sensitive or
-large fields such as share URLs, metadata, model choice, tokens, and revert
-diffs are deliberately excluded. Session statuses are reduced to their `type`
-discriminant.
-
-Each key stores an envelope of `{ cachedAt, sessions }` / `{ cachedAt, statuses }`.
-Cache entries older than `SESSION_CACHE_TTL_MS` (7 days) are discarded, and
-legacy pre-envelope payloads fail safe and are removed; the next confirmed fetch
-republishes the cache. Keys embed the connection scope and then the raw project
-path, because project paths are server-local and two servers exposing the same
-path must never share cached sessions. Pre-multi-server keys were not scoped and
-are simply never read again, so the next confirmed fetch republishes the cache
-under the scoped key.
+The app persists only successful `sessions` and `server/projects` Query entries.
+The dehydrated cache is keyed by connection, scope, auth revision and contract,
+so a credential rotation cannot expose another server's rows. Session data is
+already normalized by the transport adapter; the cache never adds fields.
+Messages, diffs, todos, inbox and notices are excluded because they carry inline
+media or are regenerated. Entries older than 24 hours are discarded.
 
 ### Favorites DTO
 
@@ -560,11 +550,11 @@ Hydration rules:
 - last-session maps are not restored; opening a project without an explicit selection picks the newest session in the server list
 - each persisted key hydrates independently; a storage or credential read failure preserves the unread key and suppresses unchanged default write-back until the user changes that value or relaunches. Malformed or invalid JSON is removed without blocking other keys
 - write-back is ordered per key and skips identical successful writes. Errors are reported and failed writes remain retryable. Secure credential writes finish before active connection metadata is written
-- per connection + project session caches hydrate on app open and on every connection or project switch so the project list paints before the server answers; they are written only from confirmed fetch results, so a cached empty list means the server reported no sessions for that project. A late hydration result is discarded unless both the connection scope and project path are still current.
+- persisted session and project catalogs restore through Query persistence before the workspace renders; they are written only from confirmed fetch results, so a restored empty list means the server reported no sessions for that project. A late restore cannot overwrite a fresh network response because Query applies the newer update timestamp.
 - the transcript tail hydrates when a session opens with no in-memory window. It is validated, TTL-bound, and never overwrites a live refresh that painted first. Writes are debounced and bounded so streaming part events cannot cause one storage write per page; a record carrying inline media above the cache budget is dropped before serialization.
 - the visible V2 transcript is owned by live stream events (`features/chat/model/live-transcript.ts`). It paints text, reasoning, tools, steps and retries without a read, appends a locally admitted prompt from the submitted parts, and reconciles one assistant message at turn end. Page reads are reserved for open, reconnect, foreground return, rewrites and unmodelled events. Background sessions update only their status row until opened.
 - the capabilities cache hydrates in parallel with the first capability refresh and is ignored once a fresh response has been applied. It keeps the composer's model/agent choices usable while a slow link answers.
-- connection credential rotation migrates the session, transcript, and capabilities caches to the rotated scope.
+- connection credential rotation partitions the Query cache to the rotated scope and migrates the transcript, capabilities and mission-stat caches.
 - onboarding completion is resolved last, so `isHydrated` already implies the assistant's visibility is known. When the marker is absent, an installation that already has a stored settings key, saved profile metadata, or an active project is treated as completed (existing users never see onboarding); a fresh installation starts the assistant. The resolved marker (version 0 when onboarding should run, `CURRENT_ONBOARDING_VERSION` when it should not) is written back by the persistence write-back effect, which makes the decision sticky and stops the settings write effect from later re-triggering migration. Storage read failures report completed, so an unreadable store can never gate an existing user.
 
 Credentials:
@@ -766,7 +756,7 @@ a session never appears in both places. The snapshot seeds on connect and on eve
 catalog-client change, refreshes when the library opens, and polls every 20
 seconds only while the library is open and a session is running. A transient
 fetch failure keeps the previous snapshot. The snapshot is in-memory only and
-does not share the per-connection+project session cache.
+does not share the persisted Query cache.
 
 ### Mission Control activity
 
@@ -1072,7 +1062,7 @@ Current implementation assumes these invariants:
 
 - an active project path is required for session-scoped activity
 - a current session ID may temporarily be absent during project switches and bootstrapping
-- session caches are safe to keep even when not current
+- persisted session queries are scoped by connection, auth revision and contract and are safe to keep even when not current
 - session model references may temporarily be absent from an incomplete catalog
 - pending permissions and questions are keyed by `sessionID` and surfaced for the current/sending session and its full descendant subtree, not unrelated sessions
 - attachment capability is checked against the selected model before send

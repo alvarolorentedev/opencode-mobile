@@ -12,8 +12,6 @@ export type SessionRefreshInput = {
 
   activeProjectPath?: string;
 
-  connectionScope: string;
-
   setSessions: Dispatch<SetStateAction<Session[]>>;
 
   sessionsRef: { current: Session[] };

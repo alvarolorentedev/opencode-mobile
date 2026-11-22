@@ -352,8 +352,9 @@ The completion version, preference schema and first-run migration are unchanged.
 - `shared/protocol/opencode/client/request-policy.ts`
   Per-class deadlines (read/write/stream), idempotent-read retry eligibility,
   and retryable gateway-status policy.
-- `features/sessions/services/session-cache.ts`
-  Per connection + project session/status cache DTO, validation, and hydration.
+- `shared/server-data/persistence.ts`
+  Query cache persistence policy: only session and project catalogs, 24-hour
+  max age, messages and transient server data excluded.
 - `features/sessions/services/favorites-storage.ts`
   Favorites DTO validation, bounded serialization, and legacy-entry migration.
 - `features/voice/state/use-conversation-keep-awake.ts`

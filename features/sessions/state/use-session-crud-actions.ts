@@ -5,14 +5,12 @@ import type { Session, SessionStatus } from '@/shared/protocol/opencode/types';
 import { i18n } from '@/shared/i18n/index';
 import { buildSideQuestionPrompt, isBuiltinSessionCommand, type SideQuestionAnswer } from '@/shared/contracts/session-commands';
 import { getInitialMode } from '@/features/ai/runtime';
-import { persistSessionCache } from '@/features/sessions/services/session-cache';
 import type { SessionCrudInput } from '@/features/sessions/model/action-inputs';
 import type { CommandOptions } from '@/shared/protocol/opencode/prompt-inbox';
 
 export function useSessionCrudActions({
   client,
   isCurrentClient,
-  activeProjectPath,
   connectionScopeRef,
   currentSessionId,
   currentSessionIdRef,
@@ -47,14 +45,6 @@ export function useSessionCrudActions({
   refreshActiveSessions,
   chatPreferences,
 }: SessionCrudInput) {
-  const persistSnapshot = useCallback((nextSessions: Session[], nextStatuses: Record<string, SessionStatus>) => {
-    if (!activeProjectPath) return;
-    // The in-memory status map is connection-wide; the project cache must only
-    // carry the rows this project owns or a later hydration leaks stale peers.
-    const statuses = Object.fromEntries(nextSessions.map((session) => [session.id, nextStatuses[session.id] ?? { type: 'idle' as const }]));
-    void persistSessionCache(connectionScopeRef.current, activeProjectPath, nextSessions, statuses);
-  }, [activeProjectPath, connectionScopeRef]);
-
   const openSession = useCallback(
     async (sessionId: string) => {
       // Selection is local and immediate. Callers (chat library, new chat,
@@ -113,15 +103,12 @@ export function useSessionCrudActions({
       }
       // The server already returned the session. Show it immediately and let a
       // background read reconcile ordering/status instead of delaying the chat.
-      const nextSessions = [session, ...sessions.filter((item) => item.id !== session.id)];
-      const nextStatuses = { ...sessionStatuses, [session.id]: { type: 'idle' as const } };
       locallyCreatedSessionsRef.current.set(session.id, Date.now());
       setSessions((current) => [session, ...current.filter((item) => item.id !== session.id)]);
       setSessionStatuses((current) => ({ ...current, [session.id]: { type: 'idle' } }));
-      persistSnapshot(nextSessions, nextStatuses);
       return session;
     },
-    [availableModels, chatPreferences.recentModelIds, client, isCurrentClient, locallyCreatedSessionsRef, persistSnapshot, sessionStatuses, sessions, setSessionStatuses, setSessions],
+    [availableModels, chatPreferences.recentModelIds, client, isCurrentClient, locallyCreatedSessionsRef, setSessionStatuses, setSessions],
   );
 
   const deleteSession = useCallback(
@@ -158,9 +145,6 @@ export function useSessionCrudActions({
       setFavoriteSessions((current) => current.filter(
         (favorite) => !(favorite.connectionScope === connectionScopeRef.current && favorite.sessionId === sessionId),
       ));
-      const nextSessions = sessions.filter((session) => session.id !== sessionId);
-      const nextStatuses = { ...sessionStatuses };
-      delete nextStatuses[sessionId];
       locallyCreatedSessionsRef.current.delete(sessionId);
       setSessions((current) => current.filter((session) => session.id !== sessionId));
       setSessionStatuses((current) => {
@@ -168,7 +152,6 @@ export function useSessionCrudActions({
         delete next[sessionId];
         return next;
       });
-      persistSnapshot(nextSessions, nextStatuses);
       if (currentSessionId === sessionId) {
         currentSessionIdRef.current = undefined;
         explicitSessionSelectionRef.current = undefined;
@@ -176,7 +159,7 @@ export function useSessionCrudActions({
       }
       void refreshActiveSessions().catch(() => undefined);
     },
-    [client, connectionScopeRef, currentSessionId, currentSessionIdRef, explicitSessionSelectionRef, isCurrentClient, locallyCreatedSessionsRef, persistSnapshot, refreshActiveSessions, sessionStatuses, sessions, setCurrentSessionId, setDiffsBySession, setFavoriteSessions, setMessagesBySession, setPendingPermissionsBySession, setPendingQuestionsBySession, setSessionStatuses, setSessions, setTodosBySession],
+    [client, connectionScopeRef, currentSessionId, currentSessionIdRef, explicitSessionSelectionRef, isCurrentClient, locallyCreatedSessionsRef, refreshActiveSessions, setCurrentSessionId, setDiffsBySession, setFavoriteSessions, setMessagesBySession, setPendingPermissionsBySession, setPendingQuestionsBySession, setSessionStatuses, setSessions, setTodosBySession],
   );
 
   const renameSession = useCallback(async (sessionId: string, title: string) => {
@@ -185,9 +168,6 @@ export function useSessionCrudActions({
       throw new Error('Enter a session title.');
     }
     const previousTitle = sessions.find((session) => session.id === sessionId)?.title;
-    const renamed = sessions.map((session) => (
-      session.id === sessionId ? { ...session, title: trimmed } : session
-    ));
     // Rename is safe to echo locally; the server response is still required and
     // a rejection restores the previous title.
     setSessions((current) => current.map((session) => (
@@ -196,7 +176,6 @@ export function useSessionCrudActions({
     try {
       await svcUpdateSessionTitle(client, sessionId, trimmed);
       if (!isCurrentClient(client)) return;
-      persistSnapshot(renamed, sessionStatuses);
     } catch (error) {
       if (isCurrentClient(client)) {
         setSessions((current) => current.map((session) => (
@@ -205,7 +184,7 @@ export function useSessionCrudActions({
       }
       throw error;
     }
-  }, [client, isCurrentClient, persistSnapshot, sessionStatuses, sessions, setSessions]);
+  }, [client, isCurrentClient, setSessions]);
 
   const forkSession = useCallback(async (sessionId: string, messageId?: string) => {
     const forked = await svcForkSession(client, sessionId, messageId);
@@ -215,15 +194,12 @@ export function useSessionCrudActions({
     if (!isCurrentClient(client)) {
       throw new Error('The active project changed before the session was forked.');
     }
-    const nextSessions = [forked, ...sessions.filter((session) => session.id !== forked.id)];
-    const nextStatuses = { ...sessionStatuses, [forked.id]: { type: 'idle' as const } };
     locallyCreatedSessionsRef.current.set(forked.id, Date.now());
     setSessions((current) => [forked, ...current.filter((session) => session.id !== forked.id)]);
     setSessionStatuses((current) => ({ ...current, [forked.id]: { type: 'idle' } }));
-    persistSnapshot(nextSessions, nextStatuses);
     await openSession(forked.id);
     return forked;
-  }, [client, isCurrentClient, locallyCreatedSessionsRef, openSession, persistSnapshot, sessionStatuses, sessions, setSessionStatuses, setSessions]);
+  }, [client, isCurrentClient, locallyCreatedSessionsRef, openSession, setSessionStatuses, setSessions]);
 
   const revertSession = useCallback(async (sessionId: string, messageId: string) => {
     // A revert cannot be staged while the session is running. Interrupt first,

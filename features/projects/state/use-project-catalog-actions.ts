@@ -1,7 +1,6 @@
-import { useCallback, useEffect, useRef } from 'react';
+import { useCallback, useEffect } from 'react';
 
 import { buildClient, type ScopedOpencodeClient } from '@/shared/protocol/opencode/client';
-import type { SessionStatus } from '@/shared/protocol/opencode/types';
 import type { ProjectCatalogInput } from '@/features/projects/model/action-inputs';
 import type { ProjectCatalog } from '@/shared/contracts/domain';
 import { fetchProjectCatalog } from '@/features/projects/services/queries/catalog';
@@ -20,16 +19,12 @@ export function useProjectCatalogActions({
   setActiveProjectPath,
   activeProjectPathRef,
   clearProjectState,
-  connectionScope,
   connectionScopeRef,
   isHydrated,
-  setSessions,
-  setSessionStatuses,
   scopeGenerationRef,
   serverContract,
   settingsRef,
-  hydrateSessionCache,
-}: ProjectCatalogInput & { hydrateSessionCache: (connectionScope: string, projectPath: string, applySessions: (sessions: import('@/shared/protocol/opencode/types').Session[]) => void, applyStatuses: (statuses: Record<string, Pick<import('@/shared/protocol/opencode/types').SessionStatus, 'type'>>) => void, isCurrent: () => boolean) => Promise<void> }) {
+}: ProjectCatalogInput) {
   const active = useQueryActivity();
   const cache = useQueryClient();
   const identity = useQueryIdentity();
@@ -104,30 +99,6 @@ export function useProjectCatalogActions({
   useEffect(() => {
     if (connected && active && isHydrated) void loadProjectCatalog(true, client).catch(() => undefined);
   }, [active, client, connected, isHydrated, loadProjectCatalog]);
-
-  const sessionCacheKeyRef = useRef<string | undefined>(undefined);
-  useEffect(() => {
-    if (!isHydrated) {
-      return;
-    }
-    const projectPath = activeProjectPath;
-    const scope = connectionScope;
-    const cacheKey = projectPath ? `${scope}\u0000${projectPath}` : undefined;
-    if (sessionCacheKeyRef.current === cacheKey) {
-      return;
-    }
-    sessionCacheKeyRef.current = cacheKey;
-    if (!projectPath) {
-      return;
-    }
-    void hydrateSessionCache(
-      scope,
-      projectPath,
-      (cached) => setSessions(cached),
-      (cached) => setSessionStatuses(cached as Record<string, SessionStatus>),
-      () => activeProjectPathRef.current === projectPath && connectionScopeRef.current === scope,
-    );
-  }, [activeProjectPath, activeProjectPathRef, connectionScope, connectionScopeRef, hydrateSessionCache, isHydrated, setSessionStatuses, setSessions]);
 
   const addProject = useCallback(async (directory: string) => {
     const path = directory.trim();

@@ -42,21 +42,8 @@ export const LAST_JS_ERROR_INGESTED_STORAGE_KEY = 'opencode-mobile.last-js-error
 // shared/contracts/connection-scope.ts; project paths are server-local, so two servers
 // exposing the same path must never share cache entries.
 //
-// Per-project session list cache. Hydrated on app open and on every project
-// switch so the project chat list paints without waiting for the server;
-// rewritten only from confirmed fetch results in
-// runtime/workspace/use-project-refresh-actions.ts refreshSessions. See features/sessions/services/session-cache.ts.
-export function sessionsCacheKey(connectionScope: string, projectPath: string) {
-  return `opencode-mobile.sessions.${connectionScope}.${projectPath}`;
-}
-
-export function sessionStatusesCacheKey(connectionScope: string, projectPath: string) {
-  return `opencode-mobile.session-statuses.${connectionScope}.${projectPath}`;
-}
-
 // Bounded transcript tail used to paint a chat during a cold start on a slow
-// link. It is server-derived, connection- and project-scoped, and expires with
-// the same policy as the session list cache.
+// link. It is server-derived, connection- and project-scoped.
 export function transcriptCacheKey(connectionScope: string, projectPath: string, sessionId: string) {
   return `opencode-mobile.transcript.${connectionScope}.${projectPath}.${sessionId}`;
 }
