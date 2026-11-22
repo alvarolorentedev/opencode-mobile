@@ -1,23 +1,20 @@
 import { useCallback, useMemo } from 'react';
 import { useWorkspaces } from '@/runtime/workspace';
-import { useAppCore, useAppStore, useConnectionLifecycles } from '@/runtime/core';
-import { connectedConnections, librarySessions } from '@/features/sessions/model/workspace-library';
+import { useAppCore, useConnectionLifecycles } from '@/runtime/core';
+import { connectedConnections } from '@/features/sessions/model/workspace-library';
 import type { SessionTarget } from '@/shared/contracts/workspace';
 import { getConnectionScope } from '@/shared/contracts/connection-scope';
 import { toggleFavoriteSession } from '../model/favorite-sessions';
+import { useLibrarySessions } from './use-library-sessions';
 
 export function useWorkspaceLibrary(visible = true) {
   const registry = useWorkspaces();
   const { connections, store, clock, commands: { session, workspace: { ensure, resolveKey } } } = useAppCore();
   const lifecycles = useConnectionLifecycles();
-  const selections = useAppStore((state) => visible ? state.selection : undefined);
-  const favoriteSessions = useAppStore((state) => visible ? state.shell.favoriteSessions : undefined);
   const { catalogs } = registry;
   // The library is mounted while closed so its search/section state survives.
   // Skip the cross-project derivation until it is actually visible.
-  const sessions = useMemo(() => (selections && favoriteSessions
-    ? librarySessions(registry.connections, registry.snapshots, lifecycles, selections, catalogs, favoriteSessions, registry.focus)
-    : []), [catalogs, favoriteSessions, lifecycles, registry.connections, registry.focus, registry.snapshots, selections]);
+  const sessions = useLibrarySessions(catalogs, { visible });
   const servers = useMemo(() => (visible
     ? connectedConnections(registry.connections, lifecycles)
     : []), [lifecycles, registry.connections, visible]);

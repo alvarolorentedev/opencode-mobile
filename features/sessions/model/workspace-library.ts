@@ -1,13 +1,17 @@
 import type { Session, SessionStatus } from '@/shared/protocol/opencode/types';
 import type { ConnectionRecord, WorkspaceCatalog, WorkspaceTarget } from '@/shared/contracts/workspace';
-import type { WorkspaceSnapshot } from '@/runtime/workspace';
 import { sessionKey } from '@/shared/contracts/workspace';
 import { getConnectionScope } from '@/shared/contracts/connection-scope';
 import type { FavoriteSession } from './types';
 
 type ConnectionStates = ReadonlyMap<string, { connection: { status: string } }>;
-type SessionSelection = { activeProjectPath?: string; currentSessionId?: string };
-type ProjectSessions = { runtime: WorkspaceSnapshot; projectPath?: string; currentSessionId?: string };
+export type ProjectSessions = {
+  connectionId: string;
+  projectPath?: string;
+  currentSessionId?: string;
+  sessions: readonly Session[];
+  previews?: Record<string, string>;
+};
 
 export type LibrarySession = WorkspaceTarget & {
   sessionId: string; session: Session; status: SessionStatus; serverName: string; preview?: string;
@@ -16,14 +20,13 @@ export type LibrarySession = WorkspaceTarget & {
 export function connectedConnections(connections: ConnectionRecord[], lifecycles: ConnectionStates) {
   return connections.filter((entry) => entry.enabled && lifecycles.get(entry.id)?.connection.status === 'connected');
 }
-export function librarySessions(connections: ConnectionRecord[], snapshots: Record<string, WorkspaceSnapshot>, lifecycles: ConnectionStates,
-  selections: Record<string, SessionSelection>, catalogs: Record<string, Pick<WorkspaceCatalog, 'sessions' | 'statuses'>>,
+export function librarySessions(connections: ConnectionRecord[], projectSessions: readonly ProjectSessions[], lifecycles: ConnectionStates,
+  catalogs: Record<string, Pick<WorkspaceCatalog, 'sessions' | 'statuses'>>,
   favoriteSessions: readonly FavoriteSession[], focus?: WorkspaceTarget) {
   const rows = new Map<string, LibrarySession>();
   const projectsByConnection = new Map<string, ProjectSessions[]>();
-  for (const [key, runtime] of Object.entries(snapshots)) {
-    const [connectionId, directory] = JSON.parse(key) as [string, string];
-    const project = { runtime, projectPath: selections[key]?.activeProjectPath ?? (directory || undefined), currentSessionId: selections[key]?.currentSessionId };
+  for (const project of projectSessions) {
+    const { connectionId } = project;
     const list = projectsByConnection.get(connectionId);
     if (list) list.push(project);
     else projectsByConnection.set(connectionId, [project]);
@@ -49,12 +52,11 @@ export function librarySessions(connections: ConnectionRecord[], snapshots: Reco
       if (!catalogByIdAndDirectory.has(key)) catalogByIdAndDirectory.set(key, session);
     }
     for (const project of projects) {
-      const { runtime, projectPath } = project;
+      const { sessions, projectPath } = project;
       if (projectPath && !localByProject.has(projectPath)) {
         localByProject.set(projectPath, project);
-        const live = runtime.values.sessionLibraryValue.sessions;
         const liveById = new Map<string, Session>();
-        for (const session of live) {
+        for (const session of sessions) {
           if (!liveById.has(session.id)) liveById.set(session.id, session);
         }
         liveSessionsByProject.set(projectPath, liveById);
@@ -62,20 +64,19 @@ export function librarySessions(connections: ConnectionRecord[], snapshots: Reco
     }
     const favorites = favoriteSessions.filter((favorite) => favorite.connectionScope === scope);
     const favoriteKeys = new Set(favorites.map((favorite) => `${favorite.projectPath}\u0000${favorite.sessionId}`));
-    for (const { runtime, projectPath: directory } of projects) {
-      for (const session of [...catalogSessions, ...runtime.values.sessionLibraryValue.sessions]) {
+    for (const { sessions, projectPath: directory } of projects) {
+      for (const session of [...catalogSessions, ...sessions]) {
         const projectPath = session.directory || directory;
         if (!projectPath || session.time.archived) continue;
         const target = { connectionId: entry.id, projectPath, sessionId: session.id };
         const key = sessionKey(target);
         const local = localByProject.get(projectPath);
-        const live = local?.runtime.values.sessionLibraryValue;
         rows.set(key, {
           ...target,
           session: liveSessionsByProject.get(projectPath)?.get(session.id) ?? session,
           serverName: label,
           status: catalog?.statuses[session.id] ?? { type: 'idle' },
-          preview: live?.sessionPreviewById[session.id],
+          preview: local?.previews?.[session.id],
           current: focus?.connectionId === entry.id && (!focus.projectPath || focus.projectPath === projectPath) && local?.currentSessionId === session.id,
           favorite: favoriteKeys.has(`${projectPath}\u0000${session.id}`),
         });

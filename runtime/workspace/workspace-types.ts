@@ -11,7 +11,6 @@ import type { useProjectCatalogActions } from '@/features/projects/runtime';
 import type { ActiveSessionItem, CurrentSessionContextValue } from '@/features/sessions/index';
 import type { ConversationContextValue } from '@/features/voice/index';
 import type { useWidgetState } from '@/features/widgets/runtime';
-import type { Session } from '@/shared/protocol/opencode/types';
 
 import type { WorkspaceShellState } from '@/runtime/workspace/use-workspace-shell-state';
 
@@ -45,6 +44,7 @@ export type WorkspaceSnapshot = {
   values: WorkspaceValues;
   busy: boolean;
   suspend: () => void;
+  sessionPreviews: Record<string, string>;
   loadProjectCatalog: ReturnType<typeof useProjectCatalogActions>['loadProjectCatalog'];
   native: Omit<Parameters<typeof useWidgetState>[0], 'hydrated' | 'connected' | 'showPreviews' | 'language' | 'currentSessionId'> & {
     activeSessions: ActiveSessionItem[];
@@ -56,7 +56,6 @@ export type WorkspaceValues = {
   projectsValue: Pick<ProjectsContextValue, 'addProject' | 'refreshProjectCatalog' | 'refreshProjectStatus'>;
   projectFilesValue: ProjectFilesContextValue;
   currentSessionValue: Omit<CurrentSessionContextValue, 'currentSessionId' | 'activeSession'>;
-  sessionLibraryValue: { sessions: Session[]; sessionPreviewById: Record<string, string> };
   chatValue: ChatContextValue;
   conversationValue: ConversationContextValue;
 };

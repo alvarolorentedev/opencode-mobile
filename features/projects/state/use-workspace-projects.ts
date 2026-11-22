@@ -1,12 +1,9 @@
 import { useCallback, useMemo } from 'react';
 import { useQueries } from '@tanstack/react-query';
-import { useShallow } from 'zustand/react/shallow';
 
 import { buildClient, withReadSignal } from '@/shared/protocol/opencode/client';
 import { combineProjectCatalog, resolveProjectLocation } from '@/shared/protocol/services/session-service';
-import { getConnectionScope } from '@/shared/contracts/connection-scope';
-import { workspaceKey } from '@/shared/contracts/workspace';
-import { useAppCore, useAppStore, useConnectionLifecycles } from '@/runtime/core';
+import { useAppCore, useConnectedProjectScopes } from '@/runtime/core';
 
 import { buildOpencodeProjects, describeWorktrees } from '../model/project-utils';
 import { buildWorkspaceProjectGroups, type ProjectGroupInventory } from '../model/workspace-project-groups';
@@ -20,42 +17,19 @@ import { vcsInfoOptions } from '../services/queries/status';
 // because there is no local entry to remove.
 export function useWorkspaceProjects() {
   const { connections: managers, commands: { workspace: { ensure }, connection: { restoreProject } } } = useAppCore();
-  const connections = useAppStore((state) => state.registry.connections);
-  const lifecycles = useConnectionLifecycles();
-  const activePaths = useAppStore(useShallow(({ registry, selection }) => Object.fromEntries(registry.connections.flatMap((entry) =>
-    entry.projects.map((projectPath) => {
-      const key = workspaceKey({ connectionId: entry.id, projectPath });
-      return [key, selection[key]?.activeProjectPath ?? projectPath];
-    })))));
-  const sources = useMemo(() => {
-    const catalogs = connections.flatMap((entry) => {
-      if (!entry.enabled || lifecycles.get(entry.id)?.connection.status !== 'connected') return [];
-      const manager = managers.get(entry.id);
-      const client = manager?.getCatalogClient();
-      if (!manager || !client) return [];
-      const identity = { connectionId: entry.id, connectionScope: getConnectionScope(entry.settings), authRevision: entry.authRevision ?? 0 };
-      return [{ entry, manager, client, identity }];
-    });
-    const inventories = catalogs.flatMap(({ entry, manager, identity }, catalogIndex) => {
-      const paths = new Set(entry.projects.map((projectPath) => activePaths[workspaceKey({ connectionId: entry.id, projectPath })] ?? projectPath));
-      return [...paths].flatMap((projectPath) => {
-        const client = manager.getProjectClient(projectPath, entry);
-        return client ? [{ key: workspaceKey({ connectionId: entry.id, projectPath }), client, identity, catalogIndex }] : [];
-      });
-    });
-    return { catalogs, inventories };
-  }, [activePaths, connections, lifecycles, managers]);
-  const catalogs = useQueries({ queries: sources.catalogs.map(({ identity, client }) => ({ ...projectsOptions(identity, client), enabled: false })) });
-  const locations = useQueries({ queries: sources.inventories.map(({ identity, client }) => ({ ...locationOptions(identity, client), enabled: false })) });
-  const worktrees = useQueries({ queries: sources.inventories.map(({ identity, client }) => ({ ...worktreeOptions(identity, client), enabled: false })) });
-  const vcs = useQueries({ queries: sources.inventories.map(({ identity, client }) => ({ ...vcsInfoOptions(identity, client), enabled: false })) });
+  const { connections, lifecycles, servers } = useConnectedProjectScopes();
+  const sources = useMemo(() => servers.flatMap(({ projects }, catalogIndex) => projects.map((project) => ({ ...project, catalogIndex }))), [servers]);
+  const catalogs = useQueries({ queries: servers.map(({ identity, client }) => ({ ...projectsOptions(identity, client), enabled: false })) });
+  const locations = useQueries({ queries: sources.map(({ identity, client }) => ({ ...locationOptions(identity, client), enabled: false })) });
+  const worktrees = useQueries({ queries: sources.map(({ identity, client }) => ({ ...worktreeOptions(identity, client), enabled: false })) });
+  const vcs = useQueries({ queries: sources.map(({ identity, client }) => ({ ...vcsInfoOptions(identity, client), enabled: false })) });
   const groups = useMemo(() => {
-    const inventories = Object.fromEntries(sources.inventories.map(({ key, client, catalogIndex }, index): [string, ProjectGroupInventory] => {
+    const inventories = Object.fromEntries(sources.map(({ scopeKey, client, catalogIndex }, index): [string, ProjectGroupInventory] => {
       const remote = catalogs[catalogIndex]?.data;
       const location = locations[index]?.data;
       const projects = remote && location ? combineProjectCatalog(client, remote, location).serverProjects : remote ?? [];
       const checkouts = worktrees[index];
-      return [key, {
+      return [scopeKey, {
         activeProjectPath: client.__opencode.directory || undefined,
         projects: buildOpencodeProjects(projects),
         worktrees: describeWorktrees(checkouts?.data, projects, checkouts?.isFetching, checkouts?.error?.message),

@@ -303,10 +303,15 @@ npm run validate:commit
   passed with 1,283 tests and one existing skip. All 79 focused tests and 52
   browser flows across Sessions, multi-server, Settings, share, Mission Control
   and Chat passed.
-- E17. Session panels read scoped Query lists and statuses. Library edits use
+- E17, `01c753b7`. Session panels read scoped Query lists and statuses. Library edits use
   core commands and favorites update the app store. The commit gate passed
   with 1,283 tests and one existing skip. All 100 focused tests and 60 browser
   flows across Sessions, Chat, multi-server, Extensions, share, diffs and Settings passed.
+- E18. Projects and the chat library share a connected scope selector. The
+  library and share picker read project session lists directly from Query.
+  The commit gate passed with 1,283 tests and one existing skip. All 99 focused
+  tests and 55 browser flows across Projects, Sessions, share, multi-server,
+  Mission Control, Chat and Terminal passed.
 
 ## Loop protocol
 

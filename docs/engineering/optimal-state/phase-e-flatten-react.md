@@ -52,6 +52,8 @@ Start only after Phase D is complete and green.
   library and share views read the connection catalog once per server.
 - Session views read lists and statuses from Query. Library actions use scoped
   session commands and write favorites at their device owner.
+- The library and share picker read per-project lists from Query. The project
+  and session pickers share the same connected scope selector.
 - `runtime/core/workspace-selectors.ts` selects the retained project projection.
 - [ADR 0052](../../adr/0052-explicit-overlay-dependencies.md) records explicit
   portal targets and update blocker callbacks. Shared controls use shared imports.

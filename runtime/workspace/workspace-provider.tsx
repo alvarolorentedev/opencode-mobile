@@ -15,7 +15,6 @@ import { HIDDEN_PROJECTS_MAX, useFileClipboard } from '@/features/projects/runti
 import { useNetworkStatus } from '@/shared/network/use-network-status';
 import { useOpencodePersistence } from '@/runtime/persistence/use-opencode-persistence';
 import { useAppCore, useAppStore } from '@/runtime/core/context';
-import { useConnectionLifecycles } from '@/runtime/core/workspace-selectors';
 import { workspaceReadTarget } from '@/runtime/core/project-scope';
 import { useShareState } from '@/features/sharing/runtime';
 import { useVoiceSetupTest, VoiceSetupTestContext } from '@/features/voice/runtime';
@@ -23,7 +22,7 @@ import { useWorkspaceConnections } from '@/runtime/workspace/use-workspace-conne
 import { serverPreferences, workspaceChatPreferences } from '@/runtime/core/commands/connection';
 import { useWorkspaceShellState } from '@/runtime/workspace/use-workspace-shell-state';
 import { WorkspaceContext, type WorkspaceRegistry } from '@/runtime/workspace/workspace-context';
-import { librarySessions, useMissionOverview } from '@/features/sessions/runtime';
+import { useLibrarySessions, useMissionOverview } from '@/features/sessions/runtime';
 import { MISSION_PATH } from '@/shared/contracts/mission-control';
 import { WorkspaceNative } from '@/runtime/composition/workspace-native';
 import { useMissionWidget } from '@/features/widgets/runtime';
@@ -57,8 +56,6 @@ export function WorkspaceProvider({ children }: PropsWithChildren) {
   const profiles = useAppStore((state) => state.shell.profiles);
   const setProfiles = useCallback((value: SetStateAction<ConnectionProfile[]>) => core.store.getState().setShellValue('profiles', value), [core]);
   const registryState = useAppStore((state) => state.registry);
-  const selections = useAppStore((state) => state.selection);
-  const lifecycles = useConnectionLifecycles();
   const manager = useWorkspaceConnections(isHydrated, {
     registry: registryState,
     commands: core.commands,
@@ -85,7 +82,7 @@ export function WorkspaceProvider({ children }: PropsWithChildren) {
   const fileClipboard = useFileClipboard(connections);
   const focusedKey = focus && resolveKey(focus);
   const current = focusedKey ? snapshots[focusedKey] : undefined;
-  const selection = focusedKey ? selections[focusedKey] : undefined;
+  const selection = useAppStore((state) => focusedKey ? state.selection[focusedKey] : undefined);
   const focusedSettings = current?.native.settings;
   const settings = focusedSettings ?? shell.settings;
   const focusedPreferences = connections.find(({ id }) => id === focus?.connectionId)?.preferences;
@@ -139,10 +136,11 @@ export function WorkspaceProvider({ children }: PropsWithChildren) {
   const refreshTargets = useCallback(async () => {
     await Promise.all(Object.values(catalogs).map((catalog) => catalog.refresh()));
   }, [catalogs]);
-  const shareTargets = useMemo(() => librarySessions(connections, snapshots, lifecycles, selections, catalogs, shell.favoriteSessions, focus)
+  const shareSessions = useLibrarySessions(catalogs, { includePreviews: false });
+  const shareTargets = useMemo(() => shareSessions
     .filter((row) => !shell.chatPreferences.hideSubagentChats || !row.session.parentID)
     .map((row) => ({ connectionScope: getConnectionScope(connections.find((entry) => entry.id === row.connectionId)!.settings),
-      projectPath: row.projectPath, sessionId: row.sessionId, title: `${row.serverName} · ${row.session.title}` })), [catalogs, connections, snapshots, lifecycles, selections, focus, shell.favoriteSessions, shell.chatPreferences.hideSubagentChats]);
+      projectPath: row.projectPath, sessionId: row.sessionId, title: `${row.serverName} · ${row.session.title}` })), [connections, shareSessions, shell.chatPreferences.hideSubagentChats]);
   const sharedInput = useShareState({ hydrated: isHydrated, connectionScope: getConnectionScope(settings),
     projectPath: selection?.activeProjectPath ?? (focus?.projectPath || undefined),
     currentSessionId: selection?.currentSessionId,

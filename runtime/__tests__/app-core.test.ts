@@ -96,7 +96,6 @@ function connectedProject(core: ReturnType<typeof newCore>, connectionId: string
     values: {
       conversationValue: { conversation: { active: false } },
       currentSessionValue: { openSession, openDeepLinkSession, createSession },
-      sessionLibraryValue: { sessions: [] },
     },
   } as unknown as WorkspaceSnapshot;
   const commands = core.commands.workspace;

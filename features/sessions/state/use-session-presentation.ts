@@ -24,7 +24,7 @@ export function useSessionPresentation({
     [currentSessionId, sessions],
   );
 
-  const sessionPreviewById = useMemo(() => getSessionPreviewById(messagesBySession), [messagesBySession]);
+  const sessionPreviews = useMemo(() => getSessionPreviewById(messagesBySession), [messagesBySession]);
   const activeSessionsValue = useMemo(
     () => ({ list: activeSessions, refresh: refreshActiveSessions, setVisible: setActiveSessionsVisible }),
     [activeSessions, refreshActiveSessions, setActiveSessionsVisible],
@@ -33,7 +33,5 @@ export function useSessionPresentation({
     () => ({ activeSessions: activeSessionsValue, ensureActiveSession, openDeepLinkSession, openSession, createSession }),
     [activeSessionsValue, ensureActiveSession, openDeepLinkSession, openSession, createSession],
   );
-  const sessionLibraryValue = useMemo(() => ({ sessions, sessionPreviewById }), [sessions, sessionPreviewById]);
-
-  return { activeSession, currentSessionValue, sessionLibraryValue };
+  return { activeSession, currentSessionValue, sessionPreviews };
 }

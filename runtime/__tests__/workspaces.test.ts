@@ -40,14 +40,10 @@ describe('multi-server contracts', () => {
   });
     const connection = (id: string) => ({ id, name: id, enabled: true, settings: { serverUrl: `http://${id}`, username: '' } });
     const session = (id: string, updated: number) => ({ id, directory: '/same', title: id, time: { updated } });
-    const snapshot = (sessions: any[]) => ({ values: {
-      sessionLibraryValue: { sessions, sessionPreviewById: {} },
-    } });
-    const rows = librarySessions([connection('a'), connection('b')], {
-      '["a",""]': snapshot([session('same', 3)]),
-      '["b","/same"]': snapshot([session('same', 9)]),
-    }, new Map(['a', 'b'].map((id) => [id, { connection: { status: 'connected' } }])),
-    { '["a",""]': { activeProjectPath: '/same', currentSessionId: 'same' } }, {
+    const rows = librarySessions([connection('a'), connection('b')], [
+      { connectionId: 'a', projectPath: '/same', currentSessionId: 'same', sessions: [session('same', 3)] },
+      { connectionId: 'b', projectPath: '/same', sessions: [session('same', 9)] },
+    ], new Map(['a', 'b'].map((id) => [id, { connection: { status: 'connected' } }])), {
       a: { sessions: [session('idle', 1)], statuses: {} },
       b: { sessions: [session('busy', 2)], statuses: { busy: { type: 'busy' } } },
     }, [], { connectionId: 'a', projectPath: '/same' });
@@ -62,21 +58,18 @@ describe('multi-server contracts', () => {
   });
     const connection = (id: string, enabled = true) => ({ id, name: id, enabled, settings: { serverUrl: `http://${id}`, username: '' } });
     const session = (id: string) => ({ id, directory: '/same', title: id, time: { updated: 1 } });
-    const snapshot = (sessions: any[]) => ({ values: {
-      sessionLibraryValue: { sessions, sessionPreviewById: {} },
-    } });
     const favorite = (connectionScope: string) => ({ connectionScope, projectPath: '/favorite', sessionId: 'f', title: 'f', favoritedAt: 1 });
     const connections = [connection('disabled', false), connection('connected'), connection('connecting'), connection('errored'), connection('idle')];
-    const snapshots = {
-      '["disabled","/same"]': snapshot([]),
-      '["connected","/same"]': snapshot([session('kept')]),
-      '["connecting","/same"]': snapshot([session('connecting')]),
-      '["errored","/same"]': snapshot([session('errored')]),
-    };
+    const projectSessions = [
+      { connectionId: 'disabled', projectPath: '/same', sessions: [] },
+      { connectionId: 'connected', projectPath: '/same', sessions: [session('kept')] },
+      { connectionId: 'connecting', projectPath: '/same', sessions: [session('connecting')] },
+      { connectionId: 'errored', projectPath: '/same', sessions: [session('errored')] },
+    ];
     const lifecycles = new Map(Object.entries({ disabled: 'connected', connected: 'connected', connecting: 'connecting', errored: 'error' })
       .map(([id, status]) => [id, { connection: { status } }]));
     expect(connectedConnections(connections, lifecycles).map((entry: any) => entry.id)).toEqual(['connected']);
-    expect(librarySessions(connections, snapshots, lifecycles, {}, {}, [favorite('http://disabled:'), favorite('http://connected:')])
+    expect(librarySessions(connections, projectSessions, lifecycles, {}, [favorite('http://disabled:'), favorite('http://connected:')])
       .map((row: any) => [row.connectionId, row.sessionId]).sort())
       .toEqual([['connected', 'f'], ['connected', 'kept']]);
   });

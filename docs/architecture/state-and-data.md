@@ -53,6 +53,9 @@ once per server.
 Chat and plugin session views select the scoped lists from Query. Library
 edits call the scoped session commands and favorites update the app store
 using the owning connection scope.
+The workspace picker and library enumerate the same connected project
+partitions. The library and share picker observe cached project lists without
+starting background reads.
 
 Session selection and startup bootstrap use the scoped app-core command in
 `runtime/core/commands/session-navigation.ts`. Explicit selection commits
