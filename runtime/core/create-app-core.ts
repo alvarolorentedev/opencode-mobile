@@ -1,5 +1,6 @@
 import { createServerQueryClient } from '@/shared/server-data/query-client';
 import { createConnectionRegistry } from '@/runtime/connections/registry';
+import { createFileClipboard } from '@/features/projects/runtime';
 import type { CommandContext } from './commands/context';
 import { createWorkspaceCommands } from './commands/workspace';
 import { createSessionCommands } from './commands/session';
@@ -15,6 +16,7 @@ export type AppCore = CommandContext & {
   events: ReturnType<typeof createCoreEvents>;
   autoApproval: ReturnType<typeof createAutoApproval>;
   terminal: ReturnType<typeof createTerminalRuntime>;
+  clipboard: ReturnType<typeof createFileClipboard>;
   commands: {
     workspace: ReturnType<typeof createWorkspaceCommands>;
     session: ReturnType<typeof createSessionCommands>;
@@ -37,7 +39,7 @@ export function createAppCore(defaults: AppStoreDefaults): AppCore {
   };
   const session = createSessionCommands(context);
   const workspace = createWorkspaceCommands(context, session);
-  return { ...context, events: createCoreEvents(context), autoApproval: createAutoApproval(context, session.interactions), terminal: createTerminalRuntime(context), commands: {
+  return { ...context, events: createCoreEvents(context), autoApproval: createAutoApproval(context, session.interactions), terminal: createTerminalRuntime(context), clipboard: createFileClipboard(store), commands: {
     workspace, session, prompt: createPromptCommands(context),
     connection: createConnectionCommands(context, workspace),
   } };

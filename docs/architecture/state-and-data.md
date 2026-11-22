@@ -43,6 +43,9 @@ connection catalog, worktree and VCS Query entries. The app store supplies
 the selected directory and the connection manager supplies its lifecycle.
 The worktree picker binds its refresh and remove actions to the same scoped
 client as its Query reads.
+One app-core clipboard controller follows the connection registry, serializes
+file mutations per connection, and clears staged entries when their settings
+change or the connection is disabled.
 
 Navigation, the share picker and Chat Library read project and session
 selection from the app store. Session presentation selects the active row

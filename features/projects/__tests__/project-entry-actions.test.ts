@@ -3,32 +3,40 @@ import { hookRuntime, loadTs, deferred } from '../../../tests/helpers/runtime.mj
 import { projectPath } from '@/shared/protocol/opencode/project';
 import { EntryOperationError } from '@/shared/protocol/opencode/project-entry-operations';
 import { createAppStore, type AppState } from '@/runtime/core/store';
+import { createFileClipboard } from '@/features/projects/services/file-clipboard';
 
 const identity = { connectionId: 'test', connectionScope: 'scope', authRevision: 0 };
 
 const t = (key: string) => key;
 const file = { path: 'src/demo.ts', name: 'demo.ts', type: 'file' as const };
-const connection = (id = 'server', enabled = true, password = '') => ({ id, enabled, settings: { password } });
+const connection = (id = 'server', enabled = true, password = '') => ({
+  id, name: id, enabled, settings: { serverUrl: 'http://fixture', username: '', password, directory: '' }, projects: [''], preferences: {},
+});
+
+function clipboardFixture() {
+  const store = createAppStore({ settings: { serverUrl: '', username: '', password: '', directory: '' }, chatPreferences: {} as never, controlPlaneUrl: '' });
+  return { store, clipboard: createFileClipboard(store) };
+}
 
 function coreImports(runtime: ReturnType<typeof hookRuntime>) {
-  const store = createAppStore({ settings: { serverUrl: '', username: '', password: '', directory: '' }, chatPreferences: {} as never, controlPlaneUrl: '' });
-  return {
+  const { store, clipboard } = clipboardFixture();
+  return { store, clipboard, imports: {
     react: runtime.react,
     '@/runtime/core': {
-      useAppCore: () => ({ store }),
+      useAppCore: () => ({ store, clipboard }),
       useAppStore<T>(select: (state: AppState) => T) {
         const [, refresh] = runtime.react.useState(0);
         runtime.react.useEffect(() => store.subscribe(() => refresh((version: number) => version + 1)), []);
         return select(store.getState());
       },
     },
-  };
+  } };
 }
 
 async function mount() {
   const runtime = hookRuntime(), inspect = vi.fn(async () => 'missing'), mutate = vi.fn(async () => {});
   const copy = vi.fn(async () => {}), copyHaptic = vi.fn(), selectionAsync = vi.fn(async () => {}), refreshA = vi.fn(async () => {}), refreshB = vi.fn(async () => {});
-  const imports = coreImports(runtime);
+  const { store, clipboard, imports } = coreImports(runtime);
   const { useFileClipboard } = await loadTs('features/projects/state/use-file-clipboard.ts', imports);
   const { useProjectEntryActions } = await loadTs('features/projects/state/use-project-entry-actions.ts', {
     ...imports,
@@ -42,29 +50,35 @@ async function mount() {
   const clientA = { __opencode: { directory: '/repo' } }, clientB = { __opencode: { directory: '/worktrees/feature' } };
   let current = true;
   const isCurrentClient = () => current;
-  runtime.mount(({ connections }: any) => {
-    const clipboard = useFileClipboard(connections);
+  store.getState().setRegistry({ connections: [connection()] });
+  const stop = clipboard.start();
+  runtime.mount(() => {
+    runtime.react.useEffect(() => stop, []);
+    const clipboard = useFileClipboard();
     const useActions = (client: any, refresh: any) => useProjectEntryActions({ identity, scopeKey: client.__opencode.directory, client, refresh, clipboard, connectionId: 'server', enabled: true, isCurrentClient });
     return { clipboard, a: useActions(clientA, refreshA), b: useActions(clientB, refreshB) };
-  }, { connections: [connection()] });
+  }, {});
   await runtime.value.a.probe(); await runtime.value.b.probe(); runtime.flush();
   return { runtime, inspect, mutate, copy, copyHaptic, selectionAsync, refreshA, refreshB, stale: () => { current = false; } };
 }
 
 describe('connection file clipboard and actions', () => {
-  it('keeps one entry per connection and clears only disconnected or reconfigured connections', async () => {
-    const runtime = hookRuntime();
-    const { useFileClipboard } = await loadTs('features/projects/state/use-file-clipboard.ts', coreImports(runtime));
-    runtime.mount(({ connections }: any) => useFileClipboard(connections), { connections: [connection('a'), connection('b')] });
-    const entry = { root: '/repo', ...file, mode: 'copy' };
-    runtime.value.select('a', entry); runtime.value.select('b', entry); runtime.flush();
-    runtime.update({ connections: [connection('a'), connection('b')] });
-    expect(runtime.value.entries.a).toEqual(entry);
-    runtime.update({ connections: [connection('a', false), connection('b')] });
-    expect(runtime.value.entries.a).toBeUndefined(); expect(runtime.value.entries.b).toEqual(entry);
-    runtime.update({ connections: [connection('b', true, 'changed')] });
-    expect(runtime.value.entries.b).toBeUndefined();
-    runtime.unmount();
+  it('keeps one entry per connection and clears only disconnected or reconfigured connections', () => {
+    const { store, clipboard } = clipboardFixture();
+    const { setRegistry } = store.getState();
+    const entries = () => store.getState().fileClipboard.entries;
+    setRegistry({ connections: [connection('a'), connection('b')] });
+    const stop = clipboard.start();
+    const entry = { root: '/repo', ...file, mode: 'copy' as const };
+    clipboard.select('a', entry);
+    clipboard.select('b', entry);
+    setRegistry({ connections: [connection('a'), connection('b')] });
+    expect(entries().a).toEqual(entry);
+    setRegistry({ connections: [connection('a', false), connection('b')] });
+    expect(entries().a).toBeUndefined(); expect(entries().b).toEqual(entry);
+    setRegistry({ connections: [connection('b', true, 'changed')] });
+    expect(entries().b).toBeUndefined();
+    stop();
   });
   it('serializes mutations on the same connection and ignores duplicate taps', async () => {
     const { runtime, mutate } = await mount();

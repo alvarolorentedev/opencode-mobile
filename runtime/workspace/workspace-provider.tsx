@@ -63,6 +63,7 @@ export function WorkspaceProvider({ children }: PropsWithChildren) {
   });
   useEffect(() => core.autoApproval.start(), [core]);
   useEffect(() => core.terminal.start(), [core]);
+  useEffect(() => core.clipboard.start(), [core]);
   useEffect(() => core.events.observeMcpStatus(), [core]);
   const { updateSettings: updateWorkspaceSettings, change, removeConnection: removeWorkspaceConnection, connectedWorkspace, isEnabled } = manager;
   const { setFavoriteSessions, setSettings, setChatPreferences, setHiddenProjects } = shell;
@@ -79,7 +80,7 @@ export function WorkspaceProvider({ children }: PropsWithChildren) {
   const missionWidgetScope = JSON.stringify(connections.filter((entry) => entry.enabled)
     .map(({ id, authRevision }) => [id, authRevision, mission.servers.find((server) => server.id === id)?.authorized === false]));
   useMissionWidget(mission, missionWidgetScope, isHydrated && manager.ready, shell.chatPreferences.language);
-  const fileClipboard = useFileClipboard(connections);
+  const fileClipboard = useFileClipboard();
   const focusedKey = focus && resolveKey(focus);
   const current = focusedKey ? snapshots[focusedKey] : undefined;
   const selection = useAppStore((state) => focusedKey ? state.selection[focusedKey] : undefined);

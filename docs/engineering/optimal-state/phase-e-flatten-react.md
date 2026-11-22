@@ -58,6 +58,8 @@ Start only after Phase D is complete and green.
   drives its existing connection catalog polling gate from actual visibility.
 - Worktree headers and dialogs bind Query reads and checkout actions directly
   to their project scope.
+- File clipboard registration and mutation locks live in one app-core
+  controller. Entries and busy flags remain in the app store.
 - `runtime/core/workspace-selectors.ts` selects the retained project projection.
 - [ADR 0052](../../adr/0052-explicit-overlay-dependencies.md) records explicit
   portal targets and update blocker callbacks. Shared controls use shared imports.

@@ -6,7 +6,7 @@ export { parseHiddenProjects, serializeHiddenProjects } from './services/hidden-
 export { locationOptions } from './services/queries/catalog';
 export { projectsOptions } from './services/queries/catalog';
 export { useFileClipboard } from './state/use-file-clipboard';
-export type { FileClipboardEntry } from './state/use-file-clipboard';
+export { createFileClipboard, type FileClipboardEntry } from './services/file-clipboard';
 export { useProjectCatalogActions } from './state/use-project-catalog-actions';
 export { useProjectFileActions } from './state/use-project-file-actions';
 export { useProjectRuntimeState } from './state/use-project-runtime-state';

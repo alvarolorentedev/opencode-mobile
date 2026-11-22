@@ -8,7 +8,7 @@ import { StyleSheet, View } from 'react-native';
 
 import { ControlSize, Shape, Spacing } from '@/shared/ui/theme/design-tokens';
 
-import type { FileClipboardEntry } from '@/features/projects/state/use-file-clipboard';
+import type { FileClipboardEntry } from '@/features/projects/services/file-clipboard';
 
 export function FileClipboardStrip({ entry, busy, available, onPaste, onClear }: {
   entry: FileClipboardEntry; busy: boolean; available: boolean; onPaste: () => void; onClear: () => void;

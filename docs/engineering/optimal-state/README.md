@@ -316,12 +316,15 @@ npm run validate:commit
   drives its catalog polling gate from actual visibility. The commit gate
   passed with 1,283 tests and one existing skip. All 100 focused tests and the
   full 185-flow browser suite passed.
-- E20. Worktree views bind to the project scope. The catalog demand test
+- E20, `fc51e761`. Worktree views bind to the project scope. The catalog demand test
   exercises the new read owner with the same inactive and active assertions.
   The final commit gate passed with 1,283 tests and one existing skip, and all
   101 focused tests passed. All 81 affected browser flows passed before the
   catalog read extraction. All 15 Projects and Terminal flows passed on the
   final build.
+- E21. The app core owns the file clipboard controller. The final commit gate
+  passed with 1,283 tests and one existing skip. All 58 focused tests and 42
+  browser flows across Projects, multi-server, app updates and Settings passed.
 
 ## Loop protocol
 
