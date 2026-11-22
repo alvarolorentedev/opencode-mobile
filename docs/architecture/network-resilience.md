@@ -186,7 +186,9 @@ demanded connection while the app is foregrounded and online:
 
 ## Offline prompt queue
 
-`features/chat/state/use-prompt-inbox.ts` keeps a process-lifetime queue.
+`features/chat/services/prompt-inbox-commands.ts` admits and retries prompts
+from the app store's process-lifetime outbox. Confirmed server inbox and
+notice records live in the connection and project Query partition.
 See [ADR 0045](../adr/0045-queue-only-unsent-prompts.md).
 
 - When the app detects that it is offline, it queues the input before making a

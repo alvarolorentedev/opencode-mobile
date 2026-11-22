@@ -1,11 +1,11 @@
-import { createPromptSubmissionActions, type PromptCommandInput, type PromptSubmission } from '@/features/chat/runtime';
+import { createPromptInboxCommands, createPromptSubmissionActions, EMPTY_OUTBOX, type PromptCommandInput, type PromptSubmission } from '@/features/chat/runtime';
 import type { CommandContext } from '@/runtime/core/commands/context';
 import type { PromptUiState } from '@/runtime/core/store';
 
 type Update<T> = T | ((current: T) => T);
 type PendingSubmission = { active?: PromptSubmission; latest: PromptSubmission };
 
-export function createPromptCommands({ store, clock }: Pick<CommandContext, 'store' | 'clock'>) {
+export function createPromptCommands({ store, clock, queryClient }: Pick<CommandContext, 'store' | 'clock' | 'queryClient'>) {
   const submissions = new Map<string, PendingSubmission>();
   const { setPrompt, setChat } = store.getState();
 
@@ -55,5 +55,16 @@ export function createPromptCommands({ store, clock }: Pick<CommandContext, 'sto
     };
   }
 
-  return { workspace };
+  function createInbox() {
+    return createPromptInboxCommands({
+      cache: queryClient, clock,
+      readOutbox: (scope) => store.getState().prompt[scope]?.outbox,
+      writeOutbox: (scope, change) => setPrompt(scope, (current) => ({ outbox: change(current.outbox ?? EMPTY_OUTBOX) })),
+      subscribe: (scope, listener) => store.subscribe((current, previous) => {
+        if (current.prompt[scope]?.outbox !== previous.prompt[scope]?.outbox) listener();
+      }),
+    });
+  }
+
+  return { workspace, createInbox };
 }

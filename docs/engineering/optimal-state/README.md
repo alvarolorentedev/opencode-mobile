@@ -145,10 +145,15 @@ npm run validate:commit
   one existing skip. The 46 focused tests, docs, web export and all 90
   Cloud Link, realtime, network, interactions, sessions and multi-server
   browser tests passed.
-- C3a. App-core commands own prompt submission and abort tokens. Static
+- C3a, `e45a7f86`. App-core commands own prompt submission and abort tokens. Static
   checks passed with 1,267 tests and one existing skip. The 45 focused
   tests, docs, web export and all 55 chat, auto-model, network, multi-server,
   realtime, interactions and diffs browser tests passed.
+- C3b. App-core prompt commands now own inbox admission, cancellation and
+  reconnect recovery. The commit gate passed with 1,268 tests and one existing
+  skip. The 63 focused tests, docs, web export and all 92 chat, Cloud Link,
+  network, realtime and multi-server browser tests passed. The focused race
+  check rotates credentials during admission and verifies no stale Query write.
 
 ## Loop protocol
 

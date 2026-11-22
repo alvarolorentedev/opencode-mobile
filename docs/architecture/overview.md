@@ -295,9 +295,9 @@ The completion version, preference schema and first-run migration are unchanged.
   available when the classifier provides no selection.
 - `features/chat/state/use-prompt-lifecycle.ts`
   React bindings for prompt commands and task-completion notification tracking.
-- `features/chat/state/use-prompt-inbox.ts`
-  OpenCode 2 prompt admission and session-scoped pending messages. Wraps the
-  existing transcript refresh to reconcile inbox delivery through SSE and polling.
+- `features/chat/services/prompt-inbox-commands.ts`
+  OpenCode 2 prompt admission, outbox retry, cancellation and delivery
+  reconciliation. The inbox hook binds reachability and selects pending rows.
 - `features/ai/state/use-capabilities-actions.ts`
   Provider auth/OAuth, preference reconciliation, and auto-approve; capability responses live in Query.
 - `runtime/connections/create-connection.ts`

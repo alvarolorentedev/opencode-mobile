@@ -302,7 +302,9 @@
       "useSessionState"
     ],
     "features/chat/runtime.ts": [
+      "createPromptInboxCommands",
       "createPromptSubmissionActions",
+      "EMPTY_OUTBOX",
       "forgetSessionContent",
       "isPromptErrorVisible",
       "migrateTranscriptCaches",

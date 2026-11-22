@@ -1,7 +1,8 @@
 import { base64 } from '@scure/base';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { deferred, hookRuntime, loadTs } from '../../../tests/helpers/runtime.mjs';
+import { deferred, hookRuntime } from '../../../tests/helpers/runtime.mjs';
+import { loadPromptInbox } from '../../../runtime/__tests__/prompt-command-fixture';
 import { attachmentKind, dataUrlBytes, pickedAttachment, prepareAttachmentFile, openAttachmentExternally, readAttachmentText } from '@/shared/platform/attachments';
 import { defaultChatPreferences } from '@/shared/preferences/opencode-preferences';
 import { parseChatPreferences } from '@/shared/storage/persisted-preferences';
@@ -137,8 +138,7 @@ describe('provider-owned prompt inbox', () => {
   async function mount(client: any, readMessages = vi.fn(async () => [] as any[]), options: { online?: boolean; connected?: boolean } = {}) {
     const runtime = hookRuntime();
     client.__opencode = { contract: client.promptInbox ? 'v2' : 'v1', directory: '/test-workspace' };
-    const { usePromptInbox } = await loadTs('features/chat/state/use-prompt-inbox.ts', {
-    react: runtime.react,
+    const { usePromptInbox } = await loadPromptInbox(runtime, {
     "@/shared/protocol/opencode/prompt-inbox": { PromptPreparationError },
     "@/shared/protocol/services/session-service": { getSessionInbox: (candidate: any, id: string) => candidate.promptInbox.list(id), getSessionNotices: (candidate: any, id: string) => candidate.promptInbox.listNotices?.(id) ?? Promise.resolve([]), submitLegacyPrompt: (candidate: any, input: unknown) => candidate.compatibility.session.promptAsync(input) },
     "@/shared/protocol/opencode/client/errors": { classifyConnectionFailure: () => 'unknown' },
