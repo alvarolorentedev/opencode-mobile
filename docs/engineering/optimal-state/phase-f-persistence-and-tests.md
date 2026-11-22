@@ -1,0 +1,91 @@
+# Phase F — Persistence and Tests
+
+Status: **partially done**. Query persistence and the session-cache removal are
+complete. Zustand persist, `loadTs` removal, `fast-check` and `knip` remain.
+
+Goal: one retention policy and one test infrastructure. No custom module loader,
+no duplicate storage writer, no hand-written edge matrices where a property test
+is clearer.
+
+Read the [phase index](README.md) and [validation strategy](../validation/strategy.md)
+first.
+
+Start only after Phase E is complete and green.
+
+## Already done
+
+- Query persistence for session and project catalogs
+  (`shared/server-data/persistence.ts`).
+- Custom session cache and its hydration/write paths are deleted.
+- Transcript cache remains intentionally: messages can contain inline media and
+  are excluded from the Query cache.
+- `npm run impact -- <file>` exists.
+
+## Remaining work
+
+### Zustand persistence
+
+- Move non-secret client preferences to a versioned Zustand `persist` store:
+  shell preferences, favorites, hidden projects, onboarding flag, presentation
+  choices that must survive launch.
+- Keep SecureStore for passwords, headers, certificates and OIDC tokens. Keep
+  connection profiles in their existing verified storage.
+- Add `version` and `migrate` for every persisted slice.
+- Delete the duplicated `use-opencode-persistence` write paths once the store
+  owns them. Do not leave two writers for one key.
+- Verify hydration ordering: the app splash waits for both Query restore and
+  store hydration.
+
+### `loadTs` and `hookRuntime` removal
+
+There are roughly 87 legacy suites using `tests/helpers/runtime.mjs`. Migrate
+them in feature batches:
+1. Add the renderer and platform mocks the suite needs.
+2. Replace `loadTs` with native imports.
+3. Replace `vi.mock` only at platform boundaries; do not mock domain modules.
+4. Keep the same test names and assertions. Compare test identities before and
+   after each batch.
+5. Delete the suite’s import map and any dead stand-ins.
+6. Delete `loadTs`/`hookRuntime` when the last suite is migrated.
+
+Do not add new `loadTs` usage. Do not weaken a suite to make migration easier.
+
+### Property tests and dead-code cleanup
+
+- Add `fast-check` for reducers, merge/ordering invariants, transcript overlay
+  ordering and session status merge.
+- Add `knip` with a focused config; remove unused files/exports/dependencies
+  reported by a clean run.
+- Keep generated locale resources exempt.
+
+## Phase F gate
+
+```bash
+npm run validate:commit
+npm run test:docs
+EXPO_PUBLIC_E2E_MODE=1 EXPO_APP_VARIANT=development npm run build:web:ci
+E2E_SKIP_BUILD=1 npx playwright test
+```
+
+Full 185-flow suite required at this checkpoint.
+
+## Acceptance
+
+- One writer per persisted key; no duplicate storage paths.
+- Cold start paints from Query + store hydration; credentials remain secure.
+- No `loadTs`/`hookRuntime`; test discovery and typecheck still cover every
+  suite.
+- `fast-check` covers the reducers/merges named above.
+- `knip` is clean or has a reviewed, small ignore list.
+- Full E2E passes, including reload, onboarding and credential rotation.
+
+## Pitfalls
+
+- Query persistence must never include message media; the transcript cache is
+  the only media-aware cache.
+- Zustand `persist` writes on every change unless throttled/partialized; keep the
+  existing per-key ordering guarantees.
+- Migration must preserve existing users: schema versions, malformed entries and
+  secure-store transitions.
+- Removing `loadTs` can silently drop dynamic imports; compare executed test
+  identities, not only file counts.

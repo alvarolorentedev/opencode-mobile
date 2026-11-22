@@ -37,6 +37,7 @@ sections; the reference docs are large on purpose.
 | Change native configuration, build, or release | [Development](engineering/development.md) + [Integrations and operations](engineering/integrations-and-operations.md) |
 | Run or extend tests, or choose a test level | [Validation index](engineering/testing-and-validation.md) + [Validation strategy](engineering/validation/strategy.md#test-selection-matrix) |
 | Add a feature that needs an architectural decision | [ADR process](adr/README.md) |
+| Finish the optimal state architecture | [Implementation phases](engineering/optimal-state/README.md) |
 | Check deliberately deferred work | [Known gaps](engineering/known-gaps.md) |
 | Evaluate a library or extraction | [Library extraction](engineering/library-extraction.md) |
 

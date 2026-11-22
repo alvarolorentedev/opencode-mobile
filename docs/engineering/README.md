@@ -25,6 +25,7 @@ build, or understand an operational constraint.
 | [library-extraction.md](library-extraction.md) | Library replacements, deferred evaluations, and candidate extraction boundaries |
 | [fdroid.md](fdroid.md) | F-Droid/FOSS variant scope, build, and distribution |
 | [known-gaps.md](known-gaps.md) | Deliberately deferred engineering work and its constraints |
+| [optimal-state/README.md](optimal-state/README.md) | Self-contained Phase A–G plan, current status, gates, and Definition of Done for the two-tier architecture |
 
 ## Common entry points
 
