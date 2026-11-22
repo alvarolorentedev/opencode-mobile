@@ -1,0 +1,31 @@
+version: 1
+name: fix
+description: "Fast fix loop: implement, validate, ship"
+
+entry: implementer
+
+limits:
+  max_steps: 8
+  timeout_seconds: 7200
+  node_timeout_seconds: 3600
+
+nodes:
+  implementer:
+    agent: implementer
+    routes:
+      ready: validator
+      blocked: pause
+
+  validator:
+    agent: validator
+    routes:
+      pass: ship
+      fail: implementer
+      blocked: pause
+
+  ship:
+    agent: ship
+    routes:
+      shipped: complete
+      failed: implementer
+      blocked: pause

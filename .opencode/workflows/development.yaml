@@ -1,0 +1,52 @@
+version: 1
+name: development
+description: Product scope, UX contract, build, validation with adherence, review, and ship
+
+entry: po
+
+limits:
+  max_steps: 14
+  timeout_seconds: 10800
+  node_timeout_seconds: 3600
+
+nodes:
+  po:
+    agent: po
+    routes:
+      ready: designer
+      blocked: pause
+
+  designer:
+    agent: designer
+    routes:
+      approved: implementer
+      changes_requested: po
+      blocked: pause
+
+  implementer:
+    agent: implementer
+    routes:
+      ready: validator
+      blocked: pause
+
+  validator:
+    agent: validator
+    routes:
+      pass: reviewer
+      fail: implementer
+      needs_definition: designer
+      blocked: pause
+
+  reviewer:
+    agent: reviewer
+    routes:
+      approved: ship
+      changes_requested: implementer
+      blocked: pause
+
+  ship:
+    agent: ship
+    routes:
+      shipped: complete
+      failed: implementer
+      blocked: pause

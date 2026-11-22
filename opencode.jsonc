@@ -1,5 +1,6 @@
 {
   "$schema": "https://opencode.ai/config.json",
+  "plugins": ["@alvarolorentedev/opencode-flowgraph@0.9.1"],
   "commands": {
     "release": {
       "template": "increase version, version code ios & android, release motes, run npm install, commit, tag and push, follow build until completion , if issues appear solve them, commit, retag and push",

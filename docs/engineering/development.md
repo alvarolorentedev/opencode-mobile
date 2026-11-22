@@ -69,6 +69,35 @@ client after native changes. Simulator/MCP evidence cannot replace physical-devi
 voice/keyboard acceptance, signed store-update tests or release/FOSS builds. See
 the [validation matrix](validation/strategy.md) and [native ownership](../../modules/AGENTS.md).
 
+#### Flowgraph workflows
+
+The [opencode-flowgraph](https://github.com/alvarolorentedev/opencode-flowgraph)
+runner adds two development graphs over the native agents in
+`.opencode/agents/`:
+
+- `development` — PO scope, UX contract, implementation, validation with
+  acceptance and UX adherence, review, and ship. Use it for features and UI
+  work.
+- `fix` — implementation, validation, and ship. Use it for docs, copy, and
+  small isolated fixes; it skips the PO, designer, and reviewer.
+
+The project `opencode.jsonc` declares the plugin (`0.9.1` is validated here),
+so OpenCode installs it when the project loads. Run
+`/flowgraph run development "<objective>"` or
+`/flowgraph run fix "<objective>"`. `/flowgraph` lists runs and workflows,
+opens node sessions, and pauses or resumes a run. The OpenCode server process
+needs the required Node 22, npm, and an authenticated `gh`; the agents run the
+repository commands directly.
+
+The graphs use native permissions, never approve a request for you, and cannot
+edit `.opencode`, `opencode.json(c)`, `AGENTS.md`, `.git`, or `.github`. `ship`
+commits to `main`, pushes without force, and watches CI; it never tags, bumps
+versions, or amends history. It stops on unrelated changes and on edits under
+`tests/e2e/`, `tests/fake-opencode/`, or native and platform directories.
+Repository docs and `AGENTS.md` win over agent suggestions, and the workflows do
+not replace device, store, or human validation. The plugin is development
+tooling; it is not part of the app bundle or `package.json`.
+
 ### Common Commands
 
 ```bash
