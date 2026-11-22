@@ -9,12 +9,12 @@ import { ResponsesSection } from '@/features/chat/index';
 import { VoiceSection , WORKING_SOUND_OPTIONS , useTtsSetup , useVoiceSetup , useSpeechVoices } from '@/features/voice/index';
 import { usePalette } from '@/shared/ui/theme/use-palette';
 import { getSpeechPlayback } from '@/shared/platform/voice/speech-config';
-import { usePreferences } from '@/shared/preferences/context';
+import { useWorkspacePreferences } from '@/runtime/workspace';
 
 export function OnboardingVoiceSettings() {
   const { t } = useTranslation();
   const palette = usePalette();
-  const { chatPreferences, updateChatPreferences } = usePreferences();
+  const { chatPreferences, updateChatPreferences } = useWorkspacePreferences();
   const { localTtsPackId, localTtsSpeakerId, speechVoiceId, ttsEngine } = chatPreferences;
   const playback = useMemo(() => getSpeechPlayback({ localTtsPackId, localTtsSpeakerId, speechVoiceId, ttsEngine }), [localTtsPackId, localTtsSpeakerId, speechVoiceId, ttsEngine]);
   const voiceSetup = useVoiceSetup({

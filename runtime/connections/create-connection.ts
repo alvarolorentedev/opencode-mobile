@@ -310,6 +310,7 @@ export function createConnection({ queryClient, foreground, clock = systemClock 
     realtime,
     events: { observe: events.observe, observeHealth: events.observeHealth, isHealthy: events.isHealthy },
     getCatalogClient,
+    getProjectClient,
     getProjectAccess,
     isDemanded: () => active && online,
     dispose() { stopActivity(); retry.dispose(); realtime.dispose(); eventInvalidation.reset(); projectClients.clear(); },

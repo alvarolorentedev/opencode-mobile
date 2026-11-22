@@ -21,8 +21,8 @@ import { useWorkspaceServerData } from '@/runtime/composition/use-workspace-serv
 import { useAppCore } from '@/runtime/core';
 import { useConnectionQueryIdentity, useQueryForeground } from '@/shared/server-data/client';
 
-import { serverPreferences } from '@/runtime/core/commands/connection';
-import { defaultChatPreferences, type ChatPreferences } from '@/shared/preferences/opencode-preferences';
+import { workspaceChatPreferences } from '@/runtime/core/commands/connection';
+import type { ChatPreferences } from '@/shared/preferences/opencode-preferences';
 import { workspaceKey } from '@/shared/contracts/workspace';
 import { getServerCapabilities } from '@/shared/protocol/opencode/capabilities';
 import type { useWorkspaceConnections } from '@/runtime/workspace/use-workspace-connections';
@@ -40,7 +40,7 @@ export const RetainedProject = memo(function RetainedProject({ defaults, updateS
   const { store, commands: { session: sessionCommands }, events } = useAppCore();
   const id = props.connection.id;
   const key = workspaceKey({ connectionId: id, projectPath: props.projectPath ?? '' });
-  const preferences = useMemo(() => ({ ...defaults, ...serverPreferences(defaultChatPreferences), ...props.connection.preferences }), [defaults, props.connection.preferences]);
+  const preferences = useMemo(() => workspaceChatPreferences(defaults, props.connection.preferences), [defaults, props.connection.preferences]);
   const setSettings = useCallback<Dispatch<SetStateAction<OpencodeConnectionSettings>>>((next) => {
     const entry = store.getState().registry.connections.find((candidate) => candidate.id === id);
     if (entry) updateSettings(id, typeof next === 'function' ? next(entry.settings) : next, key);
@@ -49,7 +49,7 @@ export const RetainedProject = memo(function RetainedProject({ defaults, updateS
     const { registry, shell } = store.getState();
     const entry = registry.connections.find((candidate) => candidate.id === id);
     if (!entry) return;
-    updatePreferences(id, typeof next === 'function' ? next({ ...shell.chatPreferences, ...serverPreferences(defaultChatPreferences), ...entry.preferences }) : next);
+    updatePreferences(id, typeof next === 'function' ? next(workspaceChatPreferences(shell.chatPreferences, entry.preferences)) : next);
   }, [id, store, updatePreferences]);
   const input: ProjectBindingInput = { ...props, preferences, setSettings, setChatPreferences };
 
@@ -372,9 +372,6 @@ export const RetainedProject = memo(function RetainedProject({ defaults, updateS
     diagnostics: project.diagnostics, refreshDiagnostics: project.refreshDiagnostics, eventStreamStatus, transport: { network, reconnect },
   }), [project.diagnostics, project.refreshDiagnostics, eventStreamStatus, network, reconnect]);
   const capabilitiesValue = useCapabilitiesPresentation(serverData, capabilities);
-  const preferencesValue = useMemo<WorkspaceValues['preferencesValue']>(() => ({
-    chatPreferences: state.chatPreferences, updateChatPreferences: capabilities.updateChatPreferences,
-  }), [state.chatPreferences, capabilities.updateChatPreferences]);
   const { projectsValue, projectFilesValue } = useProjectPresentation({ ...domain, ...project, ...worktree, activeProject, projects });
   const { mcpAuthPrompt } = state;
   const { savedPermissions, refreshSavedPermissions, removeSavedPermission } = permissionRules;
@@ -395,9 +392,9 @@ export const RetainedProject = memo(function RetainedProject({ defaults, updateS
   const extensionItems = extensions.extensions;
   const extensionsValue = useMemo(() => ({ extensions: extensionItems }), [extensionItems]);
   const values = useMemo<WorkspaceValues>(() => ({
-    connectionValue, diagnosticsValue, capabilitiesValue, preferencesValue, projectsValue, projectFilesValue,
+    connectionValue, diagnosticsValue, capabilitiesValue, projectsValue, projectFilesValue,
     currentSessionValue, sessionLibraryValue, chatValue, approvalsValue, conversationValue, terminalValue, mcpValue, extensionsValue,
-  }), [connectionValue, diagnosticsValue, capabilitiesValue, preferencesValue, projectsValue, projectFilesValue,
+  }), [connectionValue, diagnosticsValue, capabilitiesValue, projectsValue, projectFilesValue,
     currentSessionValue, sessionLibraryValue, chatValue, approvalsValue, conversationValue, terminalValue, mcpValue, extensionsValue]);
 
   const suspend = useCallback(() => {

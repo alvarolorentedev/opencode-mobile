@@ -25,6 +25,8 @@ Start only after Phase D is complete and green.
   the connection identity.
 - Connection and project adapters pass Query identity and demand explicitly.
   Query has one app-level provider.
+- Onboarding and preferences read device facts directly from the app store.
+  Preference updates reconcile model choices against the scoped Query catalog.
 - `runtime/core/workspace-selectors.ts` selects the retained project projection.
 - [ADR 0052](../../adr/0052-explicit-overlay-dependencies.md) records explicit
   portal targets and update blocker callbacks. Shared controls use shared imports.
@@ -43,6 +45,11 @@ across Chat and Terminal tabs. The terminal now guards the native bridge
 method before it is registered. Expo's development runtime still logged
 early `DomWebView` tag lookup errors on mount. The renderer recovered and
 showed output. Recheck with the final native build.
+
+The ARM64 Android development build launched on an API 36 emulator. Hardware
+Back dismissed the keyboard, returned from connection details with the typed
+URL intact, and closed the provider setup screen and the opening screen selector
+without exiting onboarding. Save & connect reached the loopback V2 fixture.
 
 ## Target shape
 

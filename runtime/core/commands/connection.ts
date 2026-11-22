@@ -5,6 +5,7 @@ import { getProfileCertificate, saveProfileCertificate } from '@/shared/storage/
 import { connectionOrigin, releaseHostTrust } from '@/shared/platform/tls-trust';
 import type { ConnectionCertificate } from '@/shared/contracts/connection-certificate';
 import type { ConnectionHeaders } from '@/shared/contracts/connection-headers';
+import type { ModelOption } from '@/shared/contracts/model-options';
 import { createProfileId, deleteProfilePassword, getProfilePassword, loadConnectionProfiles, mutateConnectionProfiles, readProfileConnection, saveProfilePassword } from '@/shared/storage/connection-profiles';
 import { findMatchingProfile, findProfileByConnectionScope, pickModelPreferences, type ConnectionProfile } from '@/shared/contracts/connection-profiles';
 import { getConnectionScope, getConnectionUiScope } from '@/shared/contracts/connection-scope';
@@ -13,9 +14,10 @@ import type { ConnectionState } from '@/features/connections/index';
 import type { SessionDeepLinkTarget } from '@/features/sessions/index';
 import { defaultConnectionSettings, type OpencodeConnectionSettings } from '@/shared/protocol/opencode/client/types';
 import { getServerHostname } from '@/shared/contracts/server-url';
-import { clearCapabilitiesSnapshots } from '@/features/ai/runtime';
+import { agentsOptions, capabilitiesOptions, clearCapabilitiesSnapshots, getConfiguredProviderIds, patchModelPreferences } from '@/features/ai/runtime';
 import { clearMissionStatsCaches } from '@/features/sessions/runtime';
-import type { ChatPreferences } from '@/shared/preferences/opencode-preferences';
+import { defaultChatPreferences, type ChatPreferences } from '@/shared/preferences/opencode-preferences';
+import { configurationOptions } from '@/shared/server-data/catalogs';
 import { createPersistenceWriter } from '@/shared/storage/persistence-hydration';
 import { connectedWorkspaceTarget } from '@/runtime/workspace/workspace-focus';
 import { parseWorkspaces, serializeWorkspaces, WORKSPACES_STORAGE_KEY } from '@/shared/storage/workspace-storage';
@@ -28,9 +30,14 @@ const SERVER_PREFERENCE_KEYS = ['enabledModelIds', 'knownModelIds', 'autoEnableN
 export function serverPreferences(value: Partial<ChatPreferences>) {
   return Object.fromEntries(SERVER_PREFERENCE_KEYS.filter((key) => key in value).map((key) => [key, value[key]])) as Partial<ChatPreferences>;
 }
+const defaultServerPreferences = serverPreferences(defaultChatPreferences);
+
+export function workspaceChatPreferences(device: ChatPreferences, server?: Partial<ChatPreferences>): ChatPreferences {
+  return { ...device, ...defaultServerPreferences, ...server };
+}
 
 export function createConnectionCommands(
-  { store, connections }: Pick<CommandContext, 'store'> & { connections: Pick<CommandContext['connections'], 'get'> },
+  { store, queryClient, connections }: Pick<CommandContext, 'store' | 'queryClient'> & { connections: Pick<CommandContext['connections'], 'get'> },
   commands: ReturnType<typeof createWorkspaceCommands>,
 ) {
   const { change, select, ensure, forget, resolveKey, pauseConversation, retry, navigate, openExternalSession } = commands;
@@ -240,6 +247,25 @@ export function createConnectionCommands(
     }).catch((error) => console.warn('Could not save model preferences.', error));
   }
 
+  function patchPreferences(target: WorkspaceTarget, patch: Partial<ChatPreferences>) {
+    const { registry, selection, shell } = store.getState();
+    const entry = registry.connections.find(({ id }) => id === target.connectionId);
+    if (!entry) return;
+    const directory = selection[resolveKey(target)]?.activeProjectPath ?? target.projectPath;
+    const client = connections.get(entry.id)?.getProjectClient(directory);
+    const identity = { connectionId: entry.id, connectionScope: getConnectionScope(entry.settings), authRevision: entry.authRevision ?? 0 };
+    const discovery = client && queryClient.getQueryData(capabilitiesOptions(identity, client).queryKey);
+    const config = client && queryClient.getQueryData(configurationOptions(identity, client).queryKey);
+    const agents = client && queryClient.getQueryData(agentsOptions(identity, client).queryKey);
+    let models: ModelOption[] = [];
+    if (discovery && config && agents) {
+      const configured = getConfiguredProviderIds(config.config, discovery.connected, discovery.models);
+      for (const provider of discovery.providers) if (provider.configured) configured.add(provider.id);
+      models = discovery.models.filter((model) => configured.has(model.providerID));
+    }
+    updatePreferences(entry.id, patchModelPreferences(workspaceChatPreferences(shell.chatPreferences, entry.preferences), patch, models));
+  }
+
   function hiddenScope(connectionId: string) {
     const entry = registry().connections.find((item) => item.id === connectionId);
     return entry ? getConnectionScope(entry.settings) : undefined;
@@ -310,6 +336,6 @@ export function createConnectionCommands(
 
   return {
     hydrate, persist, reconcileFocus, connect, switchConnection, connectSavedProfile, disconnect,
-    retry, removeConnection, updateSettings, updatePreferences, hideProject, restoreProject, openSession, openSessionInProject,
+    retry, removeConnection, updateSettings, updatePreferences, patchPreferences, hideProject, restoreProject, openSession, openSessionInProject,
   };
 }

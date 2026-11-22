@@ -91,6 +91,9 @@ Credential changes cancel/remove the old partition. Same-machine Cloud Link
 renewal copies only existing data with original timestamps into the replacement
 partition, retaining stable presentation and workflow identity. Model classifier
 probes are specific to the credential generation and run again after renewal.
+Preference controls read device settings and the selected connection's model
+preferences from the app store. The preference command applies model selection
+rules using the current project's exact credential-partitioned Query data.
 
 The default freshness is 60 seconds and unused data is collected after five
 minutes; previews use zero retention. Commands use zero freshness so every

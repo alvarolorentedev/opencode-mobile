@@ -64,7 +64,7 @@ describe('architecture ratchets', () => {
     // 2. The public context surface stays a deliberate contract, not an accidental
     // dump. Count members across every domain context value.
     const typeFiles = (await collectSourceFiles(path.join(root, 'features'))).filter((file) => file.endsWith('/model/types.ts'));
-    const types = (await Promise.all(typeFiles.map((file) => readFile(file, 'utf8')))).join('\n') + await read('shared/preferences/types.ts');
+    const types = (await Promise.all(typeFiles.map((file) => readFile(file, 'utf8')))).join('\n');
     const domainBlocks = [...types.matchAll(/export type \w+ContextValue = \{([\s\S]*?)\n\};/g)];
     assert.ok(domainBlocks.length >= 2, 'Domain context value types must exist.');
     const contextMembers = domainBlocks.reduce(

@@ -1,7 +1,7 @@
 import { PromptDeliveryField } from '@/features/chat/index';
 import { LanguageSection } from '@/shared/i18n/language-section';
 import { useConnection } from '@/features/connections/context';
-import { usePreferences } from '@/shared/preferences/context';
+import { useWorkspacePreferences } from '@/runtime/workspace';
 import { usePalette } from '@/shared/ui/theme/use-palette';
 import { OpeningScreenField } from '@/features/sessions/index';
 import { useUpdates } from '@/features/updates/context';
@@ -9,7 +9,7 @@ import { useUpdates } from '@/features/updates/context';
 export function OnboardingGeneralSettings() {
   const palette = usePalette();
   const { block } = useUpdates();
-  const { chatPreferences, updateChatPreferences } = usePreferences();
+  const { chatPreferences, updateChatPreferences } = useWorkspacePreferences();
   const { connection, serverCapabilities } = useConnection();
   const connected = connection.status === 'connected';
 

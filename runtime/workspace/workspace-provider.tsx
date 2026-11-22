@@ -9,7 +9,6 @@ import { defaultChatPreferences } from '@/shared/preferences/opencode-preference
 import type { ConnectionContextValue } from '@/features/connections/index';
 import { useAppUpdates } from '@/features/updates/runtime';
 import { UpdatesContext } from '@/features/updates/context';
-import { PreferencesContext } from '@/shared/preferences/context';
 import { useConnectState , useServicesState } from '@/features/cloud-link/runtime';
 import { useConnectionProfiles } from '@/features/connections/runtime';
 import { HIDDEN_PROJECTS_MAX, useFileClipboard } from '@/features/projects/runtime';
@@ -20,7 +19,7 @@ import { useShareState } from '@/features/sharing/runtime';
 import { useVoiceSetupTest, VoiceSetupTestContext } from '@/features/voice/runtime';
 import { useWorkspaceAutoApprove } from '@/runtime/composition/use-workspace-auto-approve';
 import { useWorkspaceConnections } from '@/runtime/workspace/use-workspace-connections';
-import { serverPreferences } from '@/runtime/core/commands/connection';
+import { serverPreferences, workspaceChatPreferences } from '@/runtime/core/commands/connection';
 import { useWorkspaceShellState } from '@/runtime/workspace/use-workspace-shell-state';
 import { WorkspaceContext, type WorkspaceRegistry } from '@/runtime/workspace/workspace-context';
 import { librarySessions, useMissionOverview } from '@/features/sessions/runtime';
@@ -79,7 +78,9 @@ export function WorkspaceProvider({ children }: PropsWithChildren) {
   useMissionWidget(mission, missionWidgetScope, isHydrated && manager.ready, shell.chatPreferences.language);
   const fileClipboard = useFileClipboard(connections);
   const current = focus ? snapshots[resolveKey(focus)] : undefined;
-  const settings = current?.values.connectionValue.settings ?? shell.settings;
+  const focusedSettings = current?.values.connectionValue.settings;
+  const settings = focusedSettings ?? shell.settings;
+  const focusedPreferences = connections.find(({ id }) => id === focus?.connectionId)?.preferences;
   const settingsConnectionId = focus?.connectionId
     ?? (current ? getConnectionUiScope(current.values.connectionValue.settings) : undefined);
   const updateSettings = useCallback<ConnectionContextValue['updateSettings']>((patch) => {
@@ -160,11 +161,14 @@ export function WorkspaceProvider({ children }: PropsWithChildren) {
   const updates = useAppUpdates({ initialized: isHydrated && shell.onboardingVersion >= CURRENT_ONBOARDING_VERSION && !shell.onboardingActive,
     blocked: Object.values(fileClipboard.busy).some(Boolean) || Object.values(snapshots).some((runtime) => runtime.busy) || connectSetup.busy || hasWorkspaceDrafts(presentation) });
   useEffect(() => {
-    if (!current) return;
-    setSettings(current.values.connectionValue.settings);
-    const preferences = serverPreferences(current.values.preferencesValue.chatPreferences);
-    setChatPreferences((previous) => JSON.stringify(serverPreferences(previous)) === JSON.stringify(preferences) ? previous : { ...previous, ...preferences });
-  }, [current, setSettings, setChatPreferences]);
+    if (!focusedSettings) return;
+    setSettings(focusedSettings);
+    if (!focusedPreferences) return;
+    setChatPreferences((previous) => {
+      const next = workspaceChatPreferences(previous, focusedPreferences);
+      return JSON.stringify(serverPreferences(previous)) === JSON.stringify(serverPreferences(next)) ? previous : next;
+    });
+  }, [focusedSettings, focusedPreferences, setSettings, setChatPreferences]);
   const readTarget = pathname === '/service' ? undefined : pathname === '/settings' ? inspectionTarget ?? focus
     : pathname === '/terminal' ? terminalTarget ?? focus : focus;
   useConnectionDemand(readTarget?.connectionId, network.online);
@@ -181,10 +185,8 @@ export function WorkspaceProvider({ children }: PropsWithChildren) {
           updateSettings={updateWorkspaceSettings} updatePreferences={manager.updatePreferences} publish={manager.publish} forget={manager.forget} />;
     }))}
     {current ? <UpdatesContext.Provider value={updates}>
-      <PreferencesContext.Provider value={current.values.preferencesValue}>
-        <WorkspaceNative runtime={current} preferences={shell.chatPreferences} ready={isHydrated} active={Boolean(focus)} busy={Object.values(snapshots).some((runtime) => runtime.busy)} />
-        {children}
-      </PreferencesContext.Provider>
+      <WorkspaceNative runtime={current} preferences={shell.chatPreferences} ready={isHydrated} active={Boolean(focus)} busy={Object.values(snapshots).some((runtime) => runtime.busy)} />
+      {children}
     </UpdatesContext.Provider> : <View style={{ flex: 1, backgroundColor: '#101212', alignItems: 'center', justifyContent: 'center' }}><ActivityIndicator color="#C3CECB" /></View>}
     </WorkspaceContext.Provider>
   </VoiceSetupTestContext.Provider>;

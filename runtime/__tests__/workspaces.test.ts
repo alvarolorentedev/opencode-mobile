@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { QueryClient } from '@tanstack/react-query';
 import { describe, expect, it, vi } from 'vitest';
 import { loadTs, hookRuntime } from '../../tests/helpers/runtime.mjs';
 import { createAppStore, type AppState } from '@/runtime/core/store';
@@ -14,7 +15,7 @@ function mountWorkspaceConnections(driver: ReturnType<typeof hookRuntime>, useWo
   store.getState().setShellValue('onboardingVersion', shell.onboardingVersion);
   const workspace = createWorkspaceCommands({ store });
   const connections = { get: () => undefined };
-  const commands = { workspace, connection: createConnectionCommands({ store, connections }, workspace) };
+  const commands = { workspace, connection: createConnectionCommands({ store, connections, queryClient: new QueryClient() }, workspace) };
   const getRegistry = () => store.getState().registry;
   driver.mount(() => {
     const registry = driver.react.useSyncExternalStore(store.subscribe, getRegistry);

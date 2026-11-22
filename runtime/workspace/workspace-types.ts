@@ -14,7 +14,6 @@ import type { ApprovalsContextValue, CurrentSessionContextValue, SessionLibraryC
 import type { TerminalContextValue } from '@/features/terminal/index';
 import type { ConversationContextValue } from '@/features/voice/index';
 import type { useWidgetState } from '@/features/widgets/runtime';
-import type { PreferencesContextValue } from '@/shared/preferences/types';
 import type { Session, SessionStatus } from '@/shared/protocol/opencode/types';
 
 import type { WorkspaceShellState } from '@/runtime/workspace/use-workspace-shell-state';
@@ -68,7 +67,6 @@ export type WorkspaceValues = {
   connectionValue: ConnectionContextValue;
   diagnosticsValue: DiagnosticsContextValue;
   capabilitiesValue: CapabilitiesContextValue;
-  preferencesValue: PreferencesContextValue;
   projectsValue: ProjectsContextValue;
   projectFilesValue: ProjectFilesContextValue;
   currentSessionValue: CurrentSessionContextValue;

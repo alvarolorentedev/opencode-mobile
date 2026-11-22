@@ -234,11 +234,18 @@ npm run validate:commit
   The commit gate passed with 1,281 tests and one existing skip. All 35 focused
   tests, the web export and all 33 onboarding, Settings and manual connection
   browser flows passed.
-- E4b. The combined domain type file is gone. Feature contracts live with their
+- E4b, `75e29e31`. The combined domain type file is gone. Feature contracts live with their
   owners, and shared transcript reads and service management use dedicated
   contracts. The commit gate passed with 1,281 tests and one existing skip.
   Focused Vitest passed 470 tests with one existing skip. Web export and 89
   Connect, project, session, multi-server and diff browser flows passed.
+- E4c. Preference controls read scoped choices from the store and reconcile
+  model selections against the exact Query partition. The shared preferences
+  context and the per-project preference projection are gone. The commit gate
+  passed with 1,282 tests and one existing skip. All 59 focused tests and 58
+  auto-model, Settings, multi-server, onboarding and Chat browser flows passed.
+  Android API 36 smoke verified hardware Back through connection setup and
+  the onboarding provider setup and selector screens.
 
 ## Loop protocol
 

@@ -2,10 +2,11 @@ import type { Session } from '@/shared/protocol/opencode/types';
 import type { useWorkspaceConnections } from '@/runtime/workspace/use-workspace-connections';
 import type { NewWorktreeChatResult, NewWorktreeChatTarget, WorkspaceCatalog, WorkspaceTarget } from '@/shared/contracts/workspace';
 import type { SharedInput } from '@/features/sharing/index';
-import { createContext, useContext, useMemo } from 'react';
+import { createContext, useCallback, useContext, useMemo } from 'react';
 import type { MissionOverview } from '@/features/sessions/runtime';
 import { useAppCore, useAppStore } from '@/runtime/core/context';
-import { useWorkspaceDomainValue } from '@/runtime/core/workspace-selectors';
+import { workspaceChatPreferences } from '@/runtime/core/commands/connection';
+import type { ChatPreferences } from '@/shared/preferences/opencode-preferences';
 
 export type WorkspaceRegistry = ReturnType<typeof useWorkspaceConnections> & {
   terminalTarget?: WorkspaceTarget;
@@ -41,8 +42,18 @@ export function useSharedInput() {
 export function useWorkspacePresentation() {
   return useAppStore((state) => state.presentation);
 }
-export function useWorkspacePreferences(target?: WorkspaceTarget) {
-  return useWorkspaceDomainValue((values) => values.preferencesValue, 'useWorkspacePreferences', target);
+export function useWorkspacePreferences(explicit?: WorkspaceTarget) {
+  const { patchPreferences } = useAppCore().commands.connection;
+  const target = useAppStore((state) => explicit ?? state.registry.focus);
+  const defaults = useAppStore((state) => state.shell.chatPreferences);
+  const preferences = useAppStore((state) => state.registry.connections.find(({ id }) => id === target?.connectionId)?.preferences);
+  const chatPreferences = useMemo(() => workspaceChatPreferences(defaults, preferences), [defaults, preferences]);
+  const connectionId = target?.connectionId;
+  const projectPath = target?.projectPath;
+  const updateChatPreferences = useCallback((patch: Partial<ChatPreferences>) => {
+    if (connectionId && projectPath !== undefined) patchPreferences({ connectionId, projectPath }, patch);
+  }, [connectionId, patchPreferences, projectPath]);
+  return { chatPreferences, updateChatPreferences };
 }
 export function useResolvedWorkspaceTarget(target?: WorkspaceTarget) {
   const { resolveKey } = useAppCore().commands.workspace;

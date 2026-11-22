@@ -238,6 +238,7 @@
       "getSelectedModelVariant",
       "hydrateCapabilitiesSnapshot",
       "migrateCapabilitiesSnapshots",
+      "patchModelPreferences",
       "persistCapabilitiesSnapshot",
       "useCapabilitiesActions",
       "routePrompt"

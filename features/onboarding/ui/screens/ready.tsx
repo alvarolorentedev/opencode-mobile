@@ -12,7 +12,7 @@ import { OnboardingStep } from '@/features/onboarding/ui/onboarding-step';
 import { SetupSummary } from '@/features/onboarding/ui/setup-summary';
 import { useOnboarding } from '@/features/onboarding/context';
 import { usePalette } from '@/shared/ui/theme/use-palette';
-import { usePreferences } from '@/shared/preferences/context';
+import { useWorkspacePreferences } from '@/runtime/workspace';
 import { MISSION_PATH } from '@/shared/contracts/mission-control';
 
 export default function OnboardingReadyScreen() {
@@ -20,7 +20,7 @@ export default function OnboardingReadyScreen() {
   const router = useRouter();
   const palette = usePalette();
   const { onboardingActive, completeOnboarding, stopOnboardingReview } = useOnboarding();
-  const { chatPreferences: { openingScreen } } = usePreferences();
+  const { chatPreferences: { openingScreen } } = useWorkspacePreferences();
   const [isFinishing, setIsFinishing] = useState(false);
 
   async function finish() {

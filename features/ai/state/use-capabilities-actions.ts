@@ -3,7 +3,6 @@ import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, type Dispatch
 
 import { useAppCore, useAppStore } from '@/runtime/core';
 import { getLocalAutoModelStatus } from '@/features/ai/model/auto-model/models';
-import { normalizeAutoModelPreferences } from '@/shared/preferences/auto-model';
 import type { ScopedOpencodeClient } from '@/shared/protocol/opencode/client';
 import type { Config , ProviderAuthValues } from '@/shared/protocol/opencode/types';
 import type { CachedCapabilities } from '@/features/ai/services/capabilities-snapshot';
@@ -274,29 +273,6 @@ export function useCapabilitiesActions({
     await refreshChatCapabilities();
   }, [client, requireClient, refreshChatCapabilities]);
 
-  const updateChatPreferences = useCallback((patch: Partial<ChatPreferences>) => {
-    setChatPreferences((current) => {
-      const configuredProviderIds = new Set(availableProviders.filter((provider) => provider.configured).map((provider) => provider.id));
-      const configuredModels = availableModels.filter((model) => configuredProviderIds.has(model.providerID));
-      const updateKnownModelIds = patch.enabledModelIds !== undefined && !current.knownModelIds.length
-        ? configuredModels.map((model) => model.id)
-        : current.knownModelIds;
-      const { enabledModelIds, knownModelIds } = reconcileEnabledModelIds(
-        configuredModels,
-        patch.enabledModelIds ?? current.enabledModelIds,
-        updateKnownModelIds,
-        current.autoEnableNewModels,
-      );
-      return {
-        ...current,
-        ...patch,
-        autoModel: patch.autoModel ? normalizeAutoModelPreferences(patch.autoModel) : current.autoModel,
-        enabledModelIds,
-        knownModelIds,
-      };
-    });
-  }, [availableModels, availableProviders, setChatPreferences]);
-
   const setAutoApprove = useCallback(
     async (enabled: boolean) => {
       if (client.__opencode.contract !== 'v2') throw new Error('Auto-approve is available on OpenCode 2 only.');
@@ -324,7 +300,6 @@ export function useCapabilitiesActions({
     addProviderAccount,
     activateProviderAccount,
     removeProviderAccount,
-    updateChatPreferences,
     setAutoApprove,
     modelRouting,
   };

@@ -2,6 +2,8 @@ import { describe, expect, it, vi } from 'vitest';
 import { hookRuntime, loadTs } from '../../../tests/helpers/runtime.mjs';
 import { hydrateCapabilitiesSnapshot, persistCapabilitiesSnapshot } from '@/features/ai/services/capabilities-snapshot';
 import { reconcileEnabledModelIds } from '@/features/ai/model/opencode-model-selection';
+import { patchModelPreferences } from '@/features/ai/model/model-preferences';
+import { defaultChatPreferences } from '@/shared/preferences/opencode-preferences';
 import type { ModelOption } from '@/shared/contracts/model-options';
 
 vi.mock('@react-native-async-storage/async-storage', () => ({ default: {} }));
@@ -104,6 +106,13 @@ describe('new model preference reconciliation', () => {
     supportsToolCalls: true,
   });
   const oldModels = [model('google/gemini-3'), model('google/gemini-3-flash')];
+
+  it('records the available models when the user first disables them', () => {
+    const updated = patchModelPreferences(defaultChatPreferences, { enabledModelIds: [] }, oldModels);
+    expect(updated.enabledModelIds).toEqual([]);
+    expect(updated.knownModelIds).toEqual(['google/gemini-3', 'google/gemini-3-flash']);
+    expect(patchModelPreferences(updated, { enabledModelIds: [] }, []).knownModelIds).toEqual(updated.knownModelIds);
+  });
 
   it('enables newly discovered models by default without re-enabling a known opt-out', () => {
     const initial = reconcileEnabledModelIds(oldModels, [], [], true);

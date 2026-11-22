@@ -15,10 +15,9 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { WorkspaceBreadcrumb } from '@/features/projects/ui/workspace-breadcrumb';import { FilesPanel } from '@/features/projects/ui/files-panel';
 import { FilePreview } from '@/features/projects/ui/file-preview';
 import { usePalette } from '@/shared/ui/theme/use-palette';
-import { useRetainedState } from '@/runtime/workspace';
+import { useRetainedState , useWorkspacePreferences } from '@/runtime/workspace';
 import { getConnectionUiScope } from '@/shared/contracts/connection-scope';
 import { useConnection } from '@/features/connections/context';
-import { usePreferences } from '@/shared/preferences/context';
 import { useProjects, useProjectFiles } from '@/features/projects/context';
 
 export default function ProjectsScreen() {
@@ -26,7 +25,7 @@ export default function ProjectsScreen() {
   const insets = useSafeAreaInsets();
   const palette = usePalette();
   const { connection, serverCapabilities, settings, connect } = useConnection();
-  const { chatPreferences } = usePreferences();
+  const { chatPreferences } = useWorkspacePreferences();
   const slim = chatPreferences.slimInterface === true;
   const { activeProject, refreshProjectCatalog, refreshProjectStatus } = useProjects();
   const { browser, projectFile, projectFileStatuses, vcsInfo } = useProjectFiles();

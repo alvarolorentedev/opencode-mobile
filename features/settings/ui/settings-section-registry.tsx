@@ -38,7 +38,7 @@ import { useCapabilities } from '@/features/ai/context';
 import { useConnection, useDiagnostics } from '@/features/connections/context';
 import { useMcp } from '@/features/extensions/context';
 import { useOnboarding } from '@/features/onboarding/context';
-import { usePreferences } from '@/shared/preferences/context';
+import { useWorkspacePreferences } from '@/runtime/workspace';
 import { useUpdates } from '@/features/updates/context';
 
 export type SettingsSection = {
@@ -67,8 +67,8 @@ type RegistryInput = {
   configuredProviders: ReturnType<typeof useCapabilities>['configuredProviders'];
   currentConfig: ReturnType<typeof useCapabilities>['currentConfig'];
   mcp: ReturnType<typeof useMcp>;
-  chatPreferences: ReturnType<typeof usePreferences>['chatPreferences'];
-  updateChatPreferences: ReturnType<typeof usePreferences>['updateChatPreferences'];
+  chatPreferences: ReturnType<typeof useWorkspacePreferences>['chatPreferences'];
+  updateChatPreferences: ReturnType<typeof useWorkspacePreferences>['updateChatPreferences'];
   serverCapabilities: ReturnType<typeof useConnection>['serverCapabilities'];
   diagnosticsData: ReturnType<typeof useDiagnostics>;
   lastJsError: ReturnType<typeof useLastJsError>['lastJsError'];

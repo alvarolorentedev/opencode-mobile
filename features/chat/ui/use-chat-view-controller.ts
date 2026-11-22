@@ -28,7 +28,7 @@ import { useCapabilities } from '@/features/ai/context';
 import { useChat } from '@/features/chat/context';
 import { useConnection } from '@/features/connections/context';
 import { useConversation } from '@/features/voice/context';
-import { usePreferences } from '@/shared/preferences/context';
+import { useWorkspacePreferences } from '@/runtime/workspace';
 import { useProjects } from '@/features/projects/context';
 import { useUpdateBlocker, useUpdates } from '@/features/updates/context';
 
@@ -39,7 +39,7 @@ export function useChatViewController() {
   const { activeSession, currentSessionId, ensureActiveSession, openSession } = useCurrentSession();
   const { forkSession, revertSession, sessionStatuses, sessions, unrevertSession } = useSessionLibrary();
   const { availableAgents, availableModels, configuredProviders, currentConfig, modelRouting } = useCapabilities();
-  const { chatPreferences, updateChatPreferences } = usePreferences();
+  const { chatPreferences, updateChatPreferences } = useWorkspacePreferences();
   const slim = chatPreferences.slimInterface === true;
   const { connection, settings, serverCapabilities } = useConnection();
   const connectionScope = getConnectionScope(settings);
