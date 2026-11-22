@@ -431,9 +431,13 @@ npm run validate:commit
   Timer tests advance a controlled clock, and store update checks use the
   actual Android and Apple adapters.
 
-- F12. Workspace catalog demand and write cancellation use real TanStack Query
+- F12, `f9edbdef`. Workspace catalog demand and write cancellation use real TanStack Query
   observers. Project file actions use the production shell adapter, clipboard
   store and native clipboard boundary. Plugin GUI remains disabled in web.
+
+- F13. Activity notifications and widget lifecycle use real React effects,
+  real persisted records, and controlled SDK responses. The Android compiler
+  and headless render cases continue to run in development and release modes.
 
 ## Loop protocol
 

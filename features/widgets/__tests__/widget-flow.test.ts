@@ -1,3 +1,6 @@
+// @vitest-environment happy-dom
+
+import { act } from 'react';
 import { readFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import path from 'node:path';
@@ -5,27 +8,95 @@ import { runInNewContext } from 'node:vm';
 import { transformSync } from '@babel/core';
 import type { SessionStatus } from '@/shared/protocol/opencode/types';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { deferred, hookRuntime, loadTs } from '../../../tests/helpers/runtime.mjs';
+import { controlledClock, deferred, settleReact } from '../../../tests/helpers/controlled-clock';
+import { renderHook } from '../../../tests/helpers/render-hook';
+import { useWidgetState } from '@/features/widgets/state/use-widget-state';
+import type { ScopedOpencodeClient, ServerContract } from '@/shared/protocol/opencode/client';
+import type { OpencodeEvent } from '@/shared/protocol/opencode/events';
+import type { WidgetSnapshot } from '@/shared/contracts/widget-snapshot';
 import { recentWidgetSessions, widgetAttention, widgetPlan, widgetReply, widgetSession } from '@/features/widgets/model/widget-content';
 import { hideWidgetPreviews, parseWidgetSnapshot } from '@/features/widgets/model/widget-snapshot';
-import { deriveTodosFromMessages, formatTimestamp } from '@/shared/presentation/format';
+import { formatTimestamp } from '@/shared/presentation/format';
 import { i18n } from '@/shared/i18n/index';
 import * as storageKeys from '@/shared/storage/keys';
 import * as missionContract from '@/shared/contracts/mission-control';
 import { parseMissionWidgetSnapshot } from '@/features/widgets/model/mission-widget-snapshot';
-import { mergeSessionStatuses } from '@/features/sessions/model/session-utils';
 import { defaultChatPreferences } from '@/shared/preferences/opencode-preferences';
 import { parseChatPreferences } from '@/shared/storage/persisted-preferences';
 import { readWidgetData } from '@/features/widgets/services/widget-service';
 
-const h = vi.hoisted(() => ({ list: vi.fn(), messages: vi.fn(), permissions: vi.fn(), questions: vi.fn(), clients: vi.fn() }));
-vi.mock('@/shared/protocol/opencode/client/types', () => ({ defaultConnectionSettings: { serverUrl: 'http://localhost' } }));
+const h = vi.hoisted(() => ({
+  list: vi.fn(), messages: vi.fn(), permissions: vi.fn(), questions: vi.fn(), clients: vi.fn(),
+  save: vi.fn<(snapshot: WidgetSnapshot) => Promise<boolean>>(), repaint: vi.fn(),
+  stored: undefined as string | undefined, resume: undefined as ((state: string) => void) | undefined,
+}));
+vi.mock('@/shared/protocol/opencode/client', () => ({ buildClient: (settings: { directory: string }, contract: ServerContract) => h.clients(settings, contract) }));
+vi.mock('expo-file-system', () => ({}));
+vi.mock('expo/fetch', () => ({ fetch }));
+vi.mock('expo-crypto', () => ({}));
+vi.mock('expo-secure-store', () => ({}));
+vi.mock('expo-router', () => ({ usePathname: () => '/' }));
+vi.mock('expo-constants', () => ({ default: {} }));
 vi.mock('expo-localization', () => ({ getLocales: () => [{ languageTag: 'en' }] }));
-vi.mock('@/shared/protocol/opencode/client', () => ({ buildClient: (...args: any[]) => h.clients(...args) }));
-vi.mock('@/shared/protocol/opencode/client/interactions', () => ({ listPendingPermissions: (...args: any[]) => h.permissions(...args), listPendingQuestions: (...args: any[]) => h.questions(...args) }));
-vi.mock('@/shared/protocol/services/session-service', () => ({ listActiveSessions: (...args: any[]) => h.list(...args), getSessionMessages: (...args: any[]) => h.messages(...args) }));
-vi.mock('react-native', () => ({ Platform: { OS: 'android' } }));
-vi.mock('@/shared/contracts/cloud-link', () => ({ parseConnectMetadata: () => undefined }));
+vi.mock('react-native', () => ({ Platform: { OS: 'android' }, AppState: {
+  addEventListener: (_: string, callback: (state: string) => void) => {
+    h.resume = callback;
+    return { remove() { h.resume = undefined; } };
+  },
+} }));
+vi.mock('@/features/widgets/services/widget-platform', () => ({
+  homeWidgetSupported: true, updateHomeWidget: (snapshot: WidgetSnapshot) => h.repaint(snapshot),
+}));
+vi.mock('@react-native-async-storage/async-storage', () => ({ default: {
+  getItem: async (key: string) => key === storageKeys.WIDGET_SNAPSHOT_STORAGE_KEY ? h.stored ?? null : null,
+  setItem: async (key: string, value: string) => {
+    if (key !== storageKeys.WIDGET_SNAPSHOT_STORAGE_KEY) throw new Error('Unexpected widget storage key.');
+    if (await h.save(JSON.parse(value))) h.stored = value;
+  },
+} }));
+
+function scopedSdk(directory: string, contract: ServerContract) {
+  const scope = { directory };
+  if (contract === 'v2') return {
+    __opencode: { directory, contract },
+    api: {
+      message: { list: async ({ sessionID }: { sessionID: string }) => {
+        const { records } = await h.messages(scope, sessionID);
+        return { data: records.map(({ info, parts }: ReturnType<typeof assistant>) => ({ ...info, type: info.role, parts })), cursor: {} };
+      } },
+      permission: { request: { list: async () => ({ data: (await h.permissions(scope)).map((request: ReturnType<typeof permission>) =>
+        ({ ...request, action: request.permission, resources: request.patterns, save: request.always })) }) } },
+      form: { list: async () => ({ data: await h.questions(scope) }) },
+    },
+  } as unknown as ScopedOpencodeClient;
+  return {
+    __opencode: { directory, contract: 'v1' },
+    compatibility: {
+      session: { messages: async ({ sessionID }: { sessionID: string }) => ({ data: (await h.messages(scope, sessionID)).records }) },
+      permission: { list: async () => ({ data: await h.permissions(scope) }) },
+      question: { list: async () => ({ data: await h.questions(scope) }) },
+    },
+  } as unknown as ScopedOpencodeClient;
+}
+
+function catalogSdk(contract: ServerContract = 'v2', read = () => Promise.resolve(h.list())) {
+  let data: Promise<ReturnType<typeof dataset>>;
+  const begin = () => { data = read(); return data; };
+  if (contract === 'v2') return {
+    __opencode: { directory: '', contract },
+    api: { session: {
+      list: async () => ({ data: (await begin()).sessions.map((session) => ({ ...session, location: { directory: session.directory } })) }),
+      active: async () => Object.fromEntries(Object.entries((await data).statuses).filter(([, status]) => status.type !== 'idle')),
+    } },
+  } as unknown as ScopedOpencodeClient;
+  return {
+    __opencode: { directory: '', contract: 'v1' },
+    compatibility: { session: {
+      list: async () => ({ data: (await begin()).sessions }),
+      status: async () => ({ data: (await data).statuses }),
+    } },
+  } as unknown as ScopedOpencodeClient;
+}
 
 const session = (id: string, updated = 1, parentID?: string, directory = '/repo') => ({ id, title: id, directory, parentID, time: { created: 1, updated } }) as any;
 const assistant = (text: string, created = 1, parts?: any[]) => ({ info: { id: `m${created}`, role: 'assistant', time: { created } }, parts: parts ?? [{ type: 'text', text }] }) as any;
@@ -34,7 +105,10 @@ const question = (sessionID: string, id = sessionID) => ({ id, sessionID, questi
 const dataset = () => ({ sessions: [session('one', 2), session('two', 3, undefined, '/other')], statuses: { one: { type: 'idle' }, two: { type: 'busy' } },
   messages: { one: [assistant('hello')], two: [assistant('latest reply', 2)] }, interactions: { permissions: [permission('two')], questions: [] } });
 
-beforeEach(() => { vi.clearAllMocks(); });
+beforeEach(() => {
+  vi.resetAllMocks();
+  h.clients.mockImplementation((settings, contract) => scopedSdk(settings.directory, contract));
+});
 
 describe('widget projections', () => {
   it('selects the three most recently updated roots, independent of running order', () => {
@@ -81,21 +155,20 @@ describe('widget projections', () => {
 describe('widget service', () => {
   const settings = { serverUrl: 'https://server', username: '', password: '', directory: '' };
   beforeEach(() => {
-    h.clients.mockImplementation((settings) => ({ directory: settings.directory }));
     h.list.mockResolvedValue({ sessions: [session('one'), session('two', 2, undefined, '/other')], statuses: {} });
     h.messages.mockResolvedValue({ records: [assistant('reply')] });
     h.permissions.mockResolvedValue([permission('one')]); h.questions.mockResolvedValue([]);
   });
   it('reads recent replies and all projects with no notification dependency, and deduplicates globals', async () => {
-    const result = await readWidgetData({} as any, settings, 'v2');
+    const result = await readWidgetData(catalogSdk(), settings, 'v2');
     expect(h.messages).toHaveBeenCalledTimes(2); expect(h.permissions).toHaveBeenCalledTimes(2);
-    expect(h.clients.mock.calls.map(([setting]) => setting.directory)).toEqual(['/repo', '/other']);
+    expect(h.clients.mock.calls.map(([setting]) => setting.directory).sort()).toEqual(['/other', '/repo']);
     expect(result.interactions?.permissions).toHaveLength(1); expect(Object.keys(result.messages!)).toHaveLength(2);
   });
   it('retains failed surfaces as unknown, rather than reporting empty results', async () => {
     h.permissions.mockRejectedValueOnce(new Error('offline'));
     h.messages.mockRejectedValueOnce(new Error('offline'));
-    const result = await readWidgetData({} as any, settings, 'v1');
+    const result = await readWidgetData(catalogSdk('v1'), settings, 'v1');
     expect(result.interactions).toBeUndefined(); expect(result.messages).toBeUndefined();
   });
   it('probes running, dirty and all known-blocked directories while SSE is healthy, then fully scans on fallback', async () => {
@@ -103,78 +176,101 @@ describe('widget service', () => {
     h.permissions.mockResolvedValue([]); h.questions.mockResolvedValue([]);
     const previousInteractions = Object.fromEntries(Array.from({ length: 6 }, (_, i) => [`/repo${i}`, { permissions: [permission(`s${i}`)], questions: [] }]));
     // More blocked projects than the widget's three visible rows must remain watched.
-    const result = await readWidgetData({} as any, settings, 'v2', { probeAllDirectories: false, watchedDirectories: new Set(['/repo7', '/repo8', ...Object.keys(previousInteractions)]), previousInteractions });
+    const result = await readWidgetData(catalogSdk(), settings, 'v2', { probeAllDirectories: false, watchedDirectories: new Set(['/repo7', '/repo8', ...Object.keys(previousInteractions)]), previousInteractions });
     expect(h.permissions).toHaveBeenCalledTimes(8); expect(h.questions).toHaveBeenCalledTimes(8);
     expect(h.clients).toHaveBeenCalledTimes(11); expect(h.messages).toHaveBeenCalledTimes(3);
     expect(result.interactions?.permissions).toEqual([]);
     h.permissions.mockClear(); h.questions.mockClear();
-    await readWidgetData({} as any, settings, 'v2', { probeAllDirectories: true });
+    await readWidgetData(catalogSdk(), settings, 'v2', { probeAllDirectories: true });
     expect(h.permissions).toHaveBeenCalledTimes(20); expect(h.questions).toHaveBeenCalledTimes(20);
   });
   it('preserves unprobed interaction data and builds only the recent clients in an idle healthy project catalog', async () => {
     h.list.mockResolvedValue({ sessions: Array.from({ length: 20 }, (_, i) => session(`s${i}`, i, undefined, `/repo${i}`)), statuses: {} });
     const previous = { '/repo0': { permissions: [permission('s0')], questions: [] } };
-    const result = await readWidgetData({} as any, settings, 'v2', { probeAllDirectories: false, previousInteractions: previous });
+    const result = await readWidgetData(catalogSdk(), settings, 'v2', { probeAllDirectories: false, previousInteractions: previous });
     expect(h.permissions).not.toHaveBeenCalled(); expect(h.clients).toHaveBeenCalledTimes(3);
     expect(result.interactions?.permissions).toEqual(previous['/repo0'].permissions);
   });
   it('keeps event-derived retry sessions watched when the native catalog reports idle', async () => {
     h.list.mockResolvedValue({ sessions: [session('retry', 1, undefined, '/retry')], statuses: { retry: { type: 'idle' } } });
-    await readWidgetData({} as any, settings, 'v2', { probeAllDirectories: false, watchedSessionIds: new Set(['retry']) });
+    await readWidgetData(catalogSdk(), settings, 'v2', { probeAllDirectories: false, watchedSessionIds: new Set(['retry']) });
     expect(h.permissions).toHaveBeenCalledWith(expect.objectContaining({ directory: '/retry' }));
     expect(h.questions).toHaveBeenCalledOnce();
   });
 });
 
 describe('widget provider lifecycle', () => {
-  let runtime: ReturnType<typeof hookRuntime>;
-  let read: ReturnType<typeof vi.fn>;
-  let save: ReturnType<typeof vi.fn>;
-  let repaint: ReturnType<typeof vi.fn>;
-  let stored: any;
-  let input: any;
-  let resume: (state: string) => void;
-  async function mount(patch = {}) {
-    const { useWidgetState } = await loadTs('features/widgets/state/use-widget-state.ts', {
-    react: runtime.react,
-    'react-native': { AppState: { addEventListener: (_: string, callback: typeof resume) => { resume = callback; return { remove() {} }; } } },
-    "@/shared/i18n/index": { i18n: { t: (key: string) => key } },
-    "@/shared/protocol/opencode/contracts/events": { getEventSessionStatus: (event: any) => event.status },
-    "@/shared/presentation/format/todos": { deriveTodosFromMessages },
-    "@/features/widgets/services/widget-platform": { homeWidgetSupported: true, updateHomeWidget: repaint },
-    "@/features/sessions/model/session-utils": { mergeSessionStatuses },
-    "@/features/widgets/services/widget-service": { readWidgetData: read },
-    "@/features/widgets/model/widget-content": { recentWidgetSessions, widgetPlan, widgetAttention, widgetReply, widgetSession: (session: any, scope: string, _untitled: string, status = { type: 'idle' }) => ({ id: session.id, title: session.title, status: status.type, link: `opencodemobile://session/${session.id}?connectionScope=${scope}` }) },
-    "@/features/widgets/model/widget-snapshot": { hideWidgetPreviews },
-    "@/features/widgets/services/widget-snapshot-storage": { loadWidgetSnapshot: async () => stored, saveWidgetSnapshot: save }
-  }, { ...runtime.globals, Date });
-    input = { hydrated: true, connected: true, connectionScope: 'scope', catalogClient: {}, settings: {}, contract: 'v1',
+  type Input = Parameters<typeof useWidgetState>[0];
+  type Dataset = ReturnType<typeof dataset>;
+  let driver: ReturnType<typeof renderHook<Input, ReturnType<typeof useWidgetState>>>;
+  let input: Input;
+  let data: Promise<Dataset>;
+  let clock: ReturnType<typeof controlledClock>;
+  const { list: read, save, repaint } = h;
+
+  const runtime = {
+    get value() { return driver.result.current; },
+    update(patch: Partial<Input>) { input = { ...input, ...patch }; driver.rerender(input); },
+    settle: settleReact,
+    unmount() { driver.unmount(); },
+  };
+  async function refresh() { await act(async () => { await runtime.value.refreshWidgets(); }); }
+  function holdRefresh() {
+    let pending!: Promise<void>;
+    act(() => { pending = runtime.value.refreshWidgets(); });
+    return pending;
+  }
+  async function mount() {
+    input = {
+      hydrated: true, connected: true, connectionScope: 'scope', catalogClient: lifecycleCatalog(),
+      settings: { serverUrl: 'https://server', username: '', password: '', directory: '' }, contract: 'v1',
       isCurrentCatalogClient: () => true, showPreviews: true, currentSessionId: 'one', sessions: dataset().sessions,
-      todosBySession: { one: [{ content: 'plan step', status: 'pending', priority: 'medium' }] }, todoRecordsBySession: {}, ...patch };
-    runtime.mount(useWidgetState, input); await runtime.settle();
+      todosBySession: { one: [{ content: 'plan step', status: 'pending', priority: 'medium' }] }, todoRecordsBySession: {},
+    };
+    driver = renderHook(useWidgetState, input);
+    await settleReact();
   }
   beforeEach(() => {
-    runtime = hookRuntime(); stored = undefined;
-    read = vi.fn(async () => dataset()); save = vi.fn(async () => true); repaint = vi.fn(async () => {});
+    clock = controlledClock(1000);
+    h.stored = undefined;
+    save.mockResolvedValue(true);
+    read.mockImplementation(async () => dataset());
+    h.messages.mockImplementation(async (_scope, id) => {
+      const messages = (await data).messages;
+      if (!messages) throw new Error('Messages unavailable');
+      return { records: messages[id as keyof typeof messages] ?? [] };
+    });
+    h.permissions.mockImplementation(async () => {
+      const interactions = (await data).interactions;
+      if (!interactions) throw new Error('Interactions unavailable');
+      return interactions.permissions;
+    });
+    h.questions.mockImplementation(async () => (await data).interactions?.questions);
   });
+  function lifecycleCatalog() {
+    return catalogSdk('v1', () => {
+      data = Promise.resolve(read());
+      return data;
+    });
+  }
   it('loads independently of the library and refreshes global events, polling and resume', async () => {
     await mount(); expect(read).toHaveBeenCalledOnce(); expect(runtime.value.busy).toBe(true);
     const count = read.mock.calls.length;
-    runtime.value.handleWidgetEvent({ type: 'session.text.delta', location: { directory: '/other' } });
-    runtime.fire(1500); await runtime.settle(); expect(read).toHaveBeenCalledTimes(count + 1);
-    await runtime.value.refreshWidgets(); await runtime.settle();
-    resume('active'); await runtime.settle(); expect(read.mock.calls.length).toBe(count + 3);
+    act(() => { runtime.value.handleWidgetEvent({ type: 'session.text.delta', location: { directory: '/other' } } as OpencodeEvent); });
+    await clock.advance(1500); await runtime.settle(); expect(read).toHaveBeenCalledTimes(count + 1);
+    await refresh(); await runtime.settle();
+    act(() => { h.resume?.('active'); }); await runtime.settle(); expect(read.mock.calls.length).toBe(count + 3);
     runtime.unmount();
   });
   it('retains data and timestamps after failed surface reads and removes settled requests on success', async () => {
     await mount(); const previous = save.mock.calls.at(-1)![0];
     read.mockResolvedValueOnce({ ...dataset(), messages: undefined, interactions: undefined });
-    await runtime.value.refreshWidgets(); await runtime.settle();
+    await refresh(); await runtime.settle();
     expect(save.mock.calls.at(-1)![0].updatedAt).toBe(previous.updatedAt);
     expect(save.mock.calls.at(-1)![0].attention).toEqual(previous.attention);
     read.mockResolvedValueOnce({ ...dataset(), statuses: {}, interactions: { permissions: [], questions: [] } });
-    await runtime.value.refreshWidgets(); await runtime.settle();
-    expect(save.mock.calls.at(-1)![0].attention.total).toBe(0); expect(runtime.value.busy).toBe(false);
+    await refresh(); await runtime.settle();
+    expect(save.mock.calls.at(-1)![0].attention?.total).toBe(0); expect(runtime.value.busy).toBe(false);
     runtime.unmount();
   });
   it('keeps the safety poll active after a catalog failure while retaining the last snapshot', async () => {
@@ -184,25 +280,25 @@ describe('widget provider lifecycle', () => {
     read.mockRejectedValueOnce(new Error('catalog temporarily unavailable'));
     const warning = vi.spyOn(console, 'warn').mockImplementation(() => {});
     try {
-      await runtime.value.refreshWidgets(); await runtime.settle();
+      await refresh(); await runtime.settle();
       expect(runtime.value.busy).toBe(true);
       expect(save.mock.calls.at(-1)![0]).toEqual(last);
-      await runtime.value.refreshWidgets(); await runtime.settle();
+      await refresh(); await runtime.settle();
       expect(runtime.value.busy).toBe(false);
     } finally { warning.mockRestore(); runtime.unmount(); }
   });
   it('clears old connections and rejects a late response from the old client', async () => {
-    await mount(); const slow = deferred(); read.mockReturnValueOnce(slow.promise);
-    const old = runtime.value.refreshWidgets();
-    runtime.update({ connectionScope: 'new', catalogClient: {}, currentSessionId: undefined, sessions: [] }); await runtime.settle();
-    slow.resolve({ ...dataset(), messages: { one: [assistant('old server secret')] } }); await old; await runtime.settle();
+    await mount(); const slow = deferred<Dataset>(); read.mockReturnValueOnce(slow.promise);
+    const old = holdRefresh();
+    runtime.update({ connectionScope: 'new', catalogClient: lifecycleCatalog(), currentSessionId: undefined, sessions: [] }); await runtime.settle();
+    slow.resolve({ ...dataset(), messages: { ...dataset().messages, one: [assistant('old server secret')] } }); await old; await runtime.settle();
     expect(save.mock.calls.at(-1)![0].connectionScope).toBe('new');
     expect(JSON.stringify(save.mock.calls.at(-1)![0])).not.toContain('old server secret');
     runtime.unmount();
   });
   it('removes all persisted excerpts when previews are disabled, including queued publishes', async () => {
-    await mount(); const blocked = deferred(); save.mockImplementationOnce(() => blocked.promise);
-    const pending = runtime.value.refreshWidgets(); await runtime.settle();
+    await mount(); const blocked = deferred<boolean>(); save.mockImplementationOnce(() => blocked.promise);
+    const pending = holdRefresh(); await runtime.settle();
     const before = save.mock.calls.length;
     const repaintsBefore = repaint.mock.calls.length;
     runtime.update({ showPreviews: false });
@@ -217,14 +313,14 @@ describe('widget provider lifecycle', () => {
     runtime.unmount();
   });
   it('serializes writes and updates real plan steps without refetching other projects', async () => {
-    await mount(); const blocked = deferred(); save.mockImplementationOnce(() => blocked.promise);
+    await mount(); const blocked = deferred<boolean>(); save.mockImplementationOnce(() => blocked.promise);
     runtime.update({ todosBySession: { one: [{ content: 'updated step', status: 'completed', priority: 'medium' }] } });
     await runtime.settle(); const count = save.mock.calls.length;
     runtime.update({ currentSessionId: 'two' }); await runtime.settle();
     expect(save).toHaveBeenCalledTimes(count);
     blocked.resolve(true); await runtime.settle();
     expect(read).toHaveBeenCalledOnce();
-    expect(save.mock.calls.at(-1)![0].plan.session.id).toBe('two');
+    expect(save.mock.calls.at(-1)![0].plan?.session.id).toBe('two');
     runtime.unmount();
   });
 });
@@ -391,7 +487,7 @@ describe('compiled native widgets', () => {
   it('awaits every placed instance and catches individual failures without skipping other widgets', async () => {
     const runtime = nativeRuntime();
     const original = runtime.native.getWidgetInfo.getMockImplementation()!;
-    const delayed = deferred();
+    const delayed = deferred<typeof runtime.placed>();
     let calls = 0;
     runtime.native.getWidgetInfo.mockImplementation((name: string) => name === 'SessionWidget' && ++calls > 1 ? delayed.promise : original(name));
     runtime.native.drawWidgetById.mockImplementation((_config, _name, id) => { if (id === 0) throw new Error('native dispatch failed'); });
@@ -444,5 +540,3 @@ describe('compiled native widgets', () => {
     }
   });
 });
-
-vi.mock('@/features/sessions/runtime', () => import('@/features/sessions/model/session-utils'));
