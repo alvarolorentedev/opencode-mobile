@@ -30,7 +30,7 @@ import { useMissionWidget } from '@/features/widgets/runtime';
 import { clearWorkspacePresentation, hasWorkspaceDrafts } from '@/runtime/presentation/workspace-presentation';
 import type { ConnectionRecord, WorkspaceCatalog } from '@/shared/contracts/workspace';
 import { useQueryForeground } from '@/shared/server-data/client';
-import { useCallback, useEffect, useLayoutEffect, useMemo, useState, useSyncExternalStore, type PropsWithChildren, type SetStateAction } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useMemo, useSyncExternalStore, type PropsWithChildren, type SetStateAction } from 'react';
 import { usePathname } from 'expo-router';
 import { ActivityIndicator, View } from 'react-native';
 
@@ -48,11 +48,10 @@ export function WorkspaceProvider({ children }: PropsWithChildren) {
   const isHydrated = useAppHydration(core.persistence);
   const presentation = useAppStore((state) => state.presentation);
   // Catalog publications compose Query snapshots and command handles for the root view.
-  const [catalogPublications, setCatalogs] = useState<Record<string, { revision?: number; catalog: WorkspaceCatalog }>>({});
-  const publishCatalog = useCallback(({ id, revision }: ConnectionRecord, catalog: WorkspaceCatalog) => {
-    setCatalogs((current) => current[id]?.catalog === catalog && current[id]?.revision === revision
-      ? current : { ...current, [id]: { revision, catalog } });
-  }, []);
+  const catalogPublications = useAppStore((state) => state.catalogs);
+  const publishCatalog = useCallback((entry: ConnectionRecord, catalog: WorkspaceCatalog) => {
+    core.store.getState().setCatalog(entry, catalog);
+  }, [core]);
   const profiles = useAppStore((state) => state.shell.profiles);
   const setProfiles = useCallback((value: SetStateAction<ConnectionProfile[]>) => core.store.getState().setShellValue('profiles', value), [core]);
   const registryState = useAppStore((state) => state.registry);
@@ -123,12 +122,7 @@ export function WorkspaceProvider({ children }: PropsWithChildren) {
     core.store.getState().clearPromptOutboxes(id);
     core.store.getState().clearWorkspaceUi(id);
     clearWorkspacePresentation(presentation, id);
-    setCatalogs((current) => {
-      if (!(id in current)) return current;
-      const next = { ...current };
-      delete next[id];
-      return next;
-    });
+    core.store.getState().removeCatalog(id);
   }, [core, removeWorkspaceConnection, presentation]);
   const profileRemoved = useCallback(async (profile: ConnectionProfile) => removeConnection(getConnectionUiScope(profile)), [removeConnection]);
   const connectionProfiles = useConnectionProfiles({ clearCapabilitiesSnapshots, settings, switchConnection, updateSettings, profiles, setProfiles, onSaved: profileSaved, onRemoved: profileRemoved });

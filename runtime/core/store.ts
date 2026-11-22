@@ -7,7 +7,7 @@ import type { PendingPrompt, PromptInput } from '@/shared/protocol/opencode/prom
 import type { ChatPreferences } from '@/shared/preferences/opencode-preferences';
 import type { FavoriteSession, SessionDeepLinkTarget } from '@/features/sessions/index';
 import type { DiffScope, HiddenProjectsByConnection } from '@/features/projects/index';
-import type { ConnectionRecord, WorkspaceTarget } from '@/shared/contracts/workspace';
+import type { ConnectionRecord, WorkspaceTarget, WorkspaceCatalog } from '@/shared/contracts/workspace';
 import type { ConversationInputPhase, ConversationReadbackPhase } from '@/features/voice/index';
 import type { PendingConfirmation } from '@/features/voice/runtime';
 import type { FileClipboardEntry } from '@/features/projects/runtime';
@@ -37,6 +37,11 @@ export type RegistryState = {
   lastHealthyConnectionId?: string;
   previousHealthyConnectionId?: string;
   ready: boolean;
+};
+
+export type CatalogPublication = {
+  revision?: number;
+  catalog: WorkspaceCatalog;
 };
 
 export type SelectionState = {
@@ -160,6 +165,7 @@ export type AppState = {
   selection: Record<string, SelectionState>;
   chat: Record<string, ChatUiState>;
   prompt: Record<string, PromptUiState>;
+  catalogs: Record<string, CatalogPublication>;
   conversation: Record<string, ConversationRuntimeState | undefined>;
   terminal: Record<string, TerminalDeviceState | undefined>;
   transcriptUi: Record<string, TranscriptUiState | undefined>;
@@ -178,6 +184,8 @@ export type AppState = {
   setSelection: (scopeKey: string, patch: Partial<SelectionState> | ((current: SelectionState) => Partial<SelectionState>)) => void;
   setChat: (scopeKey: string, patch: Partial<ChatUiState> | ((current: ChatUiState) => Partial<ChatUiState>)) => void;
   setPrompt: (scopeKey: string, patch: Partial<PromptUiState> | ((current: PromptUiState) => Partial<PromptUiState>)) => void;
+  setCatalog: (entry: Pick<ConnectionRecord, 'id' | 'revision'>, catalog: WorkspaceCatalog) => void;
+  removeCatalog: (connectionId: string) => void;
   clearPromptOutboxes: (connectionId: string) => void;
   setConversationValue: <K extends keyof ConversationRuntimeState>(scopeKey: string, key: K,
     change: ConversationRuntimeState[K] | ((current: ConversationRuntimeState[K]) => ConversationRuntimeState[K]),
@@ -213,6 +221,7 @@ export function createAppStore<T>(defaults: AppStoreDefaults, options?: PersistO
     selection: {},
     chat: {},
     prompt: {},
+    catalogs: {},
     conversation: {},
     terminal: {},
     transcriptUi: {},
@@ -263,6 +272,17 @@ export function createAppStore<T>(defaults: AppStoreDefaults, options?: PersistO
           [scopeKey]: { ...current, ...(typeof patch === 'function' ? patch(current) : patch) },
         },
       };
+    }),
+    setCatalog: (entry, catalog) => set((state) => {
+      const current = state.catalogs[entry.id];
+      if (current?.catalog === catalog && current.revision === entry.revision) return state;
+      return { catalogs: { ...state.catalogs, [entry.id]: { revision: entry.revision, catalog } } };
+    }),
+    removeCatalog: (connectionId) => set((state) => {
+      if (!(connectionId in state.catalogs)) return state;
+      const next = { ...state.catalogs };
+      delete next[connectionId];
+      return { catalogs: next };
     }),
     clearPromptOutboxes: (connectionId) => set((state) => ({
       prompt: Object.fromEntries(Object.entries(state.prompt).map(([key, value]) => [key,

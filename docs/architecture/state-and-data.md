@@ -27,6 +27,9 @@ the shared profile, setup and service controls once. Query owns the shared
 session catalog and routine server responses. Feature hooks select scoped
 facts from Query and the app store. The core binds commands and reconciliation
 for each retained project key to the connection manager's realtime scopes.
+Catalog projections are published once per connection revision through the
+app store's catalog action; the root selects only entries matching the current
+connection revision. There is no provider-local publication state.
 
 The workspace commands in `runtime/core/commands/workspace.ts` register project
 demand and wait for a matching realtime binding before opening a chat. They

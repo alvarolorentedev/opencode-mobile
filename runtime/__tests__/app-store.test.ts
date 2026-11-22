@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import { createAppStore } from '@/runtime/core/store';
 import type { ChatPreferences } from '@/shared/preferences/opencode-preferences';
+import type { WorkspaceCatalog } from '@/shared/contracts/workspace';
 
 const defaults = {
   settings: { serverUrl: 'http://one', username: '', password: '', directory: '' },
@@ -41,6 +42,18 @@ describe('app store', () => {
     expect(store.getState().registry.ready).toBe(true);
     expect(store.getState().registry.focus).toEqual({ connectionId: 'c', projectPath: '/p' });
     expect(store.getState().registry.connections).toBe(connections);
+  });
+
+  it('projects catalogs by connection revision and removes them', () => {
+    const store = createAppStore(defaults);
+    const catalog = { sessions: [], statuses: {}, refresh: async () => undefined, removeSession: () => undefined } as unknown as WorkspaceCatalog;
+    store.getState().setCatalog({ id: 'c', revision: 2 }, catalog);
+    expect(store.getState().catalogs.c).toEqual({ revision: 2, catalog });
+    const before = store.getState().catalogs;
+    store.getState().setCatalog({ id: 'c', revision: 2 }, catalog);
+    expect(store.getState().catalogs).toBe(before);
+    store.getState().removeCatalog('c');
+    expect(store.getState().catalogs.c).toBeUndefined();
   });
 
   it('scopes selection by workspace and preserves sibling scopes', () => {
