@@ -3,20 +3,23 @@ import { describe, expect, it, vi } from 'vitest';
 import { loadTs, hookRuntime } from '../../tests/helpers/runtime.mjs';
 import { createAppStore } from '@/runtime/core/store';
 import type { createWorkspaceCommands as WorkspaceCommands } from '@/runtime/core/commands/workspace';
+import type { createConnectionCommands as ConnectionCommands } from '@/runtime/core/commands/connection';
 
 const identity = { getConnectionScope: (value: any) => `${value.serverUrl}:${value.username}`, getConnectionUiScope: (value: any) => `${value.serverUrl}:${value.username}` };
 const keys = { sessionKey: (value: any) => JSON.stringify([value.connectionId, value.projectPath, value.sessionId]) };
 
-function mountWorkspaceConnections(driver: ReturnType<typeof hookRuntime>, useWorkspaceConnections: any, createWorkspaceCommands: typeof WorkspaceCommands, shell: any) {
+function mountWorkspaceConnections(driver: ReturnType<typeof hookRuntime>, useWorkspaceConnections: any, createWorkspaceCommands: typeof WorkspaceCommands, createConnectionCommands: typeof ConnectionCommands, shell: any) {
   const store = createAppStore({ settings: shell.settings, chatPreferences: shell.chatPreferences, controlPlaneUrl: '' });
-  const commands = createWorkspaceCommands({ store });
+  store.getState().setShellValue('onboardingVersion', shell.onboardingVersion);
+  const workspace = createWorkspaceCommands({ store });
+  const connections = { get: () => undefined };
+  const commands = { workspace, connection: createConnectionCommands({ store, connections }, workspace) };
   const getRegistry = () => store.getState().registry;
-  const getShell = () => shell;
-  const { setRegistry } = store.getState();
   driver.mount(() => {
     const registry = driver.react.useSyncExternalStore(store.subscribe, getRegistry);
-    return useWorkspaceConnections(shell, true, { registry, commands, getRegistry, getShell, setRegistry });
+    return useWorkspaceConnections(true, { registry, commands, hiddenProjects: store.getState().shell.hiddenProjects });
   }, {});
+  return store;
 }
 describe('multi-server contracts', () => {
   it('keeps colliding session identities separate and interleaves by current/running/recency', async () => {
@@ -241,7 +244,7 @@ it('keeps lifecycle decisions current without resetting retained runtimes', asyn
     projectPathsByConnectionRef: { current: paths }, setProjectPathsByConnection: vi.fn(), setSettings: vi.fn() };
   const writer = Object.assign(async () => {}, { preserveUnread: vi.fn() });
   const workspaceFocus = await loadTs('runtime/workspace/workspace-focus.ts');
-  const { useWorkspaceConnections, createWorkspaceCommands } = await loadTs(['runtime/workspace/use-workspace-connections.ts', 'runtime/core/commands/workspace.ts'], {
+  const { useWorkspaceConnections, createWorkspaceCommands, createConnectionCommands } = await loadTs(['runtime/workspace/use-workspace-connections.ts', 'runtime/core/commands/workspace.ts', 'runtime/core/commands/connection.ts'], {
     react: driver.react,
     '@react-native-async-storage/async-storage': { __esModule: true, default: { getItem: async () => 'stored', setItem: async () => {} } },
     '@/runtime/workspace/workspace-focus': workspaceFocus,
@@ -257,7 +260,7 @@ it('keeps lifecycle decisions current without resetting retained runtimes', asyn
     "@/shared/storage/workspace-storage": { WORKSPACES_STORAGE_KEY: 'workspaces', parseWorkspaces: () => ({ connections: entries, focus: { connectionId: 'a', projectPath: '/repo' } }), serializeWorkspaces: () => 'stored' },
     "@/shared/contracts/workspace": { workspaceKey: ({ connectionId, projectPath }: any) => JSON.stringify([connectionId, projectPath]) }
   }, driver.globals);
-  mountWorkspaceConnections(driver, useWorkspaceConnections, createWorkspaceCommands, shell);
+  mountWorkspaceConnections(driver, useWorkspaceConnections, createWorkspaceCommands, createConnectionCommands, shell);
   const isEnabled = driver.value.isEnabled;
   await driver.settle();
   expect(isEnabled('a')).toBe(true);
@@ -308,20 +311,19 @@ it('persists the focused auto-model choice and ignores background workspace copi
   const driver = hookRuntime();
   const entries = ['a', 'b'].map((id) => ({ id, name: id, settings: { serverUrl: `http://${id}`, username: '', password: '', directory: '' }, projects: ['/repo'], enabled: true, preferences: {} }));
   const paths = { 'http://a:': ['/repo'], 'http://b:': ['/repo'] };
-  let chatPreferences: any = { autoModel: { enabled: false, classifier: 'server', tiers: { simple: 'auto', standard: 'auto', complex: 'auto' }, protectLongChats: true } };
+  const chatPreferences: any = { autoModel: { enabled: false, classifier: 'server', tiers: { simple: 'auto', standard: 'auto', complex: 'auto' }, protectLongChats: true } };
   const shell: any = {
     settings: entries[0].settings,
     onboardingVersion: 1,
-    get chatPreferences() { return chatPreferences; },
+    chatPreferences,
     projectPathsByConnection: paths,
     projectPathsByConnectionRef: { current: paths },
     setProjectPathsByConnection: vi.fn(),
     setSettings: vi.fn(),
-    setChatPreferences: vi.fn((updater: any) => { chatPreferences = typeof updater === 'function' ? updater(chatPreferences) : updater; }),
   };
   const writer = Object.assign(async () => {}, { preserveUnread: vi.fn() });
   const workspaceFocus = await loadTs('runtime/workspace/workspace-focus.ts');
-  const { useWorkspaceConnections, createWorkspaceCommands } = await loadTs(['runtime/workspace/use-workspace-connections.ts', 'runtime/core/commands/workspace.ts'], {
+  const { useWorkspaceConnections, createWorkspaceCommands, createConnectionCommands } = await loadTs(['runtime/workspace/use-workspace-connections.ts', 'runtime/core/commands/workspace.ts', 'runtime/core/commands/connection.ts'], {
     react: driver.react,
     '@react-native-async-storage/async-storage': { __esModule: true, default: { getItem: async () => 'stored', setItem: async () => {} } },
     '@/runtime/workspace/workspace-focus': workspaceFocus,
@@ -337,23 +339,23 @@ it('persists the focused auto-model choice and ignores background workspace copi
     "@/shared/storage/workspace-storage": { WORKSPACES_STORAGE_KEY: 'workspaces', parseWorkspaces: () => ({ connections: entries, focus: { connectionId: 'a', projectPath: '/repo' } }), serializeWorkspaces: () => 'stored' },
     "@/shared/contracts/workspace": { workspaceKey: ({ connectionId, projectPath }: any) => JSON.stringify([connectionId, projectPath]) }
   }, driver.globals);
-  mountWorkspaceConnections(driver, useWorkspaceConnections, createWorkspaceCommands, shell);
+  const store = mountWorkspaceConnections(driver, useWorkspaceConnections, createWorkspaceCommands, createConnectionCommands, shell);
   await driver.settle();
 
   const enabled = { ...chatPreferences, autoModel: { ...chatPreferences.autoModel, enabled: true } };
   driver.value.updatePreferences('a', enabled);
   driver.flush();
   expect(driver.value.connections.find((entry: any) => entry.id === 'a').preferences.autoModel.enabled).toBe(true);
-  expect(chatPreferences.autoModel.enabled).toBe(true);
+  expect(store.getState().shell.chatPreferences.autoModel.enabled).toBe(true);
 
   // A background workspace applying its own stale preferences must not turn the
   // focused connection's routing off in the shell or the global persistence key.
-  const background = { ...chatPreferences, autoModel: { ...chatPreferences.autoModel, enabled: false, classifier: 'local' } };
+  const background = { ...enabled, autoModel: { ...enabled.autoModel, enabled: false, classifier: 'local' } };
   driver.value.updatePreferences('b', background);
   driver.flush();
   expect(driver.value.connections.find((entry: any) => entry.id === 'b').preferences.autoModel.enabled).toBe(false);
-  expect(chatPreferences.autoModel.enabled).toBe(true);
-  expect(chatPreferences.autoModel.classifier).toBe('server');
+  expect(store.getState().shell.chatPreferences.autoModel.enabled).toBe(true);
+  expect(store.getState().shell.chatPreferences.autoModel.classifier).toBe('server');
   driver.unmount();
 });
 
@@ -386,7 +388,7 @@ it('moves chat focus to a connected server when the focused server fails', async
     projectPathsByConnectionRef: { current: paths }, setProjectPathsByConnection: vi.fn(), setSettings: vi.fn() };
   const writer = Object.assign(async () => {}, { preserveUnread: vi.fn() });
   const workspaceFocus = await loadTs('runtime/workspace/workspace-focus.ts');
-  const { useWorkspaceConnections, createWorkspaceCommands } = await loadTs(['runtime/workspace/use-workspace-connections.ts', 'runtime/core/commands/workspace.ts'], {
+  const { useWorkspaceConnections, createWorkspaceCommands, createConnectionCommands } = await loadTs(['runtime/workspace/use-workspace-connections.ts', 'runtime/core/commands/workspace.ts', 'runtime/core/commands/connection.ts'], {
     react: driver.react,
     '@react-native-async-storage/async-storage': { __esModule: true, default: { getItem: async () => 'stored', setItem: async () => {} } },
     '@/runtime/workspace/workspace-focus': workspaceFocus,
@@ -401,7 +403,7 @@ it('moves chat focus to a connected server when the focused server fails', async
     "@/shared/storage/workspace-storage": { WORKSPACES_STORAGE_KEY: 'workspaces', parseWorkspaces: () => ({ connections: entries, focus: { connectionId: 'b', projectPath: '/repo' } }), serializeWorkspaces: () => 'stored' },
     "@/shared/contracts/workspace": { workspaceKey: ({ connectionId, projectPath }: any) => JSON.stringify([connectionId, projectPath]) }
   }, driver.globals);
-  mountWorkspaceConnections(driver, useWorkspaceConnections, createWorkspaceCommands, shell);
+  mountWorkspaceConnections(driver, useWorkspaceConnections, createWorkspaceCommands, createConnectionCommands, shell);
   await driver.settle();
   const snapshot = (id: string, status: string) => ({ enabled: true, native: { settings: entries.find((entry) => entry.id === id)!.settings }, suspend: vi.fn(),
     values: { projectsValue: { activeProjectPath: '/repo' }, conversationValue: { conversation: { active: false }, toggleConversationMode: vi.fn(async () => {}) }, connectionValue: { connection: { status } } } });

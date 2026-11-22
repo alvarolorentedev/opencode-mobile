@@ -12,7 +12,9 @@ through these commands. Sending, aborting, inbox admission and reconnect
 recovery use app-core prompt commands. Model routing runs when the command
 submits a prompt. Task settlement uses the same workspace command owner and
 checks the credential after the server read. The retained project still
-supplies command bindings. Connection commands and event dispatch remain.
+supplies command bindings. Connection commands own connect, disconnect, saved
+profile activation, credential changes, registry restoration and failover.
+Event dispatch and removal of the retained composition remain.
 
 Explicit session opening and automatic bootstrap share the app-core selection
 command. It reads the project session catalog and supersedes pending bootstrap

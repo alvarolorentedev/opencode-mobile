@@ -154,11 +154,16 @@ npm run validate:commit
   skip. The 63 focused tests, docs, web export and all 92 chat, Cloud Link,
   network, realtime and multi-server browser tests passed. The focused race
   check rotates credentials during admission and verifies no stale Query write.
-- C3c. Prompt routing and task settlement run in plain commands. The commit
+- C3c, `c59c21ca`. Prompt routing and task settlement run in plain commands. The commit
   gate passed with 1,270 tests and one existing skip. The 90 focused tests,
   docs, web export and 60 chat, auto-model, settings, onboarding, network and
   multi-server browser tests passed. Settlement tests cover credential changes
   and the fast completion path after observing a busy status.
+- C4. The connection core owns explicit actions, saved profile activation,
+  registry restoration, credential edits and failover. The commit gate passed
+  with 1,271 tests and one existing skip. The 207 focused tests, docs, web
+  export and 97 browser tests passed across Cloud Link, manual connections,
+  multi-server, network, onboarding and Settings.
 
 ## Loop protocol
 

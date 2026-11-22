@@ -1,7 +1,8 @@
 import { memo, useCallback, useLayoutEffect, useMemo, type Dispatch, type SetStateAction } from 'react';
 import type { OpencodeConnectionSettings } from '@/shared/protocol/opencode/client';
 import { defaultChatPreferences, type ChatPreferences } from '@/shared/preferences/opencode-preferences';
-import { serverPreferences, type useWorkspaceConnections } from '@/runtime/workspace/use-workspace-connections';
+import type { useWorkspaceConnections } from '@/runtime/workspace/use-workspace-connections';
+import { serverPreferences } from '@/runtime/core/commands/connection';
 import { useOpencodeProviderComposition } from '@/runtime/composition/use-opencode-provider-composition';
 import { workspaceKey } from '@/shared/contracts/workspace';
 import type { WorkspaceRuntimeInput, WorkspaceSnapshot } from '@/runtime/workspace/workspace-types';

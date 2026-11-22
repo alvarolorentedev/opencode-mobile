@@ -1191,13 +1191,23 @@ safety gates and FOSS exclusion.
 
 ## Multi-server V2 ownership
 
-`use-workspace-connections.ts` owns explicit connect/disconnect, restoration, and composite connection/project identity. A runtime stays mounted when another chat or tab is selected. Its clients, generations, transcript windows, prompt inbox, approvals, file browser and PTY connections remain separate. `shared-event-stream.ts` fans one server subscription out to retained projects; events are still filtered by directory and the existing polling/reconciliation paths remain active.
+`runtime/core/commands/connection.ts` owns explicit connection actions, saved
+profile activation and registry restoration. Workspace commands own the
+composite connection and project identity. A runtime stays mounted when
+another chat or tab is selected. Its transcript windows, prompt inbox,
+approvals, file browser and PTY connections remain scoped to the project.
+`shared-event-stream.ts` fans one server subscription out to retained projects.
+Directory filtering and polling cover missed events.
 
 Hydration, compatibility settings writes, device sharing, Cloud Link setup/billing, updates, language, audio and native surfaces have one app-wide owner. Favorites keep their existing connection-scoped persistence; projects and sessions are always derived from the server catalogs. Activity observation has one owner per server, with one app-wide Android notification publisher combining counts and releasing only the disconnected server. Native shortcuts carry each row's connection scope; widget publication remains app-wide.
 
 The chat library combines the unscoped server catalogs with live project state. It keeps current/running/recency order, uses composite keys and labels each row with its server. Project selection changes chat/project focus. Terminal selection and Settings inspection are independent. RN Primitives portals explicitly restore their caller's workspace scope; otherwise their children would inherit the app host's current chat server.
 
-Chat focus fails over automatically. When the focused runtime reports an error, or its connection is disabled or removed, `use-workspace-connections.ts` selects the last healthy connected server, then any other connected server, and persists that focus. The failed server stays registered and enabled so Settings can reconnect it; if no other server is connected, the existing Chat connection panel remains the terminal state.
+Chat focus fails over automatically. When the focused runtime reports an
+error, or its connection is disabled or removed, the connection command
+selects the last healthy connected server, then any other connected server.
+The failed server stays registered and enabled for reconnect in Settings.
+When all servers are disconnected, Chat shows its connection panel.
 
 Terminal renderers remain mounted when hidden. Hidden instances cannot accept input or layout resize; disconnect detaches transports without deleting remote PTYs. Composer and editor drafts and transcript reading positions live in an in-memory presentation map, keyed by owning server/project/session or file. They survive navigation, not process termination. No external store or dependency was introduced.
 

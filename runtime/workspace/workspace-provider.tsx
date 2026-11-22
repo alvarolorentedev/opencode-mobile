@@ -23,7 +23,8 @@ import { useAppCore, useAppStore } from '@/runtime/core/context';
 import { useShareState } from '@/features/sharing/runtime';
 import { useVoiceSetupTest, VoiceSetupTestContext } from '@/features/voice/runtime';
 import { useWorkspaceAutoApprove } from '@/runtime/composition/use-workspace-auto-approve';
-import { serverPreferences, useWorkspaceConnections } from '@/runtime/workspace/use-workspace-connections';
+import { useWorkspaceConnections } from '@/runtime/workspace/use-workspace-connections';
+import { serverPreferences } from '@/runtime/core/commands/connection';
 import { useWorkspaceShellState } from '@/runtime/workspace/use-workspace-shell-state';
 import { useWorkspaceValues, type WorkspaceValueOverrides } from '@/runtime/workspace/use-workspace-values';
 import { WorkspaceActionsContext, WorkspaceContext, type WorkspaceRegistry } from '@/runtime/workspace/workspace-context';
@@ -61,14 +62,10 @@ export function WorkspaceProvider({ children }: PropsWithChildren) {
   const setProfiles = useCallback((value: SetStateAction<ConnectionProfile[]>) => core.store.getState().setShellValue('profiles', value), [core]);
   const onboardingCompleted = isOnboardingComplete(shell.onboardingVersion);
   const registryState = useAppStore((state) => state.registry);
-  const getShell = useCallback(() => core.store.getState().shell, [core]);
-  const getRegistry = useCallback(() => core.store.getState().registry, [core]);
-  const manager = useWorkspaceConnections(shell, isHydrated, {
+  const manager = useWorkspaceConnections(isHydrated, {
     registry: registryState,
-    commands: core.commands.workspace,
-    getRegistry,
-    getShell,
-    setRegistry: core.store.getState().setRegistry,
+    commands: core.commands,
+    hiddenProjects: shell.hiddenProjects,
   });
   useWorkspaceAutoApprove(manager);
   const { updateSettings: updateWorkspaceSettings, retry, change, removeConnection: removeWorkspaceConnection, connectedWorkspace, isEnabled } = manager;

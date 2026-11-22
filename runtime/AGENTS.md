@@ -10,6 +10,8 @@ and [feature boundaries](../docs/architecture/feature-boundaries.md).
   [ADR 0051](../docs/adr/0051-app-core-state-tiers.md). React mounts it once.
 - `runtime/core/commands/workspace.ts`: project demand and readiness, workspace
   focus, local/external navigation, and worktree chat creation.
+- `runtime/core/commands/connection.ts`: connection actions, profile activation,
+  registry restoration and automatic failover.
 - `runtime/workspace/workspace-provider.tsx`: coordinates the app-store registry/focus, root persistence,
   native coordinators, and the single connectivity monitor.
 - `runtime/connections/connection-lifecycle.ts`: plain connection state

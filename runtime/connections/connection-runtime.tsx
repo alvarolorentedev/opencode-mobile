@@ -54,11 +54,11 @@ export function useConnectionDemand(activeId: string | undefined, online: boolea
 }
 
 function useManagedConnection(entry: ConnectionRecord) {
-  const { connections } = useAppCore();
+  const { connections, commands } = useAppCore();
   const managerForThisId = useCallback(() => connections.get(entry.id), [connections, entry.id]);
   const manager = useSyncExternalStore(connections.subscribe, managerForThisId, managerForThisId);
   const state = useSyncExternalStore(manager?.subscribe ?? noSubscription, manager?.getState ?? readIdle, readIdle);
-  const connect = useCallback(() => managerForThisId()?.connect() ?? Promise.resolve(IDLE.connection), [managerForThisId]);
+  const connect = useCallback(() => commands.connection.connect(entry.id), [commands.connection, entry.id]);
   const reconnect = useSyncExternalStore(manager?.retry.subscribe ?? noSubscription, manager?.retry.getSnapshot ?? readNoRetry, readNoRetry);
   return useMemo(() => ({
     connection: entry.enabled ? state.connection : IDLE.connection,

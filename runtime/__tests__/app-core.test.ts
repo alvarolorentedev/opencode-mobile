@@ -3,6 +3,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { createAppCore } from '@/runtime/core/create-app-core';
 import type { WorkspaceSnapshot } from '@/runtime/workspace/workspace-types';
 import type { ChatPreferences } from '@/shared/preferences/opencode-preferences';
+import { getConnectionUiScope } from '@/shared/contracts/connection-scope';
 import { workspaceKey, type WorkspaceTarget } from '@/shared/contracts/workspace';
 import { connectionQueryKey, projectQueryKey } from '@/shared/server-data/keys';
 import type { ScopedOpencodeClient } from '@/shared/protocol/opencode/client';
@@ -46,6 +47,11 @@ vi.mock('@/features/ai/runtime', () => ({
   capabilitiesOptions: () => ({ queryKey: ['capabilities'] }),
 }));
 vi.mock('@/shared/server-data/catalogs', () => ({ configurationOptions: () => ({ queryKey: ['configuration'] }) }));
+vi.mock('@react-native-async-storage/async-storage', () => ({ default: {} }));
+vi.mock('expo-constants', () => ({ default: { expoConfig: { extra: {} } } }));
+vi.mock('expo-crypto', () => ({}));
+vi.mock('expo-secure-store', () => ({}));
+vi.mock('react-native', () => ({ Platform: { OS: 'web' } }));
 
 const settings = { serverUrl: 'http://127.0.0.1:4096', username: '', password: '', directory: '' };
 const newCore = () => createAppCore({ settings, chatPreferences: {} as ChatPreferences, controlPlaneUrl: '' });
@@ -91,6 +97,25 @@ describe('app core', () => {
     expect(core.queryClient.getQueryData(['probe'])).toBe(42);
     core.commands.workspace.dispose();
     core.queryClient.clear();
+  });
+
+  it('revises credentials for the selected server while preserving the other connection', async () => {
+    const core = newCore();
+    const connectionId = getConnectionUiScope(settings);
+    const target = { connectionId, projectPath: '/repo' };
+    connectedProject(core, connectionId, target.projectPath);
+    connectedProject(core, 'other', '/other');
+    core.commands.workspace.select(target);
+
+    core.commands.connection.updateSettings(connectionId, { ...settings, password: 'replacement' });
+
+    expect(core.store.getState().registry.connections).toMatchObject([
+      { id: connectionId, settings: { password: 'replacement' }, enabled: false, revision: 1, authRevision: 1 },
+      { id: 'other', settings: { password: '' }, enabled: true },
+    ]);
+    expect(core.store.getState().shell.settings.password).toBe('replacement');
+    await expect(core.commands.connection.connect(connectionId)).resolves.toMatchObject({ status: 'idle' });
+    core.commands.workspace.dispose();
   });
 
   it('keeps terminal and inspection independent and cancels a late external session before committing focus', async () => {

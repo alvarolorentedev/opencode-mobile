@@ -4,6 +4,7 @@ import type { CommandContext } from './commands/context';
 import { createWorkspaceCommands } from './commands/workspace';
 import { createSessionCommands } from './commands/session';
 import { createPromptCommands } from './commands/prompt';
+import { createConnectionCommands } from './commands/connection';
 
 import { createAppStore, type AppStoreDefaults } from './store';
 
@@ -12,6 +13,7 @@ export type AppCore = CommandContext & {
     workspace: ReturnType<typeof createWorkspaceCommands>;
     session: ReturnType<typeof createSessionCommands>;
     prompt: ReturnType<typeof createPromptCommands>;
+    connection: ReturnType<typeof createConnectionCommands>;
   };
 };
 
@@ -27,7 +29,9 @@ export function createAppCore(defaults: AppStoreDefaults): AppCore {
     connections: createConnectionRegistry({ store, queryClient }),
     clock: () => Date.now(),
   };
+  const workspace = createWorkspaceCommands(context);
   return { ...context, commands: {
-    workspace: createWorkspaceCommands(context), session: createSessionCommands(context), prompt: createPromptCommands(context),
+    workspace, session: createSessionCommands(context), prompt: createPromptCommands(context),
+    connection: createConnectionCommands(context, workspace),
   } };
 }
