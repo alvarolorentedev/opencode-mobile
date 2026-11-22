@@ -2,13 +2,10 @@ import type { Session } from '@/shared/protocol/opencode/types';
 import type { useWorkspaceConnections } from '@/runtime/workspace/use-workspace-connections';
 import type { NewWorktreeChatResult, NewWorktreeChatTarget, WorkspaceCatalog, WorkspaceTarget } from '@/shared/contracts/workspace';
 import type { WorkspaceValues } from '@/runtime/workspace/workspace-types';
-import { createContext, useContext, useEffect, useMemo, useState, type PropsWithChildren } from 'react';
-import { ActivityIndicator, View } from 'react-native';
+import { createContext, useContext, useEffect, useMemo, useState } from 'react';
 import type { MissionOverview } from '@/features/sessions/runtime';
 import { useAppStore } from '@/runtime/core/context';
-import { useWorkspaceDomainValue, WorkspaceScopeContext, WorkspaceValuesContext } from '@/runtime/core/workspace-scope';
-import { PreferencesContext } from '@/shared/preferences/context';
-export { WorkspaceScopeContext };
+import { useWorkspaceDomainValue } from '@/runtime/core/workspace-selectors';
 
 export type WorkspaceRegistry = ReturnType<typeof useWorkspaceConnections> & {
   createChat: (target: WorkspaceTarget) => Promise<Session>;
@@ -44,7 +41,7 @@ export function useWorkspaceActions() {
 export function useWorkspacePresentation() {
   return useAppStore((state) => state.presentation);
 }
-export function useWorkspacePreferences(target: WorkspaceTarget) {
+export function useWorkspacePreferences(target?: WorkspaceTarget) {
   return useWorkspaceDomainValue((values) => values.preferencesValue, 'useWorkspacePreferences', target);
 }
 export function useRetainedWorkspaceTarget(target?: WorkspaceTarget) {
@@ -65,15 +62,4 @@ export function useRetainedWorkspaceTarget(target?: WorkspaceTarget) {
     const [connectionId, projectPath] = JSON.parse(availableKey) as [string, string];
     return { connectionId, projectPath };
   }, [availableKey]);
-}
-export function WorkspaceScope({ target, children }: PropsWithChildren<{ target?: WorkspaceTarget }>) {
-  const registry = useWorkspaces();
-  const resolvedTarget = useRetainedWorkspaceTarget(target);
-  const values = resolvedTarget ? registry.valuesFor(resolvedTarget) : undefined;
-  return values ? <WorkspaceScopeContext.Provider value={resolvedTarget}>
-    <WorkspaceValuesContext.Provider value={values}>
-      <PreferencesContext.Provider value={values.preferencesValue}>{children}</PreferencesContext.Provider>
-    </WorkspaceValuesContext.Provider>
-  </WorkspaceScopeContext.Provider>
-    : <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}><ActivityIndicator /></View>;
 }

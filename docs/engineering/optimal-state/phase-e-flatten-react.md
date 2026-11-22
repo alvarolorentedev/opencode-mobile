@@ -1,7 +1,9 @@
 # Phase E — Flatten React
 
-Status: **in progress**. Terminal screens and retained PTY renderers use
-explicit workspace targets. Settings and portal scope migration remain.
+Status: **in progress**. Retained Terminal and Settings panes pass explicit
+workspace targets through their screens and dialogs. Shared portal components
+keep named modal hosts. The projection registry and update-blocker exception
+remain.
 
 Goal: remove the remaining scope/provider carriers from React. The app mounts
 one core provider and one Query provider; workspaces are keys, not mounted
@@ -14,14 +16,13 @@ Start only after Phase D is complete and green.
 
 ## What remains today
 
-- `runtime/workspace/workspace-context.tsx` owns `WorkspaceScope`,
-  `WorkspaceValuesContext`, `WorkspaceContext` and `WorkspaceActionsContext`.
+- `runtime/workspace/workspace-context.tsx` owns `WorkspaceContext` and
+  `WorkspaceActionsContext` for registry access and commands.
 - `runtime/workspace/workspace-provider.tsx` still owns the snapshot registry,
   `retainedFocus`, `publish`, `forget`, `valuesFor` and per-workspace
   `WorkspaceRuntime` mounts.
-- `runtime/core/workspace-scope.ts` carries scoped values for retained panes.
-- `runtime/ui.ts` is the shared-UI runtime exception.
-- The shared controls listed in the architecture doc import it.
+- `runtime/core/workspace-selectors.ts` selects the retained project projection.
+- Three shared controls still import the update blocker through `runtime/ui.ts`.
 - `shared/contracts/domain.ts` is still a type hub.
 
 ## Target shape

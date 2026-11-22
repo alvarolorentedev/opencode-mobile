@@ -109,7 +109,7 @@ Used primarily by tab icons.
 - mounts the application core and workspace shell
 
 App commands live in `runtime/core/commands/`. The scope selectors live in
-`runtime/core/workspace-scope.ts`. The entrypoint stays within the 60-line ratchet.
+`runtime/core/workspace-selectors.ts`. The entrypoint stays within the 60-line ratchet.
 
 The public UI contract is exposed through domain hooks from `features/chat/context.ts` (`useOnboarding`, `useConnection`, `useDiagnostics`, `useCapabilities`, `usePreferences`, `useProjects`, `useProjectFiles`, `useCurrentSession`, `useSessionLibrary`, `useChat`, `useApprovals`, `useConversation`, `useTerminal`, `useMcp`), each typed by its matching `*ContextValue`. There is no combined runtime context value.
 

@@ -1,11 +1,11 @@
 import { cn } from '@/shared/ui/cn';
 import * as DialogPrimitive from '@rn-primitives/dialog';
 import { DialogFrame } from '@/shared/ui/dialog-frame';
-import { PortalScope, usePortalHost, useOverlayDismiss } from '@/shared/ui/portal';
+import { usePortalHost, useOverlayDismiss } from '@/shared/ui/portal';
 import { Icon } from '@/shared/ui/icon';
 import { Text } from '@/shared/ui/text';
-import { useContext, type ReactNode } from 'react';
-import { WorkspaceScopeContext , useUpdateBlocker } from '@/runtime/ui';
+import { type ReactNode } from 'react';
+import { useUpdateBlocker } from '@/runtime/ui';
 import { useTranslation } from 'react-i18next';
 import { KeyboardAvoidingView, Pressable, ScrollView, StyleSheet, useWindowDimensions, View } from 'react-native';
 import { GestureDetector } from 'react-native-gesture-handler';
@@ -34,7 +34,6 @@ export function OverlaySheet({ visible, title, onClose, children, headerAction, 
   dismissible?: boolean;
   dismissKeyboard?: boolean;
 }) {
-  const workspace = useContext(WorkspaceScopeContext);
   const portalHost = usePortalHost();
   const insets = useSafeAreaInsets();
   useUpdateBlocker(visible && blockUpdates);
@@ -113,7 +112,7 @@ export function OverlaySheet({ visible, title, onClose, children, headerAction, 
       </KeyboardAvoidingView>
   );
   return <DialogPrimitive.Root open={visible} onOpenChange={(open) => { if (!open && dismissible) onClose(); }}><DialogPrimitive.Portal hostName={portalHost}>
-    <PortalScope target={workspace}>{content}</PortalScope>
+    <>{content}</>
   </DialogPrimitive.Portal></DialogPrimitive.Root>;
 }
 

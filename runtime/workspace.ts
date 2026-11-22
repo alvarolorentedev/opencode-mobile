@@ -1,4 +1,4 @@
-export { useWorkspaces, useWorkspaceActions, useWorkspacePresentation, useRetainedWorkspaceTarget, useWorkspacePreferences, WorkspaceScope } from '@/runtime/workspace/workspace-context';
+export { useWorkspaces, useWorkspaceActions, useWorkspacePresentation, useRetainedWorkspaceTarget, useWorkspacePreferences } from '@/runtime/workspace/workspace-context';
 export { useRetainedState } from '@/runtime/presentation/use-retained-state';
 export { hasWorkspaceDrafts, clearWorkspacePresentation } from '@/runtime/presentation/workspace-presentation';
 export type { WorkspaceRegistry, WorkspaceActions } from '@/runtime/workspace/workspace-context';

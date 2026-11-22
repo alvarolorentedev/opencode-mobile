@@ -1,5 +1,4 @@
-import { PortalScope, useOverlayDismiss, usePortalHost } from '@/shared/ui/portal';
-import { WorkspaceScopeContext } from '@/runtime/ui';
+import { useOverlayDismiss, usePortalHost } from '@/shared/ui/portal';
 // Source: founded-labs/react-native-reusables @ 385834c2196f8a303cbc9057d1ac768f3bde0a3b (Uniwind, MIT).
 import { Icon } from '@/shared/ui/icon';
 import { NativeOnlyAnimatedView } from '@/shared/ui/native-only-animated-view';
@@ -91,7 +90,6 @@ function SelectContent({
   const { i18n } = useTranslation();
   const direction = getLanguageDirection(i18n.resolvedLanguage || i18n.language);
   useOverlayDismiss(open, () => onOpenChange(false));
-  const workspace = React.useContext(WorkspaceScopeContext);
   const content = (
       <FullWindowOverlay>
         <SelectPrimitive.Overlay
@@ -159,7 +157,7 @@ function SelectContent({
 
   );
   return (
-    <SelectPrimitive.Portal hostName={portalHost ?? host}><PortalScope target={workspace}>{content}</PortalScope></SelectPrimitive.Portal>
+    <SelectPrimitive.Portal hostName={portalHost ?? host}><>{content}</></SelectPrimitive.Portal>
   );
 }
 

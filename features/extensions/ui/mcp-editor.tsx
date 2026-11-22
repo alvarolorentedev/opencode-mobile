@@ -12,10 +12,10 @@ import { FieldDescription } from '@/shared/ui/text-field';
 import { usePalette } from '@/shared/ui/theme/use-palette';
 import type { ExtensionMcpRow } from '@/shared/protocol/opencode/extensions/types';
 
-export function McpEditor({ row, remote = false, context, scope, onClose, save }: EditorProps & { row?: ExtensionMcpRow; remote?: boolean; context: string }) {
+export function McpEditor({ workspace, row, remote = false, context, scope, onClose, save }: EditorProps & { row?: ExtensionMcpRow; remote?: boolean; context: string }) {
   const { t } = useTranslation();
   const palette = usePalette();
-  const { extensions } = useExtensions();
+  const { extensions } = useExtensions(workspace);
   const command = row?.config && 'command' in row.config && Array.isArray(row.config.command) ? row.config.command : [];
   const form = useForm<McpEditorDraft>({ resolver: zodResolver(mcpEditorSchema), defaultValues: {
     name: row?.name ?? '', type: row?.config?.type === 'remote' || remote ? 'remote' : 'local', url: row?.config && 'url' in row.config && typeof row.config.url === 'string' ? row.config.url : '',

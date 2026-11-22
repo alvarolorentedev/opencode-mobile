@@ -1,3 +1,4 @@
+import type { WorkspaceTarget } from '@/shared/contracts/workspace';
 import { cn } from '@/shared/ui/cn';
 import { ModalSurface } from '@/shared/ui/portal';
 import { Button } from '@/shared/ui/button';
@@ -26,7 +27,7 @@ import { useConnection } from '@/features/connections/context';
 // form: Back returns to the chooser where Manual remains available. The camera
 // fills the screen like the Cloud Link scanner; instructions and recovery are
 // overlaid on top instead of being boxed into a step layout.
-export function ConnectionScanFlow({ onSubmit, onDismiss, onBusyChange }: {
+export function ConnectionScanFlow({ workspace, onSubmit, onDismiss, onBusyChange }: { workspace?: WorkspaceTarget;
   onSubmit: (values: ConnectionProfileFormValues) => Promise<void> | void;
   onDismiss: () => void;
   onBusyChange?: (busy: boolean) => void;
@@ -34,7 +35,7 @@ export function ConnectionScanFlow({ onSubmit, onDismiss, onBusyChange }: {
   const insets = useSafeAreaInsets();
   useUpdateBlocker(true);
   const { t } = useTranslation();
-  const { connectionProfiles } = useConnection();
+  const { connectionProfiles } = useConnection(workspace);
   const palette = usePalette();
   const native = (Platform.OS === 'ios' || Platform.OS === 'android') && !Constants.expoConfig?.extra?.foss;
   const [message, setMessage] = useState<string>();

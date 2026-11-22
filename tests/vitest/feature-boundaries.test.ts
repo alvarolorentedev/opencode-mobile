@@ -9,10 +9,7 @@ import policy from '../../config/architecture.json';
 const root = fileURLToPath(new URL('../../', import.meta.url));
 const owner = (file: string) => file.match(/^features\/([^/]+)\//)?.[1];
 const uiException: Record<string, string[]> = {
-  'shared/ui/alert-dialog.tsx': ['WorkspaceScopeContext'],
-  'shared/ui/select.tsx': ['WorkspaceScopeContext'],
-  'shared/ui/portal.tsx': ['WorkspaceScope', 'WorkspaceScopeContext'],
-  'shared/ui/overlay-sheet.tsx': ['WorkspaceScopeContext', 'useUpdateBlocker'],
+  'shared/ui/overlay-sheet.tsx': ['useUpdateBlocker'],
   'shared/ui/catalog-select.tsx': ['useUpdateBlocker'],
   'shared/ui/use-confirmation.tsx': ['useUpdateBlocker'],
 };
@@ -43,7 +40,8 @@ describe('feature boundaries', () => {
   it('rejects private/aliased imports, secret access and UI exception expansion', () => {
     assert.deepEqual(importViolations('features/chat/ui/example.tsx', 'features/sessions/state/private.ts', ['useSession'], false), ['private feature import']);
     assert.deepEqual(importViolations('shared/ui/button.tsx', 'runtime/ui.ts', ['WorkspaceScope'], false), ['unauthorized shared runtime import']);
-    assert.deepEqual(importViolations('shared/ui/portal.tsx', 'runtime/ui.ts', ['WorkspaceScope'], false), []);
+    assert.deepEqual(importViolations('shared/ui/portal.tsx', 'runtime/ui.ts', ['WorkspaceScope'], false), ['unauthorized shared runtime import']);
+    assert.deepEqual(importViolations('shared/ui/overlay-sheet.tsx', 'runtime/ui.ts', ['useUpdateBlocker'], false), []);
     assert.deepEqual(importViolations('shared/ui/portal.tsx', 'runtime/ui.ts', ['*'], false), ['unauthorized shared runtime import']);
     assert.deepEqual(importViolations('shared/ui/portal.tsx', 'runtime/workspace/workspace-context.tsx', ['WorkspaceScope'], false), ['unauthorized shared runtime import']);
     assert.deepEqual(importViolations('features/chat/ui/example.tsx', 'modules/opencode-activity/index.ts', ['default'], false), ['native module in presentation']);
@@ -98,8 +96,8 @@ describe('feature boundaries', () => {
     assert.deepEqual(cycles(featureGraph), [], 'Feature dependencies, including type imports, must be acyclic.');
     assert.deepEqual(cycles(graph), [], 'Value imports must not create module cycles.');
     const uiReachable = [...reachable(graph, 'runtime/ui.ts')];
-    assert.deepEqual(uiReachable.filter((file) => file.startsWith('runtime/shell/') || file.startsWith('runtime/composition/') || /workspace-provider|retained-project|connection-runtime/.test(file) || /^features\/[^/]+\/ui\//.test(file)), [], 'The scope API must not reach root composition or feature presentation.');
-    assert.deepEqual(modules.find((mod) => mod.file === 'runtime/ui.ts')!.imports.flatMap((edge) => edge.symbols).sort(), ['WorkspaceScope', 'WorkspaceScopeContext', 'useUpdateBlocker'].sort());
+    assert.deepEqual(uiReachable.filter((file) => file.startsWith('runtime/shell/') || file.startsWith('runtime/composition/') || /workspace-provider|retained-project|connection-runtime/.test(file) || /^features\/[^/]+\/ui\//.test(file)), [], 'The blocker API must not reach root composition or feature presentation.');
+    assert.deepEqual(modules.find((mod) => mod.file === 'runtime/ui.ts')!.imports.flatMap((edge) => edge.symbols).sort(), ['useUpdateBlocker']);
   });
 
   it('keeps native inventory and retired frameworks deliberate', () => {

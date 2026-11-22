@@ -48,10 +48,10 @@ uses the existing global preference contract in the shared i18n subsystem.
 constructs the app once: one TanStack Query client for server facts and one
 app store for device facts ([ADR 0051](../adr/0051-app-core-state-tiers.md)).
 A workspace is a key, not a React provider subtree. Features read the focused
-or scoped values through selector hooks in `runtime/core/workspace-scope.ts`;
-the old per-domain context tree is gone. `WorkspaceScope` supplies only the
-scoped runtime values and target for retained panes; the narrow shared-UI scope
-exception remains for portal ancestry and update blockers.
+or scoped values through selector hooks in `runtime/core/workspace-selectors.ts`;
+retained Terminal and Settings panes pass workspace targets explicitly. Sheets
+and other portals receive the same target in their child props. The remaining
+shared-UI exception covers update blockers.
 
 One application owner retains registry/focus, persisted preferences and the stable
 presentation map. One connection owner supplies lifecycle, event transport and
@@ -81,8 +81,8 @@ The enforced export list includes only this additional named API.
   its state/value types). Features may import this entrypoint; they must not
   import `runtime/core/` internals.
 - `index.ts`: named consumer UI, helpers and types used outside the feature.
-- `context.ts`: the existing context objects and narrow subscription hooks. This
-  separate leaf prevents portal scope restoration from loading feature workflows.
+- `context.ts`: narrow domain subscription hooks and existing app-wide context
+  objects.
 - `runtime.ts`: named headless hooks/services used by runtime and declared domain
   dependencies; never export feature presentation or workspace-consumer hooks.
 - Existing background tasks have explicit `background` entrypoints; they are not
@@ -100,21 +100,17 @@ the production API.
 
 ## Shared UI runtime exception
 
-Shared code is feature-independent. The following existing scope-aware controls
+Shared code is feature-independent. The following existing controls
 alone may import `runtime/ui.ts`:
 
 | File under `shared/ui/` | Exact permitted imports |
 | --- | --- |
-| `portal.tsx` | `WorkspaceScope`, `WorkspaceScopeContext` |
-| `overlay-sheet.tsx` | `WorkspaceScopeContext`, `useUpdateBlocker` |
-| `select.tsx` | `WorkspaceScopeContext` |
-| `alert-dialog.tsx` | `WorkspaceScopeContext` |
+| `overlay-sheet.tsx` | `useUpdateBlocker` |
 | `catalog-select.tsx` | `useUpdateBlocker` |
 | `use-confirmation.tsx` | `useUpdateBlocker` |
 
-The API reuses existing context objects, scope restoration and blocker lifetimes.
-It must not reach root composition, runtime mounts or feature presentation through
-value imports. No other shared file can import runtime, including through a relative
+The API tracks interaction lifetimes. Its value imports reach only the update
+blocker and the app-wide update context. No other shared file can import runtime, including through a relative
 path or re-export. There is no additional bridge context or duplicated state.
 
 ## Validation

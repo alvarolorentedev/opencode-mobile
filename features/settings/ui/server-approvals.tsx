@@ -1,3 +1,4 @@
+import type { WorkspaceTarget } from '@/shared/contracts/workspace';
 import { cn } from '@/shared/ui/cn';
 import { Button } from '@/shared/ui/button';
 import { Text } from '@/shared/ui/text';
@@ -11,21 +12,20 @@ import { useRouter } from 'expo-router';
 import { useApprovals } from '@/features/sessions/context';
 import { useChat } from '@/features/chat/context';
 import { useConnection } from '@/features/connections/context';
-import { usePreferences } from '@/shared/preferences/context';
-import { useWorkspaces } from '@/runtime/workspace';
+import { useWorkspacePreferences, useWorkspaces } from '@/runtime/workspace';
 
 import { useSettingsTarget } from '@/shared/ui/settings/settings-panel';
 import { PermissionRequestCard , PermissionsSection } from '@/features/sessions/index';
 import { getConnectionUiScope } from '@/shared/contracts/connection-scope';
 import { usePalette } from '@/shared/ui/theme/use-palette';
-export function ServerApprovals() {
+export function ServerApprovals({ workspace }: { workspace: WorkspaceTarget }) {
   const { t } = useTranslation();
   const router = useRouter();
   const palette = usePalette();
-  const { approvals } = useApprovals();
-  const { setAutoApprove } = useChat();
-  const { chatPreferences } = usePreferences();
-  const { settings, connection } = useConnection();
+  const { approvals } = useApprovals(workspace);
+  const { setAutoApprove } = useChat(workspace);
+  const { chatPreferences } = useWorkspacePreferences(workspace);
+  const { settings, connection } = useConnection(workspace);
   const registry = useWorkspaces();
   const multipleServers = registry.connections.length > 1;
   const target = useSettingsTarget();

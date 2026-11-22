@@ -1,3 +1,4 @@
+import type { WorkspaceTarget } from '@/shared/contracts/workspace';
 import { useCallback, useMemo } from 'react';
 
 import { useAppCore, useWorkspaceDomainValue } from '@/runtime/core';
@@ -19,4 +20,4 @@ export function useSessionLibrary() {
   return useMemo(() => ({ ...value, openSessionInProject }), [openSessionInProject, value]);
 }
 
-export const useApprovals = () => useWorkspaceDomainValue((values) => values.approvalsValue, 'useApprovals');
+export const useApprovals = (target?: WorkspaceTarget) => useWorkspaceDomainValue((values) => values.approvalsValue, 'useApprovals', target);

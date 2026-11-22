@@ -1,3 +1,4 @@
+import type { WorkspaceTarget } from '@/shared/contracts/workspace';
 import { cn } from '@/shared/ui/cn';
 import { ListRow } from '@/shared/ui/list-row';
 import { Icon } from '@/shared/ui/icon';
@@ -12,13 +13,13 @@ import { CONNECT_LEARN_MORE_URL } from '@/shared/contracts/cloud-link';
 import { useConnection } from '@/features/connections/context';
 import { usePalette } from '@/shared/ui/theme/use-palette';
 
-export function ConnectionMethodChooser({ onScan, onManual, onPair }: { onScan: () => void; onManual: () => void; onPair: () => void }) {
+export function ConnectionMethodChooser({ workspace, onScan, onManual, onPair }: { workspace?: WorkspaceTarget; onScan: () => void; onManual: () => void; onPair: () => void }) {
   const { t } = useTranslation();
   const palette = usePalette();
   const choiceStyle = { minHeight: 96, borderRadius: 16, borderWidth: 1, borderColor: palette.border, backgroundColor: palette.surface };
   const titleStyle = { color: palette.text, fontWeight: '600' as const };
   const descriptionStyle = { color: palette.muted };
-  const { connectSetup } = useConnection();
+  const { connectSetup } = useConnection(workspace);
   const foss = Constants.expoConfig?.extra?.foss === true;
   const scanAvailable = (Platform.OS === 'ios' || Platform.OS === 'android') && !foss;
   return <View testID="connection-method-chooser" className={cn("gap-3")}>

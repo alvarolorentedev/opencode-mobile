@@ -11,9 +11,9 @@ import { SettingsDisclosure } from '@/shared/ui/settings/settings-panel';
 import { FieldDescription } from '@/shared/ui/text-field';
 import type { ExtensionCommandRow } from '@/shared/protocol/opencode/extensions/types';
 
-export function CommandEditor({ row, context, scope, onClose, save }: EditorProps & { row?: ExtensionCommandRow; context: string }) {
+export function CommandEditor({ workspace, row, context, scope, onClose, save }: EditorProps & { row?: ExtensionCommandRow; context: string }) {
   const { t } = useTranslation();
-  const { extensions } = useExtensions();
+  const { extensions } = useExtensions(workspace);
   const [section, setSection] = useEditorSection(t('settings:extensions.commands.template'));
   const form = useForm<CommandDraft>({ resolver: zodResolver(commandSchema), defaultValues: { name: row?.name ?? '', description: row?.description ?? '', template: row?.template ?? '', format: row?.origin === 'config' ? 'jsonc' : 'markdown' }, mode: 'onSubmit', reValidateMode: 'onChange' });
   const writable = row ? row.editable : Boolean(extensions.snapshot?.[scope].markdown.commands.safety.writable);

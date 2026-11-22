@@ -1,3 +1,4 @@
+import type { WorkspaceTarget } from '@/shared/contracts/workspace';
 import { useWorkspaceDomainValue } from '@/runtime/core';
 
-export const useCapabilities = () => useWorkspaceDomainValue((values) => values.capabilitiesValue, 'useCapabilities');
+export const useCapabilities = (target?: WorkspaceTarget) => useWorkspaceDomainValue((values) => values.capabilitiesValue, 'useCapabilities', target);

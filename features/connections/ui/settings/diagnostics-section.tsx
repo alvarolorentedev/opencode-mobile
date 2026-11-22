@@ -1,3 +1,4 @@
+import type { WorkspaceTarget } from '@/shared/contracts/workspace';
 import { cn } from '@/shared/ui/cn';
 import { Text } from '@/shared/ui/text';
 import { ListRow } from '@/shared/ui/list-row';
@@ -18,6 +19,7 @@ import { Palette } from '@/shared/ui/settings/setting-rows';
 import { AppDiagnosticsSection } from '@/features/connections/ui/settings/app-diagnostics-section';
 
 export function DiagnosticsSection({
+  workspace,
   diagnostics,
   eventStreamStatus,
   transport,
@@ -25,6 +27,7 @@ export function DiagnosticsSection({
   onRefresh,
   palette,
 }: {
+  workspace: WorkspaceTarget;
   diagnostics?: Diagnostics;
   eventStreamStatus: 'idle' | 'connecting' | 'connected' | 'error';
   transport: {
@@ -78,7 +81,7 @@ export function DiagnosticsSection({
           <Button onPress={onRefresh} variant="outline"><Text>{t('settings:diagnostics.refresh')}</Text></Button>
           <Button onPress={resetDataUsage} variant="ghost"><Text>{t('settings:diagnostics.networkUsageReset')}</Text></Button>
         </View>
-        <AppDiagnosticsSection />
+        <AppDiagnosticsSection workspace={workspace} />
     </View>
   );
 }

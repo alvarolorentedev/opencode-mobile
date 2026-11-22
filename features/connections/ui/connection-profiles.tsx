@@ -1,3 +1,4 @@
+import type { WorkspaceTarget } from '@/shared/contracts/workspace';
 import { cn } from '@/shared/ui/cn';
 import { useConfirmation } from '@/shared/ui/use-confirmation';
 import { Icon } from '@/shared/ui/icon';
@@ -39,12 +40,12 @@ function connectionHost(serverUrl: string) {
   }
 }
 
-export function ConnectionProfiles({ palette, onManageConnect, onPair }: { palette: Palette; onManageConnect?: () => void; onPair?: () => void }) {
+export function ConnectionProfiles({ workspace, palette, onManageConnect, onPair }: { workspace: WorkspaceTarget; palette: Palette; onManageConnect?: () => void; onPair?: () => void }) {
   const { confirmAction, confirmation } = useConfirmation();
   const { t } = useTranslation();
   const registry = useWorkspaces();
   const presentation = useWorkspacePresentation();
-  const { settings, connection, connect, updateSettings, connectSetup, connectionProfiles } = useConnection();
+  const { settings, connection, connect, updateSettings, connectSetup, connectionProfiles } = useConnection(workspace);
   const { profiles, refresh, connect: connectProfile, passwordForEditing, headersForEditing, certificateForEditing, save, remove, signIn } = connectionProfiles;
   const [error, setError] = useState<string>();
   const [expandedKey, setExpandedKey] = useState<string>();
@@ -296,16 +297,18 @@ export function ConnectionProfiles({ palette, onManageConnect, onPair }: { palet
         <Text className={cn("text-muted-foreground")} variant="label">{t('settings:connection.addDescription')}</Text>
       ) : null}
       <OverlaySheet visible={choosing} title={t('settings:connection.addConnection')} onClose={() => setChoosing(false)} fitContent testID="connection-method-sheet">
-        <ConnectionMethodChooser onScan={() => { setChoosing(false); setScanning(true); }} onManual={() => { setChoosing(false); setDialog({ mode: 'add' }); }} onPair={() => { setChoosing(false); onPair?.(); }} />
+        <ConnectionMethodChooser workspace={workspace} onScan={() => { setChoosing(false); setScanning(true); }} onManual={() => { setChoosing(false); setDialog({ mode: 'add' }); }} onPair={() => { setChoosing(false); onPair?.(); }} />
       </OverlaySheet>
       {scanning ? (
         <ConnectionScanFlow
+          workspace={workspace}
           onSubmit={addAndConnect}
           onDismiss={() => { addedProfileId.current = undefined; setScanning(false); }}
         />
       ) : null}
       {dialog ? (
         <ConnectionProfileDialog
+          workspace={workspace}
           title={dialog.mode === 'add' ? t('settings:connection.addConnection') : t('settings:connection.editConnection')}
           submitLabel={dialog.mode === 'add' ? t('settings:connection.saveAndConnect') : t('common:actions.save')}
           showName={dialog.mode !== 'edit-current'}

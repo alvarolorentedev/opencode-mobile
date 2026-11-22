@@ -29,7 +29,7 @@ and [feature boundaries](../docs/architecture/feature-boundaries.md).
 
 Server facts belong to Query; device facts belong to the app store. Do not add a
 second store or mirror a Query response. Feature domain hooks select the focused
-or scoped values from `runtime/core/workspace-scope.ts`; do not add a per-domain
+or scoped values from `runtime/core/workspace-selectors.ts`; do not add a per-domain
 context.
 
 Use feature headless APIs for behavior; do not grow domain logic in composition.
@@ -37,7 +37,7 @@ Preserve query partitions, cancellation, foreground/demand gates, explicit readi
 connection-wide catalogs/streams, and independent Settings/Terminal/Chat targets.
 Keep one owner per value and the existing provider/context ordering.
 
-`ui.ts` exports only the existing workspace scope/context and update-blocker hook.
+`ui.ts` exports only the existing update-blocker hook.
 Its value imports must never reach root composition, mounts or feature presentation.
 No bridge context, state duplication or broader shared UI exception is allowed.
 

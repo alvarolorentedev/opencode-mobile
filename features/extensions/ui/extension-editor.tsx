@@ -1,3 +1,4 @@
+import type { WorkspaceTarget } from '@/shared/contracts/workspace';
 import { useState, type ReactNode } from 'react';
 import { View } from 'react-native';
 import { useTranslation } from 'react-i18next';
@@ -12,6 +13,7 @@ import { useConfirmation } from '@/shared/ui/use-confirmation';
 import type { ExtensionScope } from '@/shared/protocol/opencode/extensions/types';
 
 export type EditorProps = {
+  workspace: WorkspaceTarget;
   scope: ExtensionScope;
   onClose: () => void;
   save: (action: () => Promise<void>) => void;

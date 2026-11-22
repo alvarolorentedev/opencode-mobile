@@ -41,7 +41,7 @@ Completed before this plan:
 - Registry/focus, selection, active project, presentation, chat UI, MCP prompt
   and focused values are store-owned.
 - The feature domain context/provider tree is gone; scope values are selected
-  through `runtime/core/workspace-scope.ts`.
+  through `runtime/core/workspace-selectors.ts`.
 - The connection state machine is a plain manager; its effects are still React.
 - Query persistence for session and project catalogs is enabled.
 - `npm run impact -- <file>` lists dependent tests.
@@ -194,12 +194,17 @@ npm run validate:commit
   commit gate passed with 1,280 tests and one existing skip. In the paired
   8 MiB attachment benchmark, both builds had a 20–22 ms p95 visible delta lag.
   The median cold transcript render was 174 ms versus 168 ms on Phase C.
-- E1a. The terminal screen and retained renderers receive explicit workspace
+- E1a, `3139adff`. The terminal screen and retained renderers receive explicit workspace
   targets. The initial browser run found that a focused chat transition could
   briefly replace the retained PTY's runtime. Explicit selections now read
   their own project projection. The corrected build passed the commit gate
   with 1,280 tests and one existing skip, 34 focused tests, and all 24 Terminal,
   multi-server and Settings browser flows.
+- E1b. Settings passes its inspection target through feature panels and dialogs.
+  Shared portals keep their modal hosts and carry explicit feature props. The
+  workspace scope contexts are deleted. The commit gate passed with 1,280 tests
+  and one existing skip. Storybook, web export and all 101 multi-server,
+  Settings, Connect, extensions, onboarding and interactions browser flows passed.
 
 ## Loop protocol
 

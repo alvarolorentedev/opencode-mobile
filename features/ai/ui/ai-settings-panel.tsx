@@ -1,3 +1,4 @@
+import type { WorkspaceTarget } from '@/shared/contracts/workspace';
 import { Feedback } from '@/shared/ui/feedback';
 import { Portal } from '@/shared/ui/portal';
 import { useMemo, useState } from 'react';
@@ -13,19 +14,19 @@ import { getProviderCopy } from '@/features/ai/model/settings-utils';
 import { useProviderConfiguration } from '@/features/ai/ui/use-provider-configuration';
 import { useCapabilities } from '@/features/ai/context';
 import { useConnection } from '@/features/connections/context';
-import { usePreferences } from '@/shared/preferences/context';
+import { useWorkspacePreferences } from '@/runtime/workspace';
 import { usePalette } from '@/shared/ui/theme/use-palette';
 
-export function AiSettingsPanel() {
+export function AiSettingsPanel({ workspace }: { workspace?: WorkspaceTarget }) {
   const { confirmAction, confirmation } = useConfirmation();
   const { t } = useTranslation();
   const focused = useIsFocused();
   const insets = useSafeAreaInsets();
   const palette = usePalette();
-  const { currentConfig, availableModels, availableProviders, configuredProviders, providerAccounts, providerAuthMethodsById, removeProvider, modelRouting } = useCapabilities();
-  const { serverCapabilities, settings, connectionProfiles } = useConnection();
-  const { chatPreferences, updateChatPreferences } = usePreferences();
-  const providerConfig = useProviderConfiguration();
+  const { currentConfig, availableModels, availableProviders, configuredProviders, providerAccounts, providerAuthMethodsById, removeProvider, modelRouting } = useCapabilities(workspace);
+  const { serverCapabilities, settings, connectionProfiles } = useConnection(workspace);
+  const { chatPreferences, updateChatPreferences } = useWorkspacePreferences(workspace);
+  const providerConfig = useProviderConfiguration(workspace);
   const [expandedProviderIds, setExpandedProviderIds] = useState<Set<string>>(() => new Set());
   const enabledModelIds = useMemo(() => new Set(chatPreferences.enabledModelIds), [chatPreferences.enabledModelIds]);
 

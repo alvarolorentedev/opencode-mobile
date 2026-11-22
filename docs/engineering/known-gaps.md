@@ -13,7 +13,7 @@ Closed on 2026-10-18. The coupling hotspot was split without changing behavior:
 
 - `runtime/composition/opencode-provider.tsx` is now a thin wrapper (~33 lines). The
   first composition split became the app-core commands and retained project
-  adapters under ADR 0051. Scoped selectors live in `runtime/core/workspace-scope.ts`.
+  adapters under ADR 0051. Scoped selectors live in `runtime/core/workspace-selectors.ts`.
 - The provider line ratchet in `tests/vitest/architecture.test.ts` dropped from
   500 to 60 in the same change, so the entrypoint cannot regrow into a god
   object. The repo-wide 500-line ceiling still covers runtime modules.
@@ -25,7 +25,7 @@ Closed on 2026-10-18. The coupling hotspot was split without changing behavior:
   those namespaces directly.
 
 The domain context fan-out is closed under ADR 0051: feature hooks select
-memoized domain values from `runtime/core/workspace-scope.ts`, and the
+memoized domain values from `runtime/core/workspace-selectors.ts`, and the
 per-workspace context provider tree is gone. The remaining orchestration
 coupling is the per-workspace composition itself; commands are still hooks.
 Selector work continues only where profiling shows a real fan-out cost.

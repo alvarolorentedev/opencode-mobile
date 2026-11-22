@@ -1,3 +1,2 @@
-// The only runtime API allowed in the allowlisted scope-aware shared controls.
-export { WorkspaceScope, WorkspaceScopeContext } from '@/runtime/workspace/workspace-context';
+// Only the existing interaction blocker is shared during the UI migration.
 export { useUpdateBlocker } from '@/runtime/presentation/use-update-blocker';

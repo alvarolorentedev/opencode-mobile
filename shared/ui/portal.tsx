@@ -1,10 +1,8 @@
-import { createContext, useContext, useEffect, useId, useRef, useState, type PropsWithChildren, type ReactNode } from 'react';
+import { createContext, useContext, useEffect, useId, useRef, useState, type ReactNode } from 'react';
 import { Modal, Platform, View, type ModalProps } from 'react-native';
 import * as Dialog from '@rn-primitives/dialog';
 import { DialogFrame } from '@/shared/ui/dialog-frame';
 import { Portal as PrimitivePortal, PortalHost } from '@rn-primitives/portal';
-import { WorkspaceScope, WorkspaceScopeContext } from '@/runtime/ui';
-import type { WorkspaceTarget } from '@/shared/contracts/workspace';
 import { useDismissOnBack } from '@/shared/ui/hooks/use-dismiss-on-back';
 import { useTranslation } from 'react-i18next';
 import { getLanguageDirection } from '@/shared/i18n/languages';
@@ -12,19 +10,13 @@ import { getLanguageDirection } from '@/shared/i18n/languages';
 type Host = { name: string; register: (id: string, close: () => void) => () => void };
 const HostContext = createContext<Host | undefined>(undefined);
 
-// Radix portals clone their child; keep RN style arrays behind this boundary.
-export function PortalScope({ target, children }: PropsWithChildren<{ target?: WorkspaceTarget }>) {
-  return target ? <WorkspaceScope target={target}>{children}</WorkspaceScope> : <>{children}</>;
-}
-
 export function usePortalHost() { return useContext(HostContext)?.name; }
 
 export function Portal({ children }: { children: ReactNode }) {
   const id = useId();
   const host = useContext(HostContext);
-  const workspace = useContext(WorkspaceScopeContext);
   return <PrimitivePortal name={id} hostName={host?.name}>
-    <PortalScope target={workspace}>{children}</PortalScope>
+    <>{children}</>
   </PrimitivePortal>;
 }
 

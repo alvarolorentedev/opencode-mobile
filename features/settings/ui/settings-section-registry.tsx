@@ -1,3 +1,4 @@
+import type { WorkspaceTarget } from '@/shared/contracts/workspace';
 import { cn } from '@/shared/ui/cn';
 import { Button } from '@/shared/ui/button';
 import { Text } from '@/shared/ui/text';
@@ -54,6 +55,7 @@ export type SettingsSection = {
 };
 
 type RegistryInput = {
+  workspace: WorkspaceTarget;
   t: TFunction;
   palette: ReturnType<typeof usePalette>;
   connection: ReturnType<typeof useConnection>['connection'];
@@ -90,6 +92,7 @@ type RegistryInput = {
 };
 
 export function buildSettingsSections({
+  workspace,
   t,
   palette,
   connection,
@@ -152,7 +155,7 @@ export function buildSettingsSections({
       summary: connection.status === 'connected' ? t('common:labels.connected') : connection.message,
       summaryLines: 2,
       onPress: () => setOpenSection('connection'),
-      render: () => <ConnectionSection onReconnect={onReconnect} isReconnecting={isReconnecting} connection={connection} palette={palette} onManageConnect={connectSetup.enabled ? () => { setOpenSection(undefined); router.push('/pair?mode=manage'); } : undefined} onPair={connectSetup.enabled ? () => { setOpenSection(undefined); router.push('/pair'); } : undefined} />,
+      render: () => <ConnectionSection workspace={workspace} onReconnect={onReconnect} isReconnecting={isReconnecting} connection={connection} palette={palette} onManageConnect={connectSetup.enabled ? () => { setOpenSection(undefined); router.push('/pair?mode=manage'); } : undefined} onPair={connectSetup.enabled ? () => { setOpenSection(undefined); router.push('/pair'); } : undefined} />,
     },
     {
       id: 'ai', group: 'server' as const,
@@ -160,7 +163,7 @@ export function buildSettingsSections({
       title: t('settings:screen.categories.ai'),
       summary: t('settings:screen.summaries.configuredCount', { value: configuredProviders.length }),
       onPress: () => setOpenSection('ai'),
-      render: () => <AiSettingsPanel />,
+      render: () => <AiSettingsPanel workspace={workspace} />,
     },
     ...(serverCapabilities.contract === 'v2' ? [{
       id: 'extensions', group: 'server' as const,
@@ -168,7 +171,7 @@ export function buildSettingsSections({
       title: t('settings:screen.categories.extensions'),
       summary: t('settings:screen.summaries.extensions'),
       onPress: () => setOpenSection('extensions'),
-      render: () => <ExtensionsSection />,
+      render: () => <ExtensionsSection workspace={workspace} />,
     }] : []),
     ...(connectSetup.enabled && connectSetup.storeInstall ? [{
       id: 'cloud-link', group: 'connections' as const,
@@ -235,7 +238,7 @@ export function buildSettingsSections({
           {serverCapabilities.contract !== 'v2' && advancedTab === 'mcp' ? <>
           <McpSection configs={currentConfig?.mcp} mcpStatuses={mcp.mcpStatuses} onAdd={mcp.addMcpServer} onConnect={mcp.connectMcpServer} onDisconnect={mcp.disconnectMcpServer} onRefresh={mcp.refreshMcpServers} mcpOAuth={mcp.mcpOAuth} requiresIntegrationId={serverCapabilities.mcpIntegrationId} oauthAvailable={serverCapabilities.mcpOAuth} palette={palette} />
           </> : <>
-          <DiagnosticsSection diagnostics={diagnosticsData.diagnostics} eventStreamStatus={diagnosticsData.eventStreamStatus} transport={diagnosticsData.transport} lastJsError={lastJsError} onRefresh={() => { void diagnosticsData.refreshDiagnostics(); refreshLastJsError(); }} palette={palette} />
+          <DiagnosticsSection workspace={workspace} diagnostics={diagnosticsData.diagnostics} eventStreamStatus={diagnosticsData.eventStreamStatus} transport={diagnosticsData.transport} lastJsError={lastJsError} onRefresh={() => { void diagnosticsData.refreshDiagnostics(); refreshLastJsError(); }} palette={palette} />
           </>}
         </>
       ),
@@ -249,7 +252,7 @@ export function buildSettingsSections({
         setOpenSection('permissions');
         void approvals.refreshSavedPermissions();
       },
-      render: () => <ServerApprovals />,
+      render: () => <ServerApprovals workspace={workspace} />,
     }] : []),
     {
       id: 'support', group: 'app' as const,

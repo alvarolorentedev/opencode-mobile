@@ -68,7 +68,6 @@ const { SelectContent } = await loadTs('shared/ui/select.tsx', {
     "@/shared/ui/text": { Text: 'Text', TextClassContext: { Provider: 'TextProvider' } },
     "@/shared/ui/native-only-animated-view": { NativeOnlyAnimatedView: 'AnimatedView' },
     "./select-frame": { SelectFrame: 'SelectContent' },
-    "@/runtime/workspace/workspace-context": { WorkspaceScopeContext: {} }
   });
 const { OverlaySheet } = await loadTs('shared/ui/overlay-sheet.tsx', {
     ...uiImports,
@@ -96,7 +95,6 @@ const { OverlaySheet } = await loadTs('shared/ui/overlay-sheet.tsx', {
   },
     'react-native-safe-area-context': { useSafeAreaInsets: () => ({ top: 62, bottom: 34 }) },
     "@/shared/ui/dialog-frame.web": { DialogFrame: 'DialogContent' },
-    "@/runtime/workspace/workspace-context": { WorkspaceScope: 'WorkspaceScope', WorkspaceScopeContext: {} },
     "@/shared/ui/theme/theme": { Colors: { dark: {} } },
     "@/runtime/presentation/use-update-blocker": { useUpdateBlocker: () => {} },
     "@/shared/ui/hooks/use-dismiss-keyboard-on-open": { useDismissKeyboardOnOpen: (...args: unknown[]) => { dismissKeyboardCalls.push(args); } },

@@ -70,7 +70,7 @@ The app has one tab group in `app/(tabs)/_layout.tsx`:
 
 Navigation uses independent chat, terminal and inspection selections. Terminal
 passes its resolved workspace target to the screen and retained PTY renderers.
-Settings uses a provider scope boundary for the inspected server.
+Settings passes its inspection target to the relevant sections and dialogs.
 
 This matters because state continuity is expected across tabs. Switching tabs does not reset active session context.
 
@@ -234,9 +234,8 @@ The completion version, preference schema and first-run migration are unchanged.
 - `runtime/workspace/retained-project.tsx`
   Retains scoped subscriptions and publishes the project's views. The app
   core owns navigation, submission, connection and event commands.
-- `runtime/core/workspace-scope.ts`
-  Focused/scoped value selectors and the scope carriers. There is no domain
-  context provider tree.
+- `runtime/core/workspace-selectors.ts`
+  Focused and explicitly targeted selectors read each project projection.
 - `shared/contracts/domain.ts`
   Shared public types and the domain value union.
 - `features/chat/context.ts`
@@ -1196,7 +1195,7 @@ Directory filtering and polling cover missed events.
 
 Hydration, compatibility settings writes, device sharing, Cloud Link setup/billing, updates, language, audio and native surfaces have one app-wide owner. Favorites keep their existing connection-scoped persistence; projects and sessions are always derived from the server catalogs. Activity observation has one owner per server, with one app-wide Android notification publisher combining counts and releasing only the disconnected server. Native shortcuts carry each row's connection scope; widget publication remains app-wide.
 
-The chat library combines the unscoped server catalogs with live project state. It keeps current/running/recency order, uses composite keys and labels each row with its server. Project selection changes chat/project focus. Terminal selection and Settings inspection are independent. RN Primitives portals explicitly restore their caller's workspace scope; otherwise their children would inherit the app host's current chat server.
+The chat library combines the unscoped server catalogs with live project state. It keeps current/running/recency order, uses composite keys and labels each row with its server. Project selection changes chat/project focus. Terminal selection and Settings inspection are independent. Settings and Terminal pass their selected target through portal children so actions remain bound to the pane that opened the overlay.
 
 Chat focus fails over automatically. When the focused runtime reports an
 error, or its connection is disabled or removed, the connection command

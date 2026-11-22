@@ -85,8 +85,6 @@
       "RegistryState",
       "SelectionState",
       "ShellState",
-      "WorkspaceScopeContext",
-      "WorkspaceValuesContext",
       "useActiveWorkspaceTarget",
       "useAppCore",
       "useAppStore",
