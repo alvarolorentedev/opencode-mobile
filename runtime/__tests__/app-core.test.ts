@@ -119,7 +119,7 @@ describe('app core', () => {
     let identity = original;
     let revision = 0;
     const client = { __opencode: { contract: 'v2', directory: '/a' } } as ScopedOpencodeClient;
-    const refreshMessages = vi.fn(async () => undefined);
+    const refreshMessages = vi.fn(async (_projectPath: string, _sessionId: string, _silent: boolean) => undefined);
     const manager = {
       getProjectAccess(projectPath: string) {
         const capturedRevision = revision;
@@ -127,7 +127,9 @@ describe('app core', () => {
           isCurrent: () => revision === capturedRevision };
       },
       isDemanded: () => false,
-      realtime: { refreshMessages },
+      realtime: { getProjectSources: (path: string) => ({
+        refreshMessages: (sessionId: string, silent: boolean) => refreshMessages(path, sessionId, silent),
+      }) },
     } as unknown as NonNullable<ReturnType<typeof core.connections.get>>;
     vi.spyOn(core.connections, 'get').mockReturnValue(manager);
     const permission = { id: 'p', sessionID: 's' };

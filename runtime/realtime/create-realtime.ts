@@ -5,12 +5,16 @@ import { createReconciler, type ReconcileSources } from '@/runtime/realtime/reco
 import { startRealtimeTransport, type Foreground, type StreamStatus } from '@/runtime/realtime/transport';
 
 export type RealtimeScopeInput = Omit<ReconcileSources, 'pendingSessionIds' | 'streamConnected'> & {
+  workspaceKey?: string;
   projectPath?: string;
   pendingSessionIds?: string[];
   busy: boolean;
   constrained?: boolean;
   onEvent: (event: OpencodeEvent) => void;
   onGlobalEvent?: (event: OpencodeEvent) => void;
+  beginHydration?: (sessionId: string) => () => void;
+  hasMessages?: (sessionId: string) => boolean;
+  refreshVcsDiff?: (scope: 'uncommitted' | 'branch', silent: boolean) => Promise<unknown>;
 };
 
 type Transport = { client: ScopedOpencodeClient; subscribe: typeof subscribeEvents };
@@ -69,8 +73,7 @@ export function createRealtime(foreground: Foreground, onFatalError: Parameters<
 
     const scope = {
       isBusy: () => Boolean(input?.projectPath && input.busy),
-      getProjectPath: () => input?.projectPath,
-      refreshMessages: (sessionId: string, silent: boolean) => input?.refreshMessages(sessionId, silent),
+      getSources: () => input,
       syncPolling,
       reconcile: reconcileScope,
       dispatch(event: OpencodeEvent) {
@@ -134,11 +137,11 @@ export function createRealtime(foreground: Foreground, onFatalError: Parameters<
       return scope;
     },
     setTransport,
-    refreshMessages(projectPath: string, sessionId: string, silent: boolean) {
+    getProjectSources(projectPath: string, workspaceKey?: string) {
       for (const scope of scopes) {
-        if (scope.getProjectPath() === projectPath) return scope.refreshMessages(sessionId, silent) ?? Promise.resolve();
+        const sources = scope.getSources();
+        if (sources?.projectPath === projectPath && (workspaceKey === undefined || workspaceKey === sources.workspaceKey)) return sources;
       }
-      return Promise.resolve();
     },
     dispose() {
       setTransport();

@@ -10,6 +10,11 @@ reconciliation reads pending mutations in the same Query partition as the
 project's approvals. The remaining session lifecycle and refresh actions,
 prompt and connection commands, and event dispatch still need extraction.
 
+Explicit session opening and automatic bootstrap share the app-core selection
+command. It reads the project session catalog and supersedes pending bootstrap
+when the user opens a chat. The retained project still supplies transcript
+reads and creation until those actions move.
+
 Goal: cross-domain behavior becomes plain TypeScript commands. Hooks adapt;
 they no longer own command logic. The per-workspace composition and its value
 mirrors are deleted.

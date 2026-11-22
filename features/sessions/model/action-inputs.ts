@@ -44,13 +44,10 @@ export type SessionActionsInput = {
   setPendingPermissionsBySession: Dispatch<SetStateAction<Record<string, PendingPermissionRequest[]>>>;
   setPendingQuestionsBySession: Dispatch<SetStateAction<Record<string, PendingQuestionRequest[]>>>;
   setFavoriteSessions: Dispatch<SetStateAction<FavoriteSession[]>>;
-  setIsBootstrappingChat: Dispatch<SetStateAction<boolean>>;
   pendingDeepLinkTargetRef: { current: SessionDeepLinkTarget | undefined };
-  bootstrapPromiseRef: { current: Promise<string | undefined> | null };
-  bootstrapTokenRef: { current: object | undefined };
+  openSession: (sessionId: string) => Promise<void>;
   refreshSessions: () => Promise<Session[]>;
   refreshMessages: (sessionId: string, silent?: boolean, options?: TranscriptReadOptions) => Promise<SessionMessageRecord[]>;
-  beginHydration: (sessionId: string) => () => void;
   refreshSessionDiff: (sessionId: string, silent?: boolean, messageId?: string, records?: SessionMessageRecord[]) => Promise<FileDiff[]>;
   refreshSessionTodos: (sessionId: string) => Promise<Todo[]>;
   refreshVcsDiff: (scope: 'uncommitted' | 'branch', silent?: boolean) => Promise<FileDiff[]>;
@@ -65,22 +62,11 @@ export type SessionActionsInput = {
 export type SessionCrudInput = Pick<SessionActionsInput,
   'client' | 'isCurrentClient' | 'activeProjectPath' | 'connectionScopeRef' | 'currentSessionId' |
   'currentSessionIdRef' | 'explicitSessionSelectionRef' | 'locallyCreatedSessionsRef' | 'availableAgents' | 'availableModels' | 'currentConfig' |
-  'readDiffScope' | 'sessions' | 'sessionStatuses' | 'commands' | 'bootstrapPromiseRef' | 'bootstrapTokenRef' |
-  'setCurrentSessionId' | 'setIsBootstrappingChat' | 'beginHydration' |
+  'sessions' | 'sessionStatuses' | 'commands' |
+  'setCurrentSessionId' | 'openSession' |
   'setSessions' | 'setSessionStatuses' | 'setMessagesBySession' | 'setDiffsBySession' | 'setTodosBySession' |
   'setPendingPermissionsBySession' | 'setPendingQuestionsBySession' | 'setFavoriteSessions' | 'refreshSessions' |
-  'refreshMessages' | 'refreshSessionDiff' | 'refreshSessionTodos' | 'refreshVcsDiff' |
-  'refreshPendingInteractions' | 'refreshActiveSessions' | 'chatPreferences'>;
+  'refreshMessages' | 'refreshSessionDiff' | 'refreshActiveSessions' | 'chatPreferences'>;
 
 export type SessionFavoriteInput = Pick<SessionActionsInput,
   'connectionScopeRef' | 'favoriteSessions' | 'setFavoriteSessions'>;
-
-export type SessionBootstrapInput = Pick<SessionActionsInput,
-  'activeProjectPath' | 'connection' | 'client' | 'currentSessionId' | 'currentSessionIdRef' |
-  'explicitSessionSelectionRef' | 'sessionsRef' | 'messagesBySession' |
-  'pendingDeepLinkTargetRef' | 'bootstrapPromiseRef' | 'bootstrapTokenRef' | 'isCurrentClient' | 'refreshSessions' |
-  'refreshMessages' | 'refreshSessionDiff' | 'refreshSessionTodos' | 'refreshPendingInteractions' |
-  'refreshChatCapabilities' | 'refreshServerFeatures' | 'setCurrentSessionId' |
-  'setIsBootstrappingChat'> & {
-  createSession: (title?: string) => Promise<Session>;
-};

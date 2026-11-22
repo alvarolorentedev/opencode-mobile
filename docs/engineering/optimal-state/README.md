@@ -123,10 +123,15 @@ npm run validate:commit
   Static checks passed with 1,261 tests and one existing skip. The 21
   focused tests, docs, web export and all 34 sessions, projects,
   multi-server and terminal browser tests passed.
-- C2a. Permission and question replies run through scoped session commands.
+- C2a, `f3db22d7`. Permission and question replies run through scoped session commands.
   The commit gate passed with 1,262 tests and one existing skip. The 28
   focused tests, docs, web export and all 27 interaction, multi-server and
   realtime browser tests passed, including colliding approvals on two servers.
+- C2b. Session opening and bootstrap are app-core commands. The static gate
+  passed with 1,262 tests and one existing skip. The 27 focused tests, docs,
+  web export and all 67 browser tests across chat, sessions, projects,
+  multi-server and onboarding passed. The tests retain checks for a
+  superseded bootstrap, cached windows and delayed hydration.
 
 ## Loop protocol
 

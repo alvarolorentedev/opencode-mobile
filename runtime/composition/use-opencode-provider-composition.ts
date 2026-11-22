@@ -202,6 +202,11 @@ export function useOpencodeProviderComposition(input: WorkspaceRuntimeInput) {
     settings: state.settings,
   });
 
+  const sessionTarget = useMemo(() => ({
+    connectionId: inputConnection.id, projectPath: state.activeProjectPath ?? '',
+  }), [inputConnection.id, state.activeProjectPath]);
+  const sessionNavigation = useMemo(() => sessionCommands.navigation(sessionTarget, state.scopeKey, inputConnection.revision),
+    [inputConnection.revision, sessionCommands, sessionTarget, state.scopeKey]);
   const sessionActions = useSessionActions({
     ...domain,
     ...project,
@@ -212,12 +217,10 @@ export function useOpencodeProviderComposition(input: WorkspaceRuntimeInput) {
     refreshMessages: inbox.refreshMessages,
     refreshActiveSessions: catalog.refresh,
     refreshChatCapabilities: capabilities.refreshChatCapabilities,
-    beginHydration: transcript.beginHydration,
+    openSession: sessionNavigation.openSession,
   });
-  const interactions = useMemo(() => sessionCommands.interactions({
-    connectionId: inputConnection.id, projectPath: state.activeProjectPath ?? '',
-  }, inputConnection.revision), [inputConnection.id, inputConnection.revision, sessionCommands, state.activeProjectPath]);
-  const ensureActiveSessionRef = useRef(sessionActions.ensureActiveSession);
+  const interactions = useMemo(() => sessionCommands.interactions(sessionTarget, inputConnection.revision),
+    [inputConnection.revision, sessionCommands, sessionTarget]);
 
   const prompt = usePromptLifecycle({
     submitPrompt: inbox.submitPrompt,
@@ -251,7 +254,7 @@ export function useOpencodeProviderComposition(input: WorkspaceRuntimeInput) {
     pendingPermissionsBySession: approvalsCatalog.pendingPermissionsBySession,
     pendingQuestionsBySession: approvalsCatalog.pendingQuestionsBySession,
     sendingState: prompt.sendingState,
-    ensureActiveSession: sessionActions.ensureActiveSession,
+    ensureActiveSession: sessionNavigation.ensureActiveSession,
     sendPrompt: prompt.sendPrompt,
   });
   const { phase: conversationPhase, sessionId: conversationSessionId } = conversation;
@@ -262,7 +265,6 @@ export function useOpencodeProviderComposition(input: WorkspaceRuntimeInput) {
   // Written in a layout effect so no ref is touched during render; all readers
   // are event handlers, realtime callbacks, or passive effects that run later.
   useLayoutEffect(() => {
-    ensureActiveSessionRef.current = sessionActions.ensureActiveSession;
     const focusSessionIds = new Set<string>();
     if (state.currentSessionId) focusSessionIds.add(state.currentSessionId);
     if (conversationSessionId) focusSessionIds.add(conversationSessionId);
@@ -310,6 +312,7 @@ export function useOpencodeProviderComposition(input: WorkspaceRuntimeInput) {
   });
 
   const eventStreamStatus = useWorkspaceRealtime(connectionRuntime.manager?.realtime, {
+    workspaceKey: state.scopeKey,
     projectPath: state.activeProjectPath,
     constrained: network.constrained,
     pendingSessionIds: Object.keys(inbox.pendingPromptsBySession).filter((id) => inbox.pendingPromptsBySession[id].length > 0),
@@ -328,6 +331,9 @@ export function useOpencodeProviderComposition(input: WorkspaceRuntimeInput) {
     },
     refreshSessionDiff: project.refreshSessionDiff,
     refreshSessionTodos: project.refreshSessionTodos,
+    beginHydration: transcript.beginHydration,
+    hasMessages: (id) => transcript.readDisplayedSession(id).length > 0,
+    refreshVcsDiff: project.refreshVcsDiff,
   });
 
   useLayoutEffect(() => {
@@ -339,7 +345,7 @@ export function useOpencodeProviderComposition(input: WorkspaceRuntimeInput) {
     ...domain,
     client,
     isCurrentClient,
-    ensureActiveSessionRef,
+    ensureActiveSession: sessionNavigation.ensureActiveSession,
     setPromptError: prompt.setPromptError,
     conversationSessionId,
     pruneTranscript: transcript.prune,
@@ -362,6 +368,7 @@ export function useOpencodeProviderComposition(input: WorkspaceRuntimeInput) {
     ...extensions,
     ...project,
     ...sessionActions,
+    ...sessionNavigation,
     ...interactions,
     ...capabilities,
     ...prompt,

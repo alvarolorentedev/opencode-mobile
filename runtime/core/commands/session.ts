@@ -3,10 +3,12 @@ import { approvalsAccess, createInteractionCommands, pendingInteractionsKey, sav
 import type { PendingQuestionAnswer, ScopedOpencodeClient } from '@/shared/protocol/opencode/client';
 import type { WorkspaceTarget } from '@/shared/contracts/workspace';
 import type { QueryIdentity } from '@/shared/server-data/keys';
+import { createSessionNavigationCommands } from './session-navigation';
 
 const permissionReplyKey = (queryKey: readonly unknown[], id: string) => [...queryKey, 'permission-reply', id];
 
-export function createSessionCommands({ connections, queryClient }: Pick<CommandContext, 'connections' | 'queryClient'>) {
+export function createSessionCommands(context: CommandContext) {
+  const { connections, queryClient } = context;
   function interactions(target: WorkspaceTarget, revision?: number) {
     function readScope() {
       const manager = connections.get(target.connectionId);
@@ -31,7 +33,7 @@ export function createSessionCommands({ connections, queryClient }: Pick<Command
           if (queryClient.isMutating({ mutationKey, exact: true })) throw new Error('This permission request is no longer available.');
           return queryClient.getMutationCache().build(queryClient, { mutationKey, retry: false, networkMode: 'always', gcTime: 0, mutationFn: run }).execute(undefined);
         },
-        refreshMessages: (sessionId, silent) => manager.realtime.refreshMessages(target.projectPath, sessionId, silent),
+        refreshMessages: (sessionId, silent) => manager.realtime.getProjectSources(target.projectPath)?.refreshMessages(sessionId, silent) ?? Promise.resolve(),
         refreshSavedPermissions: async () => {
           if (manager.isDemanded()) await queryClient.fetchQuery(savedPermissionOptions(scope.identity, scope.client));
         },
@@ -46,6 +48,7 @@ export function createSessionCommands({ connections, queryClient }: Pick<Command
   }
 
   return {
+    ...createSessionNavigationCommands(context),
     interactions,
     isPermissionReplyPending(identity: QueryIdentity, client: ScopedOpencodeClient, id: string) {
       return queryClient.isMutating({ mutationKey: permissionReplyKey(pendingInteractionsKey(identity, client), id), exact: true }) > 0;

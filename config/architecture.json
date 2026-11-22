@@ -279,6 +279,7 @@
       "migrateMissionStatsCaches",
       "parseFavoriteSessions",
       "pendingInteractionsKey",
+      "projectSessionsKey",
       "savedPermissionOptions",
       "serializeFavoriteSessions",
       "sessionCatalogOptions",

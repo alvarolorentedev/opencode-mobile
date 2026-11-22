@@ -87,7 +87,6 @@ function extractDeclarations(source: string, names: string[]) {
 }
 const projectActionsSource = await readSource('../../features/projects/state/use-project-file-actions.ts');
 const promptLifecycleSource = await readSource('../../features/chat/state/use-prompt-lifecycle.ts');
-const sessionActionsSource = await readSource('../../features/sessions/state/use-session-bootstrap-actions.ts');
 const connectionActionsSource = await readSource('../../features/sessions/state/use-connection-link-actions.ts');
 const names = [ 'openProjectFile', 'saveProjectFile', 'abortSession'];
 const declarations = [
@@ -1031,9 +1030,8 @@ profileRuntime.unmount();
 
 // Actual session callbacks: refresh an explicit target missing from an
 // otherwise populated cache and preserve deep-link resolution.
-const sessionNames = ['ensureActiveSession', 'openDeepLinkSession'];
+const sessionNames = ['openDeepLinkSession'];
 const sessionDeclarations = [
-  extractDeclarations(sessionActionsSource, ['ensureActiveSession']),
   extractDeclarations(connectionActionsSource, ['openDeepLinkSession']),
 ].join('\n');
 let createdSessions = 0, fetchedSessions = 0;
@@ -1048,7 +1046,6 @@ const sessionContext: any = {
   refreshSessions: async () => { fetchedSessions++; return [target]; }, refreshActiveSessions: async () => {},
   currentSessionId: undefined, sessions: [{ id: 'cached' }], sessionsRef: { current: [{ id: 'cached' }] }, messagesBySession: {},
   pendingDeepLinkTargetRef: { current: { sessionId: 'target', projectPath: '/repo' } },
-  bootstrapPromiseRef: { current: null }, bootstrapTokenRef: {},
   connectionScope: 'scope', createSession: async () => { createdSessions++; },
   explicitSessionSelectionRef: { current: undefined },
   setIsBootstrappingChat: () => {}, refreshMessages: async () => {}, refreshSessionDiff: async () => {},
@@ -1058,7 +1055,7 @@ const sessionContext: any = {
   deepLinkOperationRef: {}, currentSessionIdRef: {}, serverProjectsRef: { current: [{ worktree: '/repo' }] },
   projectPathsByConnectionRef: { current: { scope: [] } },
   isAvailableProjectDirectory: async (candidate: any) => resolvableDirectories.has(candidate.directory),
-  connect: async () => {}, selectProject: (path: any) => { sessionContext.activeProjectPathRef.current = path; }, ensureActiveSessionRef: {}, setTimeout, Date,
+  connect: async () => {}, selectProject: (path: any) => { sessionContext.activeProjectPathRef.current = path; }, setTimeout, Date,
   connectionScopeRef: { current: 'scope' },
   loadConnectionProfiles: async () => [{ id: 'saved', serverUrl: 'https://other', username: '', scope: 'other' }],
   findProfileByConnectionScope: (profiles: any, scope: any) => profiles.find((profile: any) => profile.scope === scope),
@@ -1069,12 +1066,30 @@ sessionContext.findSessionForNavigation = async (_client: unknown, id: string) =
 sessionContext.openSession = async (id: string) => { sessionContext.currentSessionIdRef.current = id; };
 runInNewContext(ts.transpileModule(`${sessionDeclarations}\nexports.actions = { ${sessionNames.join(', ')} };`, { compilerOptions: { module: ts.ModuleKind.CommonJS } }).outputText, sessionContext);
 const sessionActions = sessionContext.exports.actions;
+const bootstrapKey = 'bootstrap-scope';
+const sessionCacheKey = ['test', 'project-session-catalog'];
+const bootstrapCache = new QueryClient({ defaultOptions: { queries: { gcTime: Infinity } } });
+bootstrapCache.setQueryData(sessionCacheKey, [{ id: 'cached' }]);
+const bootstrapStore = createAppStore({ settings: { serverUrl: 'https://server.test', directory: '', username: '', password: '' }, chatPreferences: {} as never, controlPlaneUrl: '' });
+const { createSessionNavigationCommands } = await loadTs('runtime/core/commands/session-navigation.ts', {
+  '@/features/sessions/runtime': { projectSessionsKey: () => sessionCacheKey },
+});
+const bootstrap = createSessionNavigationCommands({
+  store: bootstrapStore, queryClient: bootstrapCache,
+  connections: { get: () => ({
+    getProjectAccess: () => ({ client: {}, identity: {}, revision: 0, isCurrent: () => true }),
+    realtime: { getProjectSources: () => ({
+      refreshSessions: async () => bootstrapCache.setQueryData(sessionCacheKey, await sessionContext.refreshSessions()),
+      refreshMessages: async () => {}, refreshSessionDiff: async () => {}, refreshSessionTodos: async () => {}, refreshPendingInteractions: async () => {},
+    }) },
+  }) },
+}).navigation({ connectionId: 'a', projectPath: '/repo' }, bootstrapKey, 0);
+bootstrapStore.getState().setSelection(bootstrapKey, { pendingDeepLink: { sessionId: 'target', projectPath: '/repo' } });
 fetchedSessions = 0;
-assert.equal(await sessionActions.ensureActiveSession(), 'target'); assert.equal(fetchedSessions, 1);
+assert.equal(await bootstrap.ensureActiveSession(), 'target'); assert.equal(fetchedSessions, 1);
 assert.equal(createdSessions, 0);
-sessionContext.pendingDeepLinkTargetRef.current = { sessionId: 'missing', projectPath: '/repo' };
-sessionContext.bootstrapPromiseRef.current = null;
-assert.equal(await sessionActions.ensureActiveSession(), undefined); assert.equal(createdSessions, 0);
+bootstrapStore.getState().setSelection(bootstrapKey, { pendingDeepLink: { sessionId: 'missing', projectPath: '/repo' } });
+assert.equal(await bootstrap.ensureActiveSession(), undefined); assert.equal(createdSessions, 0);
 
 // Local deep-link validation remains authoritative and never creates a chat.
 // Cross-connection/project preparation is covered through the workspace manager

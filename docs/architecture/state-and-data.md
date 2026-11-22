@@ -32,6 +32,11 @@ own navigation cancellation, chat and worktree creation, and independent
 terminal and inspection targets. A newer navigation cancels an older external
 link before it can change focus.
 
+Session selection and startup bootstrap use the scoped app-core command in
+`runtime/core/commands/session-navigation.ts`. Explicit selection commits
+before transcript hydration and cancels any in-flight bootstrap for that
+workspace.
+
 State is split into seven practical domains:
 
 1. connection and environment state

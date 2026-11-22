@@ -21,7 +21,7 @@ type ProviderEffectsInput = ReturnType<typeof useWorkspaceRuntimeState> & {
   active: boolean;
   client: ScopedOpencodeClient;
   isCurrentClient: (candidate: object) => boolean;
-  ensureActiveSessionRef: { current: () => Promise<string | undefined> };
+  ensureActiveSession: () => Promise<string | undefined>;
   setPromptError: (error: { message: string; occurredAt: number; sessionId?: string } | undefined) => void;
   conversationSessionId?: string;
   pruneTranscript: (keepIds: Set<string>, limit: number) => void;
@@ -31,7 +31,7 @@ export function useOpencodeProviderEffects({
   active,
   client,
   isCurrentClient,
-  ensureActiveSessionRef,
+  ensureActiveSession,
   setPromptError,
   conversationSessionId,
   pruneTranscript,
@@ -58,7 +58,7 @@ export function useOpencodeProviderEffects({
     }
 
     let cancelled = false;
-    void ensureActiveSessionRef.current().catch((error) => {
+    void ensureActiveSession().catch((error) => {
       if (!cancelled && isCurrentClient(client)) {
         setPromptError({
           message: error instanceof Error ? error.message : 'Could not load this project.',
@@ -69,7 +69,7 @@ export function useOpencodeProviderEffects({
     return () => {
       cancelled = true;
     };
-  }, [active, activeProjectPath, client, connection.status, ensureActiveSessionRef, isCurrentClient, setPromptError]);
+  }, [active, activeProjectPath, client, connection.status, ensureActiveSession, isCurrentClient, setPromptError]);
 
   useEffect(
     () => () => {

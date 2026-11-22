@@ -1,6 +1,56 @@
 import { describe, expect, it, vi } from 'vitest';
+import { QueryClient } from '@tanstack/react-query';
+
+import { createSessionNavigationCommands } from '@/runtime/core/commands/session-navigation';
+import { createAppStore } from '@/runtime/core/store';
+import type { CommandContext } from '@/runtime/core/commands/context';
+import type { RealtimeScopeInput } from '@/runtime/realtime/create-realtime';
+import type { ScopedOpencodeClient } from '@/shared/protocol/opencode/client';
+import { connectionQueryKey } from '@/shared/server-data/keys';
 
 import { hookRuntime, loadTs } from '../../tests/helpers/runtime.mjs';
+
+vi.mock('@/features/sessions/runtime', () => ({
+  projectSessionsKey: (identity: Parameters<typeof connectionQueryKey>[0], client: ScopedOpencodeClient) =>
+    [...connectionQueryKey(identity, client.__opencode.contract), 'sessions', 'project', client.__opencode.directory],
+}));
+
+function sessionNavigationFixture(sessions: { id: string }[] = [], overrides: Partial<RealtimeScopeInput> = {}) {
+  const target = { connectionId: 'server', projectPath: '/repo' };
+  const scopeKey = JSON.stringify([target.connectionId, target.projectPath]);
+  const identity = { connectionId: target.connectionId, connectionScope: 'scope', authRevision: 0 };
+  const client = { __opencode: { contract: 'v2', directory: target.projectPath } } as ScopedOpencodeClient;
+  const store = createAppStore({ settings: { serverUrl: 'http://server', username: '', password: '', directory: '' }, chatPreferences: {} as never, controlPlaneUrl: '' });
+  const queryClient = new QueryClient({ defaultOptions: { queries: { gcTime: Infinity } } });
+  const key = [...connectionQueryKey(identity, client.__opencode.contract), 'sessions', 'project', target.projectPath];
+  const writeSessions = (next: { id: string }[]) => queryClient.setQueryData(key, next);
+  const sources = {
+    projectPath: target.projectPath,
+    workspaceKey: scopeKey,
+    busy: false,
+    onEvent: () => {},
+    refreshSessions: async () => {},
+    refreshMessages: async () => [],
+    refreshSessionDiff: async () => [],
+    refreshSessionTodos: async () => [],
+    refreshPendingInteractions: async () => {},
+    ...overrides,
+  };
+  const manager = {
+    getProjectAccess: () => ({ client, identity, revision: 0, isCurrent: () => true }),
+    realtime: { getProjectSources: () => sources },
+  };
+  const commands = createSessionNavigationCommands({ store, queryClient, clock: Date.now,
+    connections: { get: () => manager } as unknown as CommandContext['connections'],
+  });
+  writeSessions(sessions);
+  return {
+    ...commands.navigation(target, scopeKey, 0),
+    writeSessions,
+    select: (patch: Parameters<ReturnType<typeof store.getState>['setSelection']>[1]) => store.getState().setSelection(scopeKey, patch),
+    read: () => store.getState().selection[scopeKey],
+  };
+}
 
 function deferredGate<T = void>() {
   let resolve!: (value: T | PromiseLike<T>) => void;
@@ -44,15 +94,10 @@ function sessionCrudInput(patch: Record<string, unknown> = {}) {
   let sessions: any[] = (patch.sessions as any[] | undefined) ?? [];
   let statuses: Record<string, any> = {};
   let currentSessionId: string | undefined = patch.currentSessionId as string | undefined;
-  let bootstrapping = false;
-  const bootstrapPromiseRef: { current: Promise<string | undefined> | null } = { current: null };
-  const bootstrapTokenRef: { current: object | undefined } = { current: undefined };
   const currentSessionIdRef: { current: string | undefined } = { current: currentSessionId };
   const explicitSessionSelectionRef: { current: string | undefined } = { current: undefined };
   const locallyCreatedSessionsRef = { current: new Map<string, number>() };
   return {
-    bootstrapPromiseRef,
-    bootstrapTokenRef,
     currentSessionIdRef,
     explicitSessionSelectionRef,
     locallyCreatedSessionsRef,
@@ -60,7 +105,6 @@ function sessionCrudInput(patch: Record<string, unknown> = {}) {
       get sessions() { return sessions; },
       get statuses() { return statuses; },
       get currentSessionId() { return currentSessionId; },
-      get bootstrapping() { return bootstrapping; },
     },
     input: {
       client: { __opencode: { contract: 'v2' } },
@@ -76,14 +120,10 @@ function sessionCrudInput(patch: Record<string, unknown> = {}) {
       sessions,
       sessionStatuses: statuses,
       commands: [],
-      bootstrapPromiseRef,
-      bootstrapTokenRef,
-      currentSessionIdRef,
+        currentSessionIdRef,
       explicitSessionSelectionRef,
       locallyCreatedSessionsRef,
-      setIsBootstrappingChat: (value: any) => {
-        bootstrapping = typeof value === 'function' ? value(bootstrapping) : value;
-      },
+      openSession: vi.fn(async () => {}),
       setCurrentSessionId: (value: any) => {
         currentSessionId = typeof value === 'function' ? value(currentSessionId) : value;
         currentSessionIdRef.current = currentSessionId;
@@ -153,226 +193,66 @@ describe('local-first session selection', () => {
   });
 
   it('selects the active session before transcript hydration finishes', async () => {
-    const runtime = hookRuntime();
-    const { useSessionBootstrapActions } = await loadTs('features/sessions/state/use-session-bootstrap-actions.ts', {
-      react: runtime.react,
-    });
     const hydration = deferredGate();
-    let currentSessionId: string | undefined;
-    const currentSessionIdRef: { current: string | undefined } = { current: undefined };
-    let bootstrapping = false;
-    let refreshes = 0;
-    const input = {
-      activeProjectPath: '/repo',
-      connection: { status: 'connected' },
-      connectionScope: 'scope',
-      client: {},
-      createSession: async () => ({ id: 'created' }),
-      currentSessionId: undefined,
-      currentSessionIdRef,
-      explicitSessionSelectionRef: { current: undefined },
-      sessions: [{ id: 'target' }],
-      sessionsRef: { current: [{ id: 'target' }] },
-      messagesBySession: {},
-      pendingDeepLinkTargetRef: { current: undefined },
-      bootstrapPromiseRef: { current: null },
-      bootstrapTokenRef: { current: undefined },
-      isCurrentClient: () => true,
-      refreshSessions: async () => [{ id: 'target' }],
-      refreshMessages: async () => { refreshes += 1; await hydration.promise; return []; },
-      refreshSessionDiff: async () => [],
-      refreshSessionTodos: async () => [],
-      refreshPendingInteractions: async () => undefined,
-      refreshChatCapabilities: async () => undefined,
-      refreshServerFeatures: async () => undefined,
-      refreshDiagnostics: async () => undefined,
-      setCurrentSessionId: (value: any) => {
-        currentSessionId = typeof value === 'function' ? value(currentSessionId) : value;
-        currentSessionIdRef.current = currentSessionId;
-      },
-      setIsBootstrappingChat: (value: any) => {
-        bootstrapping = typeof value === 'function' ? value(bootstrapping) : value;
-      },
-    };
-    runtime.mount(useSessionBootstrapActions, input);
+    const refreshMessages = vi.fn(async () => hydration.promise);
+    const context = sessionNavigationFixture([{ id: 'target' }], { refreshMessages });
 
-    await expect(runtime.value.ensureActiveSession()).resolves.toBe('target');
-    expect(currentSessionId).toBe('target');
-    expect(currentSessionIdRef.current).toBe('target');
-    expect(bootstrapping).toBe(false);
-    expect(refreshes).toBe(1);
-
+    await expect(context.ensureActiveSession()).resolves.toBe('target');
+    expect(context.read()).toMatchObject({ currentSessionId: 'target', isBootstrappingChat: false });
+    expect(refreshMessages).toHaveBeenCalledTimes(1);
     hydration.resolve();
-    await runtime.settle();
-    runtime.unmount();
+    await hydration.promise;
   });
 
   it('refreshes a cached selection so its paging window can be rebuilt', async () => {
-    const runtime = hookRuntime();
-    const { useSessionBootstrapActions } = await loadTs('features/sessions/state/use-session-bootstrap-actions.ts', {
-      react: runtime.react,
-    });
     const refreshMessages = vi.fn(async () => []);
-    const input = {
-      activeProjectPath: '/repo',
-      connection: { status: 'connected' },
-      connectionScope: 'scope',
-      client: {},
-      createSession: async () => ({ id: 'created' }),
-      currentSessionId: 'target',
-      currentSessionIdRef: { current: 'target' as string | undefined },
-      explicitSessionSelectionRef: { current: undefined },
-      sessions: [{ id: 'target' }],
-      sessionsRef: { current: [{ id: 'target' }] },
-      messagesBySession: { target: [{ info: { id: 'cached' } }] },
-      pendingDeepLinkTargetRef: { current: undefined },
-      bootstrapPromiseRef: { current: null },
-      bootstrapTokenRef: { current: undefined },
-      isCurrentClient: () => true,
-      refreshSessions: async () => [{ id: 'target' }],
-      refreshMessages,
-      refreshSessionDiff: async () => [],
-      refreshSessionTodos: async () => [],
-      refreshPendingInteractions: async () => undefined,
-      refreshChatCapabilities: async () => undefined,
-      refreshServerFeatures: async () => undefined,
-      setCurrentSessionId: () => undefined,
-      setIsBootstrappingChat: () => undefined,
-    };
+    const context = sessionNavigationFixture([{ id: 'target' }], { refreshMessages, hasMessages: () => true });
+    context.select({ currentSessionId: 'target' });
 
-    runtime.mount(useSessionBootstrapActions, input);
-    await expect(runtime.value.ensureActiveSession()).resolves.toBe('target');
-    // Cached records still need the background read; it carries the cursor.
+    await expect(context.ensureActiveSession()).resolves.toBe('target');
     expect(refreshMessages).toHaveBeenCalledWith('target', true);
-    runtime.unmount();
   });
 
   it('does not let a superseded bootstrap overwrite an explicit selection', async () => {
-    const runtime = hookRuntime();
-    const { useSessionBootstrapActions } = await loadTs('features/sessions/state/use-session-bootstrap-actions.ts', {
-      react: runtime.react,
-    });
-    const fetchGate = deferredGate<any[]>();
-    let currentSessionId: string | undefined;
-    const currentSessionIdRef: { current: string | undefined } = { current: undefined };
-    let bootstrapping = false;
-    const input = {
-      activeProjectPath: '/repo',
-      connection: { status: 'connected' },
-      connectionScope: 'scope',
-      client: {},
-      createSession: async () => ({ id: 'created' }),
-      currentSessionId: undefined,
-      currentSessionIdRef,
-      explicitSessionSelectionRef: { current: undefined },
-      sessions: [],
-      sessionsRef: { current: [] },
-      messagesBySession: {},
-      pendingDeepLinkTargetRef: { current: undefined },
-      bootstrapPromiseRef: { current: null },
-      bootstrapTokenRef: { current: undefined },
-      isCurrentClient: () => true,
-      refreshSessions: async () => fetchGate.promise,
-      refreshMessages: async () => [],
-      refreshSessionDiff: async () => [],
-      refreshSessionTodos: async () => [],
-      refreshPendingInteractions: async () => undefined,
-      refreshChatCapabilities: async () => undefined,
-      refreshServerFeatures: async () => undefined,
-      refreshDiagnostics: async () => undefined,
-      setCurrentSessionId: (value: any) => {
-        currentSessionId = typeof value === 'function' ? value(currentSessionId) : value;
-        currentSessionIdRef.current = currentSessionId;
-      },
-      setIsBootstrappingChat: (value: any) => {
-        bootstrapping = typeof value === 'function' ? value(bootstrapping) : value;
-      },
-    };
-    runtime.mount(useSessionBootstrapActions, input);
-
-    const ensuring = runtime.value.ensureActiveSession();
-    await runtime.settle();
-    expect(input.bootstrapTokenRef.current).toBeDefined();
-    input.bootstrapTokenRef.current = undefined;
-    input.setCurrentSessionId('explicit');
-    input.setIsBootstrappingChat(false);
+    const fetchGate = deferredGate<{ id: string }[]>();
+    const context = sessionNavigationFixture([], { refreshSessions: async () => context.writeSessions(await fetchGate.promise) });
+    const ensuring = context.ensureActiveSession();
+    expect(context.read().isBootstrappingChat).toBe(true);
+    await context.openSession('explicit');
     fetchGate.resolve([{ id: 'remembered' }]);
 
     await expect(ensuring).resolves.toBeUndefined();
-    expect(currentSessionId).toBe('explicit');
-    expect(bootstrapping).toBe(false);
-    runtime.unmount();
+    expect(context.read()).toMatchObject({ currentSessionId: 'explicit', explicitSessionId: 'explicit', isBootstrappingChat: false });
   });
 
   it('accepts a just-selected session but still validates a missing deep-link target', async () => {
-    const runtime = hookRuntime();
-    const { useSessionBootstrapActions } = await loadTs('features/sessions/state/use-session-bootstrap-actions.ts', {
-      react: runtime.react,
-    });
-    const fetches: number[] = [];
-    let pendingTarget: { sessionId: string } | undefined;
-    const input = {
-      activeProjectPath: '/repo',
-      connection: { status: 'connected' },
-      connectionScope: 'scope',
-      client: {},
-      createSession: async () => ({ id: 'created' }),
-      currentSessionId: undefined,
-      currentSessionIdRef: { current: 'explicit' as string | undefined },
-      explicitSessionSelectionRef: { current: 'explicit' as string | undefined },
-      sessions: [],
-      sessionsRef: { current: [] },
-      messagesBySession: {},
-      pendingDeepLinkTargetRef: { get current() { return pendingTarget; } },
-      bootstrapPromiseRef: { current: null },
-      bootstrapTokenRef: { current: undefined },
-      isCurrentClient: () => true,
-      refreshSessions: async (...args: any[]) => { fetches.push(args.length); return []; },
-      refreshMessages: async () => [],
-      refreshSessionDiff: async () => [],
-      refreshSessionTodos: async () => [],
-      refreshPendingInteractions: async () => undefined,
-      refreshChatCapabilities: async () => undefined,
-      refreshServerFeatures: async () => undefined,
-      setCurrentSessionId: () => undefined,
-      setIsBootstrappingChat: () => undefined,
-    };
-    runtime.mount(useSessionBootstrapActions, input);
+    const refreshSessions = vi.fn(async () => []);
+    const context = sessionNavigationFixture([], { refreshSessions });
+    context.select({ currentSessionId: 'explicit', explicitSessionId: 'explicit' });
 
-    await expect(runtime.value.ensureActiveSession()).resolves.toBe('explicit');
-    expect(fetches).toHaveLength(0);
+    await expect(context.ensureActiveSession()).resolves.toBe('explicit');
+    expect(refreshSessions).not.toHaveBeenCalled();
 
-    input.currentSessionIdRef.current = 'missing';
-    input.explicitSessionSelectionRef.current = undefined;
-    pendingTarget = { sessionId: 'missing' };
-    input.bootstrapPromiseRef.current = null;
-    await expect(runtime.value.ensureActiveSession()).resolves.toBeUndefined();
-    expect(fetches).toHaveLength(1);
-    runtime.unmount();
+    context.select({ currentSessionId: 'missing', explicitSessionId: undefined, pendingDeepLink: { sessionId: 'missing' } });
+    await expect(context.ensureActiveSession()).resolves.toBeUndefined();
+    expect(refreshSessions).toHaveBeenCalledTimes(1);
   });
 
   it('openSession returns after selection without waiting for hydration', async () => {
-    const runtime = hookRuntime();
-    const { useSessionCrudActions } = await loadSessionCrud(runtime);
     const hydration = deferredGate();
-    const { state, input } = sessionCrudInput({
-      refreshMessages: async () => { await hydration.promise; return []; },
-    });
-    runtime.mount(useSessionCrudActions, input);
-    const inFlightBootstrap = Promise.resolve('remembered');
-    input.bootstrapPromiseRef.current = inFlightBootstrap;
-    input.bootstrapTokenRef.current = {};
-    input.setIsBootstrappingChat(true);
+    const refreshMessages = vi.fn(async () => hydration.promise);
+    const fetched = deferredGate();
+    const context = sessionNavigationFixture([], { refreshMessages, refreshSessions: () => fetched.promise });
+    const ensuring = context.ensureActiveSession();
+    expect(context.read().isBootstrappingChat).toBe(true);
 
-    await expect(runtime.value.openSession('target')).resolves.toBeUndefined();
-    expect(state.currentSessionId).toBe('target');
-    expect(state.bootstrapping).toBe(false);
-    expect(input.bootstrapPromiseRef.current).toBeNull();
-    expect(input.bootstrapTokenRef.current).toBeUndefined();
-
+    await expect(context.openSession('target')).resolves.toBeUndefined();
+    expect(context.read()).toMatchObject({ currentSessionId: 'target', explicitSessionId: 'target', isBootstrappingChat: false });
+    expect(refreshMessages).toHaveBeenCalledWith('target', false);
+    fetched.resolve();
+    await expect(ensuring).resolves.toBeUndefined();
     hydration.resolve();
-    await runtime.settle();
-    runtime.unmount();
+    await hydration.promise;
   });
 
   it('createSession shows the returned session before the list refresh resolves', async () => {

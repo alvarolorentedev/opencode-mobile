@@ -19,14 +19,10 @@ export function useSessionCrudActions({
   availableModels,
   commands,
   currentConfig,
-  readDiffScope,
   sessions,
   sessionStatuses,
-  bootstrapPromiseRef,
-  bootstrapTokenRef,
   setCurrentSessionId,
-  setIsBootstrappingChat,
-  beginHydration,
+  openSession,
   setSessions,
   setSessionStatuses,
   setMessagesBySession,
@@ -38,42 +34,9 @@ export function useSessionCrudActions({
   refreshSessions,
   refreshMessages,
   refreshSessionDiff,
-  refreshSessionTodos,
-  refreshVcsDiff,
-  refreshPendingInteractions,
   refreshActiveSessions,
   chatPreferences,
 }: SessionCrudInput) {
-  const openSession = useCallback(
-    async (sessionId: string) => {
-      // Selection is local and immediate. Callers (chat library, new chat,
-      // fork) must not wait for transcript/diff hydration before navigating.
-      // An explicit selection also supersedes an in-flight initial bootstrap,
-      // which could otherwise finish later and select the remembered chat.
-      bootstrapPromiseRef.current = null;
-      bootstrapTokenRef.current = undefined;
-      setIsBootstrappingChat(false);
-      explicitSessionSelectionRef.current = sessionId;
-      setCurrentSessionId(sessionId);
-      // Mark the session as hydrating before the prompt-inbox read, which can
-      // take as long as the transcript read on a slow link. Otherwise the chat
-      // briefly shows its empty starter state while the selected session loads.
-      const finishHydration = beginHydration(sessionId);
-      void Promise.all([
-        refreshMessages(sessionId),
-        refreshSessionDiff(sessionId, true),
-        refreshSessionTodos(sessionId),
-        refreshPendingInteractions(),
-      ]).then(() => {
-        const scope = readDiffScope(sessionId);
-        if (scope && scope !== 'turn') {
-          void refreshVcsDiff(scope, true);
-        }
-      }).catch(() => undefined).finally(finishHydration);
-    },
-    [beginHydration, bootstrapPromiseRef, bootstrapTokenRef, readDiffScope, explicitSessionSelectionRef, refreshMessages, refreshPendingInteractions, refreshSessionDiff, refreshSessionTodos, refreshVcsDiff, setCurrentSessionId, setIsBootstrappingChat],
-  );
-
   const createSession = useCallback(
     async (title?: string) => {
       const trimmedTitle = title?.trim();

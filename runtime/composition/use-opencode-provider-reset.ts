@@ -36,8 +36,7 @@ export function useOpencodeProviderReset({
   setPendingQuestionsBySession,
 }: ResetInput) {
   const {
-    bootstrapPromiseRef,
-    bootstrapTokenRef,
+    cancelBootstrap,
     busyNotificationsRef,
     sessionRefreshTimeoutsRef,
     sessionRefreshOptionsRef,
@@ -45,11 +44,10 @@ export function useOpencodeProviderReset({
     locallyCreatedSessionsRef,
     setCurrentSessionId,
     setMcpAuthPrompt,
-        } = state;
+  } = state;
 
   return useCallback(() => {
-    bootstrapPromiseRef.current = null;
-    bootstrapTokenRef.current = undefined;
+    cancelBootstrap();
     busyNotificationsRef.current.clear();
     Object.values(sessionRefreshTimeoutsRef.current).forEach((timeout) => clearTimeout(timeout));
     sessionRefreshTimeoutsRef.current = {};
@@ -68,23 +66,22 @@ export function useOpencodeProviderReset({
     setMcpAuthPrompt(undefined);
     resetTerminal();
   }, [
-        resetTerminal,
+    resetTerminal,
     resetTranscript,
-      bootstrapPromiseRef,
-    bootstrapTokenRef,
+    cancelBootstrap,
     busyNotificationsRef,
     sessionRefreshOptionsRef,
     sessionRefreshTimeoutsRef,
     explicitSessionSelectionRef,
     locallyCreatedSessionsRef,
-              setCurrentSessionId,
+    setCurrentSessionId,
     setMcpAuthPrompt,
     setPendingPermissionsBySession,
     setPendingQuestionsBySession,
-        setSessions,
-        setMessagesBySession,
-        setDiffsBySession,
-        setTodosBySession,
-        setVcsDiffsByScope,
-      ]);
+    setSessions,
+    setMessagesBySession,
+    setDiffsBySession,
+    setTodosBySession,
+    setVcsDiffsByScope,
+  ]);
 }

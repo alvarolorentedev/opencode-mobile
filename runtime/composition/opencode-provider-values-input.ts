@@ -27,6 +27,7 @@ type ActionInputs =
   ReturnType<typeof useProjectActions> &
   ReturnType<typeof useSessionActions> &
   ReturnType<ReturnType<typeof createSessionCommands>['interactions']> &
+  ReturnType<ReturnType<typeof createSessionCommands>['navigation']> &
   ReturnType<typeof useCapabilitiesActions> &
   ReturnType<typeof usePromptLifecycle> &
   ReturnType<typeof useConnectionLinkActions> & Pick<ConnectionContextValue, 'connect' | 'switchConnection' | 'updateSettings' | 'connectSetup' | 'connectionProfiles'> & { servicesValue: ConnectionContextValue['services'] } &

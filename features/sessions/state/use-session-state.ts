@@ -21,9 +21,6 @@ export function useSessionState(scopeKey: string) {
     write((current) => ({ currentSessionId: typeof value === 'function' ? value(current.currentSessionId) : value }));
   }, [write]);
   const isBootstrappingChat = selection.isBootstrappingChat;
-  const setIsBootstrappingChat = useCallback<Dispatch<SetStateAction<boolean>>>((value) => {
-    write((current) => ({ isBootstrappingChat: typeof value === 'function' ? value(current.isBootstrappingChat) : value }));
-  }, [write]);
   const activeSessionsVisible = selection.activeSessionsVisible;
   const setActiveSessionsVisible = useCallback<Dispatch<SetStateAction<boolean>>>((value) => {
     write((current) => ({ activeSessionsVisible: typeof value === 'function' ? value(current.activeSessionsVisible) : value }));
@@ -38,10 +35,6 @@ export function useSessionState(scopeKey: string) {
 
   const deepLinkOperationRef = useRef<object | undefined>(undefined);
 
-  const bootstrapPromiseRef = useRef<Promise<string | undefined> | null>(null);
-
-  const bootstrapTokenRef = useRef<object | undefined>(undefined);
-
   const explicitSessionSelectionRef = useMemo(() => ({
     get current() { return store.getState().selection[scopeKey]?.explicitSessionId; },
     set current(explicitSessionId: string | undefined) { write({ explicitSessionId }); },
@@ -50,5 +43,5 @@ export function useSessionState(scopeKey: string) {
   // Request correlation while a new session waits to appear in the catalog.
   const locallyCreatedSessionsRef = useRef<Map<string, number>>(new Map());
 
-  return { currentSessionId, setCurrentSessionId, isBootstrappingChat, setIsBootstrappingChat, activeSessionsVisible, setActiveSessionsVisible, currentSessionIdRef, pendingDeepLinkTargetRef, deepLinkOperationRef, bootstrapPromiseRef, bootstrapTokenRef, explicitSessionSelectionRef, locallyCreatedSessionsRef };
+  return { currentSessionId, setCurrentSessionId, isBootstrappingChat, activeSessionsVisible, setActiveSessionsVisible, currentSessionIdRef, pendingDeepLinkTargetRef, deepLinkOperationRef, explicitSessionSelectionRef, locallyCreatedSessionsRef };
 }

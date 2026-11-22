@@ -10,7 +10,7 @@ export { MAX_ACTIVE_SESSIONS } from './state/use-active-sessions';
 export { mergeSessionStatuses } from './model/session-utils';
 export { migrateMissionStatsCaches } from './services/mission-stats-cache';
 export { parseFavoriteSessions } from './services/favorites-storage';
-export { pendingInteractionsKey, savedPermissionOptions } from './services/queries';
+export { pendingInteractionsKey, projectSessionsKey, savedPermissionOptions } from './services/queries';
 export { serializeFavoriteSessions } from './services/favorites-storage';
 export { sessionCatalogOptions } from './services/queries';
 export { useActiveSessions } from './state/use-active-sessions';
