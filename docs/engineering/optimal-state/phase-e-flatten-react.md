@@ -32,6 +32,8 @@ Start only after Phase D is complete and green.
 - The app core runs automatic approval from Query and the per-connection
   policy. Settings reads pending permissions and questions from their owning
   partitions.
+- Diagnostics reads transport state from the connection manager and the app
+  store, and selects health and MCP results from Query.
 - `runtime/core/workspace-selectors.ts` selects the retained project projection.
 - [ADR 0052](../../adr/0052-explicit-overlay-dependencies.md) records explicit
   portal targets and update blocker callbacks. Shared controls use shared imports.

@@ -12,4 +12,4 @@ export function useConnection(target?: WorkspaceTarget) {
   return useMemo(() => ({ ...value, connect }), [connect, value]);
 }
 
-export const useDiagnostics = (target?: WorkspaceTarget) => useWorkspaceDomainValue((values) => values.diagnosticsValue, 'useDiagnostics', target);
+export { useDiagnostics, useTransportDiagnostics } from './state/use-workspace-diagnostics';

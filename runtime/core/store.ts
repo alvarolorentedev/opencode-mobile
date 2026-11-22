@@ -1,4 +1,5 @@
 import { createStore, type StoreApi } from 'zustand/vanilla';
+import { DEFAULT_NETWORK_STATUS, type NetworkStatus } from '@/shared/network/network-status';
 
 import type { OpencodeConnectionSettings } from '@/shared/protocol/opencode/client/types';
 import type { PendingPrompt, PromptInput } from '@/shared/protocol/opencode/prompt-inbox';
@@ -150,6 +151,8 @@ const EMPTY_SELECTION: SelectionState = {
 export type AppState = {
   shell: ShellState;
   registry: RegistryState;
+  network: NetworkStatus;
+  setNetwork: (network: NetworkStatus) => void;
   selection: Record<string, SelectionState>;
   chat: Record<string, ChatUiState>;
   prompt: Record<string, PromptUiState>;
@@ -199,6 +202,8 @@ export function createAppStore(defaults: AppStoreDefaults): AppStore {
       profiles: [],
     },
     registry: { connections: [], ready: false, snapshots: {} },
+    network: DEFAULT_NETWORK_STATUS,
+    setNetwork: (network) => set({ network }),
     selection: {},
     chat: {},
     prompt: {},

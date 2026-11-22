@@ -2,6 +2,7 @@ import type { QueryClient } from '@tanstack/react-query';
 
 import type { AppStore } from '@/runtime/core/store';
 import { getConnectionScope } from '@/shared/contracts/connection-scope';
+import type { NetworkStatus } from '@/shared/network/network-status';
 import type { ConnectionRecord } from '@/shared/contracts/workspace';
 import { replaceQueryPartition, type QueryIdentity } from '@/shared/server-data/keys';
 
@@ -36,7 +37,6 @@ export function createConnectionRegistry({ store, queryClient }: { store: AppSto
   let foregroundActive = true;
   let activeId: string | undefined;
   let queryForeground = true;
-  let online = true;
   let unsubscribed: (() => void) | undefined;
   let configuration: Configuration | undefined;
   const foreground = {
@@ -49,6 +49,10 @@ export function createConnectionRegistry({ store, queryClient }: { store: AppSto
   function notify() { for (const listener of listeners) listener(); }
   function notifyState() { for (const listener of stateListeners) listener(); }
   function notifyEnvironment() { for (const listener of environmentListeners) listener(); }
+  const isOnline = () => store.getState().network.online;
+  function applyDemand() {
+    for (const [id, { manager }] of slots) manager.setDemand(queryForeground && activeId === id, isOnline());
+  }
 
   function drop(id: string, slot: Slot) {
     slots.delete(id);
@@ -99,7 +103,7 @@ export function createConnectionRegistry({ store, queryClient }: { store: AppSto
         slot.stopRenewal?.();
         slot.stopRenewal = slot.manager.syncRenewal();
       }
-      slot.manager.setDemand(queryForeground && activeId === entry.id, online);
+      slot.manager.setDemand(queryForeground && activeId === entry.id, isOnline());
     }
     if (changed) { notify(); notifyState(); }
   }
@@ -108,7 +112,7 @@ export function createConnectionRegistry({ store, queryClient }: { store: AppSto
     get: (id: string) => slots.get(id)?.manager,
     environment: {
       isForeground: () => foregroundActive,
-      isOnline: () => online,
+      isOnline,
       subscribe(listener: () => void) {
         environmentListeners.add(listener);
         return () => { environmentListeners.delete(listener); };
@@ -135,13 +139,17 @@ export function createConnectionRegistry({ store, queryClient }: { store: AppSto
       for (const listener of foregroundListeners) listener(active);
       notifyEnvironment();
     },
-    setDemand(connectionId: string | undefined, nextOnline: boolean, nextQueryForeground: boolean) {
+    setDemand(connectionId: string | undefined, nextQueryForeground: boolean) {
       activeId = connectionId;
-      const onlineChanged = online !== nextOnline;
-      online = nextOnline;
       queryForeground = nextQueryForeground;
-      for (const [id, { manager }] of slots) manager.setDemand(queryForeground && activeId === id, online);
-      if (onlineChanged) notifyEnvironment();
+      applyDemand();
+    },
+    setNetwork(next: NetworkStatus) {
+      const { network, setNetwork } = store.getState();
+      if (network.online === next.online && network.type === next.type && network.expensive === next.expensive
+        && network.constrained === next.constrained && network.generation === next.generation) return;
+      setNetwork(next);
+      if (network.online !== next.online) { applyDemand(); notifyEnvironment(); }
     },
     dispose() {
       unsubscribed?.();

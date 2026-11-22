@@ -42,7 +42,8 @@ export function WorkspaceProvider({ children }: PropsWithChildren) {
   const pathname = usePathname();
   // One NetInfo owner for every retained project. See use-network-status.ts:
   // configure() is process-global and resets listeners.
-  const network = useNetworkStatus();
+  useNetworkStatus(core.connections.setNetwork);
+  const network = useAppStore((state) => state.network);
   const { isHydrated } = useOpencodePersistence({ ...shell, defaultChatPreferences, defaultSettings: defaultConnectionSettings });
   const presentation = useAppStore((state) => state.presentation);
   // Catalog publications compose Query snapshots and command handles for the root view.
@@ -171,7 +172,7 @@ export function WorkspaceProvider({ children }: PropsWithChildren) {
   }, [focusedSettings, focusedPreferences, setSettings, setChatPreferences]);
   const readTarget = pathname === '/service' ? undefined : pathname === '/settings' ? inspectionTarget ?? focus
     : pathname === '/terminal' ? terminalTarget ?? focus : focus;
-  useConnectionDemand(readTarget?.connectionId, network.online);
+  useConnectionDemand(readTarget?.connectionId);
   return <VoiceSetupTestContext.Provider value={voiceSetupTest}>
     <WorkspaceContext.Provider value={registry}>
     {connections.map((entry) => <ConnectionCatalog key={entry.id} entry={entry} demanded={readTarget?.connectionId === entry.id} online={network.online} libraryVisible={pathname === '/' && focus?.connectionId === entry.id && Boolean(current?.libraryVisible)} missionVisible={pathname === MISSION_PATH} onCatalog={publishCatalog} />)}

@@ -30,8 +30,9 @@ through `shared/network/network-status.ts`:
 
 NetInfo is configured with `reachabilityShouldRun: () => false`: the app never
 makes an external captive-portal probe. A failed OpenCode request remains the
-authority for a server-specific problem. Configuration is never read directly
-by screens; the provider exposes it through diagnostics.
+authority for a server-specific problem. The workspace shell publishes the
+normalized device status into the app store. Diagnostics selects it alongside
+retry and stream status from the owning connection manager.
 
 Offline pauses SSE retries and polling. Online cancels a pending reconnect
 timer, reopens the stream, and runs a critical reconcile. Link-type changes do

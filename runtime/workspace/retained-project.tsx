@@ -96,7 +96,7 @@ export const RetainedProject = memo(function RetainedProject({ defaults, updateS
     // eslint-disable-next-line react-hooks/exhaustive-deps -- reconnect needs fresh clients so old in-flight requests stay invalid.
     [state.activeProjectPath, state.serverContract, state.settings, input.connection.enabled],
   );
-  const { catalogClient, isCurrentCatalogClient, catalog, reconnect } = connectionRuntime;
+  const { catalogClient, isCurrentCatalogClient, catalog } = connectionRuntime;
   // Tag each client instance with the generation current when it is first seen.
   // A layout effect keeps this off the render path while still running before
   // any callback that could consume `isCurrentClient`.
@@ -271,7 +271,7 @@ export const RetainedProject = memo(function RetainedProject({ defaults, updateS
     isStreamConnected,
   });
 
-  const eventStreamStatus = useWorkspaceRealtime(connectionRuntime.manager?.realtime, {
+  useWorkspaceRealtime(connectionRuntime.manager?.realtime, {
     workspaceKey: state.scopeKey,
     demanded,
     projectPath: state.activeProjectPath,
@@ -346,9 +346,6 @@ export const RetainedProject = memo(function RetainedProject({ defaults, updateS
     connectSetup: input.connectSetup, services: input.servicesValue,
   }), [input.connectionProfiles, state.settings, updateConnectionSettings, input.switchConnection, state.connection, serverCapabilities,
     connectionRuntime.connect, input.connectSetup, input.servicesValue]);
-  const diagnosticsValue = useMemo<WorkspaceValues['diagnosticsValue']>(() => ({
-    diagnostics: project.diagnostics, refreshDiagnostics: project.refreshDiagnostics, eventStreamStatus, transport: { network, reconnect },
-  }), [project.diagnostics, project.refreshDiagnostics, eventStreamStatus, network, reconnect]);
   const capabilitiesValue = useCapabilitiesPresentation(serverData, capabilities);
   const { projectsValue, projectFilesValue } = useProjectPresentation({ ...domain, ...project, ...worktree, activeProject, projects });
   const { mcpAuthPrompt } = state;
@@ -366,9 +363,9 @@ export const RetainedProject = memo(function RetainedProject({ defaults, updateS
   const extensionItems = extensions.extensions;
   const extensionsValue = useMemo(() => ({ extensions: extensionItems }), [extensionItems]);
   const values = useMemo<WorkspaceValues>(() => ({
-    connectionValue, diagnosticsValue, capabilitiesValue, projectsValue, projectFilesValue,
+    connectionValue, capabilitiesValue, projectsValue, projectFilesValue,
     currentSessionValue, sessionLibraryValue, chatValue, approvalsValue, conversationValue, mcpValue, extensionsValue,
-  }), [connectionValue, diagnosticsValue, capabilitiesValue, projectsValue, projectFilesValue,
+  }), [connectionValue, capabilitiesValue, projectsValue, projectFilesValue,
     currentSessionValue, sessionLibraryValue, chatValue, approvalsValue, conversationValue, mcpValue, extensionsValue]);
 
   const suspend = useCallback(() => {

@@ -5,7 +5,6 @@ import { useTranslation } from 'react-i18next';
 import type { TFunction } from 'i18next';
 import { AppState } from 'react-native';
 import { createConnection } from '@/runtime/connections/create-connection';
-import { NO_RETRY } from '@/runtime/connections/retry';
 import { useAppCore } from '@/runtime/core';
 import type { ConnectionLifecycle } from '@/features/connections/index';
 import { projectsOptions } from '@/features/projects/runtime';
@@ -29,7 +28,6 @@ function connectionTranslator(t: TFunction) {
 
 const IDLE: ConnectionLifecycle = { phase: 'idle', operation: 0, connection: { status: 'idle', message: 'Disconnected' }, contract: 'v2' };
 const readIdle = () => IDLE;
-const readNoRetry = () => NO_RETRY;
 const noSubscription = () => () => {};
 const emptyCatalog: WorkspaceCatalog = { sessions: [], statuses: {}, refresh: async () => {}, removeSession: () => {} };
 
@@ -47,10 +45,10 @@ export function useConnectionRegistryBinding(setup: ConnectSetup, updateSettings
   }, [connections, hydrated, phase, prepareSettings, t, updateSettings]);
 }
 
-export function useConnectionDemand(activeId: string | undefined, online: boolean) {
+export function useConnectionDemand(activeId: string | undefined) {
   const { connections } = useAppCore();
   const foreground = useQueryForeground();
-  useLayoutEffect(() => { connections.setDemand(activeId, online, foreground); }, [activeId, connections, foreground, online]);
+  useLayoutEffect(() => { connections.setDemand(activeId, foreground); }, [activeId, connections, foreground]);
 }
 
 function useManagedConnection(entry: ConnectionRecord) {
@@ -59,15 +57,13 @@ function useManagedConnection(entry: ConnectionRecord) {
   const manager = useSyncExternalStore(connections.subscribe, managerForThisId, managerForThisId);
   const state = useSyncExternalStore(manager?.subscribe ?? noSubscription, manager?.getState ?? readIdle, readIdle);
   const connect = useCallback(() => commands.connection.connect(entry.id), [commands.connection, entry.id]);
-  const reconnect = useSyncExternalStore(manager?.retry.subscribe ?? noSubscription, manager?.retry.getSnapshot ?? readNoRetry, readNoRetry);
   return useMemo(() => ({
     connection: entry.enabled ? state.connection : IDLE.connection,
     serverContract: state.contract,
     connect,
     onInvalidated: manager?.onInvalidated ?? noSubscription,
-    reconnect,
     manager,
-  }), [connect, entry.enabled, manager, reconnect, state.connection, state.contract]);
+  }), [connect, entry.enabled, manager, state.connection, state.contract]);
 }
 
 export function useConnectionRuntime(entry: ConnectionRecord, catalog = emptyCatalog) {

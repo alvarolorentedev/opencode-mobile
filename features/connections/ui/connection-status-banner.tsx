@@ -2,7 +2,7 @@ import { Text } from '@/shared/ui/text';
 import { useTranslation } from 'react-i18next';
 import { StyleSheet, View } from 'react-native';
 
-import { useConnection, useDiagnostics } from '@/features/connections/context';
+import { useConnection, useTransportDiagnostics } from '@/features/connections/context';
 import { usePalette } from '@/shared/ui/theme/use-palette';
 
 // A compact, non-blocking transport notice. It never replaces a populated
@@ -12,7 +12,7 @@ export function ConnectionStatusBanner() {
   const { t } = useTranslation();
   const palette = usePalette();
   const { connection } = useConnection();
-  const { eventStreamStatus, transport } = useDiagnostics();
+  const { eventStreamStatus, transport } = useTransportDiagnostics();
   const retryAt = transport.reconnect.retryAt;
 
   const message = !transport.network.online

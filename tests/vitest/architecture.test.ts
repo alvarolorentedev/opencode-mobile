@@ -81,7 +81,7 @@ describe('architecture ratchets', () => {
     // project runtime.
     assert.match(
       await read('runtime/workspace/workspace-provider.tsx'),
-      /\buseNetworkStatus\(\)/,
+      /\buseNetworkStatus\(core\.connections\.setNetwork\)/,
       'WorkspaceProvider must own the single connectivity monitor.',
     );
     assert.doesNotMatch(

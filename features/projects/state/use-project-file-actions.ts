@@ -11,8 +11,6 @@ import type { ProjectFileInput } from '@/features/projects/model/action-inputs';
 import { fileStatusOptions, vcsInfoOptions } from '@/features/projects/services/queries/status';
 import { searchOptions } from '@/features/projects/services/queries/files';
 import { projectQueryKey } from '@/shared/server-data/keys';
-import { healthOptions, mcpOptions } from '@/shared/server-data/diagnostics';
-import type { Diagnostics } from '@/shared/protocol/services/diagnostics-service';
 import { getProjectFileDownloadSource, readFile, readProjectFile, saveFile } from '@/features/projects/services/project-service';
 import { useProjectBrowser } from '@/features/projects/state/use-project-browser';
 import { useProjectEntryActions } from '@/features/projects/state/use-project-entry-actions';
@@ -38,13 +36,8 @@ export function useProjectFileActions({
   const selectedPath = useAppStore((state) => state.workspaceUi[scopeKey]?.preview);
   const path = selectedPath?.owner === owner ? selectedPath.path : undefined;
   const previewKey = projectQueryKey(identity, client, 'preview', path);
-  const diagnosticsRequested = useAppStore((state) => state.workspaceUi[scopeKey]?.diagnosticsRequested ?? false);
   const [preview] = useQueries({ queries: [{ queryKey: previewKey, enabled: false, gcTime: 0,
     queryFn: ({ signal }: { signal: AbortSignal }) => readProjectFile(withReadSignal(client, signal), path!) }].filter(() => active) });
-  const [health] = useQueries({ queries: [{ ...healthOptions(identity, client), enabled: diagnosticsRequested }].filter(() => active) });
-  const [diagnosticMcp] = useQueries({ queries: [{ ...mcpOptions(identity, client), enabled: diagnosticsRequested }].filter(() => active) });
-  const diagnostics = useMemo<Diagnostics | undefined>(() => health?.data ? { health: health?.data, mcp: diagnosticMcp?.error
-    ? { available: false, error: diagnosticMcp?.error.message } : { available: true, data: diagnosticMcp?.data ?? {} } } : undefined, [health?.data, diagnosticMcp?.data, diagnosticMcp?.error]);
   const directoryBrowser = useProjectBrowser({ scopeKey, client, identity, isCurrentClient, queryActive: active });
   const setSelectedProjectFile = useCallback((file: import('@/shared/protocol/opencode/project-file').ProjectFile) => {
     cache.setQueryData(projectQueryKey(identity, client, 'preview', file.path), file);
@@ -65,12 +58,6 @@ export function useProjectFileActions({
     if (!trimmed) return [];
     return cache.fetchQuery(searchOptions(identity, client, trimmed));
   }, [cache, client, identity]);
-
-  const refreshDiagnostics = useCallback(async () => {
-    if (!active) return;
-    store.getState().setWorkspaceUi(scopeKey, { diagnosticsRequested: true });
-    await Promise.allSettled([cache.fetchQuery(healthOptions(identity, client)), cache.fetchQuery(mcpOptions(identity, client))]);
-  }, [active, cache, client, identity, scopeKey, store]);
 
   const openProjectFile = useCallback(async (path: string) => {
     path = projectPath(path, client.__opencode.directory || '');
@@ -158,5 +145,5 @@ export function useProjectFileActions({
     }
   }, [client, currentSessionIdRef, readDiffScope, isCurrentClient, projectFileRequestRef, refreshServerFeatures, refreshVcsDiff, setSelectedProjectFile]);
 
-  return { selectedProjectFile: preview?.data, diagnostics, refreshServerFeatures, refreshDiagnostics, searchProjectFiles, browser, openProjectFile, saveProjectFile, closeProjectFile, downloadProjectFile };
+  return { selectedProjectFile: preview?.data, refreshServerFeatures, searchProjectFiles, browser, openProjectFile, saveProjectFile, closeProjectFile, downloadProjectFile };
 }

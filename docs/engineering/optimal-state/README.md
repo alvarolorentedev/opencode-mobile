@@ -255,12 +255,17 @@ npm run validate:commit
   workspace projections for pending items. The commit gate passed with 1,282
   tests and one existing skip. All 74 focused tests and 106 Connect, interaction,
   multi-server, onboarding, realtime and Settings browser flows passed.
-- E7. The core owns retained terminal controllers and credentials. The first
+- E7, `4c401664`. The core owns retained terminal controllers and credentials. The first
   browser run exposed a lost renderer after disconnecting and re-enabling a
   server. The corrected controller pauses the transport and retains its renderer.
   The commit gate passed with 1,282 tests and one existing skip. All 58 focused
   tests and 32 Terminal, multi-server, Settings, auto-model and update browser
   flows passed. Android retained the displayed output and one WebSocket across tabs.
+- E8. The single NetInfo listener publishes connectivity into the app store.
+  Diagnostics reads connection retry and stream state directly and uses Query
+  for server health and MCP details. The commit gate passed with 1,282 tests and
+  one existing skip. All 127 focused tests and 54 network, realtime, Settings,
+  Chat, multi-server and Terminal browser flows passed.
 
 ## Loop protocol
 

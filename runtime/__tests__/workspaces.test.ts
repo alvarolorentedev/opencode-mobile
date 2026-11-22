@@ -96,6 +96,7 @@ describe('multi-server contracts', () => {
       },
       '@/shared/contracts/connection-scope': identity,
       './state/use-server-pending-interactions': {},
+      './state/use-workspace-diagnostics': {},
     });
     const base = {
       connectionValue: { settings, connect: async () => ({}), switchConnection: async () => ({}), connectionProfiles: [], connectSetup: {}, services: {} },

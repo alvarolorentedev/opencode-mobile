@@ -6,7 +6,7 @@ import type { ChatPreferences } from '@/shared/preferences/opencode-preferences'
 
 import type { CapabilitiesContextValue } from '@/features/ai/index';
 import type { ChatContextValue } from '@/features/chat/index';
-import type { ConnectionContextValue, DiagnosticsContextValue } from '@/features/connections/index';
+import type { ConnectionContextValue } from '@/features/connections/index';
 import type { ExtensionsContextValue, McpContextValue } from '@/features/extensions/index';
 import type { ProjectFilesContextValue, ProjectsContextValue } from '@/features/projects/index';
 import type { useProjectCatalogActions } from '@/features/projects/runtime';
@@ -62,7 +62,6 @@ export type WorkspaceSnapshot = {
 
 export type WorkspaceValues = {
   connectionValue: ConnectionContextValue;
-  diagnosticsValue: DiagnosticsContextValue;
   capabilitiesValue: CapabilitiesContextValue;
   projectsValue: ProjectsContextValue;
   projectFilesValue: ProjectFilesContextValue;
