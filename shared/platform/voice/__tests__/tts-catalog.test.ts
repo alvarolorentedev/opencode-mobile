@@ -1,11 +1,10 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'vitest';
 
-import { loadTs } from '../../../../tests/helpers/runtime.mjs';
+import * as catalog from '@/shared/platform/voice/tts/catalog';
 
 describe('on-device voice catalog', () => {
   it('ships one Piper model per translated language and one natural English model', async () => {
-    const catalog = await loadTs('shared/platform/voice/tts/catalog.ts');
     const packs = catalog.LOCAL_TTS_PACKS as {
       id: string;
       family: string;
@@ -44,8 +43,10 @@ describe('on-device voice catalog', () => {
 
     assert.equal(catalog.normalizeLocalTtsPackId('piper-es'), 'piper-es');
     assert.equal(catalog.normalizeLocalTtsPackId('not-a-pack'), undefined);
-    assert.equal(catalog.isPackLanguageCompatible(catalog.getLocalTtsPack('piper-es'), 'es-ES'), true);
-    assert.equal(catalog.isPackLanguageCompatible(catalog.getLocalTtsPack('piper-es'), 'en-US'), false);
-    assert.equal(catalog.isPackLanguageCompatible(catalog.getLocalTtsPack('piper-es')), true);
+    const spanish = catalog.getLocalTtsPack('piper-es');
+    assert.ok(spanish);
+    assert.equal(catalog.isPackLanguageCompatible(spanish, 'es-ES'), true);
+    assert.equal(catalog.isPackLanguageCompatible(spanish, 'en-US'), false);
+    assert.equal(catalog.isPackLanguageCompatible(spanish), true);
   });
 });

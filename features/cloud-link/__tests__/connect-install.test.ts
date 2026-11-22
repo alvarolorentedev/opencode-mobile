@@ -1,9 +1,6 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
-import { loadTs } from '../../../tests/helpers/runtime.mjs';
-
-// Mirrors the enum exposed by expo-application; kept literal so the loader can
-// run the helper without native modules.
+// The platform fixture uses the Expo application release type values.
 const ApplicationReleaseType = { UNKNOWN: 0, SIMULATOR: 1, ENTERPRISE: 2, DEVELOPMENT: 3, AD_HOC: 4, APP_STORE: 5 };
 
 async function storeInstall({ platform, enabled = true, releaseType, releaseError, referrer, referrerError }: {
@@ -15,23 +12,23 @@ async function storeInstall({ platform, enabled = true, releaseType, releaseErro
   referrerError?: Error;
 }) {
   const calls = { releaseType: 0, referrer: 0 };
-  const { isConnectStoreInstall } = await loadTs('shared/platform/install-identity.ts', {
-    'expo-application': {
-      ApplicationReleaseType,
-      getIosApplicationReleaseTypeAsync: async () => {
-        calls.releaseType += 1;
-        if (releaseError) throw releaseError;
-        return releaseType;
-      },
-      getInstallReferrerAsync: async () => {
-        calls.referrer += 1;
-        if (referrerError) throw referrerError;
-        return referrer;
-      },
+  vi.resetModules();
+  vi.doMock('expo-application', () => ({
+    ApplicationReleaseType,
+    getIosApplicationReleaseTypeAsync: async () => {
+      calls.releaseType += 1;
+      if (releaseError) throw releaseError;
+      return releaseType;
     },
-    'react-native': { Platform: { OS: platform } },
-    "@/shared/contracts/cloud-link": { isConnectEnabled: () => enabled }
-  });
+    getInstallReferrerAsync: async () => {
+      calls.referrer += 1;
+      if (referrerError) throw referrerError;
+      return referrer;
+    },
+  }));
+  vi.doMock('react-native', () => ({ Platform: { OS: platform } }));
+  vi.doMock('expo-constants', () => ({ default: { expoConfig: { extra: { foss: !enabled, e2eMode: true, connectPilot: { testing: true } } } } }));
+  const { isConnectStoreInstall } = await import('@/shared/platform/install-identity');
   return { isConnectStoreInstall: (value?: string) => isConnectStoreInstall(value), calls };
 }
 

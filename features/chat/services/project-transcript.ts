@@ -1,8 +1,6 @@
 import type { AppCore } from '@/runtime/core';
-import type { TranscriptReadOptions } from '@/shared/contracts/transcript-read';
 import type { ScopedOpencodeClient } from '@/shared/protocol/opencode/client';
 import type { QueryIdentity } from '@/shared/server-data/keys';
-import { getErrorMessage } from '@/shared/utilities/error-message';
 
 import { recordSessionUsageAndTodos } from '../model/session-ledger';
 import { createLiveTranscript } from './live-transcript-controller';
@@ -10,6 +8,7 @@ import { liveTranscriptPartition } from './queries';
 import { createTranscriptLifecycle } from './transcript-lifecycle';
 import { createTranscriptMetadata } from './transcript-metadata';
 import { transcriptAccess } from './transcript-queries';
+import { createTranscriptReader } from './transcript-reader';
 
 export function createProjectTranscript({ store, queryClient, clock }: Pick<AppCore, 'store' | 'queryClient' | 'clock'>, {
   identity, scopeKey, client, isCurrentClient, activeProjectPath,
@@ -38,30 +37,11 @@ export function createProjectTranscript({ store, queryClient, clock }: Pick<AppC
     recordUsageAndTodos: recordUsage, readDisplayedSession,
   });
 
-  async function readMessages(sessionId: string, silent = false, options?: TranscriptReadOptions) {
-    try {
-      const records = await lifecycle.refreshMessages(sessionId, silent, options);
-      if (isCurrentClient(client)) store.getState().setChat(scopeKey, (current) => {
-        if (!(sessionId in current.readErrors)) return current;
-        const readErrors = { ...current.readErrors };
-        delete readErrors[sessionId];
-        return { readErrors };
-      });
-      return records;
-    } catch (error) {
-      if (!silent && isCurrentClient(client)) {
-        const message = getErrorMessage(error).trim();
-        store.getState().setChat(scopeKey, (current) => (
-          current.readErrors[sessionId] === message ? current : { readErrors: { ...current.readErrors, [sessionId]: message } }
-        ));
-      }
-      throw error;
-    }
-  }
+  const reader = createTranscriptReader(store, { scopeKey, client, isCurrentClient, refreshMessages: lifecycle.refreshMessages });
 
   return {
     ...lifecycle,
-    readMessages, readDisplayedSession,
+    readMessages: reader.readMessages, readDisplayedSession,
     applyEvent: live.applyEvent,
     activeMessageId: live.activeMessageId,
     appendUserMessage: live.appendUserMessage,
@@ -69,7 +49,7 @@ export function createProjectTranscript({ store, queryClient, clock }: Pick<AppC
     dispose() {
       lifecycle.dispose();
       live.dispose();
-      store.getState().setChat(scopeKey, { readErrors: {}, isRefreshingMessages: false });
+      reader.reset();
     },
   };
 }

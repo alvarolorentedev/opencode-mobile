@@ -1,8 +1,9 @@
 # Phase F — Persistence and Tests
 
 Status: **in progress**. Query persistence, the session-cache removal, and
-Zustand device preference persistence are complete. The legacy test migration,
-`fast-check` and `knip` remain.
+Zustand device preference persistence are complete. The first native-import
+batch and four fast-check properties landed. The remaining legacy tests and
+Knip cleanup are open.
 
 Goal: one retention policy and one test infrastructure. No custom module loader,
 no duplicate storage writer, no hand-written edge matrices where a property test
@@ -34,7 +35,7 @@ Start only after Phase E is complete and green.
 
 ### `loadTs` and `hookRuntime` removal
 
-There are roughly 87 legacy suites using `tests/helpers/runtime.mjs`. Migrate
+The baseline had 87 legacy suites using `tests/helpers/runtime.mjs`. Migrate
 them in feature batches:
 1. Add the renderer and platform mocks the suite needs.
 2. Replace `loadTs` with native imports.
@@ -48,8 +49,8 @@ Do not add new `loadTs` usage. Do not weaken a suite to make migration easier.
 
 ### Property tests and dead-code cleanup
 
-- Add `fast-check` for reducers, merge/ordering invariants, transcript overlay
-  ordering and session status merge.
+- `tests/vitest/state-properties.test.ts` covers the connection reducer, retry
+  status merge, anchored transcript page merge and live overlay ordering.
 - Add `knip` with a focused config; remove unused files/exports/dependencies
   reported by a clean run.
 - Keep generated locale resources exempt.

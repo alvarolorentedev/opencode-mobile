@@ -368,12 +368,17 @@ npm run validate:commit
   both levels of Settings overlays. The paired streaming benchmark preserved
   the request counts and measured a median p95 delta-to-paint lag of 15 ms
   against 19 ms for the Phase C baseline.
-- F1. Zustand persist owns the non-secret device preferences and upgrades
+- F1, `5c497ab2`. Zustand persist owns the non-secret device preferences and upgrades
   their existing per-field records. Connection credentials remain in the
   secure settings adapter. Cloud Link remaps favorites through the same
   persistence writer and restores them if secure profile save fails. The
   commit gate passed with 1,289 tests and one existing skip, plus 12 focused
   tests, docs and 122 affected browser flows.
+- F2. The first native-import batch covers platform services, preferences,
+  storage, transcript reads and the committed React transcript view. The
+  Vitest collection retained every prior test identity and added four
+  fast-check properties for connection transitions, session statuses and
+  transcript merging and ordering. All 25 affected browser flows passed.
 
 ## Loop protocol
 

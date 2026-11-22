@@ -1,7 +1,5 @@
 import assert from 'node:assert/strict';
-import { describe, it } from 'vitest';
-
-import { deferred, loadTs } from '../../../../tests/helpers/runtime.mjs';
+import { describe, it, vi } from 'vitest';
 
 describe('on-device voice runtime config', () => {
   it('sends both native config key aliases and plain filesystem paths', async () => {
@@ -40,16 +38,10 @@ describe('on-device voice runtime config', () => {
         lexiconFile: 'lexicon.txt',
       },
     };
-    const catalog = await loadTs('shared/platform/voice/tts/catalog.ts');
-    const types = await loadTs('shared/platform/voice/tts/types.ts');
-    const runtime = await loadTs('shared/platform/voice/tts/runtime.ts', {
-    'react-native': {
-        TurboModuleRegistry: { get: (name: string) => (name === 'SherpaOnnx' ? native : null) },
-      },
-    '@/shared/platform/voice/tts/catalog': catalog,
-    '@/shared/platform/voice/tts/types': types,
-    "@/shared/platform/voice/tts/models": { getLocalTtsPackPaths: (packId: string) => paths[packId] }
-  });
+    vi.resetModules();
+    vi.doMock('react-native', () => ({ TurboModuleRegistry: { get: (name: string) => (name === 'SherpaOnnx' ? native : null) } }));
+    vi.doMock('@/shared/platform/voice/tts/models', () => ({ getLocalTtsPackPaths: (packId: string) => paths[packId] }));
+    const runtime = await import('@/shared/platform/voice/tts/runtime');
 
     await runtime.ensureLocalTtsRuntime('kokoro-en');
     const kokoro = calls[0];
@@ -81,17 +73,17 @@ describe('on-device voice runtime config', () => {
     assert.equal(chinese.lang, 'zh');
   });
   it('releases a model whose initialization finishes after teardown', async () => {
-    const waiting = deferred<{ success: boolean; sampleRate: number; numSpeakers: number }>();
+    const waiting = Promise.withResolvers<{ success: boolean; sampleRate: number; numSpeakers: number }>();
     let releases = 0;
     const native = {
       initTts: () => waiting.promise,
       stopTts: async () => {},
       releaseTts: async () => { releases++; },
     };
-    const runtime = await loadTs('shared/platform/voice/tts/runtime.ts', {
-      'react-native': { TurboModuleRegistry: { get: () => native } },
-      '@/shared/platform/voice/tts/models': { getLocalTtsPackPaths: () => ({ modelDir: '/models', modelFile: 'model.onnx', tokensFile: 'tokens.txt' }) },
-    });
+    vi.resetModules();
+    vi.doMock('react-native', () => ({ TurboModuleRegistry: { get: () => native } }));
+    vi.doMock('@/shared/platform/voice/tts/models', () => ({ getLocalTtsPackPaths: () => ({ modelDir: '/models', modelFile: 'model.onnx', tokensFile: 'tokens.txt' }) }));
+    const runtime = await import('@/shared/platform/voice/tts/runtime');
     const pending = runtime.ensureLocalTtsRuntime('kokoro-en');
     await Promise.resolve();
     const released = runtime.releaseLocalTtsRuntime();

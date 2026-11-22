@@ -1,13 +1,10 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
-import { loadTs } from '../../../tests/helpers/runtime.mjs';
+import { canRateApp, hasPlayStoreRating } from '@/shared/platform/support';
 
-async function loadSupport(platform: string, foss: boolean) {
-  return loadTs('shared/platform/support.ts', {
-    'expo-constants': { __esModule: true, default: { expoConfig: { extra: { foss } } } },
-    'react-native': { Platform: { OS: platform } },
-  });
-}
+const { inputs } = vi.hoisted(() => ({ inputs: { platform: 'android', foss: false } }));
+vi.mock('expo-constants', () => ({ default: { expoConfig: { extra: { get foss() { return inputs.foss; } } } } }));
+vi.mock('react-native', () => ({ Platform: { get OS() { return inputs.platform; } } }));
 
 describe('support store rating availability', () => {
   it.each([
@@ -16,7 +13,7 @@ describe('support store rating availability', () => {
     ['ios', false, false],
     ['web', false, false],
   ] as const)('%s (foss=%s) -> %s', async (platform, foss, expected) => {
-    const { hasPlayStoreRating } = await loadSupport(platform, foss);
+    Object.assign(inputs, { platform, foss });
     expect(await hasPlayStoreRating()).toBe(expected);
   });
 
@@ -26,7 +23,7 @@ describe('support store rating availability', () => {
     ['ios', false, true],
     ['web', false, false],
   ] as const)('canRateApp %s (foss=%s) -> %s', async (platform, foss, expected) => {
-    const { canRateApp } = await loadSupport(platform, foss);
+    Object.assign(inputs, { platform, foss });
     expect(await canRateApp()).toBe(expected);
   });
 });

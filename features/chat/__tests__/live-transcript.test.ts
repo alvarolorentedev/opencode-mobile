@@ -1,10 +1,17 @@
-import { describe, expect, it, vi } from 'vitest';
+// @vitest-environment happy-dom
 
+import { describe, expect, it, vi } from 'vitest';
+import { act, createElement, type PropsWithChildren } from 'react';
+
+import type { ScopedOpencodeClient } from '@/shared/protocol/opencode/client';
 import type { ToolPart } from '@/shared/protocol/opencode/types';
 import type { SessionMessageRecord } from '@/shared/presentation/format';
-import { createAppStore, type AppState } from '@/runtime/core/store';
-import { useLiveTranscript } from '@/features/chat/state/use-live-transcript';
-import { hookRuntime } from '../../../tests/helpers/runtime.mjs';
+import { createAppStore } from '@/runtime/core/store';
+import { AppCoreProvider } from '@/runtime/core/context';
+import type { AppCore } from '@/runtime/core/create-app-core';
+import { createLiveTranscript } from '@/features/chat/services/live-transcript-controller';
+import { useLiveTranscriptView } from '@/features/chat/state/use-live-transcript';
+import { renderHook } from '../../../tests/helpers/render-hook';
 import {
   liveTranscriptRecord,
   overlayLiveRecords,
@@ -14,18 +21,16 @@ import {
   type LiveTranscriptMessage,
 } from '@/features/chat/model/live-transcript';
 
-const driver = hookRuntime();
+vi.mock('expo-router', () => ({ usePathname: () => '/' }));
+vi.mock('react-native', () => ({ AppState: { currentState: 'active' }, Platform: { OS: 'web' } }));
+vi.mock('expo-constants', () => ({ default: { expoConfig: { extra: {} } } }));
+vi.mock('@react-native-async-storage/async-storage', () => ({ default: {} }));
+vi.mock('expo/fetch', () => ({}));
+vi.mock('expo-crypto', () => ({}));
+vi.mock('expo-secure-store', () => ({}));
+
 const store = createAppStore({ settings: { serverUrl: '', username: '', password: '', directory: '' }, chatPreferences: {} as never, controlPlaneUrl: '' });
-vi.mock('react', () => ({
-  useCallback: (...args: unknown[]) => Reflect.apply(driver.react.useCallback, undefined, args),
-  useEffect: (...args: unknown[]) => Reflect.apply(driver.react.useEffect, undefined, args),
-  useMemo: (...args: unknown[]) => Reflect.apply(driver.react.useMemo, undefined, args),
-  useRef: (...args: unknown[]) => Reflect.apply(driver.react.useRef, undefined, args),
-}));
-vi.mock('@/runtime/core', () => ({
-  useAppCore: () => ({ store }),
-  useAppStore: (select: (state: AppState) => unknown) => select(store.getState()),
-}));
+const wrapper = ({ children }: PropsWithChildren) => createElement(AppCoreProvider, { core: { store } as AppCore }, children);
 
 const DATA_URL = 'data:video/mp4;base64,AAAA';
 
@@ -43,28 +48,27 @@ it('paints a batch at 50 ms without writing the live reply or local media to the
   vi.useFakeTimers();
   const scopeKey = 'stream-workspace';
   const canonical: Record<string, SessionMessageRecord[]> = {};
+  const actions = createLiveTranscript({
+    store, clock: Date.now, scopeKey, client: {} as ScopedOpencodeClient, isCurrentClient: () => true,
+    readCanonicalSession: (id: string) => canonical[id] ?? [], recordUsageAndTodos: vi.fn(),
+  });
+  const mounted = renderHook(() => useLiveTranscriptView(scopeKey, undefined, canonical), undefined, wrapper);
   try {
-    const { actions } = driver.mount(useLiveTranscript, {
-      scopeKey, client: {}, isCurrentClient: () => true, messagesBySession: canonical,
-      readCanonicalSession: (id: string) => canonical[id] ?? [], recordUsageAndTodos: vi.fn(),
-    });
     const url = `data:video/mp4;base64,${'A'.repeat(1024 * 1024)}`;
-    actions.appendUserMessage('s', { id: 'u', createdAt: 10, text: 'look', attachments: [{ url }] });
-    driver.flush();
-    const before = driver.value.displayedMessages;
+    act(() => actions.appendUserMessage('s', { id: 'u', createdAt: 10, text: 'look', attachments: [{ url }] }));
+    const before = mounted.result.current;
     for (const delta of ['one', ' two', ' three']) {
       expect(actions.applyEvent({ type: 'session.text.delta', created: 11, data: { sessionID: 's', assistantMessageID: 'a', ordinal: 0, delta } })).toBe(true);
     }
-    vi.advanceTimersByTime(49);
-    driver.flush();
-    expect(driver.value.displayedMessages).toBe(before);
-    vi.advanceTimersByTime(1);
-    driver.flush();
-    expect(driver.value.displayedMessages.s[0]).toBe(before.s[0]);
-    expect(driver.value.displayedMessages.s[1].parts[0]).toMatchObject({ type: 'text', text: 'one two three' });
+    act(() => { vi.advanceTimersByTime(49); });
+    expect(mounted.result.current).toBe(before);
+    act(() => { vi.advanceTimersByTime(1); });
+    expect(mounted.result.current.s[0]).toBe(before.s[0]);
+    expect(mounted.result.current.s[1].parts[0]).toMatchObject({ type: 'text', text: 'one two three' });
     expect(canonical).toEqual({});
   } finally {
-    driver.unmount();
+    mounted.unmount();
+    actions.dispose();
     vi.useRealTimers();
   }
 });
