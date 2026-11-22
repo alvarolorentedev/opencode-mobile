@@ -74,6 +74,10 @@ Start only after Phase D is complete and green.
   Provider credentials and OAuth actions use the same guarded service from
   Settings and Onboarding. The classifier view still comes from the retained
   project.
+- Chat reads Query and the store directly. The realtime project binding
+  supplies guarded command handles without publishing a Chat view. One
+  app-level conversation controller owns the microphone, and Chat reads the
+  voice state from the store.
 - `runtime/core/workspace-selectors.ts` selects the retained project projection.
 - [ADR 0052](../../adr/0052-explicit-overlay-dependencies.md) records explicit
   portal targets and update blocker callbacks. Shared controls use shared imports.

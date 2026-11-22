@@ -12,6 +12,10 @@ export function transcriptKey(identity: QueryIdentity, client: ScopedOpencodeCli
   return [...transcriptPrefix(identity, client), sessionId] as const;
 }
 
+export function liveTranscriptPartition(identity: QueryIdentity, client: ScopedOpencodeClient) {
+  return JSON.stringify(transcriptPrefix(identity, client));
+}
+
 export function diffsKey(identity: QueryIdentity, client: ScopedOpencodeClient) {
   return [...connectionQueryKey(identity, client.__opencode.contract), 'diffs'] as const;
 }

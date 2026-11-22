@@ -22,10 +22,11 @@ function mountWorkspaceConnections(driver: ReturnType<typeof hookRuntime>, useWo
   connections: TestConnections = { get: () => undefined, subscribeState: () => () => {} },
   queryClient = new QueryClient(),
   session: TestSessionCommands = { navigation: unexpectedSessionCommand, creation: unexpectedSessionCommand },
+  pauseVoice = vi.fn(async (_id?: string) => {}),
 ) {
   const store = createAppStore({ settings: shell.settings, chatPreferences: shell.chatPreferences, controlPlaneUrl: '' });
   store.getState().setShellValue('onboardingVersion', shell.onboardingVersion);
-  const workspace = createWorkspaceCommands({ store, connections, queryClient }, session);
+  const workspace = createWorkspaceCommands({ store, connections, queryClient }, session, pauseVoice);
   const commands = { workspace, connection: createConnectionCommands({ store, connections, queryClient }, workspace) };
   const getRegistry = () => store.getState().registry;
   driver.mount(() => {
@@ -97,7 +98,8 @@ describe('multi-server contracts', () => {
     const connectionControls = { connectionProfiles: [], connectSetup: {}, services: {} };
     const lifecycle = { connection: { status: 'connected' }, contract: 'v2' };
     const projectInventory = { project: { activeProjectPath: '/repo', projects: [] } };
-    const projectScope = { scopeKey, directory: '/repo', identity: { connectionId: 'http://a:', connectionScope: 'http://a:' } };
+    const projectScope = { scopeKey, directory: '/repo', settings, client: { __opencode: { contract: 'v2', directory: '/repo' } },
+      identity: { connectionId: 'http://a:', connectionScope: 'http://a:' } };
     const projectSessions = [{ id: 's' }];
     const sessionCatalog = { sessions: projectSessions, sessionStatuses: {} };
     const { useConnection, useProjects, useCurrentSession, useSessionLibrary, useOnboarding, useChat, useChatBootstrap } = await loadTs([
@@ -131,6 +133,16 @@ describe('multi-server contracts', () => {
       './state/use-permission-rules-state': {},
       '@/shared/server-data/diagnostics': {},
       './state/use-workspace-diagnostics': {},
+      '@/features/ai/runtime': { useCapabilitiesCatalog: () => ({ availableModels: [], availableSkills: [], availableReferences: [] }) },
+      '@/features/sessions/runtime': { useSessionCatalog: () => sessionCatalog, useApprovalsCatalog: () => ({}) },
+      '@/shared/server-data/catalogs': { commandsOptions: () => ({}) },
+      '../services/queries': { liveTranscriptPartition: () => 'partition' },
+      './use-diff-catalog': { useDiffCatalog: () => ({}) },
+      './use-live-transcript': { useLiveTranscriptView: (_key: string, _partition: string, messages: object) => messages },
+      './use-prompt-inbox': { usePromptInboxSnapshot: () => ({}) },
+      './use-transcript-metadata': { useTranscriptMetadata: () => ({}) },
+      './use-transcript-queries': { useTranscriptQueries: () => ({ messagesBySession: current.chatValue }) },
+      './use-chat-presentation': { useChatPresentation: ({ messagesBySession }: { messagesBySession: object }) => messagesBySession },
     });
     const base = {
       projectsValue: { addProject: async () => '/repo' },
@@ -140,7 +152,7 @@ describe('multi-server contracts', () => {
       current = values;
       return {
         connectionValue: useConnection(), projectsValue: useProjects(), currentSessionValue: useCurrentSession(),
-        sessionLibraryValue: useSessionLibrary(), onboardingValue: useOnboarding(), chatValue: useChat(), bootstrapping: useChatBootstrap(),
+        sessionLibraryValue: useSessionLibrary(), onboardingValue: useOnboarding(), chatValue: useChat().view, bootstrapping: useChatBootstrap(),
       };
     }, { values: base });
     const first = driver.value;
@@ -369,17 +381,18 @@ it('keeps lifecycle decisions current without resetting retained runtimes', asyn
   const originalNavigation = bindNavigation('a', '/repo');
   const bNavigation = bindNavigation('b', '/repo');
   const unscopedNavigation = bindNavigation('b', '');
+  const pauseVoice = vi.fn(async (_id?: string) => {});
   const store = mountWorkspaceConnections(driver, useWorkspaceConnections, createWorkspaceCommands, createConnectionCommands, shell,
     { get: (id) => managers.get(id) ?? managers.get('a'), subscribeState: () => () => {} }, queryClient, {
       creation: () => ({ createSession: vi.fn(), forkSession: vi.fn() }),
       navigation: (scope) => navigation.get(workspaceKey(scope)) ?? unexpectedSessionCommand(),
-    });
+    }, pauseVoice);
   const isEnabled = driver.value.isEnabled;
   await driver.settle();
   expect(isEnabled('a')).toBe(true);
   const snapshot = (directory: string) => ({ enabled: true, boundDirectory: directory || undefined,
     loadProjectCatalog: vi.fn(async () => ({ currentProjectPath: '/repo', serverProjects: [] })),
-    suspend: vi.fn(), values: { conversationValue: { conversation: { active: true }, toggleConversationMode: vi.fn(async () => {}) } } });
+    suspend: vi.fn(), values: {} });
   const original = snapshot('/repo'), other = snapshot('/other'), b = snapshot('/repo');
   driver.value.publish('["a","/repo"]', original); driver.value.publish('["a","/other"]', other); driver.value.publish('["b","/repo"]', b); driver.flush();
   queryClient.setQueryData(catalogKey('a'), { sessions: [{ id: 'collision', directory: '/repo' }] });
@@ -411,6 +424,7 @@ it('keeps lifecycle decisions current without resetting retained runtimes', asyn
   await opening;
   expect(bNavigation.openDeepLinkSession).toHaveBeenCalledWith({ sessionId: 'default-project', projectPath: undefined }, expect.any(AbortSignal));
   await driver.value.disconnect('a'); driver.flush();
+  expect(pauseVoice).toHaveBeenLastCalledWith('a');
   expect(isEnabled('a')).toBe(false); expect(isEnabled('b')).toBe(true);
   expect(original.suspend).toHaveBeenCalledOnce(); expect(other.suspend).toHaveBeenCalledOnce(); expect(b.suspend).not.toHaveBeenCalled();
   const profile = { id: 'saved', name: 'Saved', serverUrl: 'http://c', username: 'carol' };
@@ -483,7 +497,7 @@ it('keeps auto-model and auto-approval preferences on the owning server', async 
   };
   const workspace = createWorkspaceCommands({ store, queryClient, connections }, {
     navigation: unexpectedSessionCommand, creation: unexpectedSessionCommand,
-  });
+  }, async () => {});
   const { setAutoApprove } = createConnectionCommands({ store, queryClient, connections }, workspace);
   await expect(setAutoApprove('b', 1, true)).rejects.toThrow('no longer available');
   contract = 'v1';
@@ -552,7 +566,7 @@ it('moves chat focus to a connected server when the focused server fails', async
   store.getState().setSelection('["a",""]', { activeProjectPath: '/repo' });
   store.getState().setSelection('["b",""]', { activeProjectPath: '/repo' });
   const snapshot = () => ({ enabled: true, boundDirectory: '/repo', suspend: vi.fn(),
-    values: { conversationValue: { conversation: { active: false }, toggleConversationMode: vi.fn(async () => {}) } } });
+    values: {} });
   driver.value.publish('["a","/repo"]', snapshot());
   driver.value.publish('["b",""]', snapshot());
   await driver.settle();

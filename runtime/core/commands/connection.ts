@@ -219,8 +219,8 @@ export function createConnectionCommands(
   async function disconnect(id: string) {
     commands.setPersistenceAllowed(true);
     commands.cancelNavigation();
+    await pauseConversation(id);
     for (const [key, runtime] of Object.entries(registry().snapshots)) if ((JSON.parse(key) as string[])[0] === id) {
-      if (runtime.values.conversationValue.conversation.active) await runtime.values.conversationValue.toggleConversationMode();
       runtime.suspend();
     }
     change((current) => current.map((entry) => entry.id === id ? { ...entry, enabled: false } : entry));

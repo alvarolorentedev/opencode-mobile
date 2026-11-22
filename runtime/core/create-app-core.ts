@@ -9,6 +9,7 @@ import { createConnectionCommands } from './commands/connection';
 import { createAutoApproval } from './commands/auto-approval';
 import { createTerminalRuntime } from './commands/terminal';
 import { createCoreEvents } from './events';
+import { createVoiceControls } from './voice-controls';
 
 import { createAppStore, type AppStoreDefaults } from './store';
 
@@ -17,6 +18,7 @@ export type AppCore = CommandContext & {
   autoApproval: ReturnType<typeof createAutoApproval>;
   terminal: ReturnType<typeof createTerminalRuntime>;
   clipboard: ReturnType<typeof createFileClipboard>;
+  voice: ReturnType<typeof createVoiceControls>;
   commands: {
     workspace: ReturnType<typeof createWorkspaceCommands>;
     session: ReturnType<typeof createSessionCommands>;
@@ -38,12 +40,13 @@ export function createAppCore(defaults: AppStoreDefaults): AppCore {
     clock: () => Date.now(),
   };
   const session = createSessionCommands(context);
-  const workspace = createWorkspaceCommands(context, session);
+  const voice = createVoiceControls();
+  const workspace = createWorkspaceCommands(context, session, voice.pause);
   const clipboard = createFileClipboard(store, async (id, root) => {
     const access = context.connections.get(id)?.getProjectAccess(root);
     if (access?.isCurrent()) await invalidateProjectFileReads(queryClient, access.identity, access.client);
   });
-  return { ...context, events: createCoreEvents(context), autoApproval: createAutoApproval(context, session.interactions), terminal: createTerminalRuntime(context), clipboard, commands: {
+  return { ...context, events: createCoreEvents(context), autoApproval: createAutoApproval(context, session.interactions), terminal: createTerminalRuntime(context), clipboard, voice, commands: {
     workspace, session, prompt: createPromptCommands(context),
     connection: createConnectionCommands(context, workspace),
   } };

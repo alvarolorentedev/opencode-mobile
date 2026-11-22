@@ -72,6 +72,7 @@ export type PromptOutbox = {
 
 type ConversationRuntimeState = {
   phase: ConversationInputPhase;
+  level: number;
   readbackPhase: ConversationReadbackPhase;
   turnSequence: number;
   sessionId?: string;
@@ -88,6 +89,7 @@ type ConversationRuntimeState = {
 
 const EMPTY_CONVERSATION: ConversationRuntimeState = {
   phase: 'off',
+  level: 0,
   readbackPhase: 'idle',
   turnSequence: 0,
   feedbackAction: 'none',

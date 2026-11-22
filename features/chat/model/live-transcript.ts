@@ -43,6 +43,7 @@ export type LiveEventResult =
   | { kind: 'unsupported' };
 
 export type LiveTranscriptBuffer = {
+  partition?: string;
   messages: Map<string, Map<string, LiveTranscriptMessage>>;
   reconcileOnPage: Map<string, Set<string>>;
   localUsers: Map<string, SessionMessageRecord[]>;

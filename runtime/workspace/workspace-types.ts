@@ -5,10 +5,8 @@ import type { OpencodeConnectionSettings } from '@/shared/protocol/opencode/clie
 import type { ChatPreferences } from '@/shared/preferences/opencode-preferences';
 
 import type { CapabilitiesContextValue } from '@/features/ai/index';
-import type { ChatContextValue } from '@/features/chat/index';
 import type { ProjectsContextValue } from '@/features/projects/index';
 import type { useProjectCatalogActions } from '@/features/projects/runtime';
-import type { ConversationContextValue } from '@/features/voice/index';
 
 import type { Dispatch, SetStateAction } from 'react';
 
@@ -42,6 +40,4 @@ export type WorkspaceSnapshot = {
 export type WorkspaceValues = {
   modelRouting: CapabilitiesContextValue['modelRouting'];
   projectsValue: Pick<ProjectsContextValue, 'addProject' | 'refreshProjectCatalog'>;
-  chatValue: ChatContextValue;
-  conversationValue: ConversationContextValue;
 };

@@ -13,7 +13,7 @@ type ReadinessOptions = { signal?: AbortSignal; waitForProject?: boolean };
 
 export function createWorkspaceCommands({ store, connections, queryClient }: Pick<CommandContext, 'store' | 'queryClient'> & {
   connections: Pick<CommandContext['connections'], 'get' | 'subscribeState'>;
-}, sessions: Pick<ReturnType<typeof createSessionCommands>, 'creation' | 'navigation'>) {
+}, sessions: Pick<ReturnType<typeof createSessionCommands>, 'creation' | 'navigation'>, pauseConversation: (connectionId?: string) => Promise<void>) {
   const waiters = createWorkspaceWaiters();
   let unsubscribe: (() => void) | undefined;
   let stopConnectionStatus: (() => void) | undefined;
@@ -192,11 +192,6 @@ export function createWorkspaceCommands({ store, connections, queryClient }: Pic
     }, options?.signal);
   }
 
-  async function pauseConversation() {
-    const { focus, snapshots } = registry();
-    const conversation = focus && snapshots[resolveKey(focus)]?.values.conversationValue;
-    if (conversation?.conversation.active) await conversation.toggleConversationMode();
-  }
   function selectWorkspace(target: WorkspaceTarget) {
     select({ connectionId: target.connectionId, projectPath: target.projectPath || projectPath(target) || '' });
   }

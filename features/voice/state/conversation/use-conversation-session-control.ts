@@ -165,12 +165,14 @@ export function useConversationSessionControl({
 
     conversationStartingRef.current = true;
     try {
+      conversationCancelRequestedRef.current = false;
       const sessionId = currentSessionId || (await ensureActiveSession());
-      if (!sessionId) return;
+      if (!sessionId || conversationCancelRequestedRef.current) return;
 
       abortSpeechInput();
       await stopSpeaking().catch(() => undefined);
       await stopWorkingSoundAsync().catch(() => undefined);
+      if (conversationCancelRequestedRef.current) return;
       setCurrentSessionId(sessionId);
       setConversationSessionId(sessionId);
       applyConversationFeedback(setConversationFeedback, setConversationFeedbackAction, undefined);
@@ -187,6 +189,7 @@ export function useConversationSessionControl({
     abortSpeechInput,
     assistantReplyBaselineIdRef,
     connectionStatus,
+    conversationCancelRequestedRef,
     getConversationPhase,
     conversationStartingRef,
     currentSessionId,

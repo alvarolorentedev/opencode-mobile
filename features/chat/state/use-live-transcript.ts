@@ -24,6 +24,7 @@ const EMPTY_RECORDS: SessionMessageRecord[] = [];
 
 type Input = {
   scopeKey: string;
+  partition?: string;
   client: ScopedOpencodeClient;
   isCurrentClient: (candidate: object) => boolean;
   messagesBySession: Record<string, SessionMessageRecord[]>;
@@ -31,14 +32,22 @@ type Input = {
   recordUsageAndTodos: (sessionId: string, records: SessionMessageRecord[]) => void;
 };
 
-export function useLiveTranscript({ scopeKey, client, isCurrentClient, messagesBySession, readCanonicalSession, recordUsageAndTodos }: Input) {
+export function useLiveTranscript({ scopeKey, partition, client, isCurrentClient, messagesBySession, readCanonicalSession, recordUsageAndTodos }: Input) {
   const { store } = useAppCore();
   const scopes = store.getState().transcriptLive;
-  const paintRevision = useAppStore((state) => state.transcriptUi[scopeKey]?.paintRevision ?? 0);
-  const readBuffer = useCallback(() => scopes.get(scopeKey), [scopeKey, scopes]);
+  const readBuffer = useCallback(() => {
+    const buffer = scopes.get(scopeKey);
+    return !buffer?.partition || buffer.partition === partition ? buffer : undefined;
+  }, [partition, scopeKey, scopes]);
   // Stream events write synchronously to the store's buffer. Only a paint
   // revision notifies React, so token deltas do not wake every subscriber.
-  const ensureBuffer = useCallback(() => getLiveTranscriptBuffer(scopes, scopeKey), [scopeKey, scopes]);
+  const ensureBuffer = useCallback(() => {
+    const previous = scopes.get(scopeKey);
+    if (previous?.partition && previous.partition !== partition) scopes.delete(scopeKey);
+    const buffer = getLiveTranscriptBuffer(scopes, scopeKey);
+    buffer.partition = partition;
+    return buffer;
+  }, [partition, scopeKey, scopes]);
   const paint = useCallback(() => store.getState().setTranscriptUi(scopeKey, (current) => ({ paintRevision: current.paintRevision + 1 })), [scopeKey, store]);
   const timersRef = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
   const ledgerRef = useRef<Set<string>>(new Set());
@@ -85,11 +94,12 @@ export function useLiveTranscript({ scopeKey, client, isCurrentClient, messagesB
     if (result.kind !== 'update') return false;
     const target = session ?? new Map<string, LiveTranscriptMessage>();
     target.set(messageId, result.message);
-    (buffer ?? ensureBuffer()).messages.set(sessionId, target);
+    const owner = buffer?.partition === partition && buffer ? buffer : ensureBuffer();
+    owner.messages.set(sessionId, target);
     if (result.ledger) ledgerRef.current.add(sessionId);
     scheduleFlush(sessionId);
     return true;
-  }, [client, ensureBuffer, isCurrentClient, readBuffer, readCanonicalSession, scheduleFlush]);
+  }, [client, ensureBuffer, isCurrentClient, partition, readBuffer, readCanonicalSession, scheduleFlush]);
 
   const activeMessageId = useCallback((sessionId: string) => {
     let latest: LiveTranscriptMessage | undefined;
@@ -140,22 +150,7 @@ export function useLiveTranscript({ scopeKey, client, isCurrentClient, messagesB
   }, [paint, readBuffer]);
 
   const overlay = useCallback((sessionId: string, records: SessionMessageRecord[]) => {
-    const buffer = readBuffer();
-    const session = buffer?.messages.get(sessionId);
-    const localUsers = buffer?.localUsers.get(sessionId);
-    let next = records;
-    for (const local of localUsers ?? EMPTY_RECORDS) {
-      const index = next.findIndex((record) => record.info.id === local.info.id);
-      if (index >= 0) {
-        if (next[index].parts === local.parts) continue;
-        next = next.slice();
-        next[index] = local;
-        continue;
-      }
-      const tail = next[next.length - 1];
-      if (!tail || local.info.time.created >= tail.info.time.created) next = [...next, local];
-    }
-    return session ? overlayLiveRecords(next, [...session.values()]) : next;
+    return overlaySession(readBuffer(), sessionId, records);
   }, [readBuffer]);
 
   const adopt = useCallback((sessionId: string, page: SessionMessageRecord[] = EMPTY_RECORDS) => {
@@ -223,18 +218,40 @@ export function useLiveTranscript({ scopeKey, client, isCurrentClient, messagesB
   const actions = useMemo(() => ({ applyEvent, activeMessageId, clearMessage, clearSession, deferReconcileToPage, overlay, adopt, appendUserMessage, hasLocalUsers, isLocalSendRecent, reset, prune }),
     [adopt, applyEvent, activeMessageId, appendUserMessage, clearMessage, clearSession, deferReconcileToPage, hasLocalUsers, isLocalSendRecent, overlay, prune, reset]);
   const readDisplayedSession = useCallback((sessionId: string) => overlay(sessionId, readCanonicalSession(sessionId) ?? EMPTY_RECORDS), [overlay, readCanonicalSession]);
-  const displayedMessages = useMemo(() => {
-    const buffer = readBuffer();
-    const canonical = messagesBySession;
-    if (!buffer) return canonical;
+  const displayedMessages = useLiveTranscriptView(scopeKey, partition, messagesBySession);
+
+  return { actions, displayedMessages, readDisplayedSession };
+}
+
+function overlaySession(buffer: ReturnType<typeof getLiveTranscriptBuffer> | undefined, sessionId: string, records: SessionMessageRecord[]) {
+  const session = buffer?.messages.get(sessionId);
+  let next = records;
+  for (const local of buffer?.localUsers.get(sessionId) ?? EMPTY_RECORDS) {
+    const index = next.findIndex((record) => record.info.id === local.info.id);
+    if (index >= 0) {
+      if (next[index].parts === local.parts) continue;
+      next = next.slice();
+      next[index] = local;
+      continue;
+    }
+    const tail = next[next.length - 1];
+    if (!tail || local.info.time.created >= tail.info.time.created) next = [...next, local];
+  }
+  return session ? overlayLiveRecords(next, [...session.values()]) : next;
+}
+
+export function useLiveTranscriptView(scopeKey: string, partition: string | undefined, canonical: Record<string, SessionMessageRecord[]>) {
+  const { store } = useAppCore();
+  const paintRevision = useAppStore((state) => state.transcriptUi[scopeKey]?.paintRevision ?? 0);
+  return useMemo(() => {
+    const buffer = store.getState().transcriptLive.get(scopeKey);
+    if (!buffer || buffer.partition !== partition) return canonical;
     const sessions = new Set([...buffer.messages.keys(), ...buffer.localUsers.keys()]);
     if (!sessions.size) return canonical;
     const displayed = { ...canonical };
-    for (const sessionId of sessions) displayed[sessionId] = overlay(sessionId, canonical[sessionId] ?? EMPTY_RECORDS);
+    for (const sessionId of sessions) displayed[sessionId] = overlaySession(buffer, sessionId, canonical[sessionId] ?? EMPTY_RECORDS);
     return displayed;
-  // Query and the paint revision publish changes to their respective sources.
+  // A paint revision publishes mutations to the live buffer.
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [messagesBySession, overlay, paintRevision, readBuffer]);
-
-  return { actions, displayedMessages, readDisplayedSession };
+  }, [canonical, paintRevision, partition, scopeKey, store]);
 }

@@ -47,7 +47,8 @@ export function useChatViewController() {
   const setAutoApprove = useAutoApprove();
   const isBootstrappingChat = useChatBootstrap();
   const searchProjectFiles = useProjectFileSearch();
-  const conversationContext = useConversation();
+  const { view, voiceMessages } = useChat();
+  const conversationContext = useConversation(voiceMessages);
   const { conversation, clearConversationFeedback, toggleConversationMode } = conversationContext;
   const {
     pendingPrompts, cancelPrompt, abortSession, clearPromptError, commands: commandActions, currentDiffs, currentDiffScope, currentMessages,
@@ -57,7 +58,7 @@ export function useChatViewController() {
     replyToPermission, replyToQuestion, retryTranscript, selectDiffMessage, selectedDiffMessageId, sendPrompt, switchSessionModel,
     sendingState, setDiffScope, transcriptPaging, transcriptReadError,
     availableSkills, availableReferences,
-  } = useChat();
+  } = view;
   const commands = commandActions.available;
   const executeCommand = commandActions.execute;
   const executeShell = commandActions.executeShell;

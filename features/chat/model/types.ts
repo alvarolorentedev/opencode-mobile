@@ -67,3 +67,13 @@ export type ChatContextValue = {
   // surface does not grow one member per share concern.
 };
 
+export type ChatCommands = Pick<ChatContextValue,
+  'cancelPrompt' | 'setDiffScope' | 'selectDiffMessage' | 'refreshDiffs' | 'retryTranscript' |
+  'replyToPermission' | 'replyToQuestion' | 'rejectQuestion' | 'switchSessionModel' | 'sendPrompt' |
+  'abortSession' | 'clearPromptError'
+> & {
+  executeCommand: ChatContextValue['commands']['execute'];
+  executeShell: ChatContextValue['commands']['executeShell'];
+  loadOlderMessages: ChatContextValue['transcriptPaging']['loadOlder'];
+};
+

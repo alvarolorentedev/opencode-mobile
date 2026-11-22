@@ -342,11 +342,17 @@ npm run validate:commit
 - E25, `87015f59`. Widgets, quick actions and Mission Control consume scoped Query and
   connection data. The workspace snapshot no longer supplies native state.
   The commit gate passed with 1,285 tests and one existing skip, as did 135
-  focused tests and 80 affected browser flows.
-- E26. AI views read their own Query partition. Provider writes and OAuth use
+  focused tests and 80 affected browser flows. The ARM64 development app
+  published a 2/2 plan widget snapshot and installed the New chat and scoped
+  session shortcuts on the Android emulator.
+- E26, `17f7fcbf`. AI views read their own Query partition. Provider writes and OAuth use
   scoped commands, with classifier readiness still provided by the retained
   project. The commit gate passed with 1,286 tests and one existing skip.
   All 294 focused tests and 65 affected browser flows passed.
+- E27. The Chat view reads scoped queries, transcript overlays and device state
+  directly. A single native conversation controller transfers ownership when
+  focus changes. The commit gate passed with 1,287 tests and one existing skip.
+  All 262 focused tests and the full 185-flow browser suite passed.
 
 ## Loop protocol
 

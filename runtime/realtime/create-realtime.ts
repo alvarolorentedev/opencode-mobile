@@ -1,4 +1,5 @@
 import type { ScopedOpencodeClient } from '@/shared/protocol/opencode/client';
+import type { ChatCommands } from '@/features/chat/runtime';
 import type { OpencodeEvent, subscribeEvents } from '@/shared/protocol/opencode/events';
 import { nextPollDelay, shouldPoll } from '@/runtime/realtime/polling';
 import { createReconciler, type ReconcileSources } from '@/runtime/realtime/reconcile';
@@ -16,6 +17,7 @@ export type RealtimeScopeInput = Omit<ReconcileSources, 'pendingSessionIds' | 's
   beginHydration?: (sessionId: string) => () => void;
   hasMessages?: (sessionId: string) => boolean;
   refreshVcsDiff?: (scope: 'uncommitted' | 'branch', silent: boolean) => Promise<unknown>;
+  chat?: { revision?: number; isCurrent: () => boolean; commands: ChatCommands };
 };
 
 type Transport = { client: ScopedOpencodeClient; subscribe: typeof subscribeEvents };

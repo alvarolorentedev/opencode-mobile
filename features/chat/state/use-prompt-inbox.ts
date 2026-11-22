@@ -29,7 +29,12 @@ export function usePromptInbox({
   const cancelPrompt = useCallback<InboxActions['cancelPrompt']>((...args) => inbox.actions(binding).cancelPrompt(...args), [binding, inbox]);
   const flushQueuedPrompts = useCallback(() => inbox.actions(binding).flushQueuedPrompts(), [binding, inbox]);
 
-  const { data: snapshot = EMPTY_SNAPSHOT } = useQuery<PromptSnapshot>({ queryKey: promptInboxKey(binding.identity, client), queryFn: skipToken });
+  const snapshot = usePromptInboxSnapshot(identity, client, queueScope);
+  return { ...snapshot, refreshMessages, submitPrompt, cancelPrompt, flushQueuedPrompts };
+}
+
+export function usePromptInboxSnapshot(identity: PromptInboxBinding['identity'], client: PromptInboxBinding['client'], queueScope: string) {
+  const { data: snapshot = EMPTY_SNAPSHOT } = useQuery<PromptSnapshot>({ queryKey: promptInboxKey(identity, client), queryFn: skipToken });
   const outbox = useAppStore((state) => state.prompt[queueScope]?.outbox ?? EMPTY_OUTBOX);
   const pendingPromptsBySession = useMemo(() => {
     if (outbox === EMPTY_OUTBOX) return snapshot.prompts;
@@ -40,5 +45,5 @@ export function usePromptInbox({
     return prompts;
   }, [outbox, snapshot.prompts]);
 
-  return { pendingPromptsBySession, pendingNoticesBySession: snapshot.notices, refreshMessages, submitPrompt, cancelPrompt, flushQueuedPrompts };
+  return { pendingPromptsBySession, pendingNoticesBySession: snapshot.notices };
 }

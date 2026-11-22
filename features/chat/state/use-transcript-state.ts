@@ -6,6 +6,7 @@ import type { ScopedOpencodeClient } from '@/shared/protocol/opencode/client';
 import type { TranscriptReadOptions, TranscriptRefreshMode } from '@/shared/contracts/transcript-read';
 import { pruneByKeepIds } from '@/shared/utilities/prune';
 import { hydrateTranscriptCache } from '@/features/chat/services/transcript-cache';
+import { liveTranscriptPartition } from '@/features/chat/services/queries';
 import { recordSessionUsageAndTodos } from '@/features/chat/model/session-ledger';
 import { useLiveTranscript } from '@/features/chat/state/use-live-transcript';
 import { useTranscriptMetadata } from '@/features/chat/state/use-transcript-metadata';
@@ -96,6 +97,7 @@ export function useTranscriptState({
 
   const { actions: live, displayedMessages, readDisplayedSession } = useLiveTranscript({
     scopeKey,
+    partition: liveTranscriptPartition(identity, client),
     client,
     isCurrentClient,
     messagesBySession,

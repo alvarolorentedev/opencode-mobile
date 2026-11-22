@@ -21,11 +21,11 @@ async function controller(contract = 'v2') {
     '@/features/sharing/index': {},
     '@/features/ai/index': { getEffectiveSessionModel: noop, getInitialMode, getSelectedModelVariant: noop, getVisibleModels: () => [] },
     '@/features/ai/context': { useCapabilities: () => ({ availableAgents: [], availableModels: [], modelRouting: {} }) },
-    '@/features/chat/context': { useChat: () => ({
+    '@/features/chat/context': { useChat: () => ({ view: {
       sendPrompt, commands: { available: [], execute: executeCommand, executeShell }, pendingPrompts: [], currentDiffs: [], currentMessages: [],
       currentPendingPermissions: [], currentPendingQuestions: [], currentTodos: [], currentTranscript: [],
       sendingState: {}, availableSkills: [], availableReferences: [],
-    }), useChatBootstrap: () => false },
+    } }), useChatBootstrap: () => false },
     '@/features/connections/context': { useConnection: () => ({ connection: { status: 'connected' },
       settings: { serverUrl: 'http://test', username: '', password: '' }, serverCapabilities: { contract, shellCommand: true } }) },
     '@/features/sessions/context': { useCurrentSession: () => ({ currentSessionId: 's' }),

@@ -445,6 +445,7 @@ export function useConversationConfirmation({
     cancelInternal({ rearm: false });
   }, [cancelInternal]);
 
+  const actions = useMemo(() => ({ cancel, confirm, edit, retry }), [cancel, confirm, edit, retry]);
   const confirmation = useMemo<ConversationConfirmationState | undefined>(() => (
     pending
       ? {
@@ -454,15 +455,10 @@ export function useConversationConfirmation({
         heard: pending.heard,
         error: pending.error,
         speaking,
-        actions: {
-          cancel,
-          confirm,
-          edit,
-          retry,
-        },
+        actions,
       }
       : undefined
-  ), [cancel, confirm, edit, pending, retry, speaking]);
+  ), [actions, pending, speaking]);
 
   useEffect(() => {
     mountedRef.current = true;
@@ -479,6 +475,7 @@ export function useConversationConfirmation({
 
   return {
     begin,
+    actions,
     confirmation,
     handleEnd,
     handleError,

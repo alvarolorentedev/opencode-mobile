@@ -486,5 +486,9 @@ export function useConversationState({ scopeKey, connection, chatPreferences, cu
 
   useConversationCleanup(conversationListeningRestartTimeoutRef, stopSpeaking);
 
-  return { conversation, clearConversationFeedback, toggleConversationMode };
+  const pause = useCallback(async () => {
+    if (conversationPhase !== 'off' || getConversationPhase() !== 'off' || conversationStartingRef.current) await stopConversationMode();
+  }, [conversationPhase, getConversationPhase, stopConversationMode]);
+
+  return { conversation, clearConversationFeedback, toggleConversationMode, pause, confirmationActions: confirmation.actions };
 }

@@ -6,12 +6,11 @@ import { useApprovalsCatalog, useSessionCatalog, useSessionExecutionActions, use
 import { useConnectionRuntime } from '@/runtime/connections/connection-runtime';
 import { useActivityNotifications } from '@/features/notifications/runtime';
 import { useCapabilitiesActions } from '@/features/ai/runtime';
-import { useConversationState } from '@/features/voice/runtime';
 import { useOpencodeProviderEffects } from '@/runtime/composition/use-opencode-provider-effects';
 import { useOpencodeProviderReset } from '@/runtime/composition/use-opencode-provider-reset';
 import { useWorkspaceRealtime } from '@/runtime/realtime/use-workspace-realtime';
 import { useProjectActions } from '@/runtime/composition/use-project-actions';
-import { useChatPresentation, useDiffCatalog, usePromptInbox, usePromptLifecycle, useTranscriptReadErrors, useTranscriptState } from '@/features/chat/runtime';
+import { useDiffCatalog, usePromptInbox, usePromptLifecycle, useTranscriptReadErrors, useTranscriptState } from '@/features/chat/runtime';
 import { useSessionRuntimeState } from '@/runtime/workspace/use-session-runtime-state';
 import { useWorkspaceServerData } from '@/runtime/composition/use-workspace-server-data';
 import { useAppCore, useAppStore } from '@/runtime/core';
@@ -192,21 +191,11 @@ export const RetainedProject = memo(function RetainedProject({ defaults, updateS
     clearProjectState();
     resetPrompt();
   }), [clearProjectState, onInvalidated, resetPrompt, scopeGenerationRef]);
-  const { conversation, clearConversationFeedback, toggleConversationMode } = useConversationState({
-    scopeKey: state.scopeKey,
-    connection: state.connection,
-    chatPreferences: state.chatPreferences,
-    currentSessionId: state.currentSessionId,
-    setCurrentSessionId: state.setCurrentSessionId,
-    sessionStatuses: sessionCatalog.sessionStatuses,
-    messagesBySession: transcript.messagesBySession,
-    pendingPermissionsBySession: approvalsCatalog.pendingPermissionsBySession,
-    pendingQuestionsBySession: approvalsCatalog.pendingQuestionsBySession,
-    sendingState: prompt.sendingState,
-    ensureActiveSession: sessionNavigation.ensureActiveSession,
-    sendPrompt: prompt.sendPrompt,
+  const conversationSessionId = useAppStore(({ conversation }) => conversation[state.scopeKey]?.sessionId);
+  const conversationActive = useAppStore(({ conversation }) => {
+    const voice = conversation[state.scopeKey];
+    return Boolean(voice && (voice.phase !== 'off' || voice.readbackPhase !== 'idle'));
   });
-  const { phase: conversationPhase, sessionId: conversationSessionId } = conversation;
 
   const pendingSessionIds = Object.keys(inbox.pendingPromptsBySession).filter((id) => inbox.pendingPromptsBySession[id].length > 0);
 
@@ -224,9 +213,27 @@ export const RetainedProject = memo(function RetainedProject({ defaults, updateS
     projectPath: state.activeProjectPath,
     constrained: network.constrained,
     pendingSessionIds,
-    busy: pendingSessionIds.length > 0 || prompt.sendingState.active || conversationPhase !== 'off' || Object.values(sessionCatalog.sessionStatuses).some((status) => status.type !== 'idle'),
+    busy: pendingSessionIds.length > 0 || prompt.sendingState.active || conversationActive || Object.values(sessionCatalog.sessionStatuses).some((status) => status.type !== 'idle'),
     currentSessionId: state.currentSessionId,
     conversationSessionId,
+    chat: {
+      revision: inputConnection.revision,
+      isCurrent: () => isCurrentClient(client),
+      commands: {
+        cancelPrompt: inbox.cancelPrompt,
+        setDiffScope: project.setDiffScope,
+        selectDiffMessage: project.selectDiffMessage,
+        refreshDiffs: project.refreshDiffs,
+        retryTranscript,
+        ...interactions,
+        ...sessionActions,
+        sendPrompt: prompt.sendPrompt,
+        abortSession: prompt.abortSession,
+        switchSessionModel: prompt.switchSessionModel,
+        clearPromptError: prompt.clearPromptError,
+        loadOlderMessages: transcript.loadOlderMessages,
+      },
+    },
     onEvent: (event) => events.dispatch(event, {
       workspaceKey: state.scopeKey, mcpQueryKey, isCurrent: () => isCurrentClient(client), pendingSessionIds,
       actions: {
@@ -274,32 +281,19 @@ export const RetainedProject = memo(function RetainedProject({ defaults, updateS
     pruneTranscript: transcript.prune,
   });
 
-  const activeSession = sessionCatalog.sessions.find(({ id }) => id === state.currentSessionId);
   const sessionPreviews = useSessionPreviews(transcript.messagesBySession);
-  const chatValue = useChatPresentation({
-    ...domain, ...transcript, ...project, ...sessionActions, ...interactions, ...prompt,
-    activeSession,
-    transcriptReadError: state.currentSessionId ? transcriptRead.errors[state.currentSessionId] : undefined,
-    retryTranscript, pendingPromptsBySession: inbox.pendingPromptsBySession, pendingNoticesBySession: inbox.pendingNoticesBySession,
-    cancelPrompt: inbox.cancelPrompt,
-  });
 
   const { addProject, refreshProjectCatalog } = project;
   const projectsValue = useMemo(() => ({ addProject, refreshProjectCatalog }), [addProject, refreshProjectCatalog]);
-  const conversationValue = useMemo<WorkspaceValues['conversationValue']>(() => ({
-    conversation, clearConversationFeedback, toggleConversationMode,
-  }), [conversation, clearConversationFeedback, toggleConversationMode]);
   const values = useMemo<WorkspaceValues>(() => ({
     modelRouting, projectsValue,
-    chatValue, conversationValue,
-  }), [modelRouting, projectsValue,
-    chatValue, conversationValue]);
+  }), [modelRouting, projectsValue]);
 
   const suspend = useCallback(() => {
     scopeGenerationRef.current++; serverGenerationRef.current++;
     refreshQueue.clear();
   }, [refreshQueue, scopeGenerationRef, serverGenerationRef]);
-  const busy = prompt.sendingState.active || conversationPhase !== 'off' || state.isBootstrappingChat ||
+  const busy = prompt.sendingState.active || conversationActive || state.isBootstrappingChat ||
     state.connection.status === 'connecting' || Boolean(state.mcpAuthPrompt) ||
     Object.values(sessionCatalog.sessionStatuses).some((status) => status.type !== 'idle') ||
     Object.values(approvalsCatalog.pendingPermissionsBySession).some((items) => items.length > 0) ||

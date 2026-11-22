@@ -25,6 +25,7 @@ import { WorkspaceContext, type WorkspaceRegistry } from '@/runtime/workspace/wo
 import { useLibrarySessions, useMissionOverview } from '@/features/sessions/runtime';
 import { MISSION_PATH } from '@/shared/contracts/mission-control';
 import { WorkspaceNative } from '@/runtime/composition/workspace-native';
+import { WorkspaceConversation } from '@/runtime/composition/workspace-conversation';
 import { useMissionWidget } from '@/features/widgets/runtime';
 import { clearWorkspacePresentation, hasWorkspaceDrafts } from '@/runtime/presentation/workspace-presentation';
 import { RetainedProject } from '@/runtime/workspace/retained-project';
@@ -186,6 +187,7 @@ export function WorkspaceProvider({ children }: PropsWithChildren) {
           updateSettings={updateWorkspaceSettings} updatePreferences={manager.updatePreferences} publish={manager.publish} forget={manager.forget} />;
     }))}
     {current ? <UpdatesContext.Provider value={updates}>
+      <WorkspaceConversation />
       <WorkspaceNative catalogs={catalogs} preferences={shell.chatPreferences} ready={isHydrated} busy={Object.values(snapshots).some((runtime) => runtime.busy)} />
       {children}
     </UpdatesContext.Provider> : <View style={{ flex: 1, backgroundColor: '#101212', alignItems: 'center', justifyContent: 'center' }}><ActivityIndicator color="#C3CECB" /></View>}

@@ -107,9 +107,7 @@ function connectedProject(core: ReturnType<typeof newCore>, connectionId: string
   });
   const snapshot = {
     enabled: true, boundDirectory: projectPath || undefined, suspend: vi.fn(),
-    values: {
-      conversationValue: { conversation: { active: false } },
-    },
+    values: {},
   } as unknown as WorkspaceSnapshot;
   const commands = core.commands.workspace;
   commands.change((current) => {

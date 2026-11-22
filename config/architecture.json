@@ -326,7 +326,9 @@
       "useSessionState"
     ],
     "features/chat/runtime.ts": [
-      "useChatPresentation",
+      "ChatCommands",
+      "useChatCommands",
+      "useChatTranscript",
       "createPromptInboxCommands",
       "reconcilePromptSettlement",
       "createPromptSubmissionActions",

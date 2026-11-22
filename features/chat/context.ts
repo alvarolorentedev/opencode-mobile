@@ -1,6 +1,6 @@
-import { useAppCore, useAppStore, useWorkspaceDomainValue } from '@/runtime/core';
+import { useAppCore, useAppStore } from '@/runtime/core';
 
-export const useChat = () => useWorkspaceDomainValue((values) => values.chatValue, 'useChat');
+export { useChat } from './state/use-scoped-chat';
 
 export function useChatBootstrap() {
   const { resolveKey } = useAppCore().commands.workspace;
