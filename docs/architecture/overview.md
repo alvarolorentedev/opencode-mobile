@@ -68,7 +68,9 @@ The app has one tab group in `app/(tabs)/_layout.tsx`:
 - `settings` -> Settings
 - `terminal` -> Terminal
 
-Navigation complexity is deliberately low. There are no nested feature stacks or deep in-app route hierarchy. Terminal and Settings use provider scope boundaries so inspecting a server or opening a PTY does not move the selected chat.
+Navigation uses independent chat, terminal and inspection selections. Terminal
+passes its resolved workspace target to the screen and retained PTY renderers.
+Settings uses a provider scope boundary for the inspected server.
 
 This matters because state continuity is expected across tabs. Switching tabs does not reset active session context.
 

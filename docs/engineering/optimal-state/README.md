@@ -27,7 +27,7 @@ phase you are executing. Do not preload every phase unless you are planning.
 | B | [Connection manager](phase-b-connection-manager.md) | Complete | Core-owned connection managers run probe, renewal, SSE and polling |
 | C | [Command core](phase-c-commands.md) | Complete | Cross-domain commands run in the app core and the legacy composition is deleted |
 | D | [Transcript](phase-d-transcript.md) | Complete | Per-session infinite messages, bounded Query persistence and store live overlay |
-| E | [Flatten React](phase-e-flatten-react.md) | Not started | No scope/provider tree or shared-UI runtime exception |
+| E | [Flatten React](phase-e-flatten-react.md) | In progress | No scope/provider tree or shared-UI runtime exception |
 | F | [Persistence and tests](phase-f-persistence-and-tests.md) | Partially done | Query persistence done; Zustand persist, `loadTs`, `fast-check`, `knip` remain |
 | G | [Harness and guardrails](phase-g-harness-and-guardrails.md) | Not started | Full composition harness, fact rules, docs, release validation |
 
@@ -188,12 +188,18 @@ npm run validate:commit
   gate passed with 1,279 tests and one existing skip. The 8 MiB attachment
   comparison reached every delta with the same first visible update and
   comparable commit lag.
-- D2. Query persistence restores scoped, media-free transcript tails without
+- D2, `450524f9`. Query persistence restores scoped, media-free transcript tails without
   reusing a server paging cursor. Only the legacy upgrade reader remains for
   old disk entries. The full browser suite passed all 185 flows. The local
   commit gate passed with 1,280 tests and one existing skip. In the paired
   8 MiB attachment benchmark, both builds had a 20–22 ms p95 visible delta lag.
   The median cold transcript render was 174 ms versus 168 ms on Phase C.
+- E1a. The terminal screen and retained renderers receive explicit workspace
+  targets. The initial browser run found that a focused chat transition could
+  briefly replace the retained PTY's runtime. Explicit selections now read
+  their own project projection. The corrected build passed the commit gate
+  with 1,280 tests and one existing skip, 34 focused tests, and all 24 Terminal,
+  multi-server and Settings browser flows.
 
 ## Loop protocol
 
@@ -206,7 +212,7 @@ npm run validate:commit
    skip a suite, or add retries.
 7. Continue from the next phase.
 
-At checkpoints B, C, E, F, G run the full browser suite:
+At checkpoints B through G run the full browser suite:
 
 ```bash
 EXPO_PUBLIC_E2E_MODE=1 EXPO_APP_VARIANT=development npm run build:web:ci
@@ -237,7 +243,7 @@ first, then use `E2E_SKIP_BUILD=1`.
 - [x] Cross-domain commands are plain functions; `use-opencode-provider-composition.ts`,
       `opencode-provider-values*.ts`, `eventActionsRef` and `WorkspaceRuntime`
       are deleted.
-- [ ] Messages use per-session infinite queries; the live overlay is in Zustand.
+- [x] Messages use per-session infinite queries; the live overlay is in Zustand.
 - [ ] No `WorkspaceScope`, `WorkspaceValues`, `valuesFor` or shared-UI runtime
       exception remains.
 - [ ] Query and Zustand persistence own retention; no duplicate caches or

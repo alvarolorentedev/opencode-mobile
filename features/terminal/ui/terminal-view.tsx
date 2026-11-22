@@ -4,11 +4,13 @@ import { useCallback, useEffect, useMemo, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import * as Clipboard from '@/shared/platform/clipboard';
 import type { Palette } from '@/shared/ui/theme/theme';
+import type { WorkspaceTarget } from '@/shared/contracts/workspace';
 import { useTerminal } from '@/features/terminal/context';
 import TerminalDOM, { type TerminalDOMRef } from '@/features/terminal/ui/terminal-dom';
 import { pasteNeedsConfirmation } from '@/features/terminal/ui/terminal-keys';
 
-export function TerminalView({ visible, slim, palette, dismissKeyboard = false, onCopied, onError }: {
+export function TerminalView({ target, visible, slim, palette, dismissKeyboard = false, onCopied, onError }: {
+  target: WorkspaceTarget;
   visible: boolean; slim: boolean;
   palette: Palette;
   dismissKeyboard?: boolean;
@@ -17,7 +19,7 @@ export function TerminalView({ visible, slim, palette, dismissKeyboard = false, 
 }) {
   const { confirmAction, confirmation } = useConfirmation();
   const { t } = useTranslation();
-  const { terminalRuntime, activeTerminalId, sendTerminalInput } = useTerminal();
+  const { terminalRuntime, activeTerminalId, sendTerminalInput } = useTerminal(target);
   const bridge = useRef<TerminalDOMRef>(null);
   const runtime = useRef(terminalRuntime);
   const registrations = useRef(new Map<string, () => void>());

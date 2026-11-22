@@ -1,6 +1,7 @@
 # Phase E — Flatten React
 
-Status: **not started**.
+Status: **in progress**. Terminal screens and retained PTY renderers use
+explicit workspace targets. Settings and portal scope migration remain.
 
 Goal: remove the remaining scope/provider carriers from React. The app mounts
 one core provider and one Query provider; workspaces are keys, not mounted

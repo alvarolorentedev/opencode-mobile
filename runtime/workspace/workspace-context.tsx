@@ -1,12 +1,12 @@
 import type { Session } from '@/shared/protocol/opencode/types';
 import type { useWorkspaceConnections } from '@/runtime/workspace/use-workspace-connections';
-import { workspaceKey, type NewWorktreeChatResult, type NewWorktreeChatTarget, type WorkspaceCatalog, type WorkspaceTarget } from '@/shared/contracts/workspace';
+import type { NewWorktreeChatResult, NewWorktreeChatTarget, WorkspaceCatalog, WorkspaceTarget } from '@/shared/contracts/workspace';
 import type { WorkspaceValues } from '@/runtime/workspace/workspace-types';
 import { createContext, useContext, useEffect, useMemo, useState, type PropsWithChildren } from 'react';
 import { ActivityIndicator, View } from 'react-native';
 import type { MissionOverview } from '@/features/sessions/runtime';
 import { useAppStore } from '@/runtime/core/context';
-import { WorkspaceScopeContext, WorkspaceValuesContext } from '@/runtime/core/workspace-scope';
+import { useWorkspaceDomainValue, WorkspaceScopeContext, WorkspaceValuesContext } from '@/runtime/core/workspace-scope';
 import { PreferencesContext } from '@/shared/preferences/context';
 export { WorkspaceScopeContext };
 
@@ -44,28 +44,33 @@ export function useWorkspaceActions() {
 export function useWorkspacePresentation() {
   return useAppStore((state) => state.presentation);
 }
-export function WorkspaceScope({ target, children }: PropsWithChildren<{ target?: WorkspaceTarget }>) {
-  const registry = useWorkspaces();
-  const { ensure, valuesFor, resolveKey } = registry;
-  const incoming = useMemo(() => valuesFor(target), [target, valuesFor]);
+export function useWorkspacePreferences(target: WorkspaceTarget) {
+  return useWorkspaceDomainValue((values) => values.preferencesValue, 'useWorkspacePreferences', target);
+}
+export function useRetainedWorkspaceTarget(target?: WorkspaceTarget) {
+  const { ensure, resolveKey, snapshots, focus, retainedFocus } = useWorkspaces();
+  const requestedKey = target && resolveKey(target);
   const [retainedTarget, setRetainedTarget] = useState(target);
-  const effective = incoming ? target : retainedTarget;
-  const values = incoming ?? (retainedTarget ? valuesFor(retainedTarget) : undefined);
-  const key = target && workspaceKey(target);
-  // The snapshot key can be the placeholder project while the target names the
-  // active project. Provide the resolved target so domain selectors look up
-  // the same snapshot that valuesFor found.
+  const effective = requestedKey && snapshots[requestedKey] ? target : retainedTarget ?? focus ?? retainedFocus;
   const resolvedKey = effective ? resolveKey(effective) : undefined;
-  const resolvedTarget = resolvedKey
-    ? (([connectionId, projectPath]) => ({ connectionId, projectPath }))(JSON.parse(resolvedKey) as [string, string])
-    : effective;
   useEffect(() => {
     if (!target) return;
     const controller = new AbortController();
     void ensure(target, { signal: controller.signal }).then(() => setRetainedTarget(target)).catch(() => undefined);
     return () => controller.abort();
-  }, [key, target, ensure]);
-  return values ? <WorkspaceScopeContext.Provider value={resolvedTarget ?? registry.focus ?? registry.retainedFocus}>
+  }, [target, ensure]);
+  const availableKey = resolvedKey && snapshots[resolvedKey] ? resolvedKey : undefined;
+  return useMemo(() => {
+    if (!availableKey) return undefined;
+    const [connectionId, projectPath] = JSON.parse(availableKey) as [string, string];
+    return { connectionId, projectPath };
+  }, [availableKey]);
+}
+export function WorkspaceScope({ target, children }: PropsWithChildren<{ target?: WorkspaceTarget }>) {
+  const registry = useWorkspaces();
+  const resolvedTarget = useRetainedWorkspaceTarget(target);
+  const values = resolvedTarget ? registry.valuesFor(resolvedTarget) : undefined;
+  return values ? <WorkspaceScopeContext.Provider value={resolvedTarget}>
     <WorkspaceValuesContext.Provider value={values}>
       <PreferencesContext.Provider value={values.preferencesValue}>{children}</PreferencesContext.Provider>
     </WorkspaceValuesContext.Provider>
