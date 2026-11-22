@@ -225,11 +225,15 @@ npm run validate:commit
   own ready keys. The commit gate passed with 1,281 tests and one existing
   skip. The 26 focused Vitest cases, web export and all 104 connection,
   Settings, multi-server, project, session and Terminal browser flows passed.
-- E3. Connection, transcript, file and catalog hooks receive the exact Query
+- E3, `8462344c`. Connection, transcript, file and catalog hooks receive the exact Query
   identity and demand through arguments. The app keeps one Query provider
   and subscribes to foreground changes through the focus manager. The commit
   gate passed with 1,281 tests and one existing skip. The 86 focused Vitest
   cases, web export and all 72 affected browser flows passed.
+- E4a. Onboarding reads registry hydration and review state from the app store.
+  The commit gate passed with 1,281 tests and one existing skip. All 35 focused
+  tests, the web export and all 33 onboarding, Settings and manual connection
+  browser flows passed.
 
 ## Loop protocol
 

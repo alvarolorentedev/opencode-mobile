@@ -1,7 +1,8 @@
 import { z } from 'zod';
 import { describe, expect, it, vi } from 'vitest';
 import { loadTs, hookRuntime } from '../../tests/helpers/runtime.mjs';
-import { createAppStore } from '@/runtime/core/store';
+import { createAppStore, type AppState } from '@/runtime/core/store';
+import { CURRENT_ONBOARDING_VERSION } from '@/features/onboarding/runtime';
 import type { createWorkspaceCommands as WorkspaceCommands } from '@/runtime/core/commands/workspace';
 import type { createConnectionCommands as ConnectionCommands } from '@/runtime/core/commands/connection';
 
@@ -68,6 +69,10 @@ describe('multi-server contracts', () => {
   it('keeps unrelated workspace domains stable when only chat data changes', async () => {
     const driver = hookRuntime();
     let current: Record<string, unknown>;
+    const settings = { serverUrl: 'http://a', username: '', password: '', directory: '' };
+    const store = createAppStore({ settings, chatPreferences: {} as never, controlPlaneUrl: '' });
+    store.getState().setRegistry({ ready: true });
+    store.getState().setShellValue('onboardingVersion', CURRENT_ONBOARDING_VERSION);
     const commands = {
       connection: { retry: vi.fn(), openSession: vi.fn(), openSessionInProject: vi.fn() },
       workspace: { activate: vi.fn() },
@@ -77,16 +82,16 @@ describe('multi-server contracts', () => {
       'features/onboarding/context.ts', 'features/chat/context.ts',
     ], {
       react: driver.react,
+      zod: { z },
       '@/runtime/core': {
         useWorkspaceDomainValue: (select: (values: Record<string, unknown>) => unknown) => select(current),
+        useAppStore: (select: (state: AppState) => unknown) => select(store.getState()),
         useAppCore: () => ({ commands }),
         useActiveWorkspaceTarget: () => ({ connectionId: 'http://a:', projectPath: '/repo' }),
       },
       '@/shared/contracts/connection-scope': identity,
     });
-    const settings = { serverUrl: 'http://a', username: '' };
     const base = {
-      onboardingValue: { isHydrated: true, onboardingCompleted: true, onboardingActive: false },
       connectionValue: { settings, connect: async () => ({}), switchConnection: async () => ({}), connectionProfiles: [], connectSetup: {}, services: {} },
       projectsValue: { activeProjectPath: '/repo', projects: [], selectProject: () => {} },
       currentSessionValue: { currentSessionId: 's', openDeepLinkSession: async () => ({ ok: true }) },
@@ -111,8 +116,10 @@ describe('multi-server contracts', () => {
     expect(next.currentSessionValue).toBe(first.currentSessionValue);
     expect(next.sessionLibraryValue).toBe(first.sessionLibraryValue);
 
-    driver.update({ values: { ...base, onboardingValue: { ...base.onboardingValue, onboardingActive: true } } });
+    first.onboardingValue.startOnboardingReview();
+    driver.update({ values: base });
     expect(driver.value.onboardingValue).not.toBe(first.onboardingValue);
+    expect(driver.value.onboardingValue.onboardingActive).toBe(true);
     expect(driver.value.connectionValue).toBe(first.connectionValue);
     driver.unmount();
   });

@@ -8,7 +8,6 @@ import type { CapabilitiesContextValue } from '@/features/ai/index';
 import type { ChatContextValue } from '@/features/chat/index';
 import type { ConnectionContextValue, DiagnosticsContextValue } from '@/features/connections/index';
 import type { ExtensionsContextValue, McpContextValue } from '@/features/extensions/index';
-import type { OnboardingContextValue } from '@/features/onboarding/index';
 import type { ProjectFilesContextValue, ProjectsContextValue } from '@/features/projects/index';
 import type { useProjectCatalogActions } from '@/features/projects/runtime';
 import type { ApprovalsContextValue, CurrentSessionContextValue, SessionLibraryContextValue } from '@/features/sessions/index';
@@ -26,8 +25,7 @@ import type { Dispatch, SetStateAction } from 'react';
 import type { ConnectionRecord, WorkspaceCatalog } from '@/shared/contracts/workspace';
 
 export type SharedWorkspaceState = Pick<WorkspaceShellState,
-  'controlPlaneUrl' | 'setControlPlaneUrl' | 'onboardingVersion' | 'setOnboardingVersion' |
-  'onboardingActive' | 'setOnboardingActive' |
+  'controlPlaneUrl' | 'setControlPlaneUrl' |
   'favoriteSessions' | 'setFavoriteSessions' | 'hiddenProjects' | 'setHiddenProjects'> & { fileClipboard?: import('@/features/projects/index').FileClipboard };
 
 export type ProjectBindingInput = {
@@ -68,7 +66,6 @@ export type WorkspaceSnapshot = {
 };
 
 export type WorkspaceValues = {
-  onboardingValue: OnboardingContextValue;
   connectionValue: ConnectionContextValue;
   diagnosticsValue: DiagnosticsContextValue;
   capabilitiesValue: CapabilitiesContextValue;

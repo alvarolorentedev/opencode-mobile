@@ -150,12 +150,9 @@ export function WorkspaceProvider({ children }: PropsWithChildren) {
   const shared = useMemo<SharedWorkspaceState>(() => ({
     fileClipboard,
     controlPlaneUrl: shell.controlPlaneUrl, setControlPlaneUrl: shell.setControlPlaneUrl,
-    onboardingVersion: shell.onboardingVersion, setOnboardingVersion: shell.setOnboardingVersion,
-    onboardingActive: shell.onboardingActive, setOnboardingActive: shell.setOnboardingActive,
     favoriteSessions: shell.favoriteSessions, setFavoriteSessions: shell.setFavoriteSessions,
     hiddenProjects: shell.hiddenProjects, setHiddenProjects: shell.setHiddenProjects,
-  }), [fileClipboard, shell.controlPlaneUrl, shell.setControlPlaneUrl, shell.onboardingVersion, shell.setOnboardingVersion,
-    shell.onboardingActive, shell.setOnboardingActive, shell.favoriteSessions, shell.setFavoriteSessions,
+  }), [fileClipboard, shell.controlPlaneUrl, shell.setControlPlaneUrl, shell.favoriteSessions, shell.setFavoriteSessions,
     shell.hiddenProjects, shell.setHiddenProjects]);
   const voiceSetupTest = useVoiceSetupTest(shell.chatPreferences, Object.values(snapshots).some((snapshot) => snapshot.values.conversationValue.conversation.phase !== 'off'));
   const registry = useMemo<WorkspaceRegistry>(() => ({ ...manager, removeConnection,

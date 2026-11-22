@@ -19,8 +19,6 @@ export function useWorkspaceShellState() {
     (value) => write('controlPlaneUrl', value), [write]);
   const setOnboardingVersion = useCallback<Dispatch<SetStateAction<ShellState['onboardingVersion']>>>(
     (value) => write('onboardingVersion', value), [write]);
-  const setOnboardingActive = useCallback<Dispatch<SetStateAction<ShellState['onboardingActive']>>>(
-    (value) => write('onboardingActive', value), [write]);
   const setChatPreferences = useCallback<Dispatch<SetStateAction<ShellState['chatPreferences']>>>(
     (value) => write('chatPreferences', value), [write]);
   const setFavoriteSessions = useCallback<Dispatch<SetStateAction<ShellState['favoriteSessions']>>>(
@@ -33,7 +31,6 @@ export function useWorkspaceShellState() {
     setSettings,
     setControlPlaneUrl,
     setOnboardingVersion,
-    setOnboardingActive,
     setChatPreferences,
     setFavoriteSessions,
     setHiddenProjects,

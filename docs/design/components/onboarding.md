@@ -52,6 +52,10 @@ Responsibility:
 - pure `resolveOnboardingStatus()` migration decision and the storage-backed `loadOnboardingStatus()`
 - completion only; never stores connection, project, preference, or permission values
 
+`features/onboarding/context.ts` reads app readiness and completion from the
+app store. Finishing setup and entering or leaving review update the shell
+state, which is independent of the selected project.
+
 ### `features/notifications/state/use-notification-setup.ts`
 
 - notification permission/status/platform-settings controller shared by Settings and onboarding

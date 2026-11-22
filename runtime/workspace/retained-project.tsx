@@ -5,7 +5,6 @@ import { buildClient, getRequestHeaders, withOidcAuthorizationObject, type Openc
 import { useOidcAccessToken } from '@/shared/auth/oidc/use-oidc-access-token';
 import { getActiveSessions, MAX_ACTIVE_SESSIONS, useApprovalsCatalog, usePermissionRulesState, useSessionActions, useSessionCatalog, useSessionPresentation } from '@/features/sessions/runtime';
 import { useConnectionRuntime } from '@/runtime/connections/connection-runtime';
-import { CURRENT_ONBOARDING_VERSION, isOnboardingComplete } from '@/features/onboarding/runtime';
 import { buildOpencodeProjects, resolveActiveProject, useProjectPresentation, useWorktreeState } from '@/features/projects/runtime';
 import { useActivityNotifications } from '@/features/notifications/runtime';
 import { useCapabilitiesActions, useCapabilitiesPresentation } from '@/features/ai/runtime';
@@ -69,8 +68,6 @@ export const RetainedProject = memo(function RetainedProject({ defaults, updateS
   useEffect(() => refreshQueue.clear, [refreshQueue]);
   const isHydrated = input.isHydrated && input.connection.enabled;
   const {
-    setOnboardingVersion,
-    setOnboardingActive,
     setMcpAuthPrompt,
     cancelBootstrap,
     clientGenerationRef,
@@ -88,21 +85,6 @@ export const RetainedProject = memo(function RetainedProject({ defaults, updateS
     serverGenerationRef.current++;
     cancelBootstrap();
   }, [inputConnection.revision, cancelBootstrap, scopeGenerationRef, serverGenerationRef]);
-
-  const onboardingCompleted = isOnboardingComplete(state.onboardingVersion);
-
-  const completeOnboarding = useCallback(async () => {
-    setOnboardingVersion(CURRENT_ONBOARDING_VERSION);
-    setOnboardingActive(false);
-  }, [setOnboardingActive, setOnboardingVersion]);
-
-  const startOnboardingReview = useCallback(() => {
-    setOnboardingActive(true);
-  }, [setOnboardingActive]);
-
-  const stopOnboardingReview = useCallback(() => {
-    setOnboardingActive(false);
-  }, [setOnboardingActive]);
 
   const dismissMcpAuth = useCallback(() => {
     setMcpAuthPrompt(undefined);
@@ -379,10 +361,6 @@ export const RetainedProject = memo(function RetainedProject({ defaults, updateS
     cancelPrompt: inbox.cancelPrompt,
   });
 
-  const onboardingValue = useMemo<WorkspaceValues['onboardingValue']>(() => ({
-    isHydrated: input.isHydrated, onboardingCompleted, onboardingActive: state.onboardingActive,
-    completeOnboarding, startOnboardingReview, stopOnboardingReview,
-  }), [input.isHydrated, onboardingCompleted, state.onboardingActive, completeOnboarding, startOnboardingReview, stopOnboardingReview]);
   const serverCapabilities = useMemo(() => getServerCapabilities(state.serverContract), [state.serverContract]);
   const connectionValue = useMemo<WorkspaceValues['connectionValue']>(() => ({
     connectionProfiles: input.connectionProfiles, settings: state.settings, updateSettings: updateConnectionSettings,
@@ -417,9 +395,9 @@ export const RetainedProject = memo(function RetainedProject({ defaults, updateS
   const extensionItems = extensions.extensions;
   const extensionsValue = useMemo(() => ({ extensions: extensionItems }), [extensionItems]);
   const values = useMemo<WorkspaceValues>(() => ({
-    onboardingValue, connectionValue, diagnosticsValue, capabilitiesValue, preferencesValue, projectsValue, projectFilesValue,
+    connectionValue, diagnosticsValue, capabilitiesValue, preferencesValue, projectsValue, projectFilesValue,
     currentSessionValue, sessionLibraryValue, chatValue, approvalsValue, conversationValue, terminalValue, mcpValue, extensionsValue,
-  }), [onboardingValue, connectionValue, diagnosticsValue, capabilitiesValue, preferencesValue, projectsValue, projectFilesValue,
+  }), [connectionValue, diagnosticsValue, capabilitiesValue, preferencesValue, projectsValue, projectFilesValue,
     currentSessionValue, sessionLibraryValue, chatValue, approvalsValue, conversationValue, terminalValue, mcpValue, extensionsValue]);
 
   const suspend = useCallback(() => {
