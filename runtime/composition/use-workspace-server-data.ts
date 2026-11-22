@@ -1,33 +1,20 @@
 import type { QueryIdentity } from '@/shared/server-data/keys';
 import type { ScopedOpencodeClient } from '@/shared/protocol/opencode/client';
-import type { CachedCapabilities } from '@/features/ai/index';
-import { hydrateCapabilitiesSnapshot, persistCapabilitiesSnapshot , getConfiguredProviderIds , agentsOptions , capabilitiesOptions } from '@/features/ai/runtime';
+import { hydrateCapabilitiesSnapshot, persistCapabilitiesSnapshot, useCapabilitiesCatalog, agentsOptions, capabilitiesOptions } from '@/features/ai/runtime';
 import { commandsOptions, configurationOptions, referencesOptions, skillsOptions } from '@/shared/server-data/catalogs';
 import { fileStatusOptions, vcsInfoOptions } from '@/features/projects/runtime';
 import { useQueries, useQueryClient } from '@tanstack/react-query';
-import { useCallback, useEffect, useMemo } from 'react';
+import { useEffect } from 'react';
 
 const EMPTY: never[] = [];
-const EMPTY_METHODS = {};
 export function useWorkspaceServerData(identity: QueryIdentity, client: ScopedOpencodeClient, active: boolean, isCurrent: (client: object) => boolean, demanded: boolean) {
   active = active && demanded;
   const cache = useQueryClient();
-  const capOptions = capabilitiesOptions(identity, client);
   const enabled = active && Boolean(client.__opencode.directory);
-  const [discovery] = useQueries({ queries: [{ ...capOptions, enabled }].filter(() => demanded) });
-  const [configuration] = useQueries({ queries: [{ ...configurationOptions(identity, client), enabled }].filter(() => demanded) });
-  const [agents] = useQueries({ queries: [{ ...agentsOptions(identity, client), enabled }].filter(() => demanded) });
-  const [skills] = useQueries({ queries: [{ ...skillsOptions(identity, client), enabled }].filter(() => demanded) });
-  const [references] = useQueries({ queries: [{ ...referencesOptions(identity, client), enabled }].filter(() => demanded) });
+  const data = useCapabilitiesCatalog(identity, client, demanded, enabled);
+  const { capabilities, cachedAt } = data;
   const [commands] = useQueries({ queries: [{ ...commandsOptions(identity, client), enabled }].filter(() => demanded) });
   useQueries({ queries: [{ ...fileStatusOptions(identity, client), enabled }, { ...vcsInfoOptions(identity, client), enabled }].filter(() => demanded) });
-  const capabilities = useMemo<CachedCapabilities | undefined>(() => {
-    if (!discovery?.data || !configuration?.data || !agents?.data) return undefined;
-    const ids = getConfiguredProviderIds(configuration?.data?.config, discovery?.data.connected, discovery?.data.models);
-    return { ...discovery?.data, config: configuration?.data?.config,
-      providers: discovery?.data.providers.map((provider) => ({ ...provider, configured: provider.configured || ids.has(provider.id) })),
-      agents: agents?.data ?? EMPTY, skills: skills?.data?.items ?? EMPTY, references: references?.data ?? EMPTY };
-  }, [discovery?.data, configuration?.data, agents?.data, skills?.data, references?.data]);
   useEffect(() => {
     const path = client.__opencode.directory;
     if (!path || !demanded || identity.authRevision > 0) return;
@@ -46,21 +33,9 @@ export function useWorkspaceServerData(identity: QueryIdentity, client: ScopedOp
   }, [cache, client, demanded, identity, isCurrent]);
   useEffect(() => {
     const path = client.__opencode.directory;
-    if (path && capabilities?.models.length && discovery?.dataUpdatedAt) {
-      void persistCapabilitiesSnapshot(identity.connectionScope, path, capabilities, Math.min(discovery?.dataUpdatedAt, configuration?.dataUpdatedAt ?? 0, agents?.dataUpdatedAt ?? 0));
+    if (path && capabilities?.models.length && cachedAt) {
+      void persistCapabilitiesSnapshot(identity.connectionScope, path, capabilities, cachedAt);
     }
-  }, [capabilities, discovery?.dataUpdatedAt, configuration?.dataUpdatedAt, agents?.dataUpdatedAt, client, identity.connectionScope]);
-  const refreshChatCapabilities = useCallback(async () => {
-    if (!isCurrent(client) || !client.__opencode.directory) return;
-    await cache.invalidateQueries({ predicate: (query) => query.queryKey[0] === 'opencode' && query.queryKey[1] === identity.connectionId
-      && ['capabilities', 'configuration', 'agents', 'skills', 'references', 'extension-inspection'].includes(String(query.queryKey[7])), refetchType: demanded ? 'active' : 'none' });
-  }, [cache, client, demanded, identity, isCurrent]);
-  return {
-    capabilities, refreshChatCapabilities,
-    currentConfig: capabilities?.config, availableProviders: capabilities?.providers ?? EMPTY,
-    providerAuthMethodsById: capabilities?.providerAuthMethodsById ?? EMPTY_METHODS,
-    availableModels: capabilities?.models ?? EMPTY, availableAgents: capabilities?.agents ?? EMPTY,
-    availableSkills: capabilities?.skills ?? EMPTY, availableReferences: capabilities?.references ?? EMPTY,
-    commands: commands?.data ?? EMPTY,
-  };
+  }, [cachedAt, capabilities, client, identity.connectionScope]);
+  return { ...data, commands: commands?.data ?? EMPTY };
 }

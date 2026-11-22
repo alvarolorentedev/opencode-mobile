@@ -330,19 +330,23 @@ npm run validate:commit
   The commit gate passed with 1,284 tests and one existing skip. All 59 focused
   tests and 65 browser flows across Projects, Chat, diffs, multi-server,
   Terminal, Settings and Extensions passed.
-- E23. Catalog commands are plain functions and reject stale location reads.
+- E23, `1a27d318`. Catalog commands are plain functions and reject stale location reads.
   Project status refreshes use the scoped Query keys. The final commit gate
   passed with 1,284 tests and one existing skip. All 59 focused tests passed.
   All 79 affected browser flows passed before the refresh module extraction.
   All 40 Projects, Onboarding and Settings flows passed on the final build.
-- E24. Chat bootstrap and file search read their owners directly. Chat and
+- E24, `afd680d5`. Chat bootstrap and file search read their owners directly. Chat and
   Settings share a revision-guarded approval preference command. The commit
   gate passed with 1,285 tests and one existing skip. All 300 focused tests
   and 61 affected browser flows passed.
-- E25. Widgets, quick actions and Mission Control consume scoped Query and
+- E25, `87015f59`. Widgets, quick actions and Mission Control consume scoped Query and
   connection data. The workspace snapshot no longer supplies native state.
   The commit gate passed with 1,285 tests and one existing skip, as did 135
   focused tests and 80 affected browser flows.
+- E26. AI views read their own Query partition. Provider writes and OAuth use
+  scoped commands, with classifier readiness still provided by the retained
+  project. The commit gate passed with 1,286 tests and one existing skip.
+  All 294 focused tests and 65 affected browser flows passed.
 
 ## Loop protocol
 

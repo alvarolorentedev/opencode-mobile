@@ -225,7 +225,7 @@
       "useActivityNotifications"
     ],
     "features/ai/runtime.ts": [
-      "useCapabilitiesPresentation",
+      "useCapabilitiesCatalog",
       "agentsOptions",
       "capabilitiesOptions",
       "clearCapabilitiesSnapshots",

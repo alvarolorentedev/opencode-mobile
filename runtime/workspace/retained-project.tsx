@@ -5,7 +5,7 @@ import { buildClient, type OpencodeConnectionSettings } from '@/shared/protocol/
 import { useApprovalsCatalog, useSessionCatalog, useSessionExecutionActions, useSessionPreviews } from '@/features/sessions/runtime';
 import { useConnectionRuntime } from '@/runtime/connections/connection-runtime';
 import { useActivityNotifications } from '@/features/notifications/runtime';
-import { useCapabilitiesActions, useCapabilitiesPresentation } from '@/features/ai/runtime';
+import { useCapabilitiesActions } from '@/features/ai/runtime';
 import { useConversationState } from '@/features/voice/runtime';
 import { useOpencodeProviderEffects } from '@/runtime/composition/use-opencode-provider-effects';
 import { useOpencodeProviderReset } from '@/runtime/composition/use-opencode-provider-reset';
@@ -160,7 +160,7 @@ export const RetainedProject = memo(function RetainedProject({ defaults, updateS
     [inputConnection.revision, sessionCommands, sessionTarget, state.scopeKey]);
   const project = useProjectActions({ ...domain, connectionId: inputConnection.id, connected: state.connection.status === 'connected', client, catalogClient, isCurrentClient, isCurrentCatalogClient, clearProjectState, isHydrated, refreshMessages: inbox.refreshMessages }, sessionRefresh, refreshQueue);
 
-  const capabilities = useCapabilitiesActions({ ...domain, client, isCurrentClient, isHydrated });
+  const modelRouting = useCapabilitiesActions({ ...domain, client, isCurrentClient, isHydrated });
 
   const sessionNavigation = useMemo(() => sessionCommands.navigation(sessionTarget, state.scopeKey, inputConnection.revision),
     [inputConnection.revision, sessionCommands, sessionTarget, state.scopeKey]);
@@ -277,23 +277,22 @@ export const RetainedProject = memo(function RetainedProject({ defaults, updateS
   const activeSession = sessionCatalog.sessions.find(({ id }) => id === state.currentSessionId);
   const sessionPreviews = useSessionPreviews(transcript.messagesBySession);
   const chatValue = useChatPresentation({
-    ...domain, ...transcript, ...project, ...sessionActions, ...interactions, ...capabilities, ...prompt,
+    ...domain, ...transcript, ...project, ...sessionActions, ...interactions, ...prompt,
     activeSession,
     transcriptReadError: state.currentSessionId ? transcriptRead.errors[state.currentSessionId] : undefined,
     retryTranscript, pendingPromptsBySession: inbox.pendingPromptsBySession, pendingNoticesBySession: inbox.pendingNoticesBySession,
     cancelPrompt: inbox.cancelPrompt,
   });
 
-  const capabilitiesValue = useCapabilitiesPresentation(serverData, capabilities);
   const { addProject, refreshProjectCatalog } = project;
   const projectsValue = useMemo(() => ({ addProject, refreshProjectCatalog }), [addProject, refreshProjectCatalog]);
   const conversationValue = useMemo<WorkspaceValues['conversationValue']>(() => ({
     conversation, clearConversationFeedback, toggleConversationMode,
   }), [conversation, clearConversationFeedback, toggleConversationMode]);
   const values = useMemo<WorkspaceValues>(() => ({
-    capabilitiesValue, projectsValue,
+    modelRouting, projectsValue,
     chatValue, conversationValue,
-  }), [capabilitiesValue, projectsValue,
+  }), [modelRouting, projectsValue,
     chatValue, conversationValue]);
 
   const suspend = useCallback(() => {

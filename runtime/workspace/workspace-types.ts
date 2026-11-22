@@ -40,7 +40,7 @@ export type WorkspaceSnapshot = {
 };
 
 export type WorkspaceValues = {
-  capabilitiesValue: CapabilitiesContextValue;
+  modelRouting: CapabilitiesContextValue['modelRouting'];
   projectsValue: Pick<ProjectsContextValue, 'addProject' | 'refreshProjectCatalog'>;
   chatValue: ChatContextValue;
   conversationValue: ConversationContextValue;

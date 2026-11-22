@@ -70,6 +70,10 @@ Start only after Phase D is complete and green.
 - Native quick actions read the connection catalogs once per server. Widgets
   and Mission Control read plan records from their Query partitions, and
   working sounds read the app-store voice phase.
+- AI reads provider, agent and model data from scoped Query entries.
+  Provider credentials and OAuth actions use the same guarded service from
+  Settings and Onboarding. The classifier view still comes from the retained
+  project.
 - `runtime/core/workspace-selectors.ts` selects the retained project projection.
 - [ADR 0052](../../adr/0052-explicit-overlay-dependencies.md) records explicit
   portal targets and update blocker callbacks. Shared controls use shared imports.
