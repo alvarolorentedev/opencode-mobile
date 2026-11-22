@@ -15,6 +15,7 @@ import * as realtimeReconcile from '@/runtime/realtime/reconcile';
 import { createAppStore, type AppState } from '@/runtime/core/store';
 import type { RealtimeScopeInput } from '@/runtime/realtime/create-realtime';
 import type { ConnectionFailureKind } from '@/shared/protocol/opencode/client';
+import { fixturePromptCommands } from './prompt-command-fixture';
 
 const realtimeDeps = {
     '@/runtime/realtime/backoff': realtimeBackoff,
@@ -86,12 +87,10 @@ function extractDeclarations(source: string, names: string[]) {
   return found.join('\n');
 }
 const projectActionsSource = await readSource('../../features/projects/state/use-project-file-actions.ts');
-const promptLifecycleSource = await readSource('../../features/chat/state/use-prompt-lifecycle.ts');
 const connectionActionsSource = await readSource('../../features/sessions/state/use-connection-link-actions.ts');
-const names = [ 'openProjectFile', 'saveProjectFile', 'abortSession'];
+const names = ['openProjectFile', 'saveProjectFile'];
 const declarations = [
   extractDeclarations(projectActionsSource, ['openProjectFile', 'saveProjectFile']),
-  extractDeclarations(promptLifecycleSource, ['abortSession']),
 ].join('\n');
 let aborted = false;
 const client = { __opencode: { directory: '/repo' }, session: { abort: async () => { aborted = true; } } };
@@ -127,7 +126,6 @@ const context: any = {
   interruptSession: async () => { aborted = true; }, refreshServerFeatures: async () => {}, refreshVcsDiff: async () => {},
   connectionScope: 'scope', pendingNotificationKey: () => 'key',
   settingsRef: { current: { serverUrl: 'http://server', username: '' } }, getConnectionUiScope: () => 'scope',
-  busyNotificationsRef: { current: new Set() }, promptSubmissionRef: { current: {} }, latestSubmissionRef: { current: {} }, setSendingState: () => {},
   clearPendingTaskFinishedNotification: async () => { throw new Error('storage unavailable'); },
   refreshSessions: async () => {}, refreshMessages: async () => {}, refreshSessionDiff: async () => {}, refreshSessionTodos: async () => {},
   exports: {},
@@ -264,7 +262,20 @@ context.saveFile = async () => { bytes = 'external edit'; };
 await assert.rejects(actions.saveProjectFile('save', 'edited', 'draft'), /did not match/);
 assert.equal(selected.content.content, 'edited', 'failed verification must not replace the saved baseline');
 
-await actions.abortSession('s');
+const promptCommands = await fixturePromptCommands(context.store, {
+  '@/features/ai/runtime': {},
+  '@/features/notifications/runtime': { pendingNotificationKey: context.pendingNotificationKey,
+    clearPendingTaskFinishedNotification: context.clearPendingTaskFinishedNotification },
+  '@/shared/contracts/connection-scope': { getConnectionUiScope: context.getConnectionUiScope },
+  '@/shared/protocol/services/session-service': { interruptSession: context.interruptSession },
+  '@/shared/protocol/opencode/attachment': {},
+  '@/features/chat/model/system-prompt': {},
+  '@/shared/i18n/index': {},
+});
+const promptActions = promptCommands.workspace(context.scopeKey).actions({
+  ...context, readSettings: () => context.settingsRef.current, busyNotifications: () => new Set(),
+});
+await promptActions.abortSession('s');
 assert.equal(aborted, true, 'notification storage failure must not prevent aborting server work');
 
 // The bounded transcript keeps an independent, replay-safe usage/plan ledger.

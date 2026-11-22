@@ -287,14 +287,14 @@ The completion version, preference schema and first-run migration are unchanged.
 - `features/projects/state/use-project-browser.ts`
   Directory/search query selection and project-scope guards, composed by the
   project file actions and exposed as one files-context member.
-- `features/sessions/state/use-session-actions.ts`
-  Session lifecycle, favorites, permissions/questions, and
-  `ensureActiveSession`.
+- `runtime/core/commands/session.ts`
+  Scoped session actions, approvals, list and status refreshes.
+- `runtime/core/commands/prompt.ts` and `features/chat/services/prompt-submission.ts`
+  Prompt submission, cancellation and session-model switches. Classification
+  starts alongside attachment preparation. The normal default model remains
+  available when the classifier provides no selection.
 - `features/chat/state/use-prompt-lifecycle.ts`
-  `sendPrompt`/`abortSession`, the submission guard, task-completion notification
-  tracking, and the initial auto-routing await. Classification starts in
-  parallel with attachment preparation; a missing classifier leaves the send on
-  the normal default model.
+  React bindings for prompt commands and task-completion notification tracking.
 - `features/chat/state/use-prompt-inbox.ts`
   OpenCode 2 prompt admission and session-scoped pending messages. Wraps the
   existing transcript refresh to reconcile inbox delivery through SSE and polling.

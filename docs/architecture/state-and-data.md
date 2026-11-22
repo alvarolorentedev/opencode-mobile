@@ -214,6 +214,11 @@ the offline outbox, including the inputs needed for delivery. The pending stack
 combines those sources for the selected session. Credential rotation follows the
 Query partition policy above, and removing a connection discards its outbox.
 
+The prompt command tracks the current submission separately from the visible
+sending indicator so a late completion can clear only its own operation.
+Attachment preparation and notification bookkeeping preserve the captured
+connection scope while the project is still current.
+
 `diffsBySession` holds normalized `FileDiff` entries. Both contracts pass through `shared/protocol/opencode/diff.ts` before they are stored, so a v1 `before`/`after` pair arrives with a rebuilt unified `patch` and the viewer renders the same line preview for either contract.
 
 Diff scope state:

@@ -302,6 +302,7 @@
       "useSessionState"
     ],
     "features/chat/runtime.ts": [
+      "createPromptSubmissionActions",
       "forgetSessionContent",
       "isPromptErrorVisible",
       "migrateTranscriptCaches",
@@ -313,6 +314,8 @@
       "MessageCatalog",
       "MessagesBySession",
       "LiveTranscriptMessage",
+      "PromptCommandInput",
+      "PromptSubmission",
       "usePromptInbox",
       "usePromptLifecycle",
       "useTranscriptReadErrors",

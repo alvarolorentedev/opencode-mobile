@@ -8,8 +8,9 @@ migrated.
 Permission and question replies now run as plain session commands. Permission
 reconciliation reads pending mutations in the same Query partition as the
 project's approvals. Session list, status and approval refreshes also run
-through these commands. Prompt and connection commands and event dispatch
-still need extraction.
+through these commands. Sending and aborting use app-core prompt commands.
+Inbox admission, reconnect recovery, routing and settlement still include
+React adapters. Connection commands and event dispatch remain.
 
 Explicit session opening and automatic bootstrap share the app-core selection
 command. It reads the project session catalog and supersedes pending bootstrap

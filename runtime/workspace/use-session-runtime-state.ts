@@ -38,9 +38,8 @@ export function useSessionRuntimeState(input: WorkspaceRuntimeInput, connection:
       readPinnedDiffMessage: (sessionId: string) => store.getState().chat[scopeKey]?.selectedDiffMessageBySession[sessionId],
     };
   }, [scopeKey, store]);
-  // These locks coordinate notification delivery and an in-flight prompt submission.
+  // This latch coordinates completion notifications with activity.
   const busyNotificationsRef = useRef(new Set<string>());
-  const promptSubmissionRef = useRef<{ active: boolean; sessionId?: string }>({ active: false });
   const { mcpAuthPrompt, setMcpAuthPrompt } = useExtensionPromptState();
 
   const connectionScope = useMemo(
@@ -84,7 +83,6 @@ export function useSessionRuntimeState(input: WorkspaceRuntimeInput, connection:
     sessionRefreshOptionsRef,
     busyNotificationsRef,
     explicitSessionSelectionRef,
-    promptSubmissionRef,
     projectFileRequestRef,
   };
 }

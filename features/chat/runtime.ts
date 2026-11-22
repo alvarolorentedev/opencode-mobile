@@ -1,4 +1,6 @@
 export { forgetSessionContent } from './services/queries';
+export { createPromptSubmissionActions } from './services/prompt-submission';
+export type { PromptCommandInput, PromptSubmission } from './services/prompt-submission';
 export { isPromptErrorVisible } from './model/selectors';
 export { migrateTranscriptCaches } from './services/transcript-cache';
 export { pruneProviderTranscripts } from './model/transcript-pruning';

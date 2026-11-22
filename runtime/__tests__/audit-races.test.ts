@@ -4,6 +4,7 @@ import { QueryClient } from '@tanstack/react-query';
 import { sessionRefreshCommands } from '@/features/sessions/services/session-refresh';
 import type { ScopedOpencodeClient } from '@/shared/protocol/opencode/client';
 import { projectQueryKey } from '@/shared/server-data/keys';
+import { loadPromptLifecycle } from './prompt-command-fixture';
 import { deferred, hookRuntime, loadTs } from '../../tests/helpers/runtime.mjs';
 import { listPendingInteractions } from '@/shared/protocol/opencode/client/interactions';
 
@@ -148,8 +149,7 @@ describe('prompt submission ownership', () => {
     "@/shared/preferences/opencode-preferences": preferences
   });
     const scopes = await loadTs('shared/contracts/connection-scope.ts', { '@scure/base': { base64 } });
-    const { usePromptLifecycle } = await loadTs('features/chat/state/use-prompt-lifecycle.ts', {
-    react: runtime.react,
+    const { usePromptLifecycle, store } = await loadPromptLifecycle(runtime, {
     '@/features/notifications/services/notifications': notifications,
     "@/features/chat/model/system-prompt": preferences,
     "@/features/ai/model/opencode-model-selection": models,
@@ -159,12 +159,14 @@ describe('prompt submission ownership', () => {
     "@/shared/protocol/opencode/attachment": { prepareAttachment: async (att: unknown) => att },
     "@/features/ai/state/use-prompt-routing": { usePromptRouting: () => async () => undefined }
   });
-    const client = {}, currentClient = { current: client }, submission = { current: { active: false } };
+    const client = {}, currentClient = { current: client };
+    const scopeKey = 'submission-scope';
+    const submission = { get current() { return store.getState().prompt[scopeKey]?.sending ?? { active: false }; } };
     const settings = { serverUrl: 'http://server', username: '' };
-    const input = { client, isCurrentClient: (candidate: object) => candidate === currentClient.current, activeProjectPath: '/repo', connectionScope: scopes.getConnectionScope(settings),
+    const input = { scopeKey, client, isCurrentClient: (candidate: object) => candidate === currentClient.current, activeProjectPath: '/repo', connectionScope: scopes.getConnectionScope(settings),
       sessions: [{ id: 's', title: 'chat' }], sessionStatuses: {}, availableAgents: [{ id: 'build', label: 'Build', mode: 'primary' }], availableModels: [], chatPreferences: preferences.defaultChatPreferences,
-      settingsRef: { current: settings }, busyNotificationsRef: { current: new Set() }, promptSubmissionRef: submission,
-      setSelectedDiffMessageBySession: vi.fn(), refreshSessions: refresh, markLocalSend: vi.fn(),
+      settingsRef: { current: settings }, busyNotificationsRef: { current: new Set() },
+      refreshSessions: refresh, markLocalSend: vi.fn(),
       refreshSessionDiff: refresh, refreshSessionTodos: refresh, scheduleSessionRefresh: vi.fn(), summarizeSessionTitle: vi.fn(),
       submitPrompt: vi.fn().mockReturnValueOnce(a.promise).mockReturnValueOnce(b.promise),
     };

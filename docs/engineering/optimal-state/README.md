@@ -140,11 +140,15 @@ npm run validate:commit
   Static checks passed with 1,266 tests and one existing skip. The focused
   tests, docs, web export and all 53 chat, sessions, diffs, interactions
   and multi-server browser tests passed.
-- C2e. Session list, status and approval refreshes run as scoped commands
+- C2e, `d4e3a6ab`. Session list, status and approval refreshes run as scoped commands
   against manager-owned clients. Static checks passed with 1,267 tests and
   one existing skip. The 46 focused tests, docs, web export and all 90
   Cloud Link, realtime, network, interactions, sessions and multi-server
   browser tests passed.
+- C3a. App-core commands own prompt submission and abort tokens. Static
+  checks passed with 1,267 tests and one existing skip. The 45 focused
+  tests, docs, web export and all 55 chat, auto-model, network, multi-server,
+  realtime, interactions and diffs browser tests passed.
 
 ## Loop protocol
 

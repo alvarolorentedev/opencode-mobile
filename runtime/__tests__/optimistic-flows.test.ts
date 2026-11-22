@@ -14,6 +14,7 @@ import type { ScopedOpencodeClient } from '@/shared/protocol/opencode/client';
 import { connectionQueryKey, projectQueryKey } from '@/shared/server-data/keys';
 
 import { hookRuntime, loadTs } from '../../tests/helpers/runtime.mjs';
+import { loadPromptLifecycle } from './prompt-command-fixture';
 
 vi.mock('@/features/sessions/runtime', () => ({
   projectSessionsKey: (identity: Parameters<typeof connectionQueryKey>[0], client: ScopedOpencodeClient) =>
@@ -363,8 +364,7 @@ describe('non-blocking prompt reconciliation', () => {
       notifyTaskFinished: vi.fn(),
       trackPendingTaskFinishedNotification: vi.fn(async () => undefined),
     };
-    const { usePromptLifecycle } = await loadTs('features/chat/state/use-prompt-lifecycle.ts', {
-    react: runtime.react,
+    const { usePromptLifecycle } = await loadPromptLifecycle(runtime, {
     '@/features/notifications/services/notifications': notifications,
     "@/features/chat/model/system-prompt": preferences,
     "@/features/ai/model/opencode-model-selection": models,
@@ -380,6 +380,7 @@ describe('non-blocking prompt reconciliation', () => {
     const refreshSessionTodos = vi.fn(async () => []);
     const scheduleSessionRefresh = vi.fn();
     const input = {
+      scopeKey: 'prompt-scope',
       client: { __opencode: { contract: 'v2' } },
       isCurrentClient: () => true,
       activeProjectPath: '/repo',
@@ -391,8 +392,6 @@ describe('non-blocking prompt reconciliation', () => {
       chatPreferences: { ...preferences.defaultChatPreferences, mode: 'summary' },
       settingsRef: { current: { serverUrl: 'http://server', username: '' } },
       busyNotificationsRef: { current: new Set() },
-      promptSubmissionRef: { current: { active: false } },
-      setSelectedDiffMessageBySession: vi.fn(),
       refreshSessions: vi.fn(async () => [{ id: 's', title: 'chat' }]),
       markLocalSend,
       refreshSessionDiff,

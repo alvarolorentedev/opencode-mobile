@@ -3,11 +3,16 @@ import { createConnectionRegistry } from '@/runtime/connections/registry';
 import type { CommandContext } from './commands/context';
 import { createWorkspaceCommands } from './commands/workspace';
 import { createSessionCommands } from './commands/session';
+import { createPromptCommands } from './commands/prompt';
 
 import { createAppStore, type AppStoreDefaults } from './store';
 
 export type AppCore = CommandContext & {
-  commands: { workspace: ReturnType<typeof createWorkspaceCommands>; session: ReturnType<typeof createSessionCommands> };
+  commands: {
+    workspace: ReturnType<typeof createWorkspaceCommands>;
+    session: ReturnType<typeof createSessionCommands>;
+    prompt: ReturnType<typeof createPromptCommands>;
+  };
 };
 
 // The only app-level composition root. React mounts this once; features read
@@ -22,5 +27,7 @@ export function createAppCore(defaults: AppStoreDefaults): AppCore {
     connections: createConnectionRegistry({ store, queryClient }),
     clock: () => Date.now(),
   };
-  return { ...context, commands: { workspace: createWorkspaceCommands(context), session: createSessionCommands(context) } };
+  return { ...context, commands: {
+    workspace: createWorkspaceCommands(context), session: createSessionCommands(context), prompt: createPromptCommands(context),
+  } };
 }
