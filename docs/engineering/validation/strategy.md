@@ -41,6 +41,9 @@ to choose focused checks.
 
 Pick the cheapest level that can detect the regression. Extend an existing
 scenario before adding a new spec; see [ADR 0010](../../adr/0010-risk-based-validation-and-selective-pr-e2e.md).
+Use `npm run impact -- <source-file>` to list the tests that depend on a file
+through value imports; it narrows the Vitest run but does not replace the matrix
+or the commit gate.
 
 | Change | Preferred local test level | CI/release E2E |
 | --- | --- | --- |

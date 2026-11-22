@@ -80,7 +80,8 @@ items remain open and require their own focused pass with the full browser suite
 - [ ] Migrate `loadTs` suites to native imports and add `fast-check` invariants.
 - [ ] Add the full fake-server composition harness (connect, project, session,
   prompt, SSE, reconnect, scope switch).
-- [ ] Add the fact/command guardrails and an impact script.
+- [ ] Add the fact/command guardrails.
+- [x] Add the impact script (`npm run impact -- <file>`).
 
 A connection-manager extraction was attempted on 2026-11-22 and reverted after
 it regressed live renewal across panel reopening; that flow must stay green
