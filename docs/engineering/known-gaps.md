@@ -228,6 +228,16 @@ has no durable config/plugin/skill/command mutation surface. Consequences:
 Deferred library replacements and extraction candidates are documented in
 [library-extraction.md](./library-extraction.md).
 
+## 10b. Self-hosted relay discovery
+
+No self-hosted relay connection method is supported until its authoritative
+server implementation or protocol specification is available. A proposed
+discovery flow assumes login, environment-list and proxy routes, but the relay
+authentication, downstream OpenCode authentication, token expiry, redirects,
+and HTTP/SSE/WebSocket/PTY behavior are not verified. Do not expose or enable
+that flow until the backend contract is documented and actual proxied traffic is
+covered by integration checks.
+
 ## 11. On-device voice limits
 
 The optional local path uses pretrained sherpa-onnx KWS, speaker-embedding,

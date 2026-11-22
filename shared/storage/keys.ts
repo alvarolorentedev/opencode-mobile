@@ -2,6 +2,8 @@ export const SETTINGS_STORAGE_KEY = 'opencode-mobile.settings';
 export const APP_UPDATES_STORAGE_KEY = 'opencode-mobile.app-updates';
 export const CONNECT_CONTROL_PLANE_STORAGE_KEY = 'opencode-mobile.connect-control-plane';
 export const CONNECTION_PROFILES_STORAGE_KEY = 'opencode-mobile.connection-profiles';
+// Non-secret relay account metadata. The bearer token is kept in SecureStore.
+export const RELAY_SESSION_STORAGE_KEY = 'opencode-mobile.relay-session';
 export const CHAT_PREFERENCES_STORAGE_KEY = 'opencode-mobile.chat-preferences';
 export const ACTIVE_PROJECT_STORAGE_KEY = 'opencode-mobile.active-project';
 // Completion-only first-run setup marker. It never stores connection,

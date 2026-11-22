@@ -66,6 +66,24 @@
     "openSupport": "Abrir página de soporte"
   },
   "connection": {
+    "relay": {
+      "title": "Buscar máquinas en tu relay",
+      "description": "Introduce la URL del servidor relay y tus credenciales para ver los entornos registrados.",
+      "url": "URL del relay",
+      "urlPlaceholder": "https://relay.example.com:9999",
+      "username": "Nombre de usuario",
+      "usernamePlaceholder": "Usuario del relay",
+      "password": "Contraseña",
+      "discover": "Buscar",
+      "environments": "Máquinas",
+      "noEnvironments": "No se encontraron máquinas en este relay.",
+      "invalidUrl": "Introduce una URL válida del relay, como https://relay.example.com:9999.",
+      "loginFailed": "No se pudo iniciar sesión en el relay. Comprueba el usuario y la contraseña.",
+      "loadFailed": "No se pudo cargar la lista de máquinas del relay.",
+      "offline": "sin conexión",
+      "online": "conectado",
+      "signOut": "Cerrar sesión del relay"
+    },
     "currentConnection": "Conexión actual",
     "noServerUrl": "No se ha definido una URL del servidor",
     "notSavedYet": "Aún no guardado. Añade una conexión para conservarla.",
