@@ -20,12 +20,13 @@ it('checks approvals on other tabs with bounded reads and rejects work after bac
   const catalog = {
     sessions: [{ id: 'one', directory: '/a' }], statuses: {}, refresh: vi.fn(),
   };
-  const entry = { enabled: true, settings: {}, events: {
+  const entry = { enabled: true, settings: {} };
+  const events = {
     observe: (observe: typeof emit) => { emit = observe; return () => undefined; },
     observeHealth: (observe: typeof health) => { health = observe; return () => undefined; },
     isHealthy: () => true,
-  } };
-  driver.mount(useMissionActivity, { entry, catalog, catalogCheckedAt: 1,
+  };
+  driver.mount(useMissionActivity, { entry, events, catalog, catalogCheckedAt: 1,
     client: { __opencode: { contract: 'v2' } }, connected: true, authorized: true, online: true, foreground: true, visible: false,
     knownDirectories: ['/a', '/b', '/c'], projects: [], reconnect: vi.fn(),
   });

@@ -14,7 +14,8 @@ and [feature boundaries](../docs/architecture/feature-boundaries.md).
   machine. `create-connection.ts` owns probing, credential renewal, retry, the
   catalog client, realtime transport and Query invalidation. The app core's
   `registry.ts` follows enabled connections and credential revisions.
-  `connection-runtime.tsx` subscribes to managers and coordinates catalog demand.
+  `connection-runtime.tsx` adapts lifecycle snapshots and projects the catalog
+  alongside the retained project adapters.
 - `runtime/workspace/workspace-runtime.tsx`: retained connection/project branch.
 - `runtime/composition/`: domain wiring, values, reset and cross-feature effects.
 - `runtime/persistence/`: app hydration/write-back and cross-domain credential-scope migration.

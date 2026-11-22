@@ -1,10 +1,12 @@
 # Phase B — Connection Manager
 
-Status: **in progress**. The plain managers own probe and credential renewal.
+Status: **complete**. The plain managers own probe and credential renewal.
 The app-core registry owns their lifetimes and credential partitions. Managers
 schedule direct reconnect retry, demand-driven stale Query refresh, a single
-SSE subscription, event invalidation and project polling. The connection
-catalog projection still wraps each group of retained project adapters.
+SSE subscription, event invalidation and project polling. Independent catalog
+projections and project adapters read the managers. Retained project adapters
+continue to supply command callbacks until Phase C. The commit gate, fake-server
+self-tests and all 185 browser flows passed.
 
 Goal: move probe, credential renewal, SSE, polling, status refresh and event
 dispatch out of React. One plain-TS manager per connection, started and stopped
@@ -24,6 +26,9 @@ green after it.
 The Phase A export passes `connect.spec.mjs` for live renewal across panel
 reopening, credential rotation and second-device Restore. The manager test
 also exercises paused renewal and an immediately published credential revision.
+The prior checkout was unavailable in the branch history, reflogs and dangling
+commits. The existing browser scenario exercises the same Restore assertion,
+and the recovery fixture checks the extended entitlement and ready state.
 
 Do not start Phase B until Phase A is complete and the baseline gate is green.
 

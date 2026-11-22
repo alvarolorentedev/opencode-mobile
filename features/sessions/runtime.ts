@@ -9,6 +9,7 @@ export { mergeSessionStatuses } from './model/session-utils';
 export { migrateMissionStatsCaches } from './services/mission-stats-cache';
 export { parseFavoriteSessions } from './services/favorites-storage';
 export { serializeFavoriteSessions } from './services/favorites-storage';
+export { sessionCatalogOptions } from './services/queries';
 export { useActiveSessions } from './state/use-active-sessions';
 export { useMissionActivity } from './state/use-mission-activity';
 export { useMissionOverview } from './state/use-mission-overview';

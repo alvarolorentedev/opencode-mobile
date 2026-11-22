@@ -6,10 +6,12 @@ import type { ChatPreferences } from '@/shared/preferences/opencode-preferences'
 import { useNativeSurfaces } from '@/features/sessions/runtime';
 import { useWidgetState } from '@/features/widgets/runtime';
 import { useWorkspaces } from '@/runtime/workspace/workspace-context';
+import { useAppCore } from '@/runtime/core';
 import type { WorkspaceSnapshot } from '@/runtime/workspace/workspace-types';
 
 export function WorkspaceNative({ runtime, preferences, ready, busy, active = true }: { runtime: WorkspaceSnapshot; preferences: ChatPreferences; ready: boolean; busy: boolean; active?: boolean }) {
   const registry = useWorkspaces();
+  const { connections } = useAppCore();
   const connected = active && runtime.values.connectionValue.connection.status === 'connected';
   const activeSessions = useMemo(() => [...new Map(Object.entries(registry.snapshots).flatMap(([key, snapshot]) => {
     if (snapshot.values.connectionValue.connection.status !== 'connected') return [];
@@ -24,8 +26,8 @@ export function WorkspaceNative({ runtime, preferences, ready, busy, active = tr
   useEffect(() => {
     const entry = registry.connections.find((item) => item.settings === runtime.native.settings);
     if (!entry || !connected) return;
-    return entry.events.observe(handleWidgetEvent);
-  }, [registry.connections, runtime.native.settings, connected, handleWidgetEvent]);
+    return connections.get(entry.id)?.events.observe(handleWidgetEvent);
+  }, [connections, registry.connections, runtime.native.settings, connected, handleWidgetEvent]);
   useEffect(() => { if (ready) changeAppLanguage(preferences.language); }, [preferences.language, ready]);
   const phase = runtime.values.conversationValue.conversation.phase;
   useEffect(() => {

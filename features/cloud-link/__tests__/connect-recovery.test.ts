@@ -140,6 +140,10 @@ async function fixture({ expired = false, missing = false, storedSession = true,
     ...imports,
     './connection-lifecycle': lifecycleManager,
     './retry': retry,
+    '@/features/sessions/runtime': { sessionCatalogOptions: () => ({ queryKey: ['test', 'sessions'], queryFn: async () => ({}) }) },
+    '@/shared/network/shared-event-stream': {
+      createSharedEventStream: () => Object.assign(events, { observe: () => () => undefined, observeHealth: () => () => undefined, isHealthy: () => false }),
+    },
     '@/shared/protocol/opencode/client/errors': {
       classifyConnectionFailure: imports['@/shared/protocol/opencode/client'].classifyConnectionFailure,
       isAuthConnectionFailure: (kind: string) => kind === 'auth' || kind === 'entitlement',
@@ -184,7 +188,7 @@ async function fixture({ expired = false, missing = false, storedSession = true,
     const state = runtime.react.useSyncExternalStore(manager.subscribe, manager.getState) as { connection: { status: string; message?: string }; contract: string };
     const id = scope.getConnectionUiScope(settings);
     runtime.react.useLayoutEffect(() => manager.setInput({
-      entry: { id, settings, enabled: true, revision: revision.current, projects: ['/fixture'], preferences: {}, events },
+      entry: { id, settings, enabled: true, revision: revision.current, projects: ['/fixture'], preferences: {} },
       identity: { connectionId: 'test', connectionScope: 'scope', authRevision: 0 },
       setup: connectSetup, translate: (key: string) => key, hydrated: true, updateSettings: changeSettings,
     }));
@@ -205,6 +209,10 @@ async function fixture({ expired = false, missing = false, storedSession = true,
     return { ...complete, settings, connection: result.connection, activeProjectPath, connectionProfiles };
   }, {});
   return { runtime, connect, profile, profiles, contractMetrics, get accesses() { return accessCalls; }, get pairClaims() { return pairClaims; }, get claims() { return claims; }, get catalogs() { return catalogs; }, get resets() { return resets; }, get softResets() { return softResets; }, get activations() { return activationCalls; }, get secretWrites() { return secretWrites; },
+    extendEntitlement(ms: number) {
+      session.subscription_expires_at = new Date(Date.parse(session.subscription_expires_at) + ms).toISOString();
+      return session.subscription_expires_at;
+    },
     setActivation(value: any) { activation = value; },
     failAccess(value: any) { accessFailure = value; }, setAccessDenials(value: number) { accessDenials = value; }, failCatalog(value: any) { catalogFailure = value; }, blockAccess() { accessGate = deferred<void>(); return accessGate; },
     advance(ms: number) { now += ms; }, appState(state: string) { native.AppState.currentState = state; [...listeners].forEach((listener: any) => listener(state)); runtime.flush(); },
@@ -394,9 +402,16 @@ for (const [fail, cloud] of [[false, false], [true, false], [false, true], [true
 // Renewal while mounted refreshes the same profile and keeps the project.
 {
   const f = await fixture(); await f.runtime.settle(); await f.runtime.value.connect();
+  const extendedExpiry = f.extendEntitlement(3_600_000);
   assert.equal(await f.runtime.value.connectSetup.restore(), true); await f.runtime.settle();
   assert.equal(f.accesses, 1); assert.equal(f.runtime.value.activeProjectPath, '/fixture');
   assert.equal(f.runtime.value.connection.status, 'connected');
+  const setup = f.runtime.value.connectSetup;
+  assert.equal(setup.subscriptionExpiresAt, extendedExpiry);
+  assert.equal(setup.phase, 'paired');
+  assert.equal(setup.busy, false);
+  assert.equal(setup.initialization, 'ready');
+  assert.equal(setup.storeReady, true);
   const saved = f.runtime.value.connectionProfiles.profiles;
   assert.equal(saved.length, 1); assert.equal(saved[0].id, f.profile.id);
   assert.equal(saved[0].username, f.runtime.value.settings.username);

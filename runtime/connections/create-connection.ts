@@ -1,6 +1,7 @@
 import type { QueryClient } from '@tanstack/react-query';
 
 import { fetchProjectCatalog } from '@/features/projects/runtime';
+import { sessionCatalogOptions } from '@/features/sessions/runtime';
 import type { ConnectSetup } from '@/shared/contracts/cloud-link-setup';
 import { getConnectCredentialError } from '@/shared/contracts/cloud-link';
 import { getConnectionScope } from '@/shared/contracts/connection-scope';
@@ -8,6 +9,7 @@ import type { ConnectionState } from '@/shared/contracts/domain';
 import { getNormalizedServerUrl, isValidServerUrl } from '@/shared/contracts/server-url';
 import type { ConnectionRecord } from '@/shared/contracts/workspace';
 import { telemetry } from '@/shared/observability/client';
+import { createSharedEventStream } from '@/shared/network/shared-event-stream';
 import { isCertificateFailureReason, isTlsTrustSupported, probeConnectionTrust } from '@/shared/platform/tls-trust';
 import { buildClient, classifyConnectionFailure, detectServerContract, getCertificateErrorMessage, getConnectionError, isContractMismatchError, isRetryableCloudLinkStartupError, type ConnectionFailureKind, type OpencodeConnectionSettings, type ScopedOpencodeClient, type ServerContract } from '@/shared/protocol/opencode/client';
 import type { QueryIdentity } from '@/shared/server-data/keys';
@@ -63,6 +65,7 @@ export function createConnection({ queryClient, foreground, clock = systemClock 
 
   const connectionState = () => lifecycle.getState().connection;
   const retry = createConnectionRetry(connect, clock);
+  const events = createSharedEventStream();
   const eventInvalidation = createEventInvalidation(queryClient);
   const realtime = createRealtime(foreground, handleStreamAuthFailure, (event) => {
     if (input) eventInvalidation.receive(event, input.identity);
@@ -86,7 +89,7 @@ export function createConnection({ queryClient, foreground, clock = systemClock 
     }
     refreshingStale = refresh;
     const client = entry?.enabled && online && state.status === 'connected' ? getCatalogClient() : undefined;
-    realtime.setTransport(entry && client ? { client, subscribe: entry.events } : undefined);
+    realtime.setTransport(client ? { client, subscribe: events } : undefined);
   };
   const stopActivity = lifecycle.subscribe(updateActivity);
   const invalidateWorkflows = () => { for (const listener of invalidations) listener(); };
@@ -149,6 +152,10 @@ export function createConnection({ queryClient, foreground, clock = systemClock 
             telemetry.info('connection.connected', { kind, connected: true });
             telemetry.markStartup('connection-ready', { kind });
             lifecycle.dispatch({ type: 'settle', operation: id, connection, contract });
+            const catalogClient = getCatalogClient();
+            if (current() && catalogClient) {
+              void queryClient.fetchQuery({ ...sessionCatalogOptions(preparedIdentity, catalogClient), staleTime: 0 }).catch(() => undefined);
+            }
             return connection;
           } catch (error) { failure = error; if (!isContractMismatchError(error)) break; }
         }
@@ -264,7 +271,7 @@ export function createConnection({ queryClient, foreground, clock = systemClock 
     getState: lifecycle.getState,
     subscribe: lifecycle.subscribe,
     setInput(next: ConnectionInput) {
-      if (input?.entry.events !== next.entry.events || input?.identity.authRevision !== next.identity.authRevision
+      if (input?.entry.settings !== next.entry.settings || input?.identity.authRevision !== next.identity.authRevision
         || input?.identity.connectionScope !== next.identity.connectionScope) eventInvalidation.reset();
       input = next;
     },
@@ -275,6 +282,7 @@ export function createConnection({ queryClient, foreground, clock = systemClock 
     },
     retry,
     realtime,
+    events: { observe: events.observe, observeHealth: events.observeHealth, isHealthy: events.isHealthy },
     getCatalogClient,
     dispose() { stopActivity(); retry.dispose(); realtime.dispose(); eventInvalidation.reset(); },
     onInvalidated: (listener: () => void) => { invalidations.add(listener); return () => { invalidations.delete(listener); }; },

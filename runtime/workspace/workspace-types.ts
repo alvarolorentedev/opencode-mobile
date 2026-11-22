@@ -12,7 +12,7 @@ import type { WorkspaceShellState } from '@/runtime/workspace/use-workspace-shel
 
 import type { Dispatch, SetStateAction } from 'react';
 
-import type { ConnectionRecord } from '@/shared/contracts/workspace';
+import type { ConnectionRecord, WorkspaceCatalog } from '@/shared/contracts/workspace';
 
 export type SharedWorkspaceState = Pick<WorkspaceShellState,
   'controlPlaneUrl' | 'setControlPlaneUrl' | 'onboardingVersion' | 'setOnboardingVersion' |
@@ -21,6 +21,7 @@ export type SharedWorkspaceState = Pick<WorkspaceShellState,
 
 export type WorkspaceRuntimeInput = {
   connection: ConnectionRecord;
+  catalog?: WorkspaceCatalog;
   switchConnection: ConnectionContextValue['switchConnection'];
   projectPath?: string;
   preferences: ChatPreferences;

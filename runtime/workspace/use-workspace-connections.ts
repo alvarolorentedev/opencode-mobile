@@ -14,7 +14,6 @@ import { clearMissionStatsCaches } from '@/features/sessions/runtime';
 import type { ChatPreferences } from '@/shared/preferences/opencode-preferences';
 import { createPersistenceWriter } from '@/shared/storage/persistence-hydration';
 import { findSessionForNavigation } from '@/shared/protocol/services/session-service';
-import { createSharedEventStream } from '@/shared/network/shared-event-stream';
 import type { WorkspaceShellState } from '@/runtime/workspace/use-workspace-shell-state';
 import type { AppState, RegistryState, ShellState } from '@/runtime/core/store';
 import { connectedWorkspaceTarget } from '@/runtime/workspace/workspace-focus';
@@ -63,7 +62,7 @@ export function useWorkspaceConnections(shell: WorkspaceShellState, hydrated: bo
     if (next.length === records.current.length && next.every((entry, index) => entry === records.current[index])) return;
     const revisioned = next.map((entry) => {
       const previous = records.current.find((value) => value.id === entry.id);
-      return previous && (previous.settings !== entry.settings || previous.enabled !== entry.enabled || previous.events !== entry.events)
+      return previous && (previous.settings !== entry.settings || previous.enabled !== entry.enabled)
         ? { ...entry, revision: (previous.revision ?? 0) + 1, authRevision: (previous.authRevision ?? 0) + (previous.settings.password !== entry.settings.password || JSON.stringify(previous.settings.headers) !== JSON.stringify(entry.settings.headers) || JSON.stringify(previous.settings.certificate) !== JSON.stringify(entry.settings.certificate) || JSON.stringify(previous.settings.oidc) !== JSON.stringify(entry.settings.oidc) || getConnectionScope(previous.settings) !== getConnectionScope(entry.settings) ? 1 : 0) } : entry;
     });
     setConnections(revisioned); waiters.notify();
@@ -143,14 +142,14 @@ export function useWorkspaceConnections(shell: WorkspaceShellState, hydrated: bo
         if (profile) {
           [password, headers, certificate] = await Promise.all([getProfilePassword(profile.id), getProfileHeaders(profile.id), getProfileCertificate(profile.id)]);
         }
-        return { ...entry, settings: { ...entry.settings, password, headers, ...(certificate ? { certificate } : {}), ...(profile?.oidc ? { oidc: profile.oidc } : {}) }, events: createSharedEventStream() };
+        return { ...entry, settings: { ...entry.settings, password, headers, ...(certificate ? { certificate } : {}), ...(profile?.oidc ? { oidc: profile.oidc } : {}) } };
       })) : [];
       if (!entries.length) {
         const placeholder = !initial.onboardingVersion && getConnectionUiScope(initial.settings) === getConnectionUiScope(defaultConnectionSettings);
         const profile = placeholder ? { name: getServerHostname(initial.settings.serverUrl), modelPreferences: undefined } : await saveProfile(initial.settings);
         entries.push({ id: getConnectionUiScope(initial.settings), name: profile.name, settings: initial.settings,
           enabled: initial.onboardingVersion > 0, preferences: { ...profile.modelPreferences, ...serverPreferences(initial.chatPreferences) },
-          projects: [''], events: createSharedEventStream() });
+          projects: [''] });
       }
       if (cancelled) return;
       const target = stored?.focus ?? { connectionId: entries[0].id, projectPath: entries[0].projects[0] ?? '' };
@@ -162,7 +161,7 @@ export function useWorkspaceConnections(shell: WorkspaceShellState, hydrated: bo
       const initial = getShell();
       const id = getConnectionUiScope(initial.settings);
       change(() => [{ id, name: getServerHostname(initial.settings.serverUrl), settings: initial.settings, enabled: initial.onboardingVersion > 0,
-        preferences: serverPreferences(initial.chatPreferences), projects: [''], events: createSharedEventStream() }]);
+        preferences: serverPreferences(initial.chatPreferences), projects: [''] }]);
       select({ connectionId: id, projectPath: '' }, false); setReady(true);
     });
     return () => { cancelled = true; };
@@ -231,7 +230,7 @@ export function useWorkspaceConnections(shell: WorkspaceShellState, hydrated: bo
     const entry = records.current.find((item) => item.id === id);
     if (!entry) throw new Error('Server not found.');
     for (const [key, runtime] of Object.entries(live.current)) if ((JSON.parse(key) as string[])[0] === id) runtime.suspend();
-    change((current) => current.map((item) => item.id === id ? { ...entry, enabled: true, settings: { ...item.settings }, events: createSharedEventStream() } : item));
+    change((current) => current.map((item) => item.id === id ? { ...entry, enabled: true, settings: { ...item.settings } } : item));
     // Reconnect boots the placeholder runtime; its catalog read derives the
     // project from the server (most recently active first).
     const runtime = await ensure({ connectionId: id, projectPath: '' });
@@ -358,8 +357,8 @@ export function useWorkspaceConnections(shell: WorkspaceShellState, hydrated: bo
     change((current) => found ? current.map((entry) => entry.id === id ? { ...entry, settings: full, enabled: true,
       // A retained workspace already holds the live server choices. A profile
       // write can lag behind it, so only fill fields the entry is missing.
-      preferences: { ...serverPreferences(preferences ?? {}), ...entry.preferences }, events: createSharedEventStream() } : entry)
-      : [...current, { id, name: profile.name, settings: full, enabled: true, preferences: { autoApprove: false, ...serverPreferences(preferences ?? profile.modelPreferences ?? {}) }, projects: [''], events: createSharedEventStream() }]);
+      preferences: { ...serverPreferences(preferences ?? {}), ...entry.preferences } } : entry)
+      : [...current, { id, name: profile.name, settings: full, enabled: true, preferences: { autoApprove: false, ...serverPreferences(preferences ?? profile.modelPreferences ?? {}) }, projects: [''] }]);
     const target = { connectionId: id, projectPath: '' };
     const runtime = await ensure(target, { signal });
     if (selectWorkspace) {
@@ -393,8 +392,8 @@ export function useWorkspaceConnections(shell: WorkspaceShellState, hydrated: bo
     if (manualChange) canPersist.current = true;
     for (const [key, runtime] of Object.entries(live.current)) if ((JSON.parse(key) as string[])[0] === id && key !== origin) runtime.suspend();
     const nextId = getConnectionUiScope(value);
-    change((current) => current.map((entry) => entry.id === id ? { ...entry, id: nextId, settings: value, events: createSharedEventStream(), ...(manualChange ? { enabled: false } : {}),
-      ...(nextId === id ? {} : { enabled: false, projects: [''], preferences: { autoApprove: false }, events: createSharedEventStream() }) } : entry));
+    change((current) => current.map((entry) => entry.id === id ? { ...entry, id: nextId, settings: value, ...(manualChange ? { enabled: false } : {}),
+      ...(nextId === id ? {} : { enabled: false, projects: [''], preferences: { autoApprove: false } }) } : entry));
     if (previous.settings.certificate && !value.certificate) {
       const origin = connectionOrigin(previous.settings.serverUrl);
       const stillUsed = origin && records.current.some((entry) => entry.settings.certificate && connectionOrigin(entry.settings.serverUrl) === origin);

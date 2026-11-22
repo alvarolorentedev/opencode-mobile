@@ -2,6 +2,7 @@ import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } fr
 
 import type { MissionApprovals, MissionConnectionActivity, MissionExecution } from '@/shared/contracts/mission-control';
 import type { ConnectionRecord, WorkspaceCatalog } from '@/shared/contracts/workspace';
+import type { EventObservation } from '@/shared/network/shared-event-stream';
 import { buildClient, type ScopedOpencodeClient } from '@/shared/protocol/opencode/client';
 import { listPendingInteractions } from '@/shared/protocol/opencode/client/interactions';
 import { getEventSessionStatus, type OpencodeEvent } from '@/shared/protocol/opencode/events';
@@ -42,6 +43,7 @@ function directories(sessions: Session[], known: readonly string[], statuses: Wo
 
 export function useMissionActivity(input: {
   entry: ConnectionRecord;
+  events?: EventObservation;
   client: ScopedOpencodeClient;
   connected: boolean;
   connectionFailed?: boolean;
@@ -56,7 +58,7 @@ export function useMissionActivity(input: {
   projects: Project[];
   reconnect: () => void;
 }): MissionConnectionActivity {
-  const { entry, client, connected, connectionFailed, authorized, online, foreground, visible, catalog, catalogCheckedAt, catalogError, knownDirectories, projects } = input;
+  const { entry, events, client, connected, connectionFailed, authorized, online, foreground, visible, catalog, catalogCheckedAt, catalogError, knownDirectories, projects } = input;
   const supported = client.__opencode.contract === 'v2';
   const eligible = entry.enabled && connected && authorized && online && supported;
   const [observation, setObservation] = useState<Observation>(EMPTY);
@@ -74,7 +76,7 @@ export function useMissionActivity(input: {
   }, []);
 
   useEffect(() => {
-    if (!eligible || !foreground) return;
+    if (!events || !eligible || !foreground) return;
     const controller = new AbortController();
     const { signal } = controller;
     const unscoped = buildClient({ ...entry.settings, directory: '' }, 'v2', signal);
@@ -177,7 +179,7 @@ export function useMissionActivity(input: {
       refreshCatalog ||= withCatalog;
       schedule();
     };
-    const unobserveHealth = entry.events.observeHealth((healthy) => {
+    const unobserveHealth = events.observeHealth((healthy) => {
       streamRevision++;
       if (!healthy) {
         update((previous) => ({ ...previous, approvals: {}, checkedAt: undefined, running: undefined, execution: {}, streamLostAt: Date.now() }));
@@ -186,7 +188,7 @@ export function useMissionActivity(input: {
       }
       enqueue.current(undefined, latest.current.visible);
     });
-    const unobserve = entry.events.observe((event) => {
+    const unobserve = events.observe((event) => {
       if (event.type === 'compatibility') return;
       if (isServerConnectedEvent(event)) { enqueue.current(undefined, latest.current.visible); return; }
       const activity = executionEvent(event);
@@ -244,21 +246,21 @@ export function useMissionActivity(input: {
       unobserveHealth();
       enqueue.current = () => undefined;
     };
-  }, [client, eligible, entry.events, entry.settings, foreground]);
+  }, [client, eligible, events, entry.settings, foreground]);
 
   const current = observation.client === client && authorized ? observation : EMPTY;
   const scopeKey = JSON.stringify(directories([...catalog.sessions, ...current.supplemental], knownDirectories, {}));
   useEffect(() => { if (eligible && foreground) enqueue.current(); }, [eligible, foreground, scopeKey]);
 
   useEffect(() => {
-    if (!eligible || !foreground || !visible) return;
+    if (!events || !eligible || !foreground || !visible) return;
     const controller = new AbortController();
     dashboardSignal.current = controller.signal;
     const scoped = buildClient({ ...entry.settings, directory: '' }, 'v2', controller.signal);
     const poll = async () => {
       const state = latest.current;
       const old = observationRef.current;
-      const healthy = entry.events.isHealthy();
+      const healthy = events.isHealthy();
       if (healthy && !(old.running?.ids.size || Object.values(state.catalog.statuses).some((status) => status.type === 'busy')
         || Object.values(old.execution).some(({ type }) => type === 'retry' || type === 'busy')
         || Object.values(old.approvals).some(({ permissions, questions }) => permissions?.length || questions?.length))) return;
@@ -275,7 +277,7 @@ export function useMissionActivity(input: {
     refresh();
     const interval = setInterval(() => { void poll(); }, POLL_MS);
     return () => { controller.abort(); dashboardSignal.current = undefined; clearInterval(interval); };
-  }, [client, eligible, entry.events, entry.settings, foreground, refresh, visible]);
+  }, [client, eligible, events, entry.settings, foreground, refresh, visible]);
 
   return useMemo(() => {
     const dirs = directories([...catalog.sessions, ...current.supplemental], knownDirectories, catalog.statuses);

@@ -300,9 +300,10 @@ The completion version, preference schema and first-run migration are unchanged.
   existing transcript refresh to reconcile inbox delivery through SSE and polling.
 - `features/ai/state/use-capabilities-actions.ts`
   Provider auth/OAuth, preference reconciliation, and auto-approve; capability responses live in Query.
-- `runtime/connections/connection-runtime.tsx`
-  One connection lifecycle, retry/renewal policy, active-session catalog and routine
-  event invalidation owner shared by all retained project runtimes.
+- `runtime/connections/create-connection.ts`
+  Connection lifecycle, retry, renewal, the shared event stream and routine
+  invalidation. `connection-runtime.tsx` provides React bindings and the
+  catalog projection alongside the retained project adapters.
 - `runtime/workspace/workspace-lifecycle.ts`
   Cancellable readiness promises resolved by committed runtime publications.
 - `features/cloud-link/state/connect/`

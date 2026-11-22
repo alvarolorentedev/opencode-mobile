@@ -28,8 +28,8 @@ import { useWorkspaceServerData } from '@/runtime/composition/use-workspace-serv
 import type { WorkspaceRuntimeInput } from '@/runtime/workspace/workspace-types';
 
 export function useOpencodeProviderComposition(input: WorkspaceRuntimeInput) {
-  const connectionRuntime = useConnectionRuntime();
-  const state = useWorkspaceRuntimeState(input);
+  const connectionRuntime = useConnectionRuntime(input.connection, input.catalog);
+  const state = useWorkspaceRuntimeState(input, connectionRuntime);
   // Connectivity is owned by WorkspaceProvider. NetInfo.configure() is global
   // and tears down existing listeners, so a per-runtime hook would freeze every
   // workspace except the one that mounted last.

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo } from 'react';
+import { useCallback, useMemo } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 
 import { useQueryIdentity } from '@/shared/server-data/client';
@@ -34,7 +34,14 @@ export function useActiveSessions({
   const identity = useQueryIdentity();
   const queryClient = useQueryClient();
   const options = useMemo(() => sessionCatalogOptions(identity, catalogClient), [identity, catalogClient]);
-  const query = useQuery({ ...options, enabled: connected });
+  const selectActive = useCallback((sessions: Session[], statuses: Record<string, SessionStatus>) => getActiveSessions({
+    sessions, statuses, currentSessionId, hideSubagentChats, maxTotal: MAX_ACTIVE_SESSIONS,
+  }), [currentSessionId, hideSubagentChats]);
+  const query = useQuery({ ...options, enabled: connected, refetchInterval: visible ? ({ state }) => {
+    if (!state.data) return false;
+    const running = selectActive(state.data.sessions, state.data.statuses).some(({ status }) => status.type !== 'idle');
+    return running ? ACTIVE_SESSIONS_POLL_MS : false;
+  } : false });
   const sessions = query.data?.sessions ?? EMPTY_SESSIONS;
   const statuses = query.data?.statuses ?? EMPTY_STATUSES;
 
@@ -52,27 +59,7 @@ export function useActiveSessions({
     });
   }, [options.queryKey, queryClient]);
 
-  const activeSessions = useMemo(() => getActiveSessions({
-    sessions,
-    statuses,
-    currentSessionId,
-    hideSubagentChats,
-    maxTotal: MAX_ACTIVE_SESSIONS,
-  }), [currentSessionId, hideSubagentChats, sessions, statuses]);
-
-  const hasRunning = activeSessions.some((session) => session.status.type !== 'idle');
-  useEffect(() => {
-    // Only spend data refreshing the cross-project snapshot while the Chat
-    // Library is actually open and a remote session is running; opening the
-    // library also refreshes once.
-    if (!connected || !visible || !hasRunning) {
-      return;
-    }
-    const interval = setInterval(() => {
-      void refreshActiveSessions();
-    }, ACTIVE_SESSIONS_POLL_MS);
-    return () => clearInterval(interval);
-  }, [connected, hasRunning, refreshActiveSessions, visible]);
+  const activeSessions = useMemo(() => selectActive(sessions, statuses), [selectActive, sessions, statuses]);
 
   return {
     activeSessions,

@@ -24,7 +24,7 @@ phase you are executing. Do not preload every phase unless you are planning.
 | Phase | Document | Status | Outcome |
 | --- | --- | --- | --- |
 | A | [State evacuation](phase-a-state-evacuation.md) | Complete | No domain data in per-workspace React state |
-| B | [Connection manager](phase-b-connection-manager.md) | In progress | Transport, probe, renewal, SSE and polling are plain TS |
+| B | [Connection manager](phase-b-connection-manager.md) | Complete | Core-owned connection managers run probe, renewal, SSE and polling |
 | C | [Command core](phase-c-commands.md) | Not started | Cross-domain commands are plain functions; composition deleted |
 | D | [Transcript](phase-d-transcript.md) | Not started | Per-session infinite messages + store live overlay |
 | E | [Flatten React](phase-e-flatten-react.md) | Not started | No scope/provider tree or shared-UI runtime exception |
@@ -107,11 +107,18 @@ npm run validate:commit
   The 11 focused tests, docs, web export and all 60 Cloud Link, manual
   connection and network resilience browser tests passed. The retry policy
   suite verifies the attempt budget, the radio settling delay and cancellation.
-- B3b. The commit gate, nine focused tests, docs, both fake-server self-tests,
+- B3b, `e1c23b7f`. The commit gate, nine focused tests, docs, both fake-server self-tests,
   and the development web export passed. All 72 connection, realtime,
   network resilience and multi-server browser tests passed. The realtime
   test joins a second project to the same SSE subscription and verifies
   directory isolation.
+- B4 and Phase B gate. Catalog projections and retained projects no longer
+  share a connection provider. The commit gate reported 1,259 passing tests
+  and one existing skip. The focused tests, docs, both fake-server self-tests
+  and development web export passed. All 185 browser tests passed, including
+  live Restore, credential rotation, reconnect and fallback polling. The
+  original failing checkout was unavailable locally. Physical network handoff
+  remains device acceptance.
 
 ## Loop protocol
 

@@ -6,11 +6,17 @@ import { createAppStore } from '@/runtime/core/store';
 import { getConnectionScope } from '@/shared/contracts/connection-scope';
 import { createServerQueryClient } from '@/shared/server-data/query-client';
 
-const ports = vi.hoisted(() => ({ probe: vi.fn(), projects: vi.fn() }));
+const ports = vi.hoisted(() => ({ probe: vi.fn(), projects: vi.fn(), stream: vi.fn() }));
 vi.mock('@/features/connections/runtime', async () => ({
   connectionTransition: (await import('@/features/connections/model/connection-lifecycle')).connectionTransition,
 }));
 vi.mock('@/features/projects/runtime', () => ({ fetchProjectCatalog: ports.projects }));
+vi.mock('@/features/sessions/runtime', () => ({
+  sessionCatalogOptions: (identity: ConnectionInput['identity']) => ({
+    queryKey: ['opencode', identity.connectionId, identity.connectionScope, identity.authRevision, 'v2', 'sessions', 'catalog'],
+    queryFn: async () => ({ sessions: [], statuses: {} }),
+  }),
+}));
 vi.mock('@/shared/observability/client', () => ({ telemetry: { counter: vi.fn(), info: vi.fn(), markStartup: vi.fn(), warn: vi.fn() } }));
 vi.mock('@/shared/platform/tls-trust', () => ({}));
 vi.mock('@/shared/contracts/cloud-link', () => ({ getConnectCredentialError: () => undefined }));
@@ -24,9 +30,12 @@ vi.mock('@/shared/protocol/opencode/client', () => ({
   isRetryableCloudLinkStartupError: () => false,
 }));
 
-const events = (async function* (_client: unknown, signal: AbortSignal) {
-  if (!signal.aborted) await new Promise<void>((resolve) => signal.addEventListener('abort', () => resolve(), { once: true }));
-}) as ConnectionInput['entry']['events'];
+vi.mock('@/shared/protocol/opencode/events', () => ({
+  async *subscribeEvents(client: unknown, signal: AbortSignal) {
+    ports.stream(client, signal);
+    if (!signal.aborted) await new Promise<void>((resolve) => signal.addEventListener('abort', () => resolve(), { once: true }));
+  },
+}));
 
 afterEach(() => { vi.useRealTimers(); vi.resetAllMocks(); });
 
@@ -47,7 +56,7 @@ describe('connection manager', () => {
     let stopConnection: (() => void) | undefined;
     let joined: ReturnType<typeof manager.connect> | undefined;
     const input: ConnectionInput = {
-      entry: { id: 'machine', enabled: true, revision: 0, name: 'Machine', settings, preferences: {}, projects: [''], events },
+      entry: { id: 'machine', enabled: true, revision: 0, name: 'Machine', settings, preferences: {}, projects: [''] },
       identity: { connectionId: 'machine', connectionScope: 'original-scope', authRevision: 0 },
       hydrated: false,
       setup: { phase: 'waitingForApproval', prepareSettings },
@@ -80,9 +89,12 @@ describe('connection manager', () => {
     stopRenewal?.();
     stopConnection?.();
     manager.dispose();
+    await vi.advanceTimersByTimeAsync(0);
     expect(removeForegroundListener).toHaveBeenCalledTimes(3);
-    expect(vi.getTimerCount()).toBe(0);
+    expect(cache.getQueryData(['opencode', 'machine', getConnectionScope(rotated), 1, 'v2', 'sessions', 'catalog']))
+      .toEqual({ sessions: [], statuses: {} });
     cache.clear();
+    expect(vi.getTimerCount()).toBe(0);
   });
 
   it('starts enabled records once, updates the same manager on rotation and disposes disabled and removed records', async () => {
@@ -99,7 +111,7 @@ describe('connection manager', () => {
       createManager, setup: { phase: 'idle', prepareSettings: async (input) => input },
       translate: (key) => key, hydrated: true, updateSettings: vi.fn(),
     });
-    const a = { id: 'a', name: 'A', enabled: true, settings, projects: [''], preferences: {}, events };
+    const a = { id: 'a', name: 'A', enabled: true, settings, projects: [''], preferences: {} };
     const b = { ...a, id: 'b', name: 'B', enabled: false };
     const { setRegistry, setShellValue } = store.getState();
     setRegistry({ connections: [a, b] });
@@ -109,6 +121,8 @@ describe('connection manager', () => {
     setShellValue('onboardingActive', true);
     expect(createManager).toHaveBeenCalledTimes(1);
     expect(ports.probe).toHaveBeenCalledTimes(1);
+    expect(ports.stream).toHaveBeenCalledTimes(1);
+    const initialStream = ports.stream.mock.calls[0][1] as AbortSignal;
 
     const oldKey = ['opencode', a.id, getConnectionScope(settings), 0, 'v2', 'server', 'projects'];
     queryClient.setQueryData(oldKey, ['old']);
@@ -119,6 +133,8 @@ describe('connection manager', () => {
     expect(queryClient.getQueryData(oldKey)).toBeUndefined();
     expect(await first.connect()).toMatchObject({ status: 'connected' });
     expect(createManager).toHaveBeenCalledTimes(2);
+    expect(initialStream.aborted).toBe(true);
+    expect(ports.stream.mock.calls.filter(([client]) => client.username === 'rotated')).toHaveLength(1);
 
     const second = registry.get('b')!;
     setRegistry({ connections: [{ ...rotated, enabled: false }] });

@@ -3,6 +3,7 @@ import { subscribeEvents, type OpencodeEvent } from '@/shared/protocol/opencode/
 import { SSE_STALENESS_MS, WATCHDOG_TICK_MS } from '@/shared/network/realtime-timing';
 
 type Listener = { queue: OpencodeEvent[]; wake: () => void; heartbeat: () => void; error?: unknown; ended: boolean };
+export type EventObservation = Pick<ReturnType<typeof createSharedEventStream>, 'observe' | 'observeHealth' | 'isHealthy'>;
 // A server has one transport even when several retained projects consume events.
 export function createSharedEventStream(source = subscribeEvents) {
   const observers = new Set<(event: OpencodeEvent) => void>();
@@ -19,7 +20,11 @@ export function createSharedEventStream(source = subscribeEvents) {
     const owned = stream ?? { controller: new AbortController(), listeners: new Set<Listener>() };
     const listener: Listener = { queue: owned.last ? [owned.last] : [], wake: () => {}, heartbeat, ended: false };
     owned.listeners.add(listener);
-    const stop = () => { listener.ended = true; listener.wake(); };
+    const detach = () => {
+      owned.listeners.delete(listener);
+      if (!owned.listeners.size) { owned.controller.abort(); release(owned); }
+    };
+    const stop = () => { listener.ended = true; detach(); listener.wake(); };
     signal.addEventListener('abort', stop, { once: true });
     if (!stream) {
       stream = owned;
@@ -33,6 +38,7 @@ export function createSharedEventStream(source = subscribeEvents) {
             activityAt = Date.now();
             for (const item of owned.listeners) item.heartbeat();
           })) {
+            if (owned.controller.signal.aborted) break;
             if (!event) continue;
             activityAt = Date.now();
             const first = !owned.last;
@@ -63,8 +69,7 @@ export function createSharedEventStream(source = subscribeEvents) {
       if (listener.error) throw listener.error;
     } finally {
       signal.removeEventListener('abort', stop);
-      owned.listeners.delete(listener);
-      if (!owned.listeners.size) { owned.controller.abort(); release(owned); }
+      detach();
     }
   };
   return Object.assign(subscribe, {

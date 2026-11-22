@@ -5,12 +5,12 @@ import { loadConnectionProfiles } from '@/shared/storage/connection-profiles';
 import { getConnectionScope, getConnectionUiScope } from '@/shared/contracts/connection-scope';
 import { HIDDEN_PROJECTS_MAX } from '@/shared/contracts/domain';
 import { defaultConnectionSettings } from '@/shared/protocol/opencode/client';
-import { ConnectionRuntime, useConnectionDemand, useConnectionRegistryBinding } from '@/runtime/connections/connection-runtime';
+import { ConnectionCatalog, useConnectionDemand, useConnectionRegistryBinding } from '@/runtime/connections/connection-runtime';
 import { CURRENT_ONBOARDING_VERSION, isOnboardingComplete } from '@/features/onboarding/runtime';
 import { defaultChatPreferences } from '@/shared/preferences/opencode-preferences';
 import type { ConnectionContextValue } from '@/features/connections/index';
 import type { SessionDeepLinkTarget } from '@/shared/contracts/domain';
-import { ServerDataActivity, ServerDataScope } from '@/shared/server-data/client';
+import { ServerDataScope } from '@/shared/server-data/client';
 import { useAppUpdates } from '@/features/updates/runtime';
 import { UpdatesContext } from '@/features/updates/context';
 import { PreferencesContext } from '@/shared/preferences/context';
@@ -52,9 +52,10 @@ export function WorkspaceProvider({ children }: PropsWithChildren) {
   const { isHydrated } = useOpencodePersistence({ ...shell, defaultChatPreferences, defaultSettings: defaultConnectionSettings });
   const presentation = useAppStore((state) => state.presentation);
   // Catalog publications compose Query snapshots and command handles for the root view.
-  const [catalogs, setCatalogs] = useState<Record<string, WorkspaceCatalog>>({});
-  const publishCatalog = useCallback((connectionId: string, catalog: WorkspaceCatalog) => {
-    setCatalogs((current) => current[connectionId] === catalog ? current : { ...current, [connectionId]: catalog });
+  const [catalogPublications, setCatalogs] = useState<Record<string, { revision?: number; catalog: WorkspaceCatalog }>>({});
+  const publishCatalog = useCallback(({ id, revision }: ConnectionRecord, catalog: WorkspaceCatalog) => {
+    setCatalogs((current) => current[id]?.catalog === catalog && current[id]?.revision === revision
+      ? current : { ...current, [id]: { revision, catalog } });
   }, []);
   const profiles = useAppStore((state) => state.shell.profiles);
   const setProfiles = useCallback((value: SetStateAction<ConnectionProfile[]>) => core.store.getState().setShellValue('profiles', value), [core]);
@@ -72,6 +73,14 @@ export function WorkspaceProvider({ children }: PropsWithChildren) {
   const { updateSettings: updateWorkspaceSettings, retry, change, removeConnection: removeWorkspaceConnection, connectedWorkspace, isEnabled } = manager;
   const { setFavoriteSessions, setSettings, setChatPreferences, setHiddenProjects } = shell;
   const { connections, focus, retainedFocus, snapshots, ensure, resolveKey, switchConnection, activate, navigate, openExternalSession, connectSavedProfile, disconnect } = manager;
+  const catalogs = useMemo(() => {
+    const current: Record<string, WorkspaceCatalog> = {};
+    for (const { id, revision } of connections) {
+      const published = catalogPublications[id];
+      if (published && published.revision === revision) current[id] = published.catalog;
+    }
+    return current;
+  }, [catalogPublications, connections]);
   const mission = useMissionOverview(connections, catalogs);
   const missionWidgetScope = JSON.stringify(connections.filter((entry) => entry.enabled)
     .map(({ id, authRevision }) => [id, authRevision, mission.servers.find((server) => server.id === id)?.authorized === false]));
@@ -265,18 +274,18 @@ export function WorkspaceProvider({ children }: PropsWithChildren) {
     <WorkspaceActionsContext.Provider value={workspaceActions}>
     <WorkspaceContext.Provider value={registry}>
     {connections.map((entry) => <ServerDataScope key={entry.id} connection={entry} active={readTarget?.connectionId === entry.id}>
-      <ConnectionRuntime entry={entry} online={network.online} libraryVisible={pathname === '/' && focus?.connectionId === entry.id && Boolean(selectedRuntime?.libraryVisible)} missionVisible={pathname === MISSION_PATH} onCatalog={publishCatalog}>
-      {entry.projects.map((path, index) => {
-        const visible = focus?.connectionId === entry.id && (focus.projectPath === path || current === snapshots[workspaceKey({ connectionId: entry.id, projectPath: path })]);
+      <ConnectionCatalog entry={entry} online={network.online} libraryVisible={pathname === '/' && focus?.connectionId === entry.id && Boolean(selectedRuntime?.libraryVisible)} missionVisible={pathname === MISSION_PATH} onCatalog={publishCatalog} />
+    </ServerDataScope>)}
+    {connections.flatMap((entry) => entry.projects.map((path, index) => {
+        const key = workspaceKey({ connectionId: entry.id, projectPath: path });
+        const visible = focus?.connectionId === entry.id && (focus.projectPath === path || current === snapshots[key]);
         const demanded = readTarget?.connectionId === entry.id && (readTarget.projectPath === path || readTarget === focus && visible);
-        return <ServerDataActivity key={workspaceKey({ connectionId: entry.id, projectPath: path })} active={demanded}><WorkspaceRuntime
-          connection={entry} switchConnection={switchConnection} projectPath={path || undefined} shared={shared} network={network} defaults={shell.chatPreferences} isHydrated={isHydrated}
+        return <ServerDataScope key={key} connection={entry} active={demanded}><WorkspaceRuntime
+          connection={entry} catalog={catalogs[entry.id]} switchConnection={switchConnection} projectPath={path || undefined} shared={shared} network={network} defaults={shell.chatPreferences} isHydrated={isHydrated}
           visible={visible} isConnectionOwner={index === 0} connectSetup={connectSetup} connectionProfiles={connectionProfiles} servicesValue={servicesValue}
           updateSettings={updateWorkspaceSettings} updatePreferences={manager.updatePreferences} publish={manager.publish} forget={manager.forget} />
-        </ServerDataActivity>;
-      })}
-      </ConnectionRuntime>
-    </ServerDataScope>)}
+        </ServerDataScope>;
+    }))}
     {focusedValues && current ? <UpdatesContext.Provider value={updates}>
       <PreferencesContext.Provider value={focusedValues.preferencesValue}>
         <WorkspaceNative runtime={current} preferences={shell.chatPreferences} ready={isHydrated} active={Boolean(focus)} busy={Object.values(snapshots).some((runtime) => runtime.busy)} />

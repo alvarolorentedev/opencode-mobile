@@ -66,7 +66,7 @@ describe('feature boundaries', () => {
       const owners: [RegExp, string[]][] = [
         [/new QueryClient\s*\(/, ['shared/server-data/client.tsx', 'shared/server-data/query-client.ts']],
         [/<ServerDataProvider(?:\s|>)/, ['runtime/composition/opencode-provider.tsx']],
-        [/<ConnectionRuntime(?:\s|>)/, ['runtime/workspace/workspace-provider.tsx']],
+        [/<ConnectionCatalog(?:\s|>|\/)/, ['runtime/workspace/workspace-provider.tsx']],
         [/<WorkspaceRuntime(?:\s|>)/, ['runtime/workspace/workspace-provider.tsx']],
         [/\buseWorkspaceConnections\s*\(/, ['runtime/workspace/use-workspace-connections.ts', 'runtime/workspace/workspace-provider.tsx']],
         [/\buseOpencodeProviderComposition\s*\(/, ['runtime/composition/use-opencode-provider-composition.ts', 'runtime/workspace/workspace-runtime.tsx']],

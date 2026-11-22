@@ -1,10 +1,9 @@
-import { useConnectionRuntime } from '@/runtime/connections/connection-runtime';
+import type { useConnectionRuntime } from '@/runtime/connections/connection-runtime';
 import { useSessionRuntimeState } from '@/runtime/workspace/use-session-runtime-state';
 import type { WorkspaceRuntimeInput } from '@/runtime/workspace/workspace-types';
 import { useEffect, useLayoutEffect } from 'react';
 const DISCONNECTED = { status: 'idle' as const, message: 'Disconnected' };
-export function useWorkspaceRuntimeState(input: WorkspaceRuntimeInput) {
-  const handle = useConnectionRuntime();
+export function useWorkspaceRuntimeState(input: WorkspaceRuntimeInput, handle: ReturnType<typeof useConnectionRuntime>) {
   const local = useSessionRuntimeState(input, handle.connection, handle.serverContract);
   const { scopeGenerationRef, serverGenerationRef, bootstrapPromiseRef, bootstrapTokenRef } = local;
   useEffect(() => () => { scopeGenerationRef.current++; serverGenerationRef.current++; }, [scopeGenerationRef, serverGenerationRef]);

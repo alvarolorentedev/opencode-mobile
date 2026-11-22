@@ -54,10 +54,6 @@ export function useQueryIdentity() {
   if (!identity) throw new Error('Server data requires a workspace scope.');
   return identity;
 }
-export function ServerDataActivity({ active, children }: PropsWithChildren<{ active: boolean }>) {
-  const parent = useContext(ActivityContext);
-  return <ActivityContext.Provider value={parent && active}>{children}</ActivityContext.Provider>;
-}
 export function useQueryForeground() { return useContext(ForegroundContext); }
 export function useQueryActivity() {
   const active = useContext(ActivityContext);

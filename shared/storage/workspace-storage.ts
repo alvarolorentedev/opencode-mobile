@@ -34,5 +34,7 @@ export function parseWorkspaces(raw: string): StoredWorkspaces {
   return { version: 1, connections, focus };
 }
 export function serializeWorkspaces(connections: ConnectionRecord[], focus?: WorkspaceTarget) {
-  return JSON.stringify({ version: 1, connections: connections.map(({ events, settings, ...entry }) => ({ ...entry, settings: withoutConnectionSecrets(settings) })), focus });
+  return JSON.stringify({ version: 1, connections: connections.map(({ id, name, enabled, projects, preferences, settings }) => ({
+    id, name, enabled, projects, preferences, settings: withoutConnectionSecrets(settings),
+  })), focus });
 }
