@@ -1,6 +1,6 @@
 import type { NetworkStatus } from '@/shared/network/network-status';
 
-import type { OpencodeConnectionSettings, ScopedOpencodeClient } from '@/shared/protocol/opencode/client';
+import type { OpencodeConnectionSettings } from '@/shared/protocol/opencode/client';
 
 import type { ChatPreferences } from '@/shared/preferences/opencode-preferences';
 
@@ -11,7 +11,6 @@ import type { useProjectCatalogActions } from '@/features/projects/runtime';
 import type { ActiveSessionItem, CurrentSessionContextValue, SessionLibraryContextValue } from '@/features/sessions/index';
 import type { ConversationContextValue } from '@/features/voice/index';
 import type { useWidgetState } from '@/features/widgets/runtime';
-import type { Session, SessionStatus } from '@/shared/protocol/opencode/types';
 
 import type { WorkspaceShellState } from '@/runtime/workspace/use-workspace-shell-state';
 
@@ -45,9 +44,6 @@ export type WorkspaceSnapshot = {
   values: WorkspaceValues;
   busy: boolean;
   suspend: () => void;
-  catalogClient: ScopedOpencodeClient;
-  catalogSessions: Session[];
-  catalogStatuses: Record<string, SessionStatus>;
   loadProjectCatalog: ReturnType<typeof useProjectCatalogActions>['loadProjectCatalog'];
   native: Omit<Parameters<typeof useWidgetState>[0], 'hydrated' | 'connected' | 'showPreviews' | 'language' | 'currentSessionId'> & {
     activeSessions: ActiveSessionItem[];

@@ -1,10 +1,12 @@
 import type { CommandContext } from '@/runtime/core/commands/context';
 import { createWorktreeCommands } from '@/features/projects/runtime';
+import { projectSessionsKey, sessionCatalogOptions } from '@/features/sessions/runtime';
 import { createWorkspaceWaiters } from '@/runtime/workspace/workspace-lifecycle';
 import type { WorkspaceSnapshot } from '@/runtime/workspace/workspace-types';
 import { getConnectionScope } from '@/shared/contracts/connection-scope';
 import { workspaceKey, type ConnectionRecord, type NewWorktreeChatResult, type NewWorktreeChatTarget, type SessionTarget, type WorkspaceTarget } from '@/shared/contracts/workspace';
 import { findSessionForNavigation } from '@/shared/protocol/services/session-service';
+import type { Session } from '@/shared/protocol/opencode/types';
 
 type ReadinessOptions = { signal?: AbortSignal; waitForProject?: boolean };
 
@@ -206,15 +208,21 @@ export function createWorkspaceCommands({ store, connections, queryClient }: Pic
     await pauseConversation();
     const next = await connectedWorkspace(target, { signal });
     check();
+    const manager = connections.get(target.connectionId);
+    const access = manager?.getProjectAccess(projectPath(target) ?? '');
+    const catalogClient = manager?.getCatalogClient();
+    if (!access || !catalogClient || !access.isCurrent()) throw new Error('This server is no longer available.');
     // Rendered library rows are known in the owning connection. A stale favorite
     // is resolved once against that same server before changing focus.
     const inProject = (session: { id: string; directory?: string }) => session.id === target.sessionId && (!session.directory || session.directory === target.projectPath);
-    const known = Object.entries(registry().snapshots).some(([key, snapshot]) =>
-      (JSON.parse(key) as [string, string])[0] === target.connectionId
-      && (snapshot.catalogSessions.some(inProject) || snapshot.values.sessionLibraryValue.sessions.some(inProject)));
+    const catalog = queryClient.getQueryData(sessionCatalogOptions(access.identity, catalogClient).queryKey);
+    const known = catalog?.sessions.some(inProject) || queryClient.getQueriesData<Session[]>({
+      queryKey: projectSessionsKey(access.identity, access.client).slice(0, -1),
+    }).some(([, sessions]) => sessions?.some(inProject));
     if (!known) {
-      const session = await findSessionForNavigation(next.catalogClient, target.sessionId, signal);
+      const session = await findSessionForNavigation(catalogClient, target.sessionId, signal);
       check();
+      if (!access.isCurrent()) throw new Error('This server is no longer available.');
       if (!session || !inProject(session) || session.time.archived) {
         throw new Error(`Session ${target.sessionId} was not found in the ${target.projectPath} project.`);
       }

@@ -325,13 +325,13 @@ export const RetainedProject = memo(function RetainedProject({ defaults, updateS
     Object.values(approvalsCatalog.pendingQuestionsBySession).some((items) => items.length > 0) ||
     pendingSessionIds.length > 0 || hasTerminal;
   const boundDirectory = state.activeProjectPath;
-  const snapshot = useMemo<WorkspaceSnapshot>(() => ({ boundDirectory, revision: input.connection.revision, enabled: input.connection.enabled, values, busy, suspend, catalogClient, catalogSessions: catalog.sessions, catalogStatuses: catalog.statuses,
+  const snapshot = useMemo<WorkspaceSnapshot>(() => ({ boundDirectory, revision: input.connection.revision, enabled: input.connection.enabled, values, busy, suspend,
     loadProjectCatalog: project.loadProjectCatalog,
     native: { settings: state.settings, catalogClient, contract: state.serverContract, isCurrentCatalogClient,
       connectionScope: state.connectionScope, sessions: sessionCatalog.sessions,
       activeSessions, todoRecordsBySession: transcript.todoRecordsBySession,
       todosBySession: diffCatalog.todosBySession, isStreamConnected },
-  }), [boundDirectory, input.connection.revision, input.connection.enabled, values, busy, suspend, catalogClient, catalog.sessions, catalog.statuses, project.loadProjectCatalog,
+  }), [boundDirectory, input.connection.revision, input.connection.enabled, values, busy, suspend, catalogClient, project.loadProjectCatalog,
     state.settings, state.serverContract, isCurrentCatalogClient, state.connectionScope,
     sessionCatalog.sessions, activeSessions, transcript.todoRecordsBySession, diffCatalog.todosBySession, isStreamConnected]);
   useLayoutEffect(() => { publish(key, snapshot); }, [key, publish, snapshot]);

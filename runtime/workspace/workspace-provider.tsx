@@ -139,10 +139,10 @@ export function WorkspaceProvider({ children }: PropsWithChildren) {
   const refreshTargets = useCallback(async () => {
     await Promise.all(Object.values(catalogs).map((catalog) => catalog.refresh()));
   }, [catalogs]);
-  const shareTargets = useMemo(() => librarySessions(connections, snapshots, lifecycles, selections, focus)
+  const shareTargets = useMemo(() => librarySessions(connections, snapshots, lifecycles, selections, catalogs, focus)
     .filter((row) => !shell.chatPreferences.hideSubagentChats || !row.session.parentID)
     .map((row) => ({ connectionScope: getConnectionScope(connections.find((entry) => entry.id === row.connectionId)!.settings),
-      projectPath: row.projectPath, sessionId: row.sessionId, title: `${row.serverName} · ${row.session.title}` })), [connections, snapshots, lifecycles, selections, focus, shell.chatPreferences.hideSubagentChats]);
+      projectPath: row.projectPath, sessionId: row.sessionId, title: `${row.serverName} · ${row.session.title}` })), [catalogs, connections, snapshots, lifecycles, selections, focus, shell.chatPreferences.hideSubagentChats]);
   const sharedInput = useShareState({ hydrated: isHydrated, connectionScope: getConnectionScope(settings),
     projectPath: selection?.activeProjectPath ?? (focus?.projectPath || undefined),
     currentSessionId: selection?.currentSessionId,
@@ -153,7 +153,7 @@ export function WorkspaceProvider({ children }: PropsWithChildren) {
       const workspace = await connectedWorkspace({ connectionId: entry.id, projectPath: target.projectPath });
       return workspace.values.currentSessionValue.createSession();
     },
-    sessions: current?.catalogSessions ?? [], hideSubagentChats: shell.chatPreferences.hideSubagentChats, refreshTargets,
+    sessions: (focus && catalogs[focus.connectionId]?.sessions) || [], hideSubagentChats: shell.chatPreferences.hideSubagentChats, refreshTargets,
     createSession: async () => { if (!current) throw new Error('Choose a workspace.'); return current.values.currentSessionValue.createSession(); }, openSession });
   const shared = useMemo<SharedWorkspaceState>(() => ({
     fileClipboard,

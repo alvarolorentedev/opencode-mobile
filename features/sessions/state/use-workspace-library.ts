@@ -12,8 +12,8 @@ export function useWorkspaceLibrary(visible = true) {
   // The library is mounted while closed so its search/section state survives.
   // Skip the cross-project derivation until it is actually visible.
   const sessions = useMemo(() => (selections
-    ? librarySessions(registry.connections, registry.snapshots, lifecycles, selections, registry.focus)
-    : []), [lifecycles, registry.connections, registry.focus, registry.snapshots, selections]);
+    ? librarySessions(registry.connections, registry.snapshots, lifecycles, selections, catalogs, registry.focus)
+    : []), [catalogs, lifecycles, registry.connections, registry.focus, registry.snapshots, selections]);
   const servers = useMemo(() => (visible
     ? connectedConnections(registry.connections, lifecycles)
     : []), [lifecycles, registry.connections, visible]);

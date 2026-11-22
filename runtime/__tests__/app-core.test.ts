@@ -5,6 +5,7 @@ import type { WorkspaceSnapshot } from '@/runtime/workspace/workspace-types';
 import type { ChatPreferences } from '@/shared/preferences/opencode-preferences';
 import { getConnectionScope, getConnectionUiScope } from '@/shared/contracts/connection-scope';
 import { workspaceKey, type WorkspaceTarget } from '@/shared/contracts/workspace';
+import { projectSessionsKey } from '@/features/sessions/services/queries';
 import { connectionQueryKey, projectQueryKey } from '@/shared/server-data/keys';
 import type { ScopedOpencodeClient } from '@/shared/protocol/opencode/client';
 import type { OpencodeEvent } from '@/shared/protocol/opencode/events';
@@ -20,6 +21,7 @@ const protocol = vi.hoisted(() => ({
   deleteSession: vi.fn(),
   updateSessionTitle: vi.fn(),
   createWorktree: vi.fn(),
+  findSessionForNavigation: vi.fn(),
 }));
 
 vi.mock('@/shared/protocol/opencode/client', () => ({
@@ -40,6 +42,7 @@ vi.mock('@/shared/protocol/services/session-service', () => ({
   switchSessionModel: protocol.switchSessionModel,
   deleteSession: protocol.deleteSession,
   updateSessionTitle: protocol.updateSessionTitle,
+  findSessionForNavigation: protocol.findSessionForNavigation,
 }));
 vi.mock('@/features/chat/runtime', async () => ({
   forgetSessionContent: (await import('@/features/chat/services/queries')).forgetSessionContent,
@@ -74,6 +77,7 @@ function connectedProject(core: ReturnType<typeof newCore>, connectionId: string
   const manager = {
     getState: () => ({ connection: state }),
     connect: async () => state,
+    getCatalogClient: () => ({ __opencode: { contract: 'v2', directory: '' } }),
     getProjectAccess: (path: string) => path === projectPath ? {
       identity: { connectionId, connectionScope: getConnectionScope(settings), authRevision: 0 },
       client: { __opencode: { contract: 'v2', directory: path } },
@@ -88,7 +92,7 @@ function connectedProject(core: ReturnType<typeof newCore>, connectionId: string
   const createSession = vi.fn(async () => created);
   const openDeepLinkSession = vi.fn(async (_link: unknown, _signal: AbortSignal) => ({ ok: true }));
   const snapshot = {
-    enabled: true, boundDirectory: projectPath || undefined, catalogSessions: [{ id: 'rendered', directory: projectPath }], suspend: vi.fn(),
+    enabled: true, boundDirectory: projectPath || undefined, suspend: vi.fn(),
     values: {
       conversationValue: { conversation: { active: false } },
       currentSessionValue: { openSession, openDeepLinkSession, createSession },
@@ -101,6 +105,8 @@ function connectedProject(core: ReturnType<typeof newCore>, connectionId: string
     if (found) return current.map((entry) => entry.id === connectionId ? { ...entry, projects: [...entry.projects, projectPath] } : entry);
     return [...current, { id: connectionId, settings, name: connectionId, enabled: true, preferences: {}, projects: [projectPath] }];
   });
+  const access = manager.getProjectAccess(projectPath)!;
+  core.queryClient.setQueryData(projectSessionsKey(access.identity, access.client), [{ id: 'rendered', directory: projectPath }]);
   commands.publish(workspaceKey(target), snapshot);
   return { target, openSession, openDeepLinkSession, createSession, created };
 }
@@ -229,7 +235,18 @@ describe('app core', () => {
     await connection.openSessionInProject('/repo', 'rendered', connectionScope);
     expect(project.openSession).toHaveBeenCalledExactlyOnceWith('rendered');
     expect(core.store.getState().registry.focus).toEqual(project.target);
+
+    const manager = core.connections.get(project.target.connectionId)!;
+    const { identity, client } = manager.getProjectAccess('/repo')!;
+    core.queryClient.setQueryData(projectSessionsKey({ ...identity, authRevision: identity.authRevision + 1 }, client), [
+      { id: 'different-credentials', directory: '/repo' },
+    ]);
+    protocol.findSessionForNavigation.mockClear().mockResolvedValueOnce(undefined);
+    await expect(connection.openSessionInProject('/repo', 'different-credentials', connectionScope)).rejects.toThrow('was not found');
+    expect(protocol.findSessionForNavigation).toHaveBeenCalledExactlyOnceWith(manager.getCatalogClient(), 'different-credentials', expect.any(AbortSignal));
+    expect(project.openSession).toHaveBeenCalledTimes(1);
     core.commands.workspace.dispose();
+    core.queryClient.clear();
   });
 
   it('keeps terminal and inspection independent and cancels a late external session before committing focus', async () => {

@@ -47,6 +47,9 @@ selection from the app store. Session presentation selects the active row
 from the scoped Query list, and library polling reads visibility from the store.
 Navigation waits for the action binding to match the selected directory and
 credential revision before opening a session.
+Session navigation checks the catalog and project lists in the current
+credential partition. Library and share views consume the connection catalog
+once per server.
 
 Session selection and startup bootstrap use the scoped app-core command in
 `runtime/core/commands/session-navigation.ts`. Explicit selection commits

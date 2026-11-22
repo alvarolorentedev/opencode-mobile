@@ -18,10 +18,10 @@ const keys = { sessionKey: (value: any) => JSON.stringify([value.connectionId, v
 type TestConnections = Parameters<typeof WorkspaceCommands>[0]['connections'];
 function mountWorkspaceConnections(driver: ReturnType<typeof hookRuntime>, useWorkspaceConnections: any, createWorkspaceCommands: typeof WorkspaceCommands, createConnectionCommands: typeof ConnectionCommands, shell: any,
   connections: TestConnections = { get: () => undefined, subscribeState: () => () => {} },
+  queryClient = new QueryClient(),
 ) {
   const store = createAppStore({ settings: shell.settings, chatPreferences: shell.chatPreferences, controlPlaneUrl: '' });
   store.getState().setShellValue('onboardingVersion', shell.onboardingVersion);
-  const queryClient = new QueryClient();
   const workspace = createWorkspaceCommands({ store, connections, queryClient });
   const commands = { workspace, connection: createConnectionCommands({ store, connections, queryClient }, workspace) };
   const getRegistry = () => store.getState().registry;
@@ -40,14 +40,17 @@ describe('multi-server contracts', () => {
   });
     const connection = (id: string) => ({ id, name: id, enabled: true, settings: { serverUrl: `http://${id}`, username: '' } });
     const session = (id: string, updated: number) => ({ id, directory: '/same', title: id, time: { updated } });
-    const snapshot = (sessions: any[]) => ({ catalogSessions: sessions, catalogStatuses: { busy: { type: 'busy' } }, values: {
+    const snapshot = (sessions: any[]) => ({ values: {
       sessionLibraryValue: { sessions, sessionStatuses: {}, favoriteSessions: [], sessionPreviewById: {} },
     } });
     const rows = librarySessions([connection('a'), connection('b')], {
-      '["a",""]': snapshot([session('same', 3), session('idle', 1)]),
-      '["b","/same"]': snapshot([session('same', 9), session('busy', 2)]),
+      '["a",""]': snapshot([session('same', 3)]),
+      '["b","/same"]': snapshot([session('same', 9)]),
     }, new Map(['a', 'b'].map((id) => [id, { connection: { status: 'connected' } }])),
-    { '["a",""]': { activeProjectPath: '/same', currentSessionId: 'same' } }, { connectionId: 'a', projectPath: '/same' });
+    { '["a",""]': { activeProjectPath: '/same', currentSessionId: 'same' } }, {
+      a: { sessions: [session('idle', 1)], statuses: {} },
+      b: { sessions: [session('busy', 2)], statuses: { busy: { type: 'busy' } } },
+    }, { connectionId: 'a', projectPath: '/same' });
     expect(rows.map((row: any) => [row.connectionId, row.sessionId])).toEqual([['a', 'same'], ['b', 'busy'], ['b', 'same'], ['a', 'idle']]);
     expect(rows.filter((row: any) => row.current)).toHaveLength(1);
   });
@@ -59,7 +62,7 @@ describe('multi-server contracts', () => {
   });
     const connection = (id: string, enabled = true) => ({ id, name: id, enabled, settings: { serverUrl: `http://${id}`, username: '' } });
     const session = (id: string) => ({ id, directory: '/same', title: id, time: { updated: 1 } });
-    const snapshot = (sessions: any[], favoriteSessions: any[] = []) => ({ catalogSessions: sessions, catalogStatuses: {}, values: {
+    const snapshot = (sessions: any[], favoriteSessions: any[] = []) => ({ values: {
       sessionLibraryValue: { sessions, sessionStatuses: {}, favoriteSessions, sessionPreviewById: {} },
     } });
     const favorite = (connectionScope: string) => ({ connectionScope, projectPath: '/favorite', sessionId: 'f', title: 'f', favoritedAt: 1 });
@@ -73,7 +76,7 @@ describe('multi-server contracts', () => {
     const lifecycles = new Map(Object.entries({ disabled: 'connected', connected: 'connected', connecting: 'connecting', errored: 'error' })
       .map(([id, status]) => [id, { connection: { status } }]));
     expect(connectedConnections(connections, lifecycles).map((entry: any) => entry.id)).toEqual(['connected']);
-    expect(librarySessions(connections, snapshots, lifecycles, {}).map((row: any) => [row.connectionId, row.sessionId]).sort())
+    expect(librarySessions(connections, snapshots, lifecycles, {}, {}).map((row: any) => [row.connectionId, row.sessionId]).sort())
       .toEqual([['connected', 'f'], ['connected', 'kept']]);
   });
   it('keeps unrelated workspace domains stable when only chat data changes', async () => {
@@ -313,8 +316,13 @@ it('keeps lifecycle decisions current without resetting retained runtimes', asyn
     projectPathsByConnectionRef: { current: paths }, setProjectPathsByConnection: vi.fn(), setSettings: vi.fn() };
   const writer = Object.assign(async () => {}, { preserveUnread: vi.fn() });
   const workspaceFocus = await loadTs('runtime/workspace/workspace-focus.ts');
+  const catalogKey = (id: string) => ['opencode', id, 'sessions', 'catalog'];
   const { useWorkspaceConnections, createWorkspaceCommands, createConnectionCommands } = await loadTs(['runtime/workspace/use-workspace-connections.ts', 'runtime/core/commands/workspace.ts', 'runtime/core/commands/connection.ts'], {
     react: driver.react,
+    '@/features/sessions/runtime': {
+      sessionCatalogOptions: (scope: QueryIdentity) => ({ queryKey: catalogKey(scope.connectionId) }),
+      projectSessionsKey: (scope: QueryIdentity, client: ScopedOpencodeClient) => ['opencode', scope.connectionId, 'sessions', 'project', client.__opencode.directory],
+    },
     '@react-native-async-storage/async-storage': { __esModule: true, default: { getItem: async () => 'stored', setItem: async () => {} } },
     '@/runtime/workspace/workspace-focus': workspaceFocus,
     "@/shared/contracts/connection-scope": { ...identity, getConnectionUiScope: (value: any) => value.serverUrl.slice(7) },
@@ -330,24 +338,29 @@ it('keeps lifecycle decisions current without resetting retained runtimes', asyn
     "@/shared/contracts/workspace": { workspaceKey: ({ connectionId, projectPath }: any) => JSON.stringify([connectionId, projectPath]) }
   }, driver.globals);
   const connected = { status: 'connected', message: 'Connected' };
-  const manager = { getState: () => ({ connection: connected }), connect: async () => connected } as unknown as NonNullable<ReturnType<TestConnections['get']>>;
+  const client = { __opencode: { contract: 'v2', directory: '' } };
+  const queryClient = new QueryClient();
+  const managers = new Map(entries.map(({ id }) => [id, {
+    getState: () => ({ connection: connected }), connect: async () => connected, getCatalogClient: () => client,
+    getProjectAccess: (directory: string) => ({ identity: { connectionId: id }, client: { __opencode: { contract: 'v2', directory } }, isCurrent: () => true }),
+  } as unknown as NonNullable<ReturnType<TestConnections['get']>>]));
   const store = mountWorkspaceConnections(driver, useWorkspaceConnections, createWorkspaceCommands, createConnectionCommands, shell,
-    { get: () => manager, subscribeState: () => () => {} });
+    { get: (id) => managers.get(id) ?? managers.get('a'), subscribeState: () => () => {} }, queryClient);
   const isEnabled = driver.value.isEnabled;
   await driver.settle();
   expect(isEnabled('a')).toBe(true);
   const snapshot = (id: string, directory: string) => ({ enabled: true, boundDirectory: directory || undefined, native: { settings: driver.value.connections.find((entry: any) => entry.id === id).settings },
     loadProjectCatalog: vi.fn(async () => ({ currentProjectPath: '/repo', serverProjects: [] })),
-    catalogSessions: [], suspend: vi.fn(), values: { sessionLibraryValue: { sessions: [], refreshSessions: vi.fn(async () => []) }, currentSessionValue: { openSession: vi.fn(async () => {}), openDeepLinkSession: vi.fn(async () => ({ ok: true })) }, conversationValue: { conversation: { active: true }, toggleConversationMode: vi.fn(async () => {}) } } });
+    suspend: vi.fn(), values: { currentSessionValue: { openSession: vi.fn(async () => {}), openDeepLinkSession: vi.fn(async () => ({ ok: true })) }, conversationValue: { conversation: { active: true }, toggleConversationMode: vi.fn(async () => {}) } } });
   const original = snapshot('a', '/repo'), other = snapshot('a', '/other'), b = snapshot('b', '/repo');
   driver.value.publish('["a","/repo"]', original); driver.value.publish('["a","/other"]', other); driver.value.publish('["b","/repo"]', b); driver.flush();
-  original.catalogSessions = [{ id: 'collision', directory: '/repo' }] as never[];
+  queryClient.setQueryData(catalogKey('a'), { sessions: [{ id: 'collision', directory: '/repo' }] });
   await expect(driver.value.navigate({ connectionId: 'b', projectPath: '/repo', sessionId: 'collision' })).rejects.toThrow('was not found');
   expect(b.values.currentSessionValue.openSession).not.toHaveBeenCalled();
   findSessionForNavigation.mockResolvedValueOnce({ id: 'outside-catalog', directory: '/repo', time: {} });
   await driver.value.navigate({ connectionId: 'b', projectPath: '/repo', sessionId: 'outside-catalog' });
   expect(b.values.currentSessionValue.openSession).toHaveBeenCalledWith('outside-catalog');
-  b.catalogSessions = [{ id: 'collision', directory: '/repo' }] as never[];
+  queryClient.setQueryData(catalogKey('b'), { sessions: [{ id: 'collision', directory: '/repo' }] });
   await driver.value.navigate({ connectionId: 'b', projectPath: '/repo', sessionId: 'collision' }); driver.flush();
   expect(b.values.currentSessionValue.openSession).toHaveBeenCalledWith('collision');
   driver.value.select({ connectionId: 'a', projectPath: '/repo' }); driver.flush();
@@ -381,6 +394,7 @@ it('keeps lifecycle decisions current without resetting retained runtimes', asyn
   expect(c.native.settings).toMatchObject({ certificate, oidc, password: 'saved-password' });
   expect(mutateConnectionProfiles).not.toHaveBeenCalled();
   driver.unmount();
+  queryClient.clear();
 });
 
 it('persists the focused auto-model choice and ignores background workspace copies', async () => {
