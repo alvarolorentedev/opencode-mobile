@@ -42,10 +42,9 @@ Partially closed on 2026-10-18:
   them. Test titles are unchanged.
 - **The Vitest suites are fully type-checked.** `tsconfig.tests.json`
   type-checks every file under `tests/vitest`; `npm run typecheck:tests` (part of
-  `test:ci:static`) runs it. The dynamic `loadTs` / `hookRuntime` harness is
-  described by `tests/helpers/runtime.d.mts`, so suites can use it without
-  weakening compilation. `tests/vitest/typecheck-ratchet.test.ts` prevents a
-  denylist from returning.
+  `test:ci:static`) runs it. Application imports resolve through Vitest and
+  React hooks use the normal renderer lifecycle in tests.
+  `tests/vitest/typecheck-ratchet.test.ts` limits exclusions.
 - **`tests/foss-prepare.test.mjs`** stays a standalone Node script
   (`npm run test:foss`, run by the `ci.yml` static job). It mutates a temporary
   `node_modules` tree and is build tooling rather than app behavior, so it is

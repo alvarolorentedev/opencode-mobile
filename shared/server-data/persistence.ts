@@ -4,7 +4,7 @@ import type { Query } from '@tanstack/react-query';
 
 import { isTranscriptQueryKey, projectPersistedServerData, TRANSCRIPT_SNAPSHOT_MAX_AGE } from './transcript-snapshots';
 
-export const SERVER_QUERY_CACHE_KEY = 'opencode-mobile.query-cache.v1';
+const SERVER_QUERY_CACHE_KEY = 'opencode-mobile.query-cache.v1';
 export const SERVER_QUERY_CACHE_MAX_AGE = TRANSCRIPT_SNAPSHOT_MAX_AGE;
 
 export function createServerQueryPersister(storage: Pick<typeof AsyncStorage, 'getItem' | 'setItem' | 'removeItem'> = AsyncStorage) {

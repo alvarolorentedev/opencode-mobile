@@ -5,7 +5,7 @@ import { createAuthHeader, createPrefixFetch, createScopedFetch, fetchConnection
 import { READ_TIMEOUT_MS } from '@/shared/protocol/opencode/client/read-deadline';
 import { coalesceRead } from '@/shared/protocol/opencode/in-flight';
 import { normalizeServerUrl } from '@/shared/contracts/server-url';
-import { deferred } from '../../../tests/helpers/runtime.mjs';
+import { deferred } from '../../../tests/helpers/controlled-clock';
 
 vi.mock('react-native', () => ({ Platform: { OS: 'web' } }));
 const counters = vi.hoisted(() => ({ recordBytes: vi.fn(), recordRequest: vi.fn() }));

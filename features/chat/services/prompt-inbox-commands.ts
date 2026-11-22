@@ -34,7 +34,7 @@ export function mergePromptOutbox(prompts: PromptSnapshot['prompts'], outbox: Pr
   return next;
 }
 
-export function mergePrompts(server: PendingPrompt[], local: PromptOutbox['bySession'][string]) {
+function mergePrompts(server: PendingPrompt[], local: PromptOutbox['bySession'][string]) {
   return [...local.map(({ prompt }) => prompt), ...server].sort((a, b) => a.createdAt - b.createdAt);
 }
 

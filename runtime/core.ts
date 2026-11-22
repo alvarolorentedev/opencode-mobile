@@ -5,4 +5,4 @@ export { useProjectScope } from '@/runtime/core/project-scope';
 export { useConnectedProjectScopes } from '@/runtime/core/connected-projects';
 export { useCachedProjectTranscripts } from '@/runtime/core/cached-project-transcripts';
 export type { AppCore } from '@/runtime/core/create-app-core';
-export type { AppState, ChatUiState, PromptOutbox, PromptUiState, RegistryState, SelectionState, ShellState } from '@/runtime/core/store';
+export type { AppState, PromptOutbox, SelectionState } from '@/runtime/core/store';

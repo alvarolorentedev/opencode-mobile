@@ -9,7 +9,7 @@ import { VoiceInputSetup } from '@/features/voice/ui/voice-input-setup';
 import { defaultChatPreferences } from '@/shared/preferences/opencode-preferences';
 import { Button } from '@/shared/ui/button';
 import { SettingSwitchRow } from '@/shared/ui/settings/setting-rows';
-import { textContent } from '../../../tests/helpers/ui.mjs';
+import { textContent } from '../../../tests/helpers/text-content';
 import { Colors } from '@/shared/ui/theme/theme';
 import { renderHook } from '../../../tests/helpers/render-hook';
 

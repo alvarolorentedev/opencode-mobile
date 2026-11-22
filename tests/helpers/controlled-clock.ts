@@ -3,8 +3,8 @@ import { act } from 'react';
 import { onTestFinished, vi } from 'vitest';
 
 // Timer diagnostics also distinguish two simultaneously armed deadlines.
-export function controlledClock(now?: number) {
-  vi.useFakeTimers({ toFake: ['Date', 'setTimeout', 'clearTimeout'] });
+export function controlledClock(now?: number, intervals = false) {
+  vi.useFakeTimers({ toFake: ['Date', 'setTimeout', 'clearTimeout', ...(intervals ? ['setInterval', 'clearInterval'] as const : [])] });
   if (now !== undefined) vi.setSystemTime(now);
   const deadlines = new Map<ReturnType<typeof setTimeout>, number>();
   const schedule = globalThis.setTimeout;

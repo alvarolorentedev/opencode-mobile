@@ -770,7 +770,7 @@ providers/use-activity-notifications.ts,features/notifications/state/use-activit
 providers/use-app-updates.ts,features/updates/state/use-app-updates.ts,moved
 providers/use-capabilities-actions.ts,features/ai/state/use-capabilities-actions.ts,moved
 providers/use-coalesced-refresh.ts,runtime/realtime/use-coalesced-refresh.ts,moved
-providers/use-connect-state.ts,features/cloud-link/state/use-connect-state.ts,moved
+providers/use-connect-state.ts,features/cloud-link/state/connect/use-connect-machine.ts,moved
 providers/use-connection-link-actions.ts,runtime/core/commands/session-navigation.ts,moved
 providers/use-connection-profiles.ts,features/connections/state/use-connection-profiles.ts,moved
 providers/use-connection-retry.ts,features/connections/state/use-connection-retry.ts,moved
@@ -797,7 +797,7 @@ providers/use-project-refresh-actions.ts,runtime/workspace/use-project-refresh-a
 providers/use-project-refresh-actions.ts,features/sessions/state/use-session-refresh.ts,split
 providers/use-project-refresh-actions.ts,features/chat/state/use-chat-refresh.ts,split
 providers/use-prompt-inbox.ts,features/chat/state/use-prompt-inbox.ts,moved
-providers/use-prompt-lifecycle.ts,features/chat/state/use-prompt-lifecycle.ts,moved
+providers/use-prompt-lifecycle.ts,features/chat/services/prompt-submission.ts,moved
 providers/use-prompt-routing.ts,features/ai/state/use-prompt-routing.ts,moved
 providers/use-services-state.ts,features/cloud-link/state/use-services-state.ts,moved
 providers/use-session-actions.ts,features/sessions/state/use-session-actions.ts,moved
@@ -899,10 +899,9 @@ tests/fake-opencode/state.mjs,tests/fake-opencode/state.mjs,retained
 tests/fake-opencode/terminal.mjs,tests/fake-opencode/terminal.mjs,retained
 tests/fake-opencode/workspace.mjs,tests/fake-opencode/workspace.mjs,retained
 tests/foss-prepare.test.mjs,tests/foss-prepare.test.mjs,retained
-tests/helpers/query-runtime.mjs,tests/helpers/query-runtime.mjs,retained
-tests/helpers/runtime.d.mts,tests/helpers/runtime.d.mts,retained
-tests/helpers/runtime.mjs,tests/helpers/runtime.mjs,retained
-tests/helpers/ui.mjs,tests/helpers/ui.mjs,retained
+tests/helpers/query-runtime.mjs,tests/helpers/render-hook.ts,moved
+tests/helpers/runtime.mjs,tests/helpers/render-hook.ts,moved
+tests/helpers/ui.mjs,tests/helpers/text-content.ts,moved
 tests/native/android-sharing.py,tests/native/android-sharing.py,retained
 tests/run-static.mjs,tests/run-static.mjs,retained
 tests/vitest/active-sessions.test.ts,features/sessions/__tests__/active-sessions.test.ts,moved

@@ -13,7 +13,7 @@ import { Button } from '@/shared/ui/button';
 import { connectionViewProbe } from '../../../tests/helpers/connection-view-probe';
 import { deferred, settleReact } from '../../../tests/helpers/controlled-clock';
 import { renderHook } from '../../../tests/helpers/render-hook';
-import { textContent } from '../../../tests/helpers/ui.mjs';
+import { textContent } from '../../../tests/helpers/text-content';
 
 const route = vi.hoisted(() => ({ receipt: '1', router: { dismissTo: vi.fn() } }));
 vi.mock('expo-router', () => ({

@@ -36,4 +36,3 @@ export function useWorkspaceShellState() {
     setHiddenProjects,
   };
 }
-export type WorkspaceShellState = ReturnType<typeof useWorkspaceShellState>;

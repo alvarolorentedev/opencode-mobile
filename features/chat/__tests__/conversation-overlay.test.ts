@@ -8,7 +8,7 @@ import { ConversationOverlay } from '@/features/chat/ui/chat-overlay';
 import { ConversationConfirmation } from '@/features/voice/ui/conversation-confirmation';
 import { ConversationWave, waveAmplitude, wavePath } from '@/features/voice/ui/conversation-wave';
 import { renderHook } from '../../../tests/helpers/render-hook';
-import { textContent } from '../../../tests/helpers/ui.mjs';
+import { textContent } from '../../../tests/helpers/text-content';
 
 const native = vi.hoisted(() => ({
   reducedMotion: false, height: 844, fontScale: 1, shared: [] as { value: number }[],

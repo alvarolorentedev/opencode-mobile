@@ -9,6 +9,8 @@
   },
   "include": [
     "tests/vitest/**/*.ts",
+    "tests/integration/**/*.test.ts",
+    "tests/integration/**/*.test.tsx",
     "tests/vitest/**/*.tsx",
     "base-64.d.ts",
     "expo-env.d.ts",

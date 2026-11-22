@@ -5,7 +5,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { CompactionDivider } from '@/features/chat/ui/cards/compaction-divider';
 import { Colors } from '@/shared/ui/theme/theme';
 import { renderHook } from '../../../tests/helpers/render-hook';
-import { textContent } from '../../../tests/helpers/ui.mjs';
+import { textContent } from '../../../tests/helpers/text-content';
 
 vi.mock('react-i18next', () => ({
   useTranslation: () => ({

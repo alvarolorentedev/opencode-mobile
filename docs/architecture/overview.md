@@ -307,8 +307,7 @@ The completion version, preference schema and first-run migration are unchanged.
   Cloud Link pairing, subscription, and access state machine
   (`use-connect-machine.ts`), with catalog discovery (`catalog.ts`), purchase
   finalization/recovery (`purchases.ts`), pairing link handling (`pairing.ts`),
-  and access credential preparation (`access.ts`); re-exported through
-  `features/cloud-link/state/use-connect-state.ts`.
+  and access credential preparation (`access.ts`).
   `activation.ts` owns the bounded post-claim desktop-approval/startup wait,
   foreground suspension and delayed saved-profile checkpoint.
 - `features/voice/state/conversation/`
@@ -481,7 +480,7 @@ fallback. `shared/protocol/opencode/pairing.ts` validates local QR formats and r
 one-use codes, independently of Cloud Link subscriptions. The resulting session
 token uses the existing per-profile password storage and Basic-auth transport.
 
-The optional native Cloud Link method composes `use-connect-state.ts`
+The optional native Cloud Link method composes `use-connect-machine.ts`
 inside the provider, verifies native subscriptions through the Cloud Link service,
 validates catalog/session/pairing protocol in `shared/protocol/cloud-link/connect.ts`, and
 activates Basic-auth profiles through `switchConnection()`. Shared connection
@@ -558,7 +557,7 @@ selection folds descendants into their root tasks. No screen owns this state.
 
 Local completion and needs-input notifications share
 `shared/protocol/services/session-service`'s `readSessionSettlement`, so the
-foreground flush (`use-prompt-lifecycle`) and the background monitor
+foreground prompt settlement and the background monitor
 (`shared/notifications`) clear and label a task identically. An idle session
 without an assistant response for the tracked request stays unknown instead of
 alerting as finished. The same global-event

@@ -1,3 +1,6 @@
+import '../../tests/helpers/native-view-hosts';
+import '../../tests/helpers/native-animation';
+import '../../tests/helpers/cloud-link-platform';
 import { describe, expect, it, vi } from 'vitest';
 import { QueryClient } from '@tanstack/react-query';
 
@@ -13,57 +16,54 @@ import { createAppStore } from '@/runtime/core/store';
 import type { CommandContext } from '@/runtime/core/commands/context';
 import type { RealtimeScopeInput } from '@/runtime/realtime/create-realtime';
 import type { ScopedOpencodeClient } from '@/shared/protocol/opencode/client';
-import { connectionQueryKey, projectQueryKey } from '@/shared/server-data/keys';
+import { projectQueryKey } from '@/shared/server-data/keys';
 
-import { hookRuntime, loadTs } from '../../tests/helpers/runtime.mjs';
-import { loadPromptLifecycle } from './prompt-command-fixture';
+import { createSessionExecutionActions } from '@/features/sessions/services/session-execution';
+import { createInteractionCommands } from '@/features/sessions/services/interaction-commands';
+import { projectSessionsKey } from '@/features/sessions/services/queries';
+import { i18n } from '@/shared/i18n/index';
+import { defaultChatPreferences } from '@/shared/preferences/opencode-preferences';
+import type { PromptCommandInput } from '@/features/chat/runtime';
 
-vi.mock('@/features/sessions/runtime', () => ({
-  projectSessionsKey: (identity: Parameters<typeof connectionQueryKey>[0], client: ScopedOpencodeClient) =>
-    [...connectionQueryKey(identity, client.__opencode.contract), 'sessions', 'project', client.__opencode.directory],
-}));
+import { promptFixture } from './real-prompt-fixture';
 
-const sessionService = vi.hoisted(() => ({
-  createSession: vi.fn(),
-  forkSession: vi.fn(),
-  switchSessionModel: vi.fn(),
-  deleteSession: vi.fn(),
-  updateSessionTitle: vi.fn(),
-  listSessions: vi.fn(),
-  getActiveSessionStatuses: vi.fn(),
-  interruptSession: vi.fn(),
-  waitForSessionIdle: vi.fn(),
-  revertSession: vi.fn(),
-  unrevertSession: vi.fn(),
-}));
-vi.mock('@/shared/protocol/services/session-service', () => sessionService);
-vi.mock('@/shared/protocol/opencode/client', () => ({ withReadSignal: (client: ScopedOpencodeClient) => client }));
-const listPendingInteractions = vi.hoisted(() => vi.fn());
-vi.mock('@/shared/protocol/opencode/client/interactions', () => ({ listPendingInteractions }));
+vi.mock('expo-router', () => ({ usePathname: () => '/' }));
+vi.mock('expo-clipboard', () => ({}));
 
-function sessionCreationFixture({ api = false, preferred = false }: { api?: boolean; preferred?: boolean } = {}) {
-  sessionService.createSession.mockReset().mockResolvedValue({ id: 'new', title: '' });
-  sessionService.forkSession.mockReset().mockResolvedValue({ id: 'fork', title: '' });
-  sessionService.switchSessionModel.mockReset().mockResolvedValue(undefined);
+function sessionData(id: string) {
+  return { id, title: '', time: { created: 1_000, updated: 1_000 } };
+}
+
+function sessionCreationFixture({ preferred = false }: { preferred?: boolean } = {}) {
+  const api = {
+    session: {
+      create: vi.fn(async () => sessionData('new')), fork: vi.fn(async () => sessionData('fork')),
+      switchModel: vi.fn(async () => {}), list: vi.fn(async () => ({ data: [] as ReturnType<typeof sessionData>[] })),
+      active: vi.fn(async () => ({})), remove: vi.fn(async () => {}),
+      update: vi.fn(async () => {}), get: vi.fn(async () => sessionData('s')),
+      interrupt: vi.fn(async () => {}), wait: vi.fn(async () => {}),
+      revert: { stage: vi.fn(async () => {}), clear: vi.fn(async () => {}) },
+    },
+    permission: { request: { list: vi.fn(async () => ({ data: [] as unknown[] })) } },
+    form: { list: vi.fn(async () => ({ data: [] })) },
+  };
   const cache = new QueryClient({ defaultOptions: { queries: { gcTime: Infinity } } });
   const identity = { connectionId: 'server', connectionScope: 'scope', authRevision: 0 };
-  const client = { __opencode: { contract: 'v2', directory: '/repo' }, ...(api ? { api: {} } : {}) } as ScopedOpencodeClient;
+  const client = { __opencode: { contract: 'v2', directory: '/repo' }, api } as unknown as ScopedOpencodeClient;
   const catalog = sessionCatalogAccess(cache, identity, client);
   const model = { id: 'openai/gpt-5', providerID: 'openai', modelID: 'gpt-5' } as ModelOption;
   const commands = sessionCreationCommands({ cache, identity, client, isCurrent: () => true, clock: () => 1_000, recentModel: () => preferred ? model : undefined });
-  return { ...commands, cache, catalog, client, identity };
+  return { ...commands, cache, catalog, client, identity, api };
 }
 
 function sessionEditFixture() {
-  const { cache, catalog, client, identity } = sessionCreationFixture();
-  for (const command of [sessionService.deleteSession, sessionService.updateSessionTitle, sessionService.interruptSession,
-    sessionService.waitForSessionIdle, sessionService.revertSession, sessionService.unrevertSession]) command.mockReset().mockResolvedValue(undefined);
+  const { cache, catalog, client, identity, api } = sessionCreationFixture();
   const refreshMessages = vi.fn(async (..._args: unknown[]) => []);
   const commands = sessionEditCommands({ cache, client, identity, isCurrent: () => true,
     clearSession: vi.fn(), runRename: (_key, rename) => rename(), refreshSessions: async () => [],
     refreshSessionDiff: async () => [], refreshMessages, refreshActiveSessions: async () => {},
   });
-  return { cache, catalog, client, ...commands, refreshMessages };
+  return { cache, catalog, client, ...commands, refreshMessages, api };
 }
 
 function sessionNavigationFixture(sessions: { id: string }[] = [], overrides: Partial<RealtimeScopeInput> = {}) {
@@ -73,7 +73,7 @@ function sessionNavigationFixture(sessions: { id: string }[] = [], overrides: Pa
   const client = { __opencode: { contract: 'v2', directory: target.projectPath } } as ScopedOpencodeClient;
   const store = createAppStore({ settings: { serverUrl: 'http://server', username: '', password: '', directory: '' }, chatPreferences: {} as never, controlPlaneUrl: '' });
   const queryClient = new QueryClient({ defaultOptions: { queries: { gcTime: Infinity } } });
-  const key = [...connectionQueryKey(identity, client.__opencode.contract), 'sessions', 'project', target.projectPath];
+  const key = projectSessionsKey(identity, client);
   const writeSessions = (next: { id: string }[]) => queryClient.setQueryData(key, next);
   const sources = {
     projectPath: target.projectPath,
@@ -113,28 +113,21 @@ function deferredGate<T = void>() {
   return { promise, resolve, reject };
 }
 
-async function loadSessionExecution() {
-  const services = {
-    compactSession: vi.fn(async () => undefined),
-    executeCommand: vi.fn(async () => undefined),
-    generateSessionText: vi.fn(async () => 'answer'),
+function sessionExecutionFixture() {
+  const session = {
+    compact: vi.fn(async () => {}), command: vi.fn(async () => {}),
+    generate: vi.fn(async () => ({ text: 'answer' })), switchAgent: vi.fn(async () => {}),
   };
-  const { createSessionExecutionActions } = await loadTs('features/sessions/services/session-execution.ts', {
-    '@/shared/protocol/services/session-service': services,
-  });
-  return { createSessionExecutionActions, services };
-}
-
-function sessionExecutionInput() {
-  return {
-    client: { __opencode: { contract: 'v2' } },
+  const input: Parameters<typeof createSessionExecutionActions>[0] = {
+    client: { __opencode: { contract: 'v2' }, api: { session } } as unknown as ScopedOpencodeClient,
     isCurrentClient: () => true,
     availableAgents: [{ id: 'build', label: 'Build', mode: 'primary' }],
     commands: [],
     refreshSessions: async () => [],
     refreshMessages: async () => [],
-    chatPreferences: { mode: 'build' },
+    chatPreferences: { ...defaultChatPreferences, mode: 'build' },
   };
+  return { input, session };
 }
 
 describe('local-first session selection', () => {
@@ -231,23 +224,23 @@ describe('local-first session selection', () => {
 
   it('createSession shows the returned session before the list refresh resolves', async () => {
     const fixture = sessionCreationFixture();
-    const { cache, catalog, client, identity } = fixture;
+    const { cache, catalog, client, identity, api } = fixture;
     const created = { id: 'new', title: '', time: { created: 1000, updated: 1000 } };
-    sessionService.createSession.mockResolvedValueOnce(created);
-    const reply = deferredGate<{ sessions: { id: string; title: string }[]; statuses: Record<string, unknown> }>();
-    sessionService.listSessions.mockReset().mockReturnValueOnce(reply.promise);
+    api.session.create.mockResolvedValueOnce(created);
+    const reply = deferredGate<{ data: ReturnType<typeof sessionData>[] }>();
+    api.session.list.mockReset().mockReturnValueOnce(reply.promise);
     const commands = sessionRefreshCommands({ cache, identity, client, isCurrent: () => true, clock: () => 1_001, isPermissionReplyPending: () => false });
     const list = commands.refreshSessions();
 
     await expect(fixture.createSession()).resolves.toEqual(created);
-    expect(sessionService.listSessions).toHaveBeenCalledExactlyOnceWith(client);
-    expect(sessionService.createSession).toHaveBeenCalledOnce();
-    expect(sessionService.switchSessionModel).not.toHaveBeenCalled();
+    expect(api.session.list).toHaveBeenCalledExactlyOnceWith({ directory: '/repo' });
+    expect(api.session.create).toHaveBeenCalledOnce();
+    expect(api.session.switchModel).not.toHaveBeenCalled();
     expect(catalog.readSessions()).toEqual([created]);
     expect(cache.getQueryData(catalog.catalogKey)).toEqual({ sessions: [], statuses: { new: { type: 'idle' } } });
     expect(recentlyCreatedSessionIds(cache, identity, client, new Set(), 1001)).toEqual(new Set(['new']));
 
-    reply.resolve({ sessions: [], statuses: {} });
+    reply.resolve({ data: [] });
     await expect(list).resolves.toEqual([created]);
     expect(recentlyCreatedSessionIds(cache, identity, client, new Set(['new']), 1002)).toEqual(new Set());
     expect(recentlyCreatedSessionIds(cache, identity, client, new Set(), 1003)).toEqual(new Set());
@@ -255,29 +248,29 @@ describe('local-first session selection', () => {
   });
 
   it('createSession starts on the model the user last picked', async () => {
-    const fixture = sessionCreationFixture({ api: true, preferred: true });
+    const fixture = sessionCreationFixture({ preferred: true });
     const model = { providerID: 'openai', id: 'gpt-5' };
-    await expect(fixture.createSession()).resolves.toEqual({ id: 'new', title: '', model });
-    expect(sessionService.switchSessionModel).toHaveBeenCalledWith(fixture.client, 'new', model);
+    await expect(fixture.createSession()).resolves.toEqual({ ...sessionData('new'), model });
+    expect(fixture.api.session.switchModel).toHaveBeenCalledWith({ sessionID: 'new', model });
     expect(fixture.catalog.readSessions()[0].model).toEqual(model);
     fixture.cache.clear();
   });
 
   it('createSession keeps the server default when the last model cannot be applied', async () => {
-    const fixture = sessionCreationFixture({ api: true, preferred: true });
-    sessionService.switchSessionModel.mockRejectedValueOnce(new Error('model unavailable'));
+    const fixture = sessionCreationFixture({ preferred: true });
+    fixture.api.session.switchModel.mockRejectedValueOnce(new Error('model unavailable'));
 
-    await expect(fixture.createSession()).resolves.toEqual({ id: 'new', title: '' });
+    await expect(fixture.createSession()).resolves.toEqual(sessionData('new'));
     expect(fixture.catalog.readSessions()[0].model).toBeUndefined();
     fixture.cache.clear();
   });
 
   it('publishes the returned fork and removes the grace entry when the session is removed', async () => {
     const fixture = sessionCreationFixture();
-    const { cache, catalog, client, identity } = fixture;
-    await expect(fixture.forkSession('source', 'point')).resolves.toEqual({ id: 'fork', title: '' });
-    expect(sessionService.forkSession).toHaveBeenCalledExactlyOnceWith(client, 'source', 'point');
-    expect(catalog.readSessions()).toEqual([{ id: 'fork', title: '' }]);
+    const { cache, catalog, client, identity, api } = fixture;
+    await expect(fixture.forkSession('source', 'point')).resolves.toEqual(sessionData('fork'));
+    expect(api.session.fork).toHaveBeenCalledExactlyOnceWith({ sessionID: 'source', before: 'point' });
+    expect(catalog.readSessions()).toEqual([sessionData('fork')]);
     expect(recentlyCreatedSessionIds(cache, identity, client, new Set(), 1001)).toEqual(new Set(['fork']));
     forgetSessionCreation(cache, identity, client, 'fork');
     expect(recentlyCreatedSessionIds(cache, identity, client, new Set(), 1002)).toEqual(new Set());
@@ -287,7 +280,7 @@ describe('local-first session selection', () => {
   it('renameSession echoes the title and rolls back on failure', async () => {
     const fixture = sessionEditFixture();
     const rename = deferredGate<void>();
-    sessionService.updateSessionTitle.mockReturnValueOnce(rename.promise);
+    fixture.api.session.update.mockReturnValueOnce(rename.promise);
     fixture.catalog.setSessions([{ id: 's', title: 'Old' }] as ReturnType<typeof fixture.catalog.readSessions>);
 
     const renaming = fixture.renameSession('s', 'New');
@@ -301,25 +294,25 @@ describe('local-first session selection', () => {
   it('revertSession stops and settles a running session before staging', async () => {
     const fixture = sessionEditFixture();
     const order: string[] = [];
-    sessionService.interruptSession.mockImplementation(async () => { order.push('interrupt'); });
-    sessionService.waitForSessionIdle.mockImplementation(async () => { order.push('wait'); });
-    sessionService.revertSession.mockImplementation(async () => { order.push('revert'); });
+    fixture.api.session.interrupt.mockImplementation(async () => { order.push('interrupt'); });
+    fixture.api.session.wait.mockImplementation(async () => { order.push('wait'); });
+    fixture.api.session.revert.stage.mockImplementation(async () => { order.push('revert'); });
 
     await fixture.revertSession('s', 'm1');
 
     expect(order).toEqual(['interrupt', 'wait', 'revert']);
-    expect(sessionService.revertSession).toHaveBeenCalledWith(fixture.client, 's', 'm1');
+    expect(fixture.api.session.revert.stage).toHaveBeenCalledWith({ sessionID: 's', messageID: 'm1' });
     fixture.cache.clear();
   });
 
   it('revertSession does not stage when the session cannot be stopped', async () => {
     const fixture = sessionEditFixture();
-    sessionService.interruptSession.mockRejectedValueOnce(new Error('stop failed'));
+    fixture.api.session.interrupt.mockRejectedValueOnce(new Error('stop failed'));
 
     await expect(fixture.revertSession('s', 'm1')).rejects.toThrow('stop failed');
 
-    expect(sessionService.waitForSessionIdle).not.toHaveBeenCalled();
-    expect(sessionService.revertSession).not.toHaveBeenCalled();
+    expect(fixture.api.session.wait).not.toHaveBeenCalled();
+    expect(fixture.api.session.revert.stage).not.toHaveBeenCalled();
     fixture.cache.clear();
   });
 
@@ -327,7 +320,7 @@ describe('local-first session selection', () => {
     const fixture = sessionEditFixture();
     await fixture.unrevertSession('s');
 
-    expect(sessionService.unrevertSession).toHaveBeenCalledExactlyOnceWith(fixture.client, 's');
+    expect(fixture.api.session.revert.clear).toHaveBeenCalledExactlyOnceWith({ sessionID: 's' });
     expect(fixture.refreshMessages).toHaveBeenCalledExactlyOnceWith('s', true, { mode: 'replace' });
     fixture.cache.clear();
   });
@@ -335,59 +328,16 @@ describe('local-first session selection', () => {
 
 describe('non-blocking prompt reconciliation', () => {
   it('returns after admission without a transcript read', async () => {
-    const runtime = hookRuntime();
-    const appearance = await loadTs('shared/ui/theme/appearance.ts');
-    const autoModelPreferences = await loadTs('shared/preferences/auto-model.ts');
-    const preferences = await loadTs(['shared/preferences/opencode-preferences.ts', 'features/chat/model/system-prompt.ts'], {
-    '@/shared/ui/theme/appearance': appearance,
-    '@/shared/preferences/auto-model': autoModelPreferences,
-    "@/shared/platform/voice/wake-phrase": { DEFAULT_WAKE_PHRASE: 'hey code' },
-    "@/shared/platform/voice/local-wake-word/types": { DEFAULT_LOCAL_WAKE_PHRASE: 'hey-code', DEFAULT_LOCAL_COMMAND_MODEL: 'moonshine-tiny-en' }
-  });
-    const models = await loadTs('features/ai/model/opencode-model-selection.ts', {
-    "@/shared/preferences/opencode-preferences": preferences
-  });
-    const notifications = {
-      clearPendingTaskFinishedNotification: vi.fn(async () => true),
-      listPendingTaskFinishedNotifications: async () => [],
-      notifyTaskFinished: vi.fn(),
-      trackPendingTaskFinishedNotification: vi.fn(async () => undefined),
-    };
-    const { usePromptLifecycle, store } = await loadPromptLifecycle(runtime, {
-    '@/features/notifications/services/notifications': notifications,
-    "@/features/chat/model/system-prompt": preferences,
-    "@/features/ai/model/opencode-model-selection": models,
-    "@/shared/protocol/services/session-service": { interruptSession: async () => undefined, readSessionSettlement: async () => ({ state: 'finished' }) },
-    "@/features/notifications/model/notification-pending": { pendingNotificationKey: (scope: string, id: string) => `${scope}:${id}` },
-    "@/shared/contracts/connection-scope": { getConnectionScope: () => 'scope', getConnectionUiScope: () => 'scope' },
-    "@/shared/protocol/opencode/attachment": { prepareAttachment: async (att: unknown) => att },
-    "@/features/ai/services/prompt-routing": { routePrompt: async () => undefined }
-  });
-    const submitPrompt = vi.fn(async () => ({ id: 'u1', sessionId: 's', createdAt: 1, text: 'Hello', attachments: [], delivery: 'steer', state: 'waiting' }));
+    const submitPrompt = vi.fn<PromptCommandInput['submitPrompt']>(async () =>
+      ({ id: 'u1', sessionId: 's', createdAt: 1, text: 'Hello', attachments: [], delivery: 'steer', state: 'waiting' }));
     const refreshSessionDiff = vi.fn(async () => []);
     const refreshSessionTodos = vi.fn(async () => []);
     const scheduleSessionRefresh = vi.fn();
-    const input = {
-      scopeKey: 'prompt-scope',
-      client: { __opencode: { contract: 'v2' } },
-      isCurrentClient: () => true,
-      activeProjectPath: '/repo',
-      connectionScope: 'scope',
-      sessions: [{ id: 's', title: 'chat' }],
-      sessionStatuses: {},
-      availableAgents: [{ id: 'build', label: 'Build', mode: 'primary' }],
-      availableModels: [],
-      chatPreferences: { ...preferences.defaultChatPreferences, mode: 'summary' },
-      settingsRef: { current: { serverUrl: 'http://server', username: '' } },
-      refreshSessions: vi.fn(async () => [{ id: 's', title: 'chat' }]),
-      refreshSessionDiff,
-      refreshSessionTodos,
-      scheduleSessionRefresh,
-      summarizeSessionTitle: vi.fn(),
-      submitPrompt,
-    };
-    runtime.mount(usePromptLifecycle, input);
-    const markLocalSend = vi.spyOn(getLiveTranscriptBuffer(store.getState().transcriptLive, input.scopeKey).localSends, 'set');
+    const { runtime, store, scopeKey } = promptFixture({
+      chatPreferences: { ...defaultChatPreferences, mode: 'summary' },
+      refreshSessionDiff, refreshSessionTodos, scheduleSessionRefresh, submitPrompt,
+    }, 'prompt-scope');
+    const markLocalSend = vi.spyOn(getLiveTranscriptBuffer(store.getState().transcriptLive, scopeKey).localSends, 'set');
 
     let resolved = false;
     const sending = runtime.value.sendPrompt('s', 'Hello').then((value: boolean) => {
@@ -401,10 +351,10 @@ describe('non-blocking prompt reconciliation', () => {
     expect(submitPrompt).toHaveBeenCalledWith(expect.objectContaining({ agent: 'build' }), 'steer');
     expect(markLocalSend).toHaveBeenCalledWith('s', expect.any(Number));
     runtime.update({ availableAgents: [] });
-    await expect(runtime.value.sendPrompt('s', 'Keep this draft')).rejects.toThrow('chat:composer.noEligibleAgent');
+    await expect(runtime.value.sendPrompt('s', 'Keep this draft')).rejects.toThrow(i18n.t('chat:composer.noEligibleAgent'));
     expect(submitPrompt).toHaveBeenCalledOnce();
     await runtime.settle();
-    expect(runtime.value.promptError.message).toBe('chat:composer.noEligibleAgent');
+    expect(runtime.value.promptError?.message).toBe(i18n.t('chat:composer.noEligibleAgent'));
     expect(scheduleSessionRefresh).toHaveBeenCalledOnce();
     expect(markLocalSend).toHaveBeenCalledOnce();
     expect(refreshSessionDiff).not.toHaveBeenCalled();
@@ -415,9 +365,10 @@ describe('non-blocking prompt reconciliation', () => {
 
 describe('interaction refresh suppression', () => {
   it('does not re-add a request whose reply is in flight', async () => {
-    const { cache, client, identity } = sessionCreationFixture();
-    const request = { id: 'p1', sessionID: 's' };
-    listPendingInteractions.mockResolvedValue({ permissions: [request], questions: undefined });
+    const { cache, client, identity, api } = sessionCreationFixture();
+    const request = { id: 'p1', sessionID: 's', permission: 'edit', patterns: [], always: [], metadata: {} };
+    api.permission.request.list.mockResolvedValue({ data: [{ id: 'p1', sessionID: 's', action: 'edit', resources: [] }] });
+    api.form.list.mockRejectedValue(new Error('Forms unavailable'));
     let suppressed = true;
     const key = projectQueryKey(identity, client, 'pending-interactions');
     const cachedQuestions = { s: [{ id: 'q' }] };
@@ -436,23 +387,24 @@ describe('interaction refresh suppression', () => {
 
 describe('session status reconciliation', () => {
   it('refreshes busy statuses without a catalog read and falls back when status reads fail', async () => {
-    const { cache, catalog, client, identity } = sessionCreationFixture();
+    const { cache, catalog, client, identity, api } = sessionCreationFixture();
     const commands = sessionRefreshCommands({ cache, identity, client, isCurrent: () => true, clock: () => 1_001,
       isPermissionReplyPending: () => false });
     catalog.setSessionStatuses({ previous: { type: 'busy' } });
-    sessionService.listSessions.mockReset();
-    sessionService.getActiveSessionStatuses.mockReset().mockResolvedValueOnce({ running: {} });
+    api.session.list.mockReset();
+    api.session.active.mockReset().mockResolvedValueOnce({ running: {} });
     await commands.refreshSessionStatuses();
     expect(cache.getQueryData(catalog.catalogKey)).toEqual({ sessions: [], statuses: {
       previous: { type: 'idle' }, running: { type: 'busy' },
     } });
-    expect(sessionService.listSessions).not.toHaveBeenCalled();
+    expect(api.session.list).not.toHaveBeenCalled();
 
     const sessions = [{ id: 'recovered', title: '', time: { created: 1000, updated: 1000 } }];
-    sessionService.getActiveSessionStatuses.mockRejectedValueOnce(new Error('status unavailable'));
-    sessionService.listSessions.mockResolvedValueOnce({ sessions, statuses: { recovered: { type: 'idle' } } });
+    api.session.active.mockRejectedValueOnce(new Error('status unavailable'));
+    api.session.active.mockResolvedValueOnce({});
+    api.session.list.mockResolvedValueOnce({ data: sessions });
     await commands.refreshSessionStatuses();
-    expect(sessionService.listSessions).toHaveBeenCalledExactlyOnceWith(client);
+    expect(api.session.list).toHaveBeenCalledExactlyOnceWith({ directory: '/repo' });
     expect(catalog.readSessions()).toEqual(sessions);
     expect(cache.getQueryData(catalog.catalogKey)).toEqual({ sessions: [], statuses: { recovered: { type: 'idle' } } });
     cache.clear();
@@ -462,21 +414,18 @@ describe('session status reconciliation', () => {
 describe('optimistic interaction replies', () => {
   it('removes a permission immediately and restores it when the reply fails', async () => {
     const reply = deferredGate();
-    const client = {
-      listPendingInteractions: vi.fn(async () => undefined),
-      replyToPendingPermission: vi.fn(() => reply.promise),
-      replyToPendingQuestion: vi.fn(async () => undefined),
-      rejectPendingQuestion: vi.fn(async () => undefined),
-    };
-    const { createInteractionCommands } = await loadTs('features/sessions/services/interaction-commands.ts', {
-    '@/shared/protocol/opencode/client': client
-  });
     const request = { id: 'p1', sessionID: 's' };
+    const client = {
+      compatibility: {
+        permission: { reply: vi.fn(() => reply.promise), list: async () => ({ data: [request] }) },
+        question: { list: async () => ({ data: [] }) },
+      },
+    } as unknown as ScopedOpencodeClient;
     let permissions: Record<string, any[]> = { s: [request] };
     const suppressed = new Set<string>();
     const refreshMessages = vi.fn(async () => []);
     const input = {
-      client: {},
+      client,
       isCurrent: () => true,
       readPermissions: () => permissions,
       readQuestions: () => ({}),
@@ -507,21 +456,18 @@ describe('optimistic interaction replies', () => {
   });
 
   it('keeps the permission removed after a successful reply', async () => {
-    const client = {
-      listPendingInteractions: vi.fn(async () => undefined),
-      replyToPendingPermission: vi.fn(async () => undefined),
-      replyToPendingQuestion: vi.fn(async () => undefined),
-      rejectPendingQuestion: vi.fn(async () => undefined),
-    };
-    const { createInteractionCommands } = await loadTs('features/sessions/services/interaction-commands.ts', {
-    '@/shared/protocol/opencode/client': client
-  });
     const request = { id: 'p1', sessionID: 's' };
+    const client = {
+      compatibility: {
+        permission: { reply: vi.fn(() => Promise.resolve()), list: async () => ({ data: [request] }) },
+        question: { list: async () => ({ data: [] }) },
+      },
+    } as unknown as ScopedOpencodeClient;
     let permissions: Record<string, any[]> = { s: [request] };
     const suppressed = new Set<string>();
     const refreshMessages = vi.fn(async () => []);
     const input = {
-      client: {},
+      client,
       isCurrent: () => true,
       readPermissions: () => permissions,
       readQuestions: () => ({}),
@@ -548,33 +494,32 @@ describe('optimistic interaction replies', () => {
 
 describe('command agent eligibility', () => {
   it('repairs stale selections at execution and refuses an unverifiable agent', async () => {
-    const { createSessionExecutionActions, services } = await loadSessionExecution();
-    const input = sessionExecutionInput();
-    const selected = { ...input, chatPreferences: { ...input.chatPreferences, mode: 'summary' },
+    const { input, session } = sessionExecutionFixture();
+    const selected: typeof input = { ...input, chatPreferences: { ...input.chatPreferences, mode: 'summary' },
       availableAgents: [{ id: 'build', label: 'Build', mode: 'primary' }, { id: 'plan', label: 'Plan', mode: 'all' }], currentConfig: { default_agent: 'plan' } };
     const actions = createSessionExecutionActions(selected);
     await actions.executeCommand('s', 'review', '');
-    expect(services.executeCommand).toHaveBeenCalledWith(input.client, 's', 'review', '', expect.objectContaining({ agent: 'plan' }));
+    expect(session.switchAgent).toHaveBeenCalledWith({ sessionID: 's', agent: 'plan' });
+    expect(session.command).toHaveBeenCalledWith({ sessionID: 's', name: 'review', text: '' });
     const unavailable = createSessionExecutionActions({ ...selected, availableAgents: [{ id: 'general', label: 'General', mode: 'subagent' }] });
-    await expect(unavailable.executeCommand('s', 'review', '')).rejects.toThrow('chat:composer.noEligibleAgent');
-    expect(services.executeCommand).toHaveBeenCalledOnce();
+    await expect(unavailable.executeCommand('s', 'review', '')).rejects.toThrow(i18n.t('chat:composer.noEligibleAgent'));
+    expect(session.command).toHaveBeenCalledOnce();
   });
 
   it('routes built-in compact and btw before the server command', async () => {
-    const { createSessionExecutionActions, services } = await loadSessionExecution();
-    const input = sessionExecutionInput();
+    const { input, session } = sessionExecutionFixture();
     const actions = createSessionExecutionActions(input);
 
     await actions.executeCommand('s', 'compact', '');
-    expect(services.compactSession).toHaveBeenCalledWith(input.client, 's');
-    expect(services.executeCommand).not.toHaveBeenCalled();
+    expect(session.compact).toHaveBeenCalledWith({ sessionID: 's' });
+    expect(session.command).not.toHaveBeenCalled();
 
     await expect(actions.executeCommand('s', 'btw', 'why?')).resolves.toEqual({ question: 'why?', answer: 'answer' });
-    expect(services.generateSessionText).toHaveBeenCalledWith(input.client, 's', expect.stringContaining('why?'));
-    expect(services.executeCommand).not.toHaveBeenCalled();
+    expect(session.generate).toHaveBeenCalledWith({ sessionID: 's', prompt: expect.stringContaining('why?') });
+    expect(session.command).not.toHaveBeenCalled();
 
-    await expect(actions.executeCommand('s', 'btw', '')).rejects.toThrow('chat:composer.sideQuestionEmpty');
-    await expect(actions.executeCommand('s', 'btw', 'why?', { attachments: [{ uri: 'file:///a' }] })).rejects.toThrow('chat:composer.builtinAttachmentsUnsupported');
+    await expect(actions.executeCommand('s', 'btw', '')).rejects.toThrow(i18n.t('chat:composer.sideQuestionEmpty'));
+    await expect(actions.executeCommand('s', 'btw', 'why?', { attachments: [{ uri: 'file:///a' }] })).rejects.toThrow(i18n.t('chat:composer.builtinAttachmentsUnsupported'));
 
   });
 });

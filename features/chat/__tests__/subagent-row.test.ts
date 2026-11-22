@@ -9,7 +9,7 @@ import type { SubagentDetail } from '@/shared/presentation/transcript';
 import { Icon } from '@/shared/ui/icon';
 import { Spinner } from '@/shared/ui/spinner';
 import { Colors } from '@/shared/ui/theme/theme';
-import { textContent } from '../../../tests/helpers/ui.mjs';
+import { textContent } from '../../../tests/helpers/text-content';
 
 import { renderHook } from '../../../tests/helpers/render-hook';
 

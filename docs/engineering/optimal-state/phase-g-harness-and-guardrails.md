@@ -1,6 +1,7 @@
 # Phase G — Harness and Guardrails
 
-Status: **not started**.
+Status: **in progress**. The composition harness and source checks are in place.
+The deliberate regression check, final browser/native gates and review are open.
 
 Goal: prove the final architecture at the seam, encode its runtime invariants,
 and close the documentation. This is the last phase; do not start it with any

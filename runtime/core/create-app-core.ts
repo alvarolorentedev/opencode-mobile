@@ -20,6 +20,7 @@ import { createConnectionSettingsPersistence } from '@/runtime/persistence/conne
 import { createDevicePreferences } from '@/runtime/persistence/device-preferences';
 
 export type AppCore = CommandContext & {
+  dispose: () => void;
   events: ReturnType<typeof createCoreEvents>;
   autoApproval: ReturnType<typeof createAutoApproval>;
   terminal: ReturnType<typeof createTerminalRuntime>;
@@ -70,7 +71,12 @@ export function createAppCore(defaults: AppStoreDefaults): AppCore {
     if (access?.isCurrent()) await invalidateProjectFileReads(queryClient, access.identity, access.client);
   });
   const projects = createProjectRuntimes({ ...context, events, terminal, session, prompt });
-  return { ...context, events, autoApproval: createAutoApproval(context, session.interactions), terminal,
+  function dispose() {
+    workspace.dispose();
+    context.connections.dispose();
+    queryClient.clear();
+  }
+  return { ...context, dispose, events, autoApproval: createAutoApproval(context, session.interactions), terminal,
     clipboard, voice, projects, persistence, transcripts: (identity, client) => cachedTranscriptView(queryClient, identity, client), commands: {
     workspace, session, prompt,
     connection: createConnectionCommands(context, workspace),

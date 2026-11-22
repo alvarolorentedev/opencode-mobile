@@ -6,6 +6,9 @@ const device = vi.hoisted(() => ({
   config: {} as any, os: 'ios',
   secrets: new Map<string, string>(),
   preferences: new Map<string, string>(),
+  beforePreferenceRead: undefined as ((key: string) => Promise<void>) | undefined,
+  beforePreferenceWrite: undefined as ((key: string, value: string) => Promise<void>) | undefined,
+  afterPreferenceWrite: undefined as ((key: string, value: string) => Promise<void>) | undefined,
   failSecureWrite: false,
   subscriptionEvents: undefined as string[] | undefined,
   onSaveProfile: undefined as (() => void) | undefined,
@@ -16,14 +19,20 @@ const device = vi.hoisted(() => ({
 }));
 
 vi.mock('expo-constants', () => ({ default: { get expoConfig() { return device.config; } } }));
-vi.mock('react-native', () => ({
-  Platform: { get OS() { return device.os; } },
+vi.mock('react-native', async () => ({
+  ...(await import('./native-view-platform')).nativeViewPlatform({ get platform() { return device.os; } }),
   AppState: { get currentState() { return device.state; }, addEventListener: (_event: string, listener: (state: string) => void) => {
     return { remove: device.appState?.(listener) ?? (() => {}) };
   } },
 }));
 vi.mock('expo/fetch', () => ({ fetch: (...args: Parameters<typeof fetch>) => globalThis.fetch(...args) }));
-vi.mock('expo-crypto', async () => ({ randomUUID: (await import('node:crypto')).randomUUID }));
+vi.mock('expo-crypto', async () => ({
+  randomUUID: (await import('node:crypto')).randomUUID,
+  AESEncryptionKey: { generate: async () => ({ encoded: async () => 'fixture-key' }), import: async () => ({}) },
+  AESSealedData: { fromCombined: (value: string) => ({ value }) },
+  aesEncryptAsync: async (bytes: Uint8Array) => ({ combined: async () => Buffer.from(bytes).toString('base64') }),
+  aesDecryptAsync: async ({ value }: { value: string }) => Uint8Array.from(Buffer.from(value, 'base64')),
+}));
 vi.mock('expo-localization', () => ({ getLocales: () => [{ languageTag: 'en-US' }] }));
 vi.mock('expo-application', () => ({
   ApplicationReleaseType: { APP_STORE: 'app-store' },
@@ -48,10 +57,12 @@ vi.mock('expo-secure-store', () => ({
   deleteItemAsync: async (key: string) => { device.onSecretWrite?.(); device.secrets.delete(key); },
 }));
 vi.mock('@react-native-async-storage/async-storage', () => ({ default: {
-  getItem: async (key: string) => device.preferences.get(key) ?? null,
+  getItem: async (key: string) => { await device.beforePreferenceRead?.(key); return device.preferences.get(key) ?? null; },
   setItem: async (key: string, value: string) => {
+    await device.beforePreferenceWrite?.(key, value);
     device.preferences.set(key, value);
     if (key === CONNECTION_PROFILES_STORAGE_KEY) device.onSaveProfile?.();
+    await device.afterPreferenceWrite?.(key, value);
   },
   removeItem: async (key: string) => { device.preferences.delete(key); },
 } }));

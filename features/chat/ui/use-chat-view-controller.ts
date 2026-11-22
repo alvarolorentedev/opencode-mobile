@@ -1,5 +1,5 @@
 import * as Clipboard from '@/shared/platform/clipboard';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Keyboard } from 'react-native';
 
@@ -8,10 +8,9 @@ import { mergeSharedDraft } from '@/features/sharing/index';
 import { workspaceKey } from '@/shared/contracts/workspace';
 import { getConnectionScope, getConnectionUiScope } from '@/shared/contracts/connection-scope';
 import { copyHaptic } from '@/shared/platform/haptics';
-import { parseShellCommand, parseSlashCommand, replaceComposerTrigger } from '@/features/chat/model/composer';
+import { replaceComposerTrigger } from '@/features/chat/model/composer';
 import type { TranscriptEntry } from '@/shared/presentation/format';
 import type { ModelOption } from '@/shared/contracts/model-options';
-import type { SideQuestionAnswer } from '@/shared/contracts/session-commands';
 import type { Command } from '@/shared/protocol/opencode/types';
 import type { PromptContextItem } from '@/shared/protocol/opencode/prompt-inbox';
 import { buildTranscriptRows, getTurnPatchDetails, isTranscriptDisplayMessage } from '@/shared/presentation/transcript';
@@ -22,6 +21,7 @@ import { useChatComposerNotices } from '@/features/chat/ui/use-chat-composer-not
 import { useChatDraft } from '@/features/chat/ui/use-chat-draft';
 import { useChatViewActions } from '@/features/chat/ui/use-chat-view-actions';
 import { useChatViewVoice } from '@/features/chat/ui/use-chat-view-voice';
+import { useComposerSubmission } from '@/features/chat/ui/use-composer-submission';
 import { useComposerSuggestions } from '@/features/chat/ui/use-composer-suggestions';
 import { useApprovals, useAutoApprove, useCurrentSession, useSessionLibrary } from '@/features/sessions/context';
 import { useCapabilities } from '@/features/ai/context';
@@ -78,21 +78,22 @@ export function useChatViewController() {
     transcript: currentTranscript,
     unrevertSession,
   });
-  const submittingRef = useRef(false);
   const [changesVisible, setChangesVisible] = useState(false);
   const [progressVisible, setProgressVisible] = useState(false);
   const [sessionMenuVisible, setSessionMenuVisible] = useState(false);
   const [isUpdatingAutoApprove, setIsUpdatingAutoApprove] = useState(false);
   const [isStoppingSession, setIsStoppingSession] = useState(false);
-  const [isSubmittingPrompt, setIsSubmittingPrompt] = useState(false);
   const [expandedDiffId, setExpandedDiffId] = useState<string | undefined>();
   const [copiedMessageId, setCopiedMessageId] = useState<string | undefined>();
   const [sendFeedback, setSendFeedback] = useState<string | undefined>(undefined);
-  const [sideQuestion, setSideQuestion] = useState<SideQuestionAnswer | undefined>(undefined);
   const [selection, setSelection] = useState({ start: 0, end: 0 });
   const [focusRequest, setFocusRequest] = useState(0);
-  const lastSentAttachmentsRef = useRef<{ uri: string; mime?: string; filename?: string }[]>([]);
   const isV2 = serverCapabilities.contract === 'v2';
+  const { handleSendPrompt, isSubmittingPrompt, lastSentAttachmentsRef, sideQuestion, closeSideQuestion } = useComposerSubmission({
+    capture, clearRevertPrefill, commands, connectionStatus: connection.status, currentSessionId,
+    ensureActiveSession, executeCommand, executeShell, hasActiveProject: Boolean(activeProject), isV2,
+    sendPrompt, setSendFeedback, shellCommandAvailable: serverCapabilities.shellCommand, t,
+  });
   const shellMode = isV2 && serverCapabilities.shellCommand && draft.startsWith('!');
   const builtinCommands = useMemo<Command[]>(
     () => isV2
@@ -226,7 +227,7 @@ export function useChatViewController() {
       t('chat:view.sendError.model', { model: selectedModelId || t('chat:view.sendError.unknown') }),
       t('chat:view.sendError.attachments', { attachments: lastSentAttachmentsRef.current.map((attachment) => attachment.filename || attachment.mime || t('chat:view.sendError.unnamed')).join(', ') || t('chat:view.sendError.none') }),
     ].join('\n');
-  }, [currentSessionId, promptError?.occurredAt, selectedModelId, sendErrorMessage, settings.serverUrl, t]);
+  }, [currentSessionId, lastSentAttachmentsRef, promptError?.occurredAt, selectedModelId, sendErrorMessage, settings.serverUrl, t]);
 
   const applySharedDraft = useCallback((payload: Parameters<typeof mergeSharedDraft>[2]) => {
     const next = mergeSharedDraft(inputRef.current.draft, inputRef.current.attachments, payload);
@@ -284,63 +285,6 @@ export function useChatViewController() {
   useUpdateBlocker(Boolean(draft || attachments.length || context.length || isSpeechInputListening || speakingMessageId ||
     copiedMessageId || sendFeedback || voiceFeedback || isStoppingSession || isUpdatingAutoApprove));
 
-  const handleSendPrompt = useCallback(async (promptOverride?: string) => {
-    if (submittingRef.current) return;
-    const snapshot = capture(promptOverride);
-    const nextDraft = promptOverride ?? snapshot.draft;
-    const nextAttachments = snapshot.attachments;
-    const prompt = nextDraft.trim();
-    if (!activeProject || (!prompt && nextAttachments.length === 0) || connection.status !== 'connected') {
-      return;
-    }
-    const shellCommand = isV2 && serverCapabilities.shellCommand && nextAttachments.length === 0 && prompt.startsWith('!')
-      ? parseShellCommand(prompt)
-      : undefined;
-    if (isV2 && serverCapabilities.shellCommand && nextAttachments.length === 0 && prompt.startsWith('!') && !shellCommand) {
-      setSendFeedback(t('chat:composer.shellEmpty'));
-      return;
-    }
-
-    submittingRef.current = true;
-    setIsSubmittingPrompt(true);
-    let sessionId = currentSessionId;
-    try {
-      setSendFeedback(undefined);
-      lastSentAttachmentsRef.current = nextAttachments;
-      sessionId = currentSessionId || (await ensureActiveSession());
-      if (!sessionId) {
-        return;
-      }
-
-      if (!snapshot.belongsHere(sessionId)) return;
-      snapshot.clear(sessionId);
-
-      if (shellCommand) {
-        await executeShell(sessionId, shellCommand);
-        return;
-      }
-
-      const command = parseSlashCommand(isV2 ? nextDraft : prompt);
-      if (command && (isV2 || (nextAttachments.length === 0 && commands.some((item) => item.name === command.name)))) {
-        const result = await executeCommand(sessionId, command.name, isV2 ? command.args : command.args.trimStart(), { attachments: nextAttachments, context: snapshot.context });
-        if (result && snapshot.belongsHere(sessionId)) setSideQuestion(result);
-        return;
-      }
-
-      const sent = await sendPrompt(sessionId, prompt, nextAttachments, snapshot.context);
-      if (sent) {
-        clearRevertPrefill(sessionId);
-      } else {
-        if (snapshot.restore(sessionId)) setSendFeedback(t('chat:view.couldNotSendRetry'));
-      }
-    } catch (error) {
-      if (snapshot.restore(sessionId)) setSendFeedback(error instanceof Error ? error.message : t('chat:view.couldNotSend'));
-    } finally {
-      submittingRef.current = false;
-      setIsSubmittingPrompt(false);
-    }
-  }, [activeProject, capture, clearRevertPrefill, commands, connection.status, currentSessionId, ensureActiveSession, executeCommand, executeShell, isV2, sendPrompt, serverCapabilities.shellCommand, t]);
-
   const handleDraftChange = useCallback((value: string) => {
     setSendFeedback(undefined);
     setDraft(value);
@@ -377,8 +321,8 @@ export function useChatViewController() {
     Keyboard.dismiss();
     // eslint-disable-next-line react-hooks/set-state-in-effect -- session changes dismiss local review UI.
     setChangesVisible(false);
-    setSideQuestion(undefined);
-  }, [currentSessionId]);
+    closeSideQuestion();
+  }, [closeSideQuestion, currentSessionId]);
 
   useEffect(() => {
     if (pendingInteractions > 0) {
@@ -451,7 +395,7 @@ export function useChatViewController() {
     },
     actions: {
       buildSendErrorDetails, clearConversationFeedback, clearPromptError, dismissFailedInput,
-      closeSideQuestion: () => setSideQuestion(undefined),
+      closeSideQuestion,
       forkSession, handleAbort, handleAttach, handleCancelPendingPrompt, handleCancelRevert,
       confirmation, handleConfirmStopConversation, handleCopyMessage,
       handleDraftChange, handleRevertMessage, handleSelectionChange: setSelection, handleSendPrompt,

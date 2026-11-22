@@ -15,7 +15,7 @@ import { SettingSwitchRow } from '@/shared/ui/settings/setting-rows';
 import { FieldDescription } from '@/shared/ui/text-field';
 import { useSpeechVoices } from '@/features/voice/ui/use-speech-voices';
 import { deferred, settleReact } from '../../../tests/helpers/controlled-clock';
-import { textContent } from '../../../tests/helpers/ui.mjs';
+import { textContent } from '../../../tests/helpers/text-content';
 import { ToggleGroup } from '@/shared/ui/toggle-group';
 import { renderHook } from '../../../tests/helpers/render-hook';
 

@@ -5,7 +5,7 @@ const DELAYS_MS = [1000, 2000, 5000, 10_000, 20_000] as const;
 type Timer = ReturnType<typeof setTimeout>;
 type Retry = { retryAt?: number; attempt: number; maxAttempts: number };
 
-export const NO_RETRY: Retry = { attempt: 0, maxAttempts: DELAYS_MS.length };
+const NO_RETRY: Retry = { attempt: 0, maxAttempts: DELAYS_MS.length };
 
 export function createConnectionRetry(connect: () => Promise<unknown>, clock: {
   now: () => number;

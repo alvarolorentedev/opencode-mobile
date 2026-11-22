@@ -7,7 +7,7 @@ import { MissionActivityChart } from '@/features/sessions/ui/mission-activity-ch
 import { Skeleton } from '@/shared/ui/skeleton';
 import { Text } from '@/shared/ui/text';
 import { renderHook } from '../../../tests/helpers/render-hook';
-import { textContent } from '../../../tests/helpers/ui.mjs';
+import { textContent } from '../../../tests/helpers/text-content';
 
 vi.mock('react-native', () => ({
   Platform: { OS: 'web', select: ({ web }: { web?: unknown }) => web },

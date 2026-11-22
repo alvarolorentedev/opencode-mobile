@@ -28,8 +28,8 @@ phase you are executing. Do not preload every phase unless you are planning.
 | C | [Command core](phase-c-commands.md) | Complete | Cross-domain commands run in the app core and the legacy composition is deleted |
 | D | [Transcript](phase-d-transcript.md) | Complete | Per-session infinite messages, bounded Query persistence and store live overlay |
 | E | [Flatten React](phase-e-flatten-react.md) | Complete | No scope/provider tree or shared-UI runtime exception |
-| F | [Persistence and tests](phase-f-persistence-and-tests.md) | In progress | Query and Zustand persistence complete; legacy tests and tooling remain |
-| G | [Harness and guardrails](phase-g-harness-and-guardrails.md) | Not started | Full composition harness, fact rules, docs, release validation |
+| F | [Persistence and tests](phase-f-persistence-and-tests.md) | In progress | Persistence and loader removal implemented; Knip and checkpoint open |
+| G | [Harness and guardrails](phase-g-harness-and-guardrails.md) | In progress | Composition harness and ownership checks implemented; final validation open |
 
 ## Current baseline
 
@@ -435,9 +435,45 @@ npm run validate:commit
   observers. Project file actions use the production shell adapter, clipboard
   store and native clipboard boundary. Plugin GUI remains disabled in web.
 
-- F13. Activity notifications and widget lifecycle use real React effects,
+- F13, `2a16b62e`. Activity notifications and widget lifecycle use real React effects,
   real persisted records, and controlled SDK responses. The Android compiler
   and headless render cases continue to run in development and release modes.
+
+- F14. Composer admission and draft races run through real React and the
+  retained presentation state. Optimistic session actions and prompt commands
+  use the production store, Query and protocol boundary.
+
+- F15. The workspace and provider-runtime suites now use real React, Query, the
+  store and SDK requests. The optional plugin integration uses the same Vitest
+  runner and passed against OpenCode 2.3.0. The legacy loader, fake React runtime
+  and test-only prompt hook are deleted. Knip has a platform-aware configuration
+  and some unused public entries have been removed.
+
+- G1. The composition harness starts two fake V2 servers, exercises approvals
+  and transcripts through the real core, and verifies connection disposal. The
+  ownership manifest and AST checks run in the unit gate.
+
+## Validation handoff
+
+The final implementation batch is in the working tree on `codex/optimal-state`.
+Run the following before committing. The first Knip pass still reports unused
+exports and exported types, which need review. Compare executed test identities
+with the Phase F baseline before marking the migration complete.
+
+```bash
+npm run test:knip
+npm run validate:commit
+npm run test:docs
+npm run test:fake-server:self
+npm run build:storybook
+EXPO_PUBLIC_E2E_MODE=1 EXPO_APP_VARIANT=development npm run build:web:ci
+E2E_WORKERS=4 E2E_SKIP_BUILD=1 npm run test:e2e:web:isolated
+```
+
+For harness sensitivity, temporarily bypass the permission update in the
+production event handler and check that the integration case fails. Restore the
+working-tree edit before the commit gate. Recheck the current native candidate
+using the existing simulator and emulator acceptance steps.
 
 ## Loop protocol
 
@@ -474,7 +510,7 @@ first, then use `E2E_SKIP_BUILD=1`.
 
 ## Definition of done
 
-- [ ] `createAppCore` owns store, Query client, connection registry, commands,
+- [x] `createAppCore` owns store, Query client, connection registry, commands,
       event handler and dispose.
 - [x] Connection transport/probe/renewal/SSE/polling are plain TS; no React
       component mounts a transport.
@@ -482,12 +518,12 @@ first, then use `E2E_SKIP_BUILD=1`.
       `opencode-provider-values*.ts`, `eventActionsRef` and `WorkspaceRuntime`
       are deleted.
 - [x] Messages use per-session infinite queries; the live overlay is in Zustand.
-- [ ] No `WorkspaceScope`, `WorkspaceValues`, `valuesFor` or shared-UI runtime
+- [x] No `WorkspaceScope`, `WorkspaceValues`, `valuesFor` or shared-UI runtime
       exception remains.
-- [ ] Query and Zustand persistence own retention; no duplicate caches or
+- [x] Query and Zustand persistence own retention; no duplicate caches or
       writers.
 - [ ] No `loadTs`/`hookRuntime`; `fast-check` and `knip` are in use.
-- [ ] Full fake-server composition harness and fact/command guardrails exist.
+- [x] Full fake-server composition harness and fact/command guardrails exist.
 - [ ] `npm run validate:commit`, full 185-flow E2E, Storybook and native smoke
       pass on the final commit.
 

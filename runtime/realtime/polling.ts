@@ -1,4 +1,4 @@
-export const MAX_POLL_DELAY_MS = 30_000;
+const MAX_POLL_DELAY_MS = 30_000;
 
 export function shouldPoll(streamConnected: boolean, busy: boolean) {
   return !streamConnected || busy;

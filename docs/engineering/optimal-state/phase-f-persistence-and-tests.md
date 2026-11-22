@@ -2,8 +2,8 @@
 
 Status: **in progress**. Query persistence, the session-cache removal, and
 Zustand device preference persistence are complete. The first native-import
-batch and four fast-check properties landed. The remaining legacy tests and
-Knip cleanup are open.
+batch and four fast-check properties landed. All legacy suites use native imports and the real React renderer where needed.
+Knip cleanup and the full checkpoint are open.
 
 Goal: one retention policy and one test infrastructure. No custom module loader,
 no duplicate storage writer, no hand-written edge matrices where a property test
@@ -35,7 +35,7 @@ Start only after Phase E is complete and green.
 
 ### `loadTs` and `hookRuntime` removal
 
-The baseline had 87 legacy suites using `tests/helpers/runtime.mjs`. Migrate
+The baseline had 87 legacy suites using a custom module loader. Migrate
 them in feature batches:
 1. Add the renderer and platform mocks the suite needs.
 2. Replace `loadTs` with native imports.

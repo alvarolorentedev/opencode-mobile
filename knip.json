@@ -1,0 +1,59 @@
+{
+  "$schema": "https://unpkg.com/knip@6/schema.json",
+  "entry": [
+    "app/**/*.{ts,tsx}",
+    ".storybook/stubs/**/*.{js,tsx}",
+    "{features,shared}/**/*.{native,web,ios,android}.{ts,tsx}",
+    "shared/platform/foss/**/*.{ts,tsx}",
+    "tests/integration/*.test.{ts,tsx}",
+    "tests/integration/fixtures/command-plugin.mjs"
+  ],
+  "ignoreDependencies": [
+    "@expo/config-plugins",
+    "@opencode/plugin",
+    "@react-native-reusables/cli",
+    "expo-mcp",
+    "expo-updates",
+    "@react-native/babel-preset"
+  ],
+  "ignoreBinaries": [
+    "keytool"
+  ],
+  "ignoreIssues": {
+    ".storybook/**": [
+      "exports",
+      "types",
+      "duplicates"
+    ],
+    "config/**": [
+      "exports",
+      "types",
+      "duplicates"
+    ],
+    "tests/**": [
+      "exports",
+      "types",
+      "duplicates"
+    ],
+    "features/!(chat)/**": [
+      "exports",
+      "types",
+      "duplicates"
+    ],
+    "features/chat/!(services)/**": [
+      "exports",
+      "types",
+      "duplicates"
+    ],
+    "shared/!(server-data)/**": [
+      "exports",
+      "types",
+      "duplicates"
+    ],
+    "shared/i18n/resources.ts": [
+      "exports",
+      "types",
+      "duplicates"
+    ]
+  }
+}

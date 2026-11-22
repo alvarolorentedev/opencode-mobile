@@ -16,8 +16,8 @@ import type { createTranscriptMetadata } from './transcript-metadata';
 // Older history is fetched in full batches of the same size, one per explicit
 // scroll-to-top, so reaching the first message never triggers a page loop.
 // The native message endpoint rejects pages larger than 200.
-export const INITIAL_TRANSCRIPT_LIMIT = MAX_MESSAGE_PAGE_LIMIT;
-export const OLDER_TRANSCRIPT_LIMIT = MAX_MESSAGE_PAGE_LIMIT;
+const INITIAL_TRANSCRIPT_LIMIT = MAX_MESSAGE_PAGE_LIMIT;
+const OLDER_TRANSCRIPT_LIMIT = MAX_MESSAGE_PAGE_LIMIT;
 
 type TranscriptFlags = Record<string, boolean>;
 const EMPTY_FLAGS: TranscriptFlags = {};

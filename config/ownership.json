@@ -1,0 +1,70 @@
+{
+  "facts": {
+    "prompt outbox and sending state": {
+      "address": "store.prompt",
+      "storeSetter": "setPrompt",
+      "writers": ["runtime/core/commands/prompt.ts", "runtime/core/events.ts"],
+      "selector": "features/chat/state/use-scoped-chat.ts",
+      "test": "runtime/__tests__/audit-races.test.ts"
+    },
+    "file clipboard": {
+      "address": "store.fileClipboard",
+      "storeSetter": "setFileClipboard",
+      "writers": ["features/projects/services/file-clipboard.ts"],
+      "selector": "features/projects/state/use-file-clipboard.ts",
+      "test": "features/projects/__tests__/project-entry-actions.test.ts"
+    },
+    "pending interactions": {
+      "address": "Query.pending-interactions",
+      "keyFactory": "pendingInteractionsKey",
+      "valueType": "PendingInteractionsData",
+      "writers": ["features/sessions/services/approvals.ts"],
+      "selector": "features/sessions/state/use-server-pending-interactions.ts",
+      "test": "runtime/__tests__/optimistic-flows.test.ts"
+    },
+    "terminal renderer state": {
+      "address": "store.terminal",
+      "storeSetter": "setTerminalState",
+      "writers": ["features/terminal/services/project-terminal.ts"],
+      "selector": "features/terminal/context.ts",
+      "test": "runtime/__tests__/provider-runtime.test.ts"
+    }
+  },
+  "recordTypes": [
+    "Session", "SessionStatus", "SessionMessageRecord", "Project", "Todo",
+    "PendingPermissionRequest", "PendingQuestionRequest", "Model", "Provider"
+  ],
+  "crossDomainCommands": {
+    "runtime/core/commands/workspace.ts": {
+      "factory": "createWorkspaceCommands",
+      "internal": ["resume", "dispose", "cancelNavigation", "pauseConversation", "isPersistenceAllowed", "setPersistenceAllowed", "isEnabled", "change", "select", "resolveKey", "ensure", "retry", "connectedWorkspace"],
+      "evidence": {
+        "activate": "core-harness.test.tsx",
+        "navigate": "workspaces.test.ts",
+        "openExternalSession": "workspaces.test.ts",
+        "createSession": "app-core.test.ts",
+        "createChat": "core-harness.test.tsx",
+        "createChatInWorktree": "app-core.test.ts",
+        "selectTerminalTarget": "app-core.test.ts",
+        "inspect": "app-core.test.ts"
+      }
+    },
+    "runtime/core/commands/connection.ts": {
+      "factory": "createConnectionCommands",
+      "internal": ["hydrate", "persist", "observeFocus", "updateSettings", "updatePreferences", "patchPreferences"],
+      "evidence": {
+        "connect": "core-harness.test.tsx",
+        "switchConnection": "app-core.test.ts",
+        "connectSavedProfile": "workspaces.test.ts",
+        "disconnect": "workspaces.test.ts",
+        "retry": "app-core.test.ts",
+        "removeConnection": "app-core.test.ts",
+        "setAutoApprove": "workspaces.test.ts",
+        "hideProject": "app-core.test.ts",
+        "restoreProject": "app-core.test.ts",
+        "openSession": "app-core.test.ts",
+        "openSessionInProject": "workspaces.test.ts"
+      }
+    }
+  }
+}
