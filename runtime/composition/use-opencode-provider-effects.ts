@@ -120,6 +120,7 @@ export function useOpencodeProviderEffects({
 
   useEffect(() => {
     pruneProviderTranscripts({
+      visible: active,
       isBootstrappingChat,
       pendingDeepLinkTargetRef,
       currentSessionId,
@@ -131,5 +132,5 @@ export function useOpencodeProviderEffects({
       setTodosBySession,
       pruneTranscript,
     });
-  }, [currentSessionId, conversationSessionId, isBootstrappingChat, pendingDeepLinkTargetRef, pruneTranscript, sessionStatuses, setDiffsBySession, setMessagesBySession, setTodosBySession]);
+  }, [active, currentSessionId, conversationSessionId, isBootstrappingChat, pendingDeepLinkTargetRef, pruneTranscript, sessionStatuses, setDiffsBySession, setMessagesBySession, setTodosBySession]);
 }

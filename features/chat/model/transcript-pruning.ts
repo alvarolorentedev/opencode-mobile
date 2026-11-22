@@ -5,6 +5,7 @@ import type { FileDiff, SessionStatus, Todo } from '@/shared/protocol/opencode/t
 import { pruneByKeepIds } from '@/shared/utilities/prune';
 
 export type PruneProviderTranscriptsInput = {
+  visible: boolean;
   isBootstrappingChat: boolean;
   pendingDeepLinkTargetRef: { current?: { sessionId: string } };
   currentSessionId?: string;
@@ -20,6 +21,7 @@ export type PruneProviderTranscriptsInput = {
 // Pure enough to test without extracting source text: the effect only decides
 // when to call this, while the keep-set and pruning rules stay here.
 export function pruneProviderTranscripts({
+  visible,
   isBootstrappingChat,
   pendingDeepLinkTargetRef,
   currentSessionId,
@@ -31,7 +33,9 @@ export function pruneProviderTranscripts({
   setTodosBySession,
   pruneTranscript,
 }: PruneProviderTranscriptsInput) {
-  if (isBootstrappingChat) return;
+  // Message maps are connection-scoped and shared by every mounted project.
+  // A hidden workspace's keep-set is incomplete, so only the visible one may prune.
+  if (!visible || isBootstrappingChat) return;
   const keepIds = new Set<string>();
   const openingSessionId = pendingDeepLinkTargetRef.current?.sessionId;
   if (openingSessionId) keepIds.add(openingSessionId);

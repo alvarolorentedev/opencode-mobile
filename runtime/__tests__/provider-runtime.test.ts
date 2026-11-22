@@ -1115,6 +1115,7 @@ let cachedMessages: any = { old: ['old transcript'], target: ['new transcript'] 
 let cachedDiffs: any = { old: ['old diff'], target: ['new diff'] };
 let cachedTodos: any = { old: ['old todo'], target: ['new todo'] };
 const pruneInput: any = {
+  visible: true,
   isBootstrappingChat: true,
   pendingDeepLinkTargetRef: { current: { sessionId: 'target' } },
   currentSessionId: undefined,
@@ -1136,6 +1137,18 @@ cachedMessages.extra = []; cachedDiffs.extra = []; cachedTodos.extra = [];
 pruneProviderTranscripts(pruneInput);
 assert.deepEqual(Object.keys(cachedMessages), ['target'], 'pruning resumes after selection and removes inactive histories');
 assert.deepEqual(Object.keys(cachedDiffs), ['target']); assert.deepEqual(Object.keys(cachedTodos), ['target']);
+
+// A hidden workspace sees only its own selection; it must not evict the
+// visible workspace's transcript from the connection-scoped map.
+cachedMessages = { target: ['new transcript'], background: ['old'], stale: ['old'] };
+cachedDiffs = { target: ['new diff'], background: ['old diff'], stale: ['old diff'] };
+cachedTodos = { target: ['new todo'], background: ['old todo'], stale: ['old todo'] };
+pruneInput.visible = false;
+pruneInput.currentSessionId = 'background';
+pruneProviderTranscripts(pruneInput);
+assert.deepEqual(Object.keys(cachedMessages).sort(), ['background', 'stale', 'target'], 'hidden workspaces cannot evict another workspace transcript');
+assert.deepEqual(Object.keys(cachedDiffs).sort(), ['background', 'stale', 'target']);
+assert.deepEqual(Object.keys(cachedTodos).sort(), ['background', 'stale', 'target']);
 
 // Real terminal orchestration: stale lists/input and failed removal cannot destroy an opened PTY.
 {
