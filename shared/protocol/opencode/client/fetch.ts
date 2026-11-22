@@ -16,7 +16,7 @@ import { ensureConnectionTrust } from '@/shared/platform/tls-trust';
 
 // Re-exported for existing importers; the implementation lives with the other
 // credential rules so OpenID Connect and basic auth cannot diverge.
-export { createAuthHeader, getRequestHeaders, withOidcAuthorization } from '@/shared/protocol/opencode/client/authorization';
+export { createAuthHeader, getRequestHeaders,  } from '@/shared/protocol/opencode/client/authorization';
 
 function abortableDelay(ms: number, signal?: AbortSignal) {
   return new Promise<void>((resolve, reject) => {

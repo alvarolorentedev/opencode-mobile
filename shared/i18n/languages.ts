@@ -1,7 +1,7 @@
 // Pure language helpers. This module intentionally has no imports so it can be
 // transpiled and exercised directly by tests/i18n.test.mjs.
 
-export const DEFAULT_LANGUAGE = 'en';
+const DEFAULT_LANGUAGE = 'en';
 
 const RTL_LANGUAGE_CODES = new Set(['ar', 'he']);
 

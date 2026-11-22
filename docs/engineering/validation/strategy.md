@@ -45,6 +45,14 @@ Use `npm run impact -- <source-file>` to list the tests that depend on a file
 through value imports; it narrows the Vitest run but does not replace the matrix
 or the commit gate.
 
+Knip policy: public feature entrypoints (`index.ts`, `runtime.ts`), shared UI,
+shared contracts, and the public protocol client/types are exported APIs and are
+exempt from unused-export checks. Generated i18n resources, test/storybook/config
+entries, and the few modules consumed by manual-transpile tests also carry
+narrow, reviewed exemptions. Every other production module must have no unused
+exports, types or duplicate exports. Prefer a specific path exemption with a
+reason over a directory-wide ignore.
+
 | Change | Preferred local test level | CI/release E2E |
 | --- | --- | --- |
 | Docs, ADRs, repository Markdown | docs test + static | smoke |

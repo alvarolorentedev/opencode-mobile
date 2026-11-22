@@ -105,7 +105,7 @@ export type NormalizedServerUrl = {
   valid: boolean;
 };
 
-export type ClientMetadata = {
+type ClientMetadata = {
   directory?: string;
   contract: ServerContract;
 };

@@ -12,7 +12,7 @@ import type {
 } from '@/shared/observability/types';
 import type { DiagnosticsStore } from '@/shared/observability/storage/jsonl-store';
 
-export const EXPORT_SCHEMA_VERSION = 1;
+const EXPORT_SCHEMA_VERSION = 1;
 const EXPORT_MAX_RECORDS = 5000;
 
 const README = `OpenCode Mobile diagnostic report

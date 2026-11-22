@@ -14,7 +14,7 @@ export type MarkdownRoot = {
   legacy: boolean;
 };
 
-export function canonicalMarkdownRoot(root: string, scope: ExtensionScope, kind: 'agents' | 'commands') {
+function canonicalMarkdownRoot(root: string, scope: ExtensionScope, kind: 'agents' | 'commands') {
   return scope === 'project'
     ? joinPath(root, `.opencode/${kind}`)
     : joinPath(root, kind);

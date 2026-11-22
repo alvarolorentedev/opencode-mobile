@@ -6,7 +6,7 @@ import { collectDescendantSessionIds } from '@/features/sessions/runtime';
 import { WIDGET_MAX_EXCERPT, WIDGET_SNAPSHOT_MAX_TITLE } from '@/features/widgets/model/widget-snapshot';
 import type { WidgetSessionEntry, WidgetAttention, WidgetPlan } from '@/shared/contracts/widget-snapshot';
 
-export const widgetText = (value: string, limit = WIDGET_MAX_EXCERPT) => value.replace(/\s+/g, ' ').trim().slice(0, limit);
+const widgetText = (value: string, limit = WIDGET_MAX_EXCERPT) => value.replace(/\s+/g, ' ').trim().slice(0, limit);
 export function recentWidgetSessions(sessions: Session[]) {
   return sessions.filter((session) => session.directory && !session.parentID && !session.time.archived)
     .sort((a, b) => b.time.updated - a.time.updated || a.id.localeCompare(b.id)).slice(0, 3);

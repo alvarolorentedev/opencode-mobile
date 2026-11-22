@@ -115,7 +115,7 @@ function buildTaskFinishedContent(title: string, body: string): Notifications.No
 // Non-secret routing payload shared by completion and attention notifications.
 // It mirrors the Android activity notification link so a tap opens the owning
 // connection, project, and session.
-export type NotificationRouteData = {
+type NotificationRouteData = {
   sessionId: string;
   projectPath?: string;
   connectionScope?: string;
@@ -425,7 +425,7 @@ export async function notifyTaskFinished(input: {
 // alert should be posted now. Repeated polls while a task stays blocked return
 // undefined, so a needs-input alert fires once per block episode; resolving the
 // block clears the marker so a later block alerts again.
-export async function claimPendingAttention(connectionScope: string, sessionId: string, key: string) {
+async function claimPendingAttention(connectionScope: string, sessionId: string, key: string) {
   return withPendingSessions(async () => {
     const current = await readPendingNotificationSessions();
     const record = current[pendingNotificationKey(connectionScope, sessionId)];

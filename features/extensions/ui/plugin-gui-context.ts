@@ -10,7 +10,7 @@ import {
 import { createUi } from '@/features/extensions/ui/plugin-gui-ui';
 import { createOverlays } from '@/features/extensions/ui/plugin-gui-dialogs';
 
-export type PluginHostBridge = {
+type PluginHostBridge = {
   openSession(sessionID: string): void;
   openExternal(url: string): void;
   rpc(request: PluginGuiRpcRequest): Promise<unknown>;

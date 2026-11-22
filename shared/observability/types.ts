@@ -64,7 +64,7 @@ export type StorageSnapshot = {
   corruptFiles: number;
 };
 
-export type DiagnosticsRecent = {
+type DiagnosticsRecent = {
   logs: DiagnosticRecord[];
   errors: DiagnosticRecord[];
   spans: DiagnosticRecord[];
@@ -83,7 +83,7 @@ export type ObservabilitySnapshot = {
   lastFailure?: DiagnosticRecord;
 };
 
-export type ObservabilityConfig = {
+type ObservabilityConfig = {
   preferences: ObservabilityPreferences;
   remoteAvailable: boolean;
   build: BuildMetadata;

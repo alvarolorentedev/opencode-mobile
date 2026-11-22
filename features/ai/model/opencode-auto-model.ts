@@ -84,7 +84,7 @@ export function getClassifierModelId(preferences: AutoModelPreferences, models: 
   return explicit?.id ?? getCheapestClassifierModel(models)?.id;
 }
 
-export function getAttachmentModality(mime?: string) {
+function getAttachmentModality(mime?: string) {
   if (!mime) return undefined;
   if (mime.startsWith('image/')) return 'image' as const;
   if (mime.startsWith('audio/')) return 'audio' as const;

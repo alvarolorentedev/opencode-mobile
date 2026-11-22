@@ -39,7 +39,7 @@ export type RegistryState = {
   ready: boolean;
 };
 
-export type CatalogPublication = {
+type CatalogPublication = {
   revision?: number;
   catalog: WorkspaceCatalog;
 };

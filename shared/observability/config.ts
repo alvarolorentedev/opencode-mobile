@@ -4,8 +4,8 @@ import { Platform } from 'react-native';
 
 import type { BuildMetadata, ObservabilityPreferences } from '@/shared/observability/types';
 
-export const SERVICE_NAME = 'opencode-mobile';
-export const OBSERVABILITY_SCHEMA_VERSION = 1;
+const SERVICE_NAME = 'opencode-mobile';
+const OBSERVABILITY_SCHEMA_VERSION = 1;
 
 export const DEFAULT_OBSERVABILITY_PREFERENCES: ObservabilityPreferences = {
   diagnosticsEnabled: true,

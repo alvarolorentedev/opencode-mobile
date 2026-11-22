@@ -10,7 +10,7 @@ import { DEFAULT_LOCAL_WAKE_PHRASE, DEFAULT_LOCAL_COMMAND_MODEL, type LocalComma
 export type ResponseScope = 'brief' | 'balanced' | 'detailed';
 export const TRANSCRIPT_FONT_SIZE_MIN = 12;
 export const TRANSCRIPT_FONT_SIZE_MAX = 24;
-export const DEFAULT_TRANSCRIPT_FONT_SIZE = 16;
+const DEFAULT_TRANSCRIPT_FONT_SIZE = 16;
 
 export function normalizeTranscriptFontSize(value: number | undefined) {
   return typeof value === 'number' && Number.isFinite(value)
@@ -19,7 +19,7 @@ export function normalizeTranscriptFontSize(value: number | undefined) {
 }
 
 export { defaultAutoModelPreferences, normalizeAutoModelPreferences } from '@/shared/preferences/auto-model';
-export type { AutoModelClassifier, AutoModelPreferences, AutoModelTierPreference } from '@/shared/preferences/auto-model';
+export type { AutoModelClassifier, AutoModelPreferences,  } from '@/shared/preferences/auto-model';
 
 export const OPENING_SCREENS = ['chat', 'mission'] as const;
 export type OpeningScreen = typeof OPENING_SCREENS[number];

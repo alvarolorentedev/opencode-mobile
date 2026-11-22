@@ -43,11 +43,11 @@ export function assertSkillId(value: string) {
   return value;
 }
 
-export function skillsRoot(root: string, scope: ExtensionScope) {
+function skillsRoot(root: string, scope: ExtensionScope) {
   return scope === 'project' ? joinPath(root, '.opencode/skills') : joinPath(root, 'skills');
 }
 
-export function skillDirectory(root: string, scope: ExtensionScope, id: string) {
+function skillDirectory(root: string, scope: ExtensionScope, id: string) {
   assertSkillId(id);
   return joinPath(skillsRoot(root, scope), id);
 }

@@ -28,7 +28,7 @@ export function isOidcAuthError(error: unknown): error is OidcAuthError {
 
 export const OIDC_SIGN_IN_REQUIRED_MESSAGE = 'Sign in with OpenID Connect to use this server.';
 
-export const OIDC_SIGN_IN_REJECTED_MESSAGE = 'OpenID Connect authentication was rejected. Sign in again to continue.';
+const OIDC_SIGN_IN_REJECTED_MESSAGE = 'OpenID Connect authentication was rejected. Sign in again to continue.';
 
 export function oidcErrorMessageKey(error: unknown) {
   if (!isOidcAuthError(error)) return undefined;

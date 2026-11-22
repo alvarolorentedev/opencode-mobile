@@ -59,7 +59,7 @@ export type LocalVoiceModelStatus =
   | 'ready'
   | 'error';
 
-export type KwsService = {
+type KwsService = {
   init(config: {
     modelDir: string;
     modelType?: string;
@@ -79,7 +79,7 @@ export type KwsService = {
   release(): Promise<{ released: boolean }>;
 };
 
-export type SpeakerIdService = {
+type SpeakerIdService = {
   init(config: {
     modelDir: string;
     modelFile?: string;
@@ -102,7 +102,7 @@ export type SpeakerIdService = {
   release(): Promise<{ released: boolean }>;
 };
 
-export type ArchiveService = {
+type ArchiveService = {
   extractTarBz2(sourcePath: string, targetDir: string): Promise<{
     success: boolean;
     message: string;
@@ -110,7 +110,7 @@ export type ArchiveService = {
   }>;
 };
 
-export type VadService = {
+type VadService = {
   init(config: {
     modelDir: string;
     modelFile?: string;
@@ -136,7 +136,7 @@ export type VadService = {
   release(): Promise<{ released: boolean }>;
 };
 
-export type AsrService = {
+type AsrService = {
   initialize(config: {
     modelDir: string;
     modelType: string;
@@ -161,9 +161,9 @@ export type AsrService = {
   release(): Promise<{ released: boolean }>;
 };
 
-export type TtsModelType = 'vits' | 'kokoro' | 'matcha';
+type TtsModelType = 'vits' | 'kokoro' | 'matcha';
 
-export type TtsService = {
+type TtsService = {
   initialize(config: {
     modelDir: string;
     ttsModelType: TtsModelType;

@@ -8,11 +8,11 @@ import { syncSessionInstructions } from '@/shared/protocol/opencode/v2/shared';
 import { PromptPreparationError, type PendingNotice, type PendingPrompt, type PromptInput } from '@/shared/protocol/opencode/prompt-inbox';
 import type { SessionInboxInfo, SessionInboxUser } from '@opencode/client';
 
-export function toPendingPrompt(item: SessionInboxUser): PendingPrompt {
+function toPendingPrompt(item: SessionInboxUser): PendingPrompt {
   return { id: item.id, sessionId: item.sessionID, createdAt: item.time.created, text: item.payload.text, delivery: item.delivery, state: 'waiting', attachments: (item.payload.files ?? []).map((file) => { const detail = toFileDetail(file); return { uri: detail.url, mime: detail.mime, filename: detail.filename }; }) };
 }
 
-export function toPendingNotice(item: SessionInboxInfo): PendingNotice | undefined {
+function toPendingNotice(item: SessionInboxInfo): PendingNotice | undefined {
   if (item.type === 'user') {
     if (!isServerNoticeMetadata(item.payload.metadata)) return undefined;
     return { id: item.id, sessionId: item.sessionID, createdAt: item.time.created, text: item.payload.text, kind: 'plugin' };

@@ -28,7 +28,7 @@ export type ConfigEntry =
   | { type: 'document'; path?: string; info: ConfigInfo }
   | { type: 'directory'; path: string };
 
-export type ConfigInfo = {
+type ConfigInfo = {
   $schema?: string;
   mcp?: {
     servers?: Record<string, unknown>;
@@ -73,7 +73,7 @@ export type ExtensionSkillRow = {
   removable: boolean;
 };
 
-export type ExtensionDefinitionOrigin = 'config' | 'file' | 'server';
+type ExtensionDefinitionOrigin = 'config' | 'file' | 'server';
 
 export type ExtensionCommandRow = {
   key: string;

@@ -81,7 +81,7 @@ fi
 printf ok
 `;
 
-export function validateEntryOperation(operation: EntryOperation) {
+function validateEntryOperation(operation: EntryOperation) {
   for (const { root, path } of [operation.source, operation.destination]) {
     if (!root.startsWith('/') || /[\x00-\x1f]/.test(root)) throw new EntryOperationError('unsafe');
     try { if (projectPath(path, root) !== path) throw new Error(); }

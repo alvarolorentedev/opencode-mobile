@@ -33,7 +33,7 @@ function isNodeBuiltin(name: string) {
 }
 
 /** A placeholder for a module a window never provides. It accepts any read, call or construction. */
-export function inertModule(name: string): unknown {
+function inertModule(name: string): unknown {
   const label = `[inert module ${name}]`;
   const handler: ProxyHandler<() => void> = {
     get: (_, key) => {

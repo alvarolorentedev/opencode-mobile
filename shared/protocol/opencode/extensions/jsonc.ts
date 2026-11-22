@@ -5,21 +5,21 @@ import type { ExtensionAgentDraft, ExtensionCommandDraft } from '@/shared/protoc
 import { agentDefinitionSchema, commandDefinitionSchema, parsePermissionJson } from '@/shared/protocol/opencode/extensions/contract';
 import { assertDefinitionName } from '@/shared/protocol/opencode/extensions/scope';
 
-export type ConfigEditErrorCode =
+type ConfigEditErrorCode =
   | 'invalid-jsonc'
   | 'invalid-name'
   | 'not-found'
   | 'already-exists'
   | 'unsupported-shape';
 
-export class ConfigEditError extends Error {
+class ConfigEditError extends Error {
   constructor(readonly code: ConfigEditErrorCode, message: string) {
     super(message);
     this.name = 'ConfigEditError';
   }
 }
 
-export const NEW_CONFIG_TEXT = '{\n  "$schema": "https://opencode.ai/config.json"\n}\n';
+const NEW_CONFIG_TEXT = '{\n  "$schema": "https://opencode.ai/config.json"\n}\n';
 
 function toConfigMcp(config: McpLocalConfig | McpRemoteConfig) {
   const enabled = config.enabled !== false;
@@ -58,14 +58,14 @@ export function createConfigText() {
   return NEW_CONFIG_TEXT;
 }
 
-export function assertMcpName(name: string) {
+function assertMcpName(name: string) {
   if (!/^[A-Za-z0-9][A-Za-z0-9._-]*$/.test(name)) {
     throw new ConfigEditError('invalid-name', 'MCP server names may only contain letters, numbers, dots, dashes, and underscores.');
   }
   return name;
 }
 
-export function assertCommandName(name: string) {
+function assertCommandName(name: string) {
   const value = assertDefinitionName(name, 'Commands');
   if (!/^[a-z0-9][a-z0-9._/-]*$/i.test(value) || value.startsWith('/') || value.endsWith('/')) {
     throw new ConfigEditError('invalid-name', 'Commands need a name such as review or team/review.');

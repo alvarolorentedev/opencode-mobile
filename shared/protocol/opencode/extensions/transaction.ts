@@ -27,7 +27,7 @@ export type ConfigTransactionResult = {
   created: boolean;
 };
 
-export class ConfigTransactionError extends Error {
+class ConfigTransactionError extends Error {
   constructor(message: string, readonly backupPath?: string) {
     super(message);
     this.name = 'ConfigTransactionError';

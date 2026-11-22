@@ -2,7 +2,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 
 import { normalizeEmbedding } from '@/shared/platform/voice/local-wake-word/similarity';
 
-export const LOCAL_SPEAKER_PROFILE_STORAGE_KEY = 'opencode.local-voice.speaker-profile.v1';
+const LOCAL_SPEAKER_PROFILE_STORAGE_KEY = 'opencode.local-voice.speaker-profile.v1';
 
 export async function loadLocalSpeakerProfile(): Promise<number[] | undefined> {
   try {

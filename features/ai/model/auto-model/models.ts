@@ -34,7 +34,7 @@ function ensureDirectory(directory: Directory) {
   return directory;
 }
 
-export function isLocalAutoModelSupported() {
+function isLocalAutoModelSupported() {
   return Platform.OS !== 'web';
 }
 

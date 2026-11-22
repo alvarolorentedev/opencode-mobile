@@ -3,7 +3,7 @@ import { projectCheckouts, type ProjectCheckout } from '@/shared/protocol/openco
 import type { OpencodeProject, WorktreeCatalog } from '@/features/projects/model/types';
 import type { ConnectionRecord } from '@/shared/contracts/workspace';
 
-export type WorkspaceProject = OpencodeProject & {
+type WorkspaceProject = OpencodeProject & {
   checkouts: ProjectCheckout[];
   loadingWorktrees: boolean;
   opened: boolean;

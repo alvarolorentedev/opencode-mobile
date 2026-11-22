@@ -5,7 +5,7 @@ import type { ModelComplexity } from '@/shared/preferences/auto-model';
 
 export const AUTO_MODEL_CLASSIFIER_GRAMMAR = 'root ::= "simple" | "standard" | "complex"';
 export const AUTO_MODEL_MAX_PROMPT_CHARS = 4_000;
-export const AUTO_MODEL_MAX_CONTEXT_TOKENS = 2_048;
+const AUTO_MODEL_MAX_CONTEXT_TOKENS = 2_048;
 export const AUTO_MODEL_OUTPUT_TOKENS = 4;
 
 export type AutoModelClassifierInput = {

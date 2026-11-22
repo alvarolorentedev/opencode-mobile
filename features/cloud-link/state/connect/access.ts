@@ -104,7 +104,7 @@ export async function authenticateConnectRequest<T>({
   }
 }
 
-export async function saveConnectAccess({
+async function saveConnectAccess({
   pendingClaim,
   migrateConnectConnectionScope,
   setPhase,

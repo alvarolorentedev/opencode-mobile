@@ -6,7 +6,7 @@ import { coalesceRead } from '@/shared/protocol/opencode/in-flight';
 import type { Project, Session, SessionStatus } from '@/shared/protocol/opencode/types';
 import { toSessionView } from '@/shared/protocol/opencode/v2-mappers';
 
-export { LATEST_MESSAGE_LIMIT, MAX_MESSAGE_PAGE_LIMIT, TRANSCRIPT_PAGE_LIMIT } from '@/shared/protocol/opencode/contracts/session-adapter';
+export {  MAX_MESSAGE_PAGE_LIMIT, TRANSCRIPT_PAGE_LIMIT } from '@/shared/protocol/opencode/contracts/session-adapter';
 export type { ResolvedProjectLocation, SessionMessagePage } from '@/shared/protocol/opencode/contracts/session-adapter';
 
 export function submitLegacyPrompt(client: ScopedOpencodeClient, input: PromptInput) {
@@ -33,7 +33,7 @@ export function resolveProjectLocation(client: ScopedOpencodeClient): Promise<Re
 export function isKnownProjectLocation(client: ScopedOpencodeClient): Promise<boolean> {
   return createSessionAdapter(client).isKnownProjectLocation();
 }
-export function isAvailableProjectDirectory(client: ScopedOpencodeClient, knownProjects: Project[]): Promise<boolean> {
+function isAvailableProjectDirectory(client: ScopedOpencodeClient, knownProjects: Project[]): Promise<boolean> {
   return createSessionAdapter(client).isAvailableProjectDirectory(knownProjects);
 }
 export function getActiveSessionStatuses(client: ScopedOpencodeClient) {
@@ -42,7 +42,6 @@ export function getActiveSessionStatuses(client: ScopedOpencodeClient) {
 export function listSessions(client: ScopedOpencodeClient) {
   return createSessionAdapter(client).list();
 }
-export const listActiveSessions = listSessions;
 
 export async function listV2RunningSessionIds(client: ScopedOpencodeClient) {
   const active = await client.api!.session.active();
@@ -67,7 +66,7 @@ export async function findSessionForNavigation(client: ScopedOpencodeClient, ses
   return (await listSessions(client)).sessions.find((session) => session.id === sessionID);
 }
 
-export type SessionSettlementState = 'running' | 'retrying' | 'blocked' | 'failed' | 'aborted' | 'finished' | 'unknown';
+type SessionSettlementState = 'running' | 'retrying' | 'blocked' | 'failed' | 'aborted' | 'finished' | 'unknown';
 export type SessionSettlement = { state: SessionSettlementState; message?: string };
 
 // A response created slightly before the recorded request can still be this

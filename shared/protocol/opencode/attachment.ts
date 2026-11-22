@@ -1,6 +1,6 @@
 import type { PromptAttachment } from '@/shared/protocol/opencode/prompt-inbox';
 
-export const MAX_ATTACHMENT_BYTES = 10 * 1024 * 1024;
+const MAX_ATTACHMENT_BYTES = 10 * 1024 * 1024;
 const COMPRESS_ABOVE_BYTES = 1 * 1024 * 1024;
 
 export type PreparedAttachment = { type: 'file'; mime: string; filename?: string; url: string };

@@ -35,25 +35,62 @@
       "types",
       "duplicates"
     ],
-    "features/!(chat)/**": [
-      "exports",
-      "types",
-      "duplicates"
-    ],
-    "features/chat/!(services)/**": [
-      "exports",
-      "types",
-      "duplicates"
-    ],
-    "shared/!(server-data)/**": [
-      "exports",
-      "types",
-      "duplicates"
-    ],
     "shared/i18n/resources.ts": [
       "exports",
       "types",
       "duplicates"
+    ],
+    "features/*/index.ts": [
+      "exports",
+      "types"
+    ],
+    "features/*/runtime.ts": [
+      "exports",
+      "types"
+    ],
+    "shared/ui/**": [
+      "exports",
+      "types"
+    ],
+    "shared/contracts/**": [
+      "exports",
+      "types"
+    ],
+    "shared/protocol/opencode/client.ts": [
+      "exports",
+      "types"
+    ],
+    "shared/protocol/opencode/types.ts": [
+      "exports",
+      "types"
+    ],
+    "features/onboarding/model/onboarding-state.ts": [
+      "exports",
+      "types"
+    ],
+    "features/widgets/ui/session-widget.tsx": [
+      "exports",
+      "types"
+    ],
+    "features/extensions/model/types.ts": [
+      "exports",
+      "types"
+    ],
+    "features/projects/model/action-inputs.ts": [
+      "exports",
+      "types"
+    ],
+    "features/sessions/model/types.ts": [
+      "exports",
+      "types"
+    ],
+    "features/sessions/state/use-approvals-catalog.ts": [
+      "exports",
+      "types"
+    ],
+    "features/sessions/state/use-session-catalog.ts": [
+      "exports",
+      "types"
     ]
   }
 }

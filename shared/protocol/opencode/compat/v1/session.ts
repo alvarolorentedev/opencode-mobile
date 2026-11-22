@@ -42,7 +42,7 @@ async function fetchSessions(client: OpencodeClient) {
   return { sessions: nextSessions.filter((session) => !session.time.archived), statuses: requireData(statusesResponse.data, 'session status request') };
 }
 
-export const TRANSCRIPT_PAGE_LIMIT = 20;
+const TRANSCRIPT_PAGE_LIMIT = 20;
 
 export type SessionMessagePage = {
   records: SessionMessageRecord[];

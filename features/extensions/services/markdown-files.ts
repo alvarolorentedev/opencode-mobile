@@ -149,7 +149,7 @@ export async function discoverMarkdownFiles({
   return files;
 }
 
-export async function assertMarkdownWritable({
+async function assertMarkdownWritable({
   ext,
   projectRoot,
   root,
@@ -223,6 +223,6 @@ export function restoreTrash(ext: Extensions, projectRoot: string, destination: 
   return ext.runShell(projectRoot, `mv ${shellQuote(destination)} ${shellQuote(path)}`);
 }
 
-export function markdownRootFor(kind: 'agents' | 'commands') {
+function markdownRootFor(kind: 'agents' | 'commands') {
   return kind;
 }

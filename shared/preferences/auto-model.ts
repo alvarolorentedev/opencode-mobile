@@ -2,13 +2,13 @@
 // OpenCode classifier call. The classifier must return one of three labels; the
 // router never guesses a tier when the classifier is unavailable.
 
-export const MODEL_COMPLEXITIES = ['simple', 'standard', 'complex'] as const;
+const MODEL_COMPLEXITIES = ['simple', 'standard', 'complex'] as const;
 export type ModelComplexity = (typeof MODEL_COMPLEXITIES)[number];
 
 // Auto model routing preferences live in the shared lib layer so persistence
 // helpers can validate them without importing provider orchestration.
 export type AutoModelClassifier = 'local' | 'server';
-export type AutoModelTierPreference = 'auto' | string;
+type AutoModelTierPreference = 'auto' | string;
 export type AutoModelPreferences = {
   enabled: boolean;
   classifier: AutoModelClassifier;

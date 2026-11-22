@@ -17,7 +17,7 @@ export type QuickActionItem = {
 };
 
 // iOS shows at most four dynamic items; both platforms recommend four.
-export const MAX_QUICK_ACTIONS = 4;
+const MAX_QUICK_ACTIONS = 4;
 
 export const quickActionsSupported = Platform.OS === 'ios' || Platform.OS === 'android';
 

@@ -12,6 +12,6 @@ export async function releaseLocalAutoModelRuntime(): Promise<void> {
   // Nothing to release on web.
 }
 
-export function isLocalAutoModelRuntimeSupported() {
+function isLocalAutoModelRuntimeSupported() {
   return false;
 }

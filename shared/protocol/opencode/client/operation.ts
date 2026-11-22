@@ -25,7 +25,7 @@ export function classifyHttpOperation(input: string | URL, method = 'GET') {
   return 'http.other';
 }
 
-export function classifyStatus(status: number | undefined) {
+function classifyStatus(status: number | undefined) {
   if (status === undefined) return 'network';
   if (status >= 200 && status < 300) return '2xx';
   if (status >= 300 && status < 400) return '3xx';

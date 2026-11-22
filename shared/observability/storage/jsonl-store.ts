@@ -3,13 +3,13 @@ import { Directory, File, Paths } from 'expo-file-system';
 import { sanitizeRecord } from '@/shared/observability/sanitize';
 import type { DiagnosticRecord, StorageSnapshot } from '@/shared/observability/types';
 
-export const DIAGNOSTICS_DIRECTORY = 'opencode-diagnostics';
+const DIAGNOSTICS_DIRECTORY = 'opencode-diagnostics';
 export const DIAGNOSTICS_RETENTION_DAYS = 7;
 export const DIAGNOSTICS_MAX_BYTES = 10 * 1024 * 1024;
-export const DIAGNOSTICS_SEGMENT_BYTES = 512 * 1024;
-export const DIAGNOSTICS_BUFFER_RECORDS = 500;
-export const DIAGNOSTICS_BUFFER_BYTES = 256 * 1024;
-export const DIAGNOSTICS_FLUSH_MS = 2000;
+const DIAGNOSTICS_SEGMENT_BYTES = 512 * 1024;
+const DIAGNOSTICS_BUFFER_RECORDS = 500;
+const DIAGNOSTICS_BUFFER_BYTES = 256 * 1024;
+const DIAGNOSTICS_FLUSH_MS = 2000;
 
 const SEGMENT_PATTERN = /^segment-(\d+)-(\d+)\.jsonl$/;
 const MAX_READ_BYTES = 2 * 1024 * 1024;

@@ -53,7 +53,7 @@ export function getConnectionCertificate() {
   return readCertificate('active', CONNECTION_CERTIFICATE_STORAGE_KEY);
 }
 
-export function saveConnectionCertificate(certificate: ConnectionCertificate | undefined) {
+function saveConnectionCertificate(certificate: ConnectionCertificate | undefined) {
   return saveCertificate('active', CONNECTION_CERTIFICATE_STORAGE_KEY, certificate);
 }
 

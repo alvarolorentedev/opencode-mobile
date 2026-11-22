@@ -9,7 +9,7 @@ import { toFileDetail } from '@/shared/protocol/opencode/v2/mappers';
 // server streams (text, reasoning, tools, steps) so a turn paints without
 // re-reading its page; the turn-end reconcile replaces it with the canonical
 // message.
-export type LiveTool = {
+type LiveTool = {
   id: string;
   name: string;
   input: Record<string, unknown>;

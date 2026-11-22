@@ -155,7 +155,7 @@ export function knownProjectFileKind(path: string): ProjectFileKind | undefined 
   return undefined;
 }
 
-export function binaryFileContent(): FileContent {
+function binaryFileContent(): FileContent {
   return { type: 'binary', content: '', encoding: 'base64' };
 }
 

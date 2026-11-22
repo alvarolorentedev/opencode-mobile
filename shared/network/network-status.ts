@@ -5,7 +5,7 @@
 // is reachable: a captive portal can report "online" while the OpenCode origin
 // is unreachable. Callers pause retries on offline, but only request failures
 // may surface a connection error.
-export type NetworkType = 'wifi' | 'cellular' | 'ethernet' | 'none' | 'other' | 'unknown';
+type NetworkType = 'wifi' | 'cellular' | 'ethernet' | 'none' | 'other' | 'unknown';
 
 export type NetworkStatus = {
   online: boolean;

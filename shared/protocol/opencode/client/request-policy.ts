@@ -4,14 +4,14 @@
 // liveness watchdog instead.
 export const READ_TIMEOUT_MS = 30_000;
 export const WRITE_TIMEOUT_MS = 60_000;
-export const RETRYABLE_RESPONSE_STATUS = new Set([502, 503, 504]);
+const RETRYABLE_RESPONSE_STATUS = new Set([502, 503, 504]);
 const IDEMPOTENT_READ_RETRY_AFTER_MS = 10_000;
 
 export function isEventStreamUrl(url: string) {
   return /\/event\/?(?:\?|$)/.test(url);
 }
 
-export function isIdempotentRead(method: string | undefined) {
+function isIdempotentRead(method: string | undefined) {
   return (method ?? 'GET').toUpperCase() === 'GET' || (method ?? '').toUpperCase() === 'HEAD';
 }
 

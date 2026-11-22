@@ -2,7 +2,7 @@ import type { Part, Session } from '@/shared/protocol/opencode/types';
 import type { SessionMessageRecord } from '@/shared/presentation/format/types';
 import { compactText, getMessageError, getToolTitle, isCompletedToolPart } from '@/shared/presentation/format/tool';
 
-export function getSessionSubtitle(session: Session) {
+function getSessionSubtitle(session: Session) {
   const summary = session.summary;
   if (!summary) {
     return 'No file changes recorded yet';

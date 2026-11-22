@@ -1,6 +1,6 @@
 // Pure directory navigation for the server folder picker. Server paths are
 // absolute and may use either separator; no filesystem access happens here.
-export function isWindowsDirectory(value: string) {
+function isWindowsDirectory(value: string) {
   return /^[a-z]:[\\/]/i.test(value) || value.includes('\\');
 }
 

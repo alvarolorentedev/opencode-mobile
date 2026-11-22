@@ -4,7 +4,7 @@ import type { AgentOption, ModelOption } from '@/shared/contracts/model-options'
 
 // A stored provider credential. V2 integrations can hold several labeled
 // accounts (exactly one active); V1 providers have no account list.
-export type ProviderAccount = {
+type ProviderAccount = {
   id: string;
   label: string;
   method: 'key' | 'oauth';

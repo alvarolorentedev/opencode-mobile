@@ -40,7 +40,7 @@ function isToken(value: unknown): value is string {
   return typeof value === 'string' && value.length > 0 && value.length <= MAX_TOKEN_LENGTH && /^[\x20-\x7E]+$/.test(value);
 }
 
-export function parseOidcTokenSet(value: unknown): OidcTokenSet | undefined {
+function parseOidcTokenSet(value: unknown): OidcTokenSet | undefined {
   if (!isRecord(value)) return undefined;
   if (!isToken(value.accessToken) || typeof value.expiresAt !== 'number' || !Number.isFinite(value.expiresAt)) return undefined;
   if (value.refreshToken !== undefined && !isToken(value.refreshToken)) return undefined;

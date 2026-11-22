@@ -4,7 +4,7 @@ import type { SpeakTextOptions } from '@/shared/platform/voice/speech-types';
 import { LocalTtsUnavailableError } from '@/shared/platform/voice/tts/types';
 import { getSpeechVoiceOptions, speakSystemText, stopSystemSpeech } from '@/shared/platform/voice/system-tts';
 
-export type { SpeakTextOptions, SpeechFallbackReason, SpeechPlayback, SpeechVoiceOption } from '@/shared/platform/voice/speech-types';
+export type { SpeakTextOptions,   SpeechVoiceOption } from '@/shared/platform/voice/speech-types';
 export { getSpeechVoiceOptions, initializeVoiceAudioAsync };
 
 type ActiveRun = {

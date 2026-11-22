@@ -2,7 +2,7 @@ import { listPendingPermissions, listPendingQuestions } from '@/shared/protocol/
 import { buildClient, type OpencodeConnectionSettings, type ScopedOpencodeClient, type ServerContract } from '@/shared/protocol/opencode/client';
 import type { Session } from '@/shared/protocol/opencode/types';
 import type { ActivitySnapshot } from '@/features/notifications/model/activity-notification-state';
-import { getSessionMessages, listActiveSessions } from '@/shared/protocol/services/session-service';
+import { getSessionMessages, listSessions } from '@/shared/protocol/services/session-service';
 import { requireData } from '@/shared/protocol/opencode/require-data';
 
 export async function readActivitySnapshot(
@@ -12,7 +12,7 @@ export async function readActivitySnapshot(
   watched: Set<string>,
   probeAllDirectories = true,
 ): Promise<ActivitySnapshot> {
-  const { sessions, statuses } = await listActiveSessions(catalogClient);
+  const { sessions, statuses } = await listSessions(catalogClient);
   const eligible = sessions.filter((session): session is Session & { directory: string } => Boolean(session.directory && !session.time.archived));
   // Interaction reads are the biggest per-tick cost. While the SSE stream is
   // healthy, only directories with running or already-watched work need them:

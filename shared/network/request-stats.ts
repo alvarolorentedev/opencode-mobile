@@ -51,7 +51,7 @@ function readRequestStats(): RequestStats {
 
 snapshot = readRequestStats();
 
-export function getRequestStats(): RequestStats {
+function getRequestStats(): RequestStats {
   return snapshot;
 }
 

@@ -4,7 +4,7 @@
 import type { ModelInfo, Project, SessionInfo } from '@opencode/client';
 import type { Project as ProjectView, Session, Model } from '@/shared/protocol/opencode/types';
 
-export const INPUT_MODALITIES = ['text', 'audio', 'image', 'video', 'pdf'] as const;
+const INPUT_MODALITIES = ['text', 'audio', 'image', 'video', 'pdf'] as const;
 
 export function toProjectView(project: Project): ProjectView {
   return {

@@ -12,7 +12,7 @@ const MAX_ACTIVITY_BUCKETS = 8;
 const MAX_CONTRIBUTION_DAYS = 31;
 const MAX_CHARS = 16_000;
 
-export type MissionActivityMetric = { tokens: number; cost: number };
+type MissionActivityMetric = { tokens: number; cost: number };
 export type MissionActivitySnapshot = {
   total: MissionActivityMetric;
   buckets: MissionActivityMetric[];

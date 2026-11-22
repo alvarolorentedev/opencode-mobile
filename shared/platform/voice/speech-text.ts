@@ -18,7 +18,7 @@ const SPEECH_CUES: Record<string, { codeBlock: string; table: string }> = {
   zh: { codeBlock: '已省略代码块。', table: '已省略表格。' },
 };
 
-export function getSpeechCues(language?: string) {
+function getSpeechCues(language?: string) {
   const code = language?.toLowerCase().split(/[-_]/)[0];
   const cues = code ? SPEECH_CUES[code] : undefined;
   return {

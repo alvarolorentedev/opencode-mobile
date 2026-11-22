@@ -16,7 +16,7 @@ import { usePalette } from '@/shared/ui/theme/use-palette';
 
 type ProviderFeedback = { type: 'success' | 'info' | 'error'; message: string };
 
-export { initialAuthValues } from '@/features/ai/model/provider-auth-schema';
+;
 
 // Ensure API-key methods always expose a credential field, then prepend it to
 // any method-specific form fields.
@@ -35,7 +35,7 @@ function ensureApiKeyPrompt(method: ProviderAuthMethod, t: TFunction): ProviderA
 
 // The methods a provider actually offers for login: server metadata plus the V1
 // generic API-key fallback for known key providers.
-export function buildEffectiveMethods(
+function buildEffectiveMethods(
   methods: ProviderAuthMethod[],
   providerId: string | undefined,
   contract: ServerContract,

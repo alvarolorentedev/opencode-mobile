@@ -35,7 +35,7 @@ export function joinPath(root: string, relative: string) {
   return `${base}${separator}${child}`;
 }
 
-export function relativePath(root: string, absolute: string) {
+function relativePath(root: string, absolute: string) {
   const parent = pathKey(root);
   const child = pathKey(absolute);
   if (child === parent) return '';
@@ -52,7 +52,7 @@ export function isSystemConfigPath(value: string) {
  * Built-in skills are served by the server from a virtual `/builtin/` path
  * rather than from a config directory.
  */
-export function isBuiltinSkillPath(value: string | undefined) {
+function isBuiltinSkillPath(value: string | undefined) {
   if (!value) return false;
   const normalized = pathKey(value);
   return normalized === '/builtin' || normalized.startsWith('/builtin/');

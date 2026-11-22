@@ -430,4 +430,4 @@ export function useConnectState({ controlPlaneUrl, setControlPlaneUrl, switchCon
     selectControlPlane, acceptLink, purchase, restore, retry, claim, cancelPairing, refreshMachines, connectProfile, connectMachine, forgetProfile, revokeMachine, prepareSettings]);
 }
 
-export type { ConnectSetup } from '@/shared/contracts/cloud-link-setup';
+;

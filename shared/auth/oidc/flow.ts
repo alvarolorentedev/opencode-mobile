@@ -7,11 +7,11 @@ import { parseOidcRedirect } from '@/shared/auth/oidc/redirect';
 import { exchangeOidcAuthorizationCode, type OidcTokenResponse } from '@/shared/auth/oidc/token-endpoint';
 import { AuthRequest, CodeChallengeMethod, ResponseType } from '@/shared/platform/auth-session';
 
-export function defaultOidcRedirectUri() {
+function defaultOidcRedirectUri() {
   return OIDC_DEFAULT_REDIRECT_URI;
 }
 
-export function oidcRedirectUri(oidc: Pick<ConnectionOidc, 'redirectUri'>) {
+function oidcRedirectUri(oidc: Pick<ConnectionOidc, 'redirectUri'>) {
   return oidc.redirectUri?.trim() || defaultOidcRedirectUri();
 }
 

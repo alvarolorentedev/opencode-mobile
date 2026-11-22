@@ -1,7 +1,7 @@
 import { buildClient, type OpencodeConnectionSettings, type PendingPermissionRequest, type PendingQuestionRequest, type ScopedOpencodeClient, type ServerContract } from '@/shared/protocol/opencode/client';
 import { listPendingPermissions, listPendingQuestions } from '@/shared/protocol/opencode/client/interactions';
 import { coalesceRead } from '@/shared/protocol/opencode/in-flight';
-import { getSessionMessages, listActiveSessions } from '@/shared/protocol/services/session-service';
+import { getSessionMessages, listSessions } from '@/shared/protocol/services/session-service';
 import { recentWidgetSessions } from '@/features/widgets/model/widget-content';
 
 export type WidgetInteractions = { permissions: PendingPermissionRequest[]; questions: PendingQuestionRequest[] };
@@ -11,7 +11,7 @@ export type WidgetInteractions = { permissions: PendingPermissionRequest[]; ques
 export function readWidgetData(client: ScopedOpencodeClient, settings: OpencodeConnectionSettings, contract: ServerContract,
   options: { probeAllDirectories?: boolean; watchedDirectories?: Set<string>; watchedSessionIds?: Set<string>; previousInteractions?: Record<string, WidgetInteractions> } = {}) {
   return coalesceRead(client, 'widget-data', async () => {
-    const { sessions, statuses } = await listActiveSessions(client);
+    const { sessions, statuses } = await listSessions(client);
     const eligible = sessions.filter((session) => session.directory && !session.time.archived);
     const activeDirectories = new Set(eligible.filter((session) => options.watchedSessionIds?.has(session.id)
       || (statuses[session.id]?.type !== 'idle' && !!statuses[session.id])).map((session) => session.directory!));

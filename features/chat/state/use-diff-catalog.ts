@@ -23,4 +23,4 @@ export function useDiffCatalog(identity: QueryIdentity, client: ScopedOpencodeCl
   };
 }
 
-export type DiffCatalog = ReturnType<typeof useDiffCatalog>;
+type DiffCatalog = ReturnType<typeof useDiffCatalog>;

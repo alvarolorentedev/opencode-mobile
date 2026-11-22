@@ -3,7 +3,7 @@ import { sessionKey, type ConnectionRecord, type SessionTarget, type WorkspaceCa
 import type { Session } from '@/shared/protocol/opencode/types';
 
 export const RECENT_COMPLETION_MS = 24 * 60 * 60 * 1000;
-export type MissionStatus = MissionFilter | 'idle' | 'unknown';
+type MissionStatus = MissionFilter | 'idle' | 'unknown';
 export type MissionRow = {
   key: string;
   target: SessionTarget;
@@ -23,7 +23,7 @@ export type MissionRow = {
   stale: boolean;
 };
 
-export const EMPTY_MISSION_COUNTS: MissionCounts = { attention: 0, running: 0, failed: 0, completed: 0 };
+const EMPTY_MISSION_COUNTS: MissionCounts = { attention: 0, running: 0, failed: 0, completed: 0 };
 const order: MissionStatus[] = ['attention', 'running', 'failed', 'completed', 'idle', 'unknown'];
 const basename = (path: string) => path.split(/[/\\]/).filter(Boolean).at(-1) ?? path;
 

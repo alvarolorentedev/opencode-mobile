@@ -9,19 +9,19 @@ import { CHAT_PREFERENCES_STORAGE_KEY } from '@/shared/storage/keys';
 import type { ObservabilitySnapshot } from '@/shared/observability/types';
 
 export type {
-  BuildMetadata,
-  DiagnosticRecord,
-  ExportOptions,
-  ExportResult,
-  Observability,
-  ObservabilityLevel,
-  ObservabilityPreferences,
+  
+  
+  
+  
+  
+  
+  
   ObservabilitySnapshot,
-  SafeAttributes,
-  Span,
+  
+  
 } from '@/shared/observability/types';
-export { DEFAULT_OBSERVABILITY_PREFERENCES, readBuildMetadata, remoteAvailable } from '@/shared/observability/config';
-export { normalizeObservabilityPreferences, preferencesFromChatPreferences } from '@/shared/observability/preferences';
+;
+export {  preferencesFromChatPreferences } from '@/shared/observability/preferences';
 
 export const observability = createObservability();
 setObservabilityTarget(observability);
@@ -55,7 +55,7 @@ export function useObservabilitySnapshot(): ObservabilitySnapshot {
   return snapshot;
 }
 
-export function useObservabilityActions() {
+function useObservabilityActions() {
   return {
     refresh: observability.refreshSnapshot,
     clear: observability.clearLocal,
@@ -64,4 +64,4 @@ export function useObservabilityActions() {
   };
 }
 
-export { normalizeObservabilityPreferences as normalizePreferences };
+;

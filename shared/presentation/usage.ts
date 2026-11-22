@@ -59,7 +59,7 @@ export type SessionUsageStep = {
   part: Extract<Part, { type: 'step-finish' }>;
 };
 
-export function usageStepKey(part: Extract<Part, { type: 'step-finish' }>) {
+function usageStepKey(part: Extract<Part, { type: 'step-finish' }>) {
   return `${part.sessionID}:${part.messageID}:${part.id}`;
 }
 

@@ -3,7 +3,7 @@ import { File } from 'expo-file-system';
 
 import { downloadFileWithRetry, ModelDownloadError } from '@/shared/platform/models/model-download';
 
-export async function sha256Hex(file: File): Promise<string> {
+async function sha256Hex(file: File): Promise<string> {
   const bytes = await file.bytes();
   const digest = await Crypto.digest(Crypto.CryptoDigestAlgorithm.SHA256, bytes);
   return Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, '0')).join('');

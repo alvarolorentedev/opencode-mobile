@@ -73,7 +73,7 @@ export function getLocalTtsPackStatuses() {
   ) as Record<LocalTtsPackId, LocalTtsPackStatus>;
 }
 
-export function isLocalTtsPackInstalling(packId: LocalTtsPackId) {
+function isLocalTtsPackInstalling(packId: LocalTtsPackId) {
   return installJobs.has(packId);
 }
 

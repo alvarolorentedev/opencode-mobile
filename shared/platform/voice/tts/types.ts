@@ -10,16 +10,16 @@ export type LocalTtsPackId =
   | 'piper-pt'
   | 'kokoro-en';
 
-export type LocalTtsFamily = 'piper' | 'kokoro';
+type LocalTtsFamily = 'piper' | 'kokoro';
 
 export type LocalTtsPackStatus = 'unsupported' | 'missing' | 'installing' | 'ready' | 'error';
 
-export type LocalTtsSpeaker = {
+type LocalTtsSpeaker = {
   id: number;
   label: string;
 };
 
-export type LocalTtsFiles = {
+type LocalTtsFiles = {
   model: string;
   tokens: string;
   dataDir?: string;

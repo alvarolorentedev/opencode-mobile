@@ -92,7 +92,7 @@ export type LocalCommandModelPaths = {
   asrTokens: string;
 };
 
-export type LocalVoiceModelPaths = LocalVoiceBasePaths & LocalCommandModelPaths;
+type LocalVoiceModelPaths = LocalVoiceBasePaths & LocalCommandModelPaths;
 
 export function getLocalVoiceBasePaths(): LocalVoiceBasePaths | undefined {
   if (Platform.OS === 'web') {
@@ -136,7 +136,7 @@ export function getLocalCommandModelPaths(modelId: LocalCommandModelId): LocalCo
   };
 }
 
-export function getLocalVoiceModelPaths(modelId: LocalCommandModelId): LocalVoiceModelPaths | undefined {
+function getLocalVoiceModelPaths(modelId: LocalCommandModelId): LocalVoiceModelPaths | undefined {
   const base = getLocalVoiceBasePaths();
   const command = getLocalCommandModelPaths(modelId);
   if (!base || !command) {
@@ -365,6 +365,6 @@ export async function removeLocalVoiceModels(): Promise<void> {
   }
 }
 
-export function localVoiceModelsExist(modelId: LocalCommandModelId): boolean {
+function localVoiceModelsExist(modelId: LocalCommandModelId): boolean {
   return getLocalVoiceModelStatus(modelId) === 'ready';
 }

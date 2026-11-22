@@ -16,8 +16,8 @@ export const modelSelectionSchema = z.union([
   }),
 ]);
 
-export const permissionEffectSchema = z.enum(['allow', 'deny', 'ask']);
-export const permissionRuleSchema = z.object({
+const permissionEffectSchema = z.enum(['allow', 'deny', 'ask']);
+const permissionRuleSchema = z.object({
   action: z.string(),
   resource: z.string(),
   effect: permissionEffectSchema,
@@ -50,7 +50,7 @@ export const commandDefinitionSchema = z.object({
   subtask: z.boolean().optional(),
 }).passthrough();
 
-export function firstIssue(result: z.ZodSafeParseResult<unknown>) {
+function firstIssue(result: z.ZodSafeParseResult<unknown>) {
   if (result.success) return undefined;
   const issue = result.error.issues[0];
   return issue ? `${issue.path.join('.') || 'value'}: ${issue.message}` : 'Invalid value.';

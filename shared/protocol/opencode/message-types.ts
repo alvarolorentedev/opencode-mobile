@@ -107,7 +107,7 @@ export type ToolPart = PartBase & {
         };
     };
 };
-export type StepFinishPart = PartBase & {
+type StepFinishPart = PartBase & {
     type: 'step-finish';
     reason: string;
     snapshot?: string;

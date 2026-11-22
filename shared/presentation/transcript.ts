@@ -4,11 +4,11 @@ import type { SessionMessageRecord, TranscriptDetail, TranscriptEntry } from '@/
 // settings control order, from least to most detail.
 export const TIMELINE_DETAIL_ORDER = ['messages', 'reasoning', 'everything'] as const;
 export type TimelineDetail = (typeof TIMELINE_DETAIL_ORDER)[number];
-export const DEFAULT_TIMELINE_DETAIL: TimelineDetail = 'everything';
+const DEFAULT_TIMELINE_DETAIL: TimelineDetail = 'everything';
 
 // Details rendered as non-bubble activity rows. V1-only steps/subtasks/agent
 // parts are still omitted.
-export function isActivityDetail(detail: TranscriptDetail) {
+function isActivityDetail(detail: TranscriptDetail) {
   return detail.kind === 'tool' || detail.kind === 'reasoning' || detail.kind === 'patch';
 }
 
@@ -51,8 +51,8 @@ export type PatchDetail = Extract<TranscriptDetail, { kind: 'patch' }>;
 export type CompactionDetail = Extract<TranscriptDetail, { kind: 'compaction' }>;
 export type SubagentDetail = Extract<TranscriptDetail, { kind: 'subagent' }>;
 export type ActivityItem = ToolDetail | ReasoningDetail | PatchDetail;
-export type ActivityTool = { name: string; count: number };
-export type ActivityStatus = 'idle' | 'running' | 'error';
+type ActivityTool = { name: string; count: number };
+type ActivityStatus = 'idle' | 'running' | 'error';
 
 export type ActivityGroup = {
   key: string;

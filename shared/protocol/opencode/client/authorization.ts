@@ -34,7 +34,7 @@ function headerName(name: string) {
 // token goes in the configured header (oauth2-proxy and similar gateways read
 // it there). Authorization keeps the existing Basic value when a password is
 // configured; only a passwordless connection falls back to `Bearer` there.
-export function withOidcAuthorization(headers: HeadersInit | undefined, token: string | undefined, oidc: ConnectionOidc): HeadersInit | undefined {
+function withOidcAuthorization(headers: HeadersInit | undefined, token: string | undefined, oidc: ConnectionOidc): HeadersInit | undefined {
   if (!token) return headers;
   const merged = new Headers(headers);
   merged.set(oidcTokenHeader(oidc), token);

@@ -102,7 +102,7 @@ export function recordBytes(bytes: number) {
   scheduleSave();
 }
 
-export function getDataUsage(): DataUsage {
+function getDataUsage(): DataUsage {
   return usage;
 }
 

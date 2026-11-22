@@ -8,7 +8,7 @@ import { projectClientOwner } from '@/features/projects/model/project-client-own
 import { useQueries, useQueryClient } from '@tanstack/react-query';
 import { useCallback, useMemo } from 'react';
 
-export type ProjectBrowserState = {
+type ProjectBrowserState = {
   path: string; entries: ProjectFileEntry[]; results: string[]; query?: string;
   initialized: boolean; loading: boolean; searching: boolean; error?: string;
 };

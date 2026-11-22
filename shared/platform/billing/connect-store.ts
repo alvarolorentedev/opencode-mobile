@@ -28,7 +28,7 @@ type StoreTest = {
   events: string[];
 };
 
-export function canUseConnectStore() {
+function canUseConnectStore() {
   return isConnectEnabled() && Constants.executionEnvironment !== 'storeClient';
 }
 
