@@ -2,10 +2,8 @@
 // See docs/architecture/state-and-data.md#state-ownership-overview.
 import type { ConnectionProfile } from '@/shared/contracts/connection-profiles';
 import { getConnectionScope, getConnectionUiScope } from '@/shared/contracts/connection-scope';
-import { defaultConnectionSettings } from '@/shared/protocol/opencode/client';
 import { ConnectionCatalog, useConnectionDemand, useConnectionRegistryBinding } from '@/runtime/connections/connection-runtime';
 import { CURRENT_ONBOARDING_VERSION } from '@/features/onboarding/runtime';
-import { defaultChatPreferences } from '@/shared/preferences/opencode-preferences';
 import type { ConnectionContextValue } from '@/features/connections/index';
 import { useAppUpdates } from '@/features/updates/runtime';
 import { UpdatesContext } from '@/features/updates/context';
@@ -13,7 +11,7 @@ import { useConnectState , useServicesState } from '@/features/cloud-link/runtim
 import { useConnectionProfiles } from '@/features/connections/runtime';
 import { HIDDEN_PROJECTS_MAX } from '@/features/projects/runtime';
 import { useNetworkStatus } from '@/shared/network/use-network-status';
-import { useOpencodePersistence } from '@/runtime/persistence/use-opencode-persistence';
+import { useAppHydration } from '@/runtime/persistence/use-app-hydration';
 import { useAppCore, useAppStore } from '@/runtime/core/context';
 import { workspaceReadTarget } from '@/runtime/core/project-scope';
 import { useShareState } from '@/features/sharing/runtime';
@@ -46,7 +44,7 @@ export function WorkspaceProvider({ children }: PropsWithChildren) {
   // configure() is process-global and resets listeners.
   useNetworkStatus(core.connections.setNetwork);
   const network = useAppStore((state) => state.network);
-  const { isHydrated } = useOpencodePersistence({ ...shell, defaultChatPreferences, defaultSettings: defaultConnectionSettings });
+  const isHydrated = useAppHydration(core.persistence);
   const presentation = useAppStore((state) => state.presentation);
   // Catalog publications compose Query snapshots and command handles for the root view.
   const [catalogPublications, setCatalogs] = useState<Record<string, { revision?: number; catalog: WorkspaceCatalog }>>({});
@@ -68,7 +66,7 @@ export function WorkspaceProvider({ children }: PropsWithChildren) {
   useEffect(() => core.projects.start(), [core]);
   useEffect(() => core.events.observeMcpStatus(), [core]);
   const { updateSettings: updateWorkspaceSettings, change, removeConnection: removeWorkspaceConnection, connectedWorkspace, isEnabled } = manager;
-  const { setFavoriteSessions, setSettings, setChatPreferences, setHiddenProjects } = shell;
+  const { setSettings, setChatPreferences, setHiddenProjects } = shell;
   const { connections, focus, resolveKey, switchConnection, disconnect } = manager;
   const busy = useSyncExternalStore(core.connections.subscribeProjects, core.connections.isUpdateBlocked, core.connections.isUpdateBlocked);
   const catalogs = useMemo(() => {
@@ -98,7 +96,6 @@ export function WorkspaceProvider({ children }: PropsWithChildren) {
   const isActiveProfile = useCallback((profile: ConnectionProfile) => isEnabled(getConnectionUiScope(profile)), [isEnabled]);
   const profileRefreshed = useCallback((previous: ConnectionProfile, next: ConnectionProfile) => {
     const oldScope = getConnectionScope(previous), newScope = getConnectionScope(next);
-    setFavoriteSessions((items) => items.map((entry) => entry.connectionScope === oldScope ? { ...entry, connectionScope: newScope } : entry));
     if (oldScope === newScope) return;
     setHiddenProjects((items) => {
       if (!(oldScope in items)) return items;
@@ -107,11 +104,13 @@ export function WorkspaceProvider({ children }: PropsWithChildren) {
       delete nextItems[oldScope];
       return nextItems;
     });
-  }, [setFavoriteSessions, setHiddenProjects]);
+  }, [setHiddenProjects]);
   const beforeProfileRefresh = useCallback(async () => {}, []);
+  const migrateConnectionScope = useCallback((previous: ConnectionProfile, next: ConnectionProfile) =>
+    migrateConnectConnectionScope(previous, next, core), [core]);
   const connectSetup = useConnectState({ controlPlaneUrl: shell.controlPlaneUrl, setControlPlaneUrl: shell.setControlPlaneUrl,
     switchConnection, disconnect: disconnectProfile, isHydrated, activeMachineId: settings.connect?.machineId,
-    beforeProfileRefresh, migrateConnectConnectionScope, profiles, setProfiles, onProfileRefreshed: profileRefreshed, isActiveProfile });
+    beforeProfileRefresh, migrateConnectConnectionScope: migrateConnectionScope, profiles, setProfiles, onProfileRefreshed: profileRefreshed, isActiveProfile });
   useConnectionRegistryBinding(connectSetup, updateWorkspaceSettings, isHydrated);
   const profileSaved = useCallback((profile: ConnectionProfile, secrets: { password: string; headers: Record<string, string>; certificate?: import('@/shared/contracts/connection-certificate').ConnectionCertificate }, previous?: ConnectionProfile) => {
     const id = getConnectionUiScope(previous ?? profile);

@@ -28,7 +28,7 @@ phase you are executing. Do not preload every phase unless you are planning.
 | C | [Command core](phase-c-commands.md) | Complete | Cross-domain commands run in the app core and the legacy composition is deleted |
 | D | [Transcript](phase-d-transcript.md) | Complete | Per-session infinite messages, bounded Query persistence and store live overlay |
 | E | [Flatten React](phase-e-flatten-react.md) | Complete | No scope/provider tree or shared-UI runtime exception |
-| F | [Persistence and tests](phase-f-persistence-and-tests.md) | Partially done | Query persistence done; Zustand persist, `loadTs`, `fast-check`, `knip` remain |
+| F | [Persistence and tests](phase-f-persistence-and-tests.md) | In progress | Query and Zustand persistence complete; legacy tests and tooling remain |
 | G | [Harness and guardrails](phase-g-harness-and-guardrails.md) | Not started | Full composition harness, fact rules, docs, release validation |
 
 ## Current baseline
@@ -359,7 +359,7 @@ npm run validate:commit
   and a file-action dismissal race, all 185 browser flows passed. The commit
   gate passed with 1,288 tests and one existing skip. All 332 focused tests
   and the Storybook build passed.
-- E29. The app core binds retained project keys to connection realtime scopes.
+- E29, `f35c9130`. The app core binds retained project keys to connection realtime scopes.
   React mounts one catalog reader for the demanded target and one activity
   observer per connection. The commit gate passed with 1,288 tests and one
   existing skip. All 424 focused tests, Storybook, docs, the development web
@@ -368,6 +368,12 @@ npm run validate:commit
   both levels of Settings overlays. The paired streaming benchmark preserved
   the request counts and measured a median p95 delta-to-paint lag of 15 ms
   against 19 ms for the Phase C baseline.
+- F1. Zustand persist owns the non-secret device preferences and upgrades
+  their existing per-field records. Connection credentials remain in the
+  secure settings adapter. Cloud Link remaps favorites through the same
+  persistence writer and restores them if secure profile save fails. The
+  commit gate passed with 1,289 tests and one existing skip, plus 12 focused
+  tests, docs and 122 affected browser flows.
 
 ## Loop protocol
 

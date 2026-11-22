@@ -24,7 +24,7 @@ transport, persistence, or the client protocol. Read
 
 | Concern | Owning layer |
 | --- | --- |
-| App-wide connection registry, focus, and persistence | `runtime/core/commands/connection.ts`, `runtime/core/commands/workspace.ts`, `runtime/persistence/use-opencode-persistence.ts` |
+| App-wide connection registry, focus, and persistence | `runtime/core/commands/connection.ts`, `runtime/core/commands/workspace.ts`, `runtime/persistence/device-preferences.ts` |
 | Provider-specific agent guidance | `runtime/AGENTS.md` (loaded when working in `runtime/`) |
 | Routine server reads and connection lifecycle | `shared/server-data/`, `runtime/connections/connection-runtime.tsx` ([ADR 0014](../adr/0014-server-data-and-explicit-lifecycles.md)) |
 | Scoped project commands and presentation | `runtime/core/project-runtimes.ts`, `runtime/core/project-binding.ts` and feature presentation hooks |

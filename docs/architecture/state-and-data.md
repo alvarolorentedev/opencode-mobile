@@ -612,8 +612,16 @@ supported key for anything that belongs to one server. `getConnectionScope()`
 is deterministic and encoded so it can be concatenated into storage keys; do
 not re-derive connection keys anywhere else.
 
+Zustand persist projects chat preferences, the trusted control-plane choice,
+favorites, hidden projects and onboarding completion. It reads and upgrades the
+existing per-field records and records the schema version separately. Headless
+consumers can read the same records. The favorites scope migration uses the
+same writer and awaits it before the profile save. The workspace shell waits
+for this hydration and the secure connection settings, after Query restoration.
+
 Persisted values:
 
+- `opencode-mobile.preferences-version` (schema version for the device preference records)
 - `opencode-mobile.settings` (connection URL and username; the password and custom gateway headers live in secure storage)
 - `opencode-mobile.connect-control-plane` (last automatically resolved Cloud Link environment; defaults to production, accepts only production/staging, hydrated before pairing/Cloud Link startup)
 - `opencode-mobile.connection-profiles` (saved connections with name and optional server-scoped catalog filtering, model recents, agent mode, auto-approve, and auto-routing preferences; passwords and custom gateway headers live in secure storage)

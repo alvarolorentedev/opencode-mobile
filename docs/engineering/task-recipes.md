@@ -149,7 +149,7 @@ endpoint consumed by the app.
    for device data.
 3. Behavior: update the owning feature or the cross-domain command in
    `runtime/core/commands/`. Bind scoped project inputs only when needed.
-4. Persistence: `runtime/persistence/use-opencode-persistence.ts` and
+4. Persistence: `runtime/persistence/device-preferences.ts` and
    `shared/storage/persistence-hydration.ts` only if the field survives relaunch.
 5. Context exposure: `features/chat/context.ts` and the domain context type.
 6. Derived data: `features/sessions/model/selectors.ts`; never duplicate

@@ -16,6 +16,8 @@ import { createVoiceControls } from './voice-controls';
 import { createProjectRuntimes } from './project-runtimes';
 
 import { createAppStore, type AppStoreDefaults } from './store';
+import { createConnectionSettingsPersistence } from '@/runtime/persistence/connection-settings';
+import { createDevicePreferences } from '@/runtime/persistence/device-preferences';
 
 export type AppCore = CommandContext & {
   events: ReturnType<typeof createCoreEvents>;
@@ -24,6 +26,7 @@ export type AppCore = CommandContext & {
   clipboard: ReturnType<typeof createFileClipboard>;
   voice: ReturnType<typeof createVoiceControls>;
   projects: ReturnType<typeof createProjectRuntimes>;
+  persistence: { hydrate: () => Promise<void>; observeSettings: () => () => void; flushPreferences: () => Promise<void> };
   transcripts: (identity: QueryIdentity, client: ScopedOpencodeClient) => ReturnType<typeof cachedTranscriptView>;
   commands: {
     workspace: ReturnType<typeof createWorkspaceCommands>;
@@ -37,7 +40,18 @@ export type AppCore = CommandContext & {
 // it through selectors instead of receiving state through providers. Defaults
 // are injected so tests and the app share the same constructor.
 export function createAppCore(defaults: AppStoreDefaults): AppCore {
-  const store = createAppStore(defaults);
+  const preferences = createDevicePreferences();
+  const connectionSettings = createConnectionSettingsPersistence();
+  const store = createAppStore(defaults, preferences.options);
+  let hydration: Promise<void> | undefined;
+  const persistence = {
+    hydrate: () => hydration ??= connectionSettings.hydrate(defaults.settings).then((settings) => {
+      store.getState().setShellValue('settings', settings);
+      return store.persist.rehydrate();
+    }),
+    observeSettings: () => connectionSettings.observe(store),
+    flushPreferences: preferences.flush,
+  };
   const queryClient = createServerQueryClient();
   const context: CommandContext = {
     store,
@@ -57,7 +71,7 @@ export function createAppCore(defaults: AppStoreDefaults): AppCore {
   });
   const projects = createProjectRuntimes({ ...context, events, terminal, session, prompt });
   return { ...context, events, autoApproval: createAutoApproval(context, session.interactions), terminal,
-    clipboard, voice, projects, transcripts: (identity, client) => cachedTranscriptView(queryClient, identity, client), commands: {
+    clipboard, voice, projects, persistence, transcripts: (identity, client) => cachedTranscriptView(queryClient, identity, client), commands: {
     workspace, session, prompt,
     connection: createConnectionCommands(context, workspace),
   } };

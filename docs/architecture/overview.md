@@ -318,9 +318,10 @@ The completion version, preference schema and first-run migration are unchanged.
   `use-conversation-submit.ts` owns submit-then-rearm; `use-conversation-playback.ts`
   owns the separate settled-reply readback watcher, and
   `use-conversation-readback-input.ts` owns the microphone/TTS handoff.
-- `runtime/persistence/use-opencode-persistence.ts`
-  AsyncStorage hydration and ordered write-back, with field validation in
-  `shared/storage/persisted-preferences.ts`.
+- `runtime/persistence/device-preferences.ts` and `runtime/persistence/connection-settings.ts`
+  Zustand persist owns device preferences. The connection settings adapter
+  retains ordered metadata and secure credential writes. The storage schemas
+  validate each field independently.
 - `features/connections/state/use-connection-profiles.ts`
   Provider-owned saved-profile state, UI sequencing and credential ordering,
   hostname defaults, setup probing, local V2 pairing, and connection actions
@@ -742,7 +743,7 @@ are reshaped to carry keys. Notification copy is already translated inside
 The normal startup flow is:
 
 1. Root layout mounts providers and keeps the native splash up.
-2. `useOpencodePersistence()` hydrates settings, chat preferences, favorites, and the onboarding completion marker from AsyncStorage.
+2. Query restores its cache before the workspace shell mounts. The app core hydrates device preferences through Zustand persist and restores connection credentials through their secure storage adapter.
 3. The routing gate resolves: existing configured installs show `(tabs)`; a fresh install shows the onboarding assistant. A fresh install does not auto-connect.
 4. After hydration, once onboarding is completed, `OpencodeProvider` calls `connect()`.
 5. `connect()` loads the project catalog using a catalog-scoped client with no directory and derives the active project from the server (server default location first, then the most recently active server project). Runtime catalog refreshes pass the runtime's directory to `location.get`, so a worktree keeps its own resolved checkout instead of falling back to the server's root project.

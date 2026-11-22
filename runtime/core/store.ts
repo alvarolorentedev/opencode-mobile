@@ -1,4 +1,5 @@
-import { createStore, type StoreApi } from 'zustand/vanilla';
+import { persist, type PersistOptions } from 'zustand/middleware';
+import { createStore, type Mutate, type StateCreator, type StoreApi } from 'zustand/vanilla';
 import { DEFAULT_NETWORK_STATUS, type NetworkStatus } from '@/shared/network/network-status';
 
 import type { OpencodeConnectionSettings } from '@/shared/protocol/opencode/client/types';
@@ -194,8 +195,10 @@ export type AppStore = StoreApi<AppState>;
 
 export type AppStoreDefaults = Pick<ShellState, 'settings' | 'chatPreferences' | 'controlPlaneUrl'>;
 
-export function createAppStore(defaults: AppStoreDefaults): AppStore {
-  return createStore<AppState>()((set) => ({
+export function createAppStore(defaults: AppStoreDefaults): AppStore;
+export function createAppStore<T>(defaults: AppStoreDefaults, options: PersistOptions<AppState, T>): Mutate<AppStore, [['zustand/persist', T]]>;
+export function createAppStore<T>(defaults: AppStoreDefaults, options?: PersistOptions<AppState, T>) {
+  const initialize: StateCreator<AppState> = (set) => ({
     shell: {
       ...defaults,
       onboardingVersion: 0,
@@ -300,5 +303,6 @@ export function createAppStore(defaults: AppStoreDefaults): AppStore {
     })),
     setLocalClassifierReady: (ready) => set((state) => state.localClassifierReady === ready ? state : { localClassifierReady: ready }),
     setFileClipboard: (patch) => set((state) => ({ fileClipboard: { ...state.fileClipboard, ...patch(state.fileClipboard) } })),
-  }));
+  });
+  return options ? createStore<AppState>()(persist(initialize, options)) : createStore<AppState>()(initialize);
 }

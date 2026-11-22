@@ -2,6 +2,7 @@ export const SETTINGS_STORAGE_KEY = 'opencode-mobile.settings';
 export const APP_UPDATES_STORAGE_KEY = 'opencode-mobile.app-updates';
 export const CONNECT_CONTROL_PLANE_STORAGE_KEY = 'opencode-mobile.connect-control-plane';
 export const CONNECTION_PROFILES_STORAGE_KEY = 'opencode-mobile.connection-profiles';
+export const DEVICE_PREFERENCES_VERSION_KEY = 'opencode-mobile.preferences-version';
 export const CHAT_PREFERENCES_STORAGE_KEY = 'opencode-mobile.chat-preferences';
 export const ACTIVE_PROJECT_STORAGE_KEY = 'opencode-mobile.active-project';
 // Completion-only first-run setup marker. It never stores connection,
