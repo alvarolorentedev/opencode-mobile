@@ -21,7 +21,7 @@ and [feature boundaries](../docs/architecture/feature-boundaries.md).
   `connection-runtime.tsx` adapts lifecycle and connection catalog data for React.
 - `runtime/core/project-runtimes.ts` and `project-binding.ts`: bind retained project
   keys to commands and reconciliation on the connection's realtime manager.
-- `runtime/composition/`: app entrypoint, scoped query demand and native views.
+- `runtime/shell/`: app entrypoint, workspace/native/conversation hosts; `runtime/workspace/use-workspace-server-data.ts` owns scoped query demand.
 - `runtime/persistence/`: app hydration/write-back and cross-domain credential-scope migration.
 - `runtime/realtime/`: SSE plus polling reconciliation and coalescing.
 - `runtime/presentation/`: stable drafts/scroll positions, owned by the app store and independent of registry updates.

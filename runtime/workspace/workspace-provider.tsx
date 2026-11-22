@@ -22,9 +22,9 @@ import { useWorkspaceShellState } from '@/runtime/workspace/use-workspace-shell-
 import { WorkspaceContext, type WorkspaceRegistry } from '@/runtime/workspace/workspace-context';
 import { useLibrarySessions, useMissionOverview } from '@/features/sessions/runtime';
 import { MISSION_PATH } from '@/shared/contracts/mission-control';
-import { WorkspaceNative } from '@/runtime/composition/workspace-native';
-import { WorkspaceConversation } from '@/runtime/composition/workspace-conversation';
-import { WorkspaceCatalogReads } from '@/runtime/composition/workspace-catalog-reads';
+import { WorkspaceNative } from '@/runtime/shell/workspace-native';
+import { WorkspaceConversation } from '@/runtime/shell/workspace-conversation';
+import { WorkspaceCatalogReads } from '@/runtime/shell/workspace-catalog-reads';
 import { useMissionWidget } from '@/features/widgets/runtime';
 import { clearWorkspacePresentation, hasWorkspaceDrafts } from '@/runtime/presentation/workspace-presentation';
 import type { ConnectionRecord, WorkspaceCatalog } from '@/shared/contracts/workspace';

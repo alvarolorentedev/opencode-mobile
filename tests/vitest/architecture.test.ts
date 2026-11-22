@@ -34,11 +34,11 @@ describe('architecture ratchets', () => {
     }
 
     // The provider mounts the application core and workspace shell.
-    const provider = await read('runtime/composition/opencode-provider.tsx');
+    const provider = await read('runtime/shell/opencode-provider.tsx');
     const providerLines = provider.split('\n').length;
     assert.ok(
       providerLines <= 60,
-      `runtime/composition/opencode-provider.tsx is ${providerLines} lines. Keep the app-core entrypoint at or below 60 lines.`,
+      `runtime/shell/opencode-provider.tsx is ${providerLines} lines. Keep the app-core entrypoint at or below 60 lines.`,
     );
 
     // 1b. No source file may exceed the readable-size ceiling. Generated locale

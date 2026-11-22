@@ -31,7 +31,7 @@ import { useOnboarding } from '@/features/onboarding/context';
 import { useWorkspacePreferences } from '@/runtime/workspace';
 import { useUpdates } from '@/features/updates/context';
 import { UpdateNotice } from '@/features/updates/index';
-import { OpencodeProvider } from '@/runtime/composition/opencode-provider';
+import { OpencodeProvider } from '@/runtime/shell/opencode-provider';
 
 export const unstable_settings = {
   anchor: '(tabs)',

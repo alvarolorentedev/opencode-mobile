@@ -102,7 +102,7 @@ Used primarily by tab icons.
 
 ## Provider And Utility Modules With UI Contracts
 
-### `runtime/composition/opencode-provider.tsx`
+### `runtime/shell/opencode-provider.tsx`
 
 #### Responsibility
 

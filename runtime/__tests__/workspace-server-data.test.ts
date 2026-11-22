@@ -9,7 +9,7 @@ import { fetchProjectCatalog, locationOptions } from '@/features/projects/servic
 import { useProjectCatalogReads } from '@/features/projects/state/use-project-inventory';
 import { sessionCatalogOptions } from '@/features/sessions/services/queries';
 import { useSessionCatalog } from '@/features/sessions/state/use-session-catalog';
-import { useWorkspaceServerData } from '@/runtime/composition/use-workspace-server-data';
+import { useWorkspaceServerData } from '@/runtime/workspace/use-workspace-server-data';
 import type { ScopedOpencodeClient } from '@/shared/protocol/opencode/client';
 import { capabilitiesCacheKey } from '@/shared/storage/keys';
 import { deferred } from '../../tests/helpers/controlled-clock';

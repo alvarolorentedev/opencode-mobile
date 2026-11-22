@@ -11,7 +11,7 @@ requires explicit human validation under `AGENTS.md`.
 
 Closed on 2026-10-18. The coupling hotspot was split without changing behavior:
 
-- `runtime/composition/opencode-provider.tsx` is now a thin wrapper (~33 lines). The
+- `runtime/shell/opencode-provider.tsx` is now a thin wrapper (~33 lines). The
   first composition split became the app-core commands and retained project
   adapters under ADR 0051. Scoped selectors live in `runtime/core/workspace-selectors.ts`.
 - The provider line ratchet in `tests/vitest/architecture.test.ts` dropped from

@@ -89,7 +89,7 @@ During the migration the provider composition below remains the current owner of
 domain state; it may read the core as an adapter and must not gain new state.
 
 The dominant design decision is central orchestration through the provider layer:
-`runtime/composition/opencode-provider.tsx` mounts `WorkspaceProvider`, which coordinates the app-store connection registry and the app-wide coordinators. The app core reconciles retained project keys and registers their commands with each connection’s realtime manager. Domain hooks select the focused or scoped values from the app core; there is no per-domain context provider tree.
+`runtime/shell/opencode-provider.tsx` mounts `WorkspaceProvider`, which coordinates the app-store connection registry and the app-wide coordinators. The app core reconciles retained project keys and registers their commands with each connection’s realtime manager. Domain hooks select the focused or scoped values from the app core; there is no per-domain context provider tree.
 
 This composition unit is the application's effective domain layer. It owns:
 
@@ -228,7 +228,7 @@ The completion version, preference schema and first-run migration are unchanged.
 
 ### Provider Layer
 
-- `runtime/composition/opencode-provider.tsx`
+- `runtime/shell/opencode-provider.tsx`
   Thin entrypoint: creates the app core and mounts the workspace registry.
 - `runtime/core/project-runtimes.ts` and `runtime/core/project-binding.ts`
   Attach project commands and reconciliation to the connection lifecycle.
@@ -263,7 +263,7 @@ The completion version, preference schema and first-run migration are unchanged.
   Derived selectors extracted from the provider body.
 - `runtime/core/store.ts`
   App preferences, persisted metadata and per-project device state.
-- `shared/server-data/` and `runtime/composition/use-workspace-server-data.ts`
+- `shared/server-data/` and `runtime/workspace/use-workspace-server-data.ts`
   TanStack Query owns routine server responses; domain hooks expose derived views.
   See [server read ownership](state-and-data.md#routine-server-reads).
 - `runtime/realtime/project-refresh-queue.ts`
@@ -418,7 +418,7 @@ Feature hooks publish presentation data and supply cleanup where needed.
 `tests/vitest/architecture.test.ts` (run by `npm run test:vitest`) enforces a repo-wide readable-size ratchet: every source
 file under `app/`, `features/`, `runtime/`, `shared/`, and `features/widgets/` must stay at
 or below **500 lines** (200-400 is the target; generated `shared/i18n/resources.ts` is
-exempt), `runtime/composition/opencode-provider.tsx` must stay a thin wrapper at or below
+exempt), `runtime/shell/opencode-provider.tsx` must stay a thin wrapper at or below
 **60 lines**. The public context surface cannot grow past 127 members. When a limit is genuinely outgrown, split the file
 into the right layer and, if needed, lower the number in the same change.
 

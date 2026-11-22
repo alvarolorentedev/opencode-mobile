@@ -15,7 +15,7 @@ import { useChat } from '@/features/chat/context';
 import { useProjects } from '@/features/projects/context';
 import { useCurrentSession } from '@/features/sessions/context';
 import { AppCoreProvider, useAppStore, useConnectionLifecycle, useProjectScope } from '@/runtime/core';
-import { useWorkspaceServerData } from '@/runtime/composition/use-workspace-server-data';
+import { useWorkspaceServerData } from '@/runtime/workspace/use-workspace-server-data';
 import { createConnection } from '@/runtime/connections/create-connection';
 import { createAppCore } from '@/runtime/core/create-app-core';
 import { getConnectionUiScope } from '@/shared/contracts/connection-scope';

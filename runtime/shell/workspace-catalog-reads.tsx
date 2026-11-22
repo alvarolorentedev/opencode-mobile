@@ -7,7 +7,7 @@ import { useWorkspacePreferences } from '@/runtime/workspace/workspace-context';
 import type { WorkspaceTarget } from '@/shared/contracts/workspace';
 import type { ChatPreferences } from '@/shared/preferences/opencode-preferences';
 
-import { useWorkspaceServerData } from './use-workspace-server-data';
+import { useWorkspaceServerData } from '@/runtime/workspace/use-workspace-server-data';
 
 export function WorkspaceCatalogReads({ target, hydrated }: { target?: WorkspaceTarget; hydrated: boolean }) {
   const scope = useProjectScope(target);

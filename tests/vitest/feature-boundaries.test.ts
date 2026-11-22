@@ -56,7 +56,7 @@ describe('feature boundaries', () => {
       const values = new Set<string>(); graph.set(mod.file, values);
       const owners: [RegExp, string[]][] = [
         [/new QueryClient\s*\(/, ['shared/server-data/client.tsx', 'shared/server-data/query-client.ts']],
-        [/<ServerDataProvider(?:\s|>)/, ['runtime/composition/opencode-provider.tsx']],
+        [/<ServerDataProvider(?:\s|>)/, ['runtime/shell/opencode-provider.tsx']],
         [/<ConnectionCatalog(?:\s|>|\/)/, ['runtime/workspace/workspace-provider.tsx']],
         [/<RetainedProject(?:\s|>)/, ['runtime/workspace/workspace-provider.tsx']],
         [/\buseWorkspaceConnections\s*\(/, ['runtime/workspace/use-workspace-connections.ts', 'runtime/workspace/workspace-provider.tsx']],
