@@ -1,6 +1,7 @@
 import { createStore, type StoreApi } from 'zustand/vanilla';
 
 import type { OpencodeConnectionSettings } from '@/shared/protocol/opencode/client/types';
+import type { PendingPrompt, PromptInput } from '@/shared/protocol/opencode/prompt-inbox';
 import type { ChatPreferences } from '@/shared/preferences/opencode-preferences';
 import type { FavoriteSession, HiddenProjectsByConnection } from '@/shared/contracts/domain';
 import type { ConnectionRecord, WorkspaceTarget } from '@/shared/contracts/workspace';
@@ -44,6 +45,12 @@ export type ChatUiState = {
 export type PromptUiState = {
   sending: { sessionId?: string; active: boolean };
   error?: { message: string; occurredAt: number; sessionId?: string };
+  outbox?: PromptOutbox;
+};
+
+export type PromptOutbox = {
+  sequence: number;
+  bySession: Record<string, { prompt: PendingPrompt; queued?: { input: PromptInput; sequence: number } }[]>;
 };
 
 const EMPTY_CHAT: ChatUiState = {
@@ -82,6 +89,7 @@ export type AppState = {
   setSelection: (scopeKey: string, patch: Partial<SelectionState> | ((current: SelectionState) => Partial<SelectionState>)) => void;
   setChat: (scopeKey: string, patch: Partial<ChatUiState> | ((current: ChatUiState) => Partial<ChatUiState>)) => void;
   setPrompt: (scopeKey: string, patch: Partial<PromptUiState> | ((current: PromptUiState) => Partial<PromptUiState>)) => void;
+  clearPromptOutboxes: (connectionId: string) => void;
 };
 
 export type AppStore = StoreApi<AppState>;
@@ -147,5 +155,11 @@ export function createAppStore(defaults: AppStoreDefaults): AppStore {
         },
       };
     }),
+    clearPromptOutboxes: (connectionId) => set((state) => ({
+      prompt: Object.fromEntries(Object.entries(state.prompt).map(([key, value]) => [key,
+        value.outbox && (JSON.parse(key) as string[])[0] === connectionId
+          ? { ...value, outbox: { sequence: value.outbox.sequence, bySession: {} } } : value,
+      ])),
+    })),
   }));
 }

@@ -23,7 +23,7 @@ phase you are executing. Do not preload every phase unless you are planning.
 
 | Phase | Document | Status | Outcome |
 | --- | --- | --- | --- |
-| A | [State evacuation](phase-a-state-evacuation.md) | In progress — A1 done, A2–A7 open | No domain data in per-workspace React state |
+| A | [State evacuation](phase-a-state-evacuation.md) | In progress — A1–A2 done, A3–A7 open | No domain data in per-workspace React state |
 | B | [Connection manager](phase-b-connection-manager.md) | Not started | Transport, probe, renewal, SSE and polling are plain TS |
 | C | [Command core](phase-c-commands.md) | Not started | Cross-domain commands are plain functions; composition deleted |
 | D | [Transcript](phase-d-transcript.md) | Not started | Per-session infinite messages + store live overlay |
@@ -55,6 +55,17 @@ export NVM_DIR="$HOME/.nvm"; . "$NVM_DIR/nvm.sh"
 git status --short
 npm run validate:commit
 ```
+
+## Execution journal
+
+- `d1115184` baseline on Node 22.23.3. `npm ci` and `npm run validate:commit`
+  passed from the clean tree. Vitest reported 1,253 passing tests and one
+  existing skip. ESLint reported 36 existing warnings.
+- A2, `refactor(chat): split server inbox from local prompt outbox`. Static
+  checks, docs, the development web export, and 31 browser tests across chat,
+  interactions and network resilience passed. The focused Vitest run covered
+  the inbox, the app store and feature boundaries. The impact command found no
+  affected suites because the inbox suites still use the legacy loader.
 
 ## Loop protocol
 

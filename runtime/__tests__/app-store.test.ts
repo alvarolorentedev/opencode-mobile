@@ -49,4 +49,16 @@ describe('app store', () => {
     expect(store.getState().selection['["a","/one"]']).toMatchObject({ currentSessionId: 's1', isBootstrappingChat: false });
     expect(store.getState().selection['["a","/two"]']).toMatchObject({ currentSessionId: 's2', activeSessionsVisible: true });
   });
+
+  it('clears removed connection outboxes while preserving sibling connections and local IDs', () => {
+    const store = createAppStore(defaults);
+    const first = '["a","/one",""]';
+    const other = '["b","/one",""]';
+    const outbox = { sequence: 1, bySession: { session: [] } };
+    store.getState().setPrompt(first, { outbox });
+    store.getState().setPrompt(other, { outbox });
+    store.getState().clearPromptOutboxes('a');
+    expect(store.getState().prompt[first].outbox).toEqual({ sequence: 1, bySession: {} });
+    expect(store.getState().prompt[other].outbox).toBe(outbox);
+  });
 });

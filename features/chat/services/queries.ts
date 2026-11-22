@@ -1,6 +1,6 @@
 import type { ScopedOpencodeClient } from '@/shared/protocol/opencode/client';
 import type { SessionMessageRecord } from '@/shared/presentation/format';
-import { connectionQueryKey, type QueryIdentity } from '@/shared/server-data/keys';
+import { connectionQueryKey, projectQueryKey, type QueryIdentity } from '@/shared/server-data/keys';
 
 export type MessagesBySession = Record<string, SessionMessageRecord[]>;
 
@@ -21,4 +21,8 @@ export function todosKey(identity: QueryIdentity, client: ScopedOpencodeClient) 
 
 export function vcsDiffsKey(identity: QueryIdentity, client: ScopedOpencodeClient) {
   return [...connectionQueryKey(identity, client.__opencode.contract), 'vcs-diffs'] as const;
+}
+
+export function promptInboxKey(identity: QueryIdentity, client: ScopedOpencodeClient) {
+  return projectQueryKey(identity, client, 'prompt-inbox');
 }

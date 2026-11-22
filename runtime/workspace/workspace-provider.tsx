@@ -105,6 +105,7 @@ export function WorkspaceProvider({ children }: PropsWithChildren) {
   }, [change, updateWorkspaceSettings]);
   const removeConnection = useCallback(async (id: string) => {
     await removeWorkspaceConnection(id);
+    core.store.getState().clearPromptOutboxes(id);
     clearWorkspacePresentation(presentation, id);
     setCatalogs((current) => {
       if (!(id in current)) return current;
@@ -112,7 +113,7 @@ export function WorkspaceProvider({ children }: PropsWithChildren) {
       delete next[id];
       return next;
     });
-  }, [removeWorkspaceConnection, presentation]);
+  }, [core, removeWorkspaceConnection, presentation]);
   const profileRemoved = useCallback(async (profile: ConnectionProfile) => removeConnection(getConnectionUiScope(profile)), [removeConnection]);
   const connectionProfiles = useConnectionProfiles({ clearCapabilitiesSnapshots, settings, switchConnection, updateSettings, profiles, setProfiles, onSaved: profileSaved, onRemoved: profileRemoved });
   const { servicesValue } = useServicesState({ settings, connectSetup, connections: manager.connections, visible: pathname === '/settings' || pathname === '/service' });

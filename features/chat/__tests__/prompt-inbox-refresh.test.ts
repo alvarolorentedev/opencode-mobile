@@ -15,7 +15,7 @@ describe('prompt inbox refresh', () => {
       '@/shared/utilities/error-message': { getErrorMessage: (error: unknown) => String(error) },
     });
     const value = runtime.mount(() => usePromptInbox({
-      client: { promptInbox: {} } as never,
+      client: { __opencode: { contract: 'v2', directory: '/workspace' }, promptInbox: {} } as never,
       queueScope: 'scope',
       isCurrentClient: () => true,
       refreshMessages: readMessages,

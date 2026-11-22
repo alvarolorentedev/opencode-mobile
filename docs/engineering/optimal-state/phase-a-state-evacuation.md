@@ -1,6 +1,6 @@
 # Phase A — State Evacuation
 
-Status: **in progress**. A1 is complete; A2–A7 remain.
+Status: **in progress**. A1 and A2 are complete. A3–A7 remain.
 
 Goal: remove every piece of domain data from the per-workspace React runtime so
 the runtime can be deleted in Phase E without losing retained state.
@@ -22,27 +22,15 @@ that must survive a workspace or tab switch.
 
 Commit: `refactor(chat): move prompt and transcript-error state into the app store`.
 
-## Remaining work
-
 ### A2 — Prompt inbox and notices
 
-Current: `features/chat/state/use-prompt-inbox.ts` owns a
-`Map<scope, { prompts, notices }>`, a queue size, queued inputs and revisions in
-`useState`/refs.
+The [prompt inbox and outbox](../../architecture/state-and-data.md#session-content-caches)
+have separate owners. Query owns confirmed inbox entries and notices, and the
+app store owns local admission entries and offline inputs. Queue length is
+derived from the outbox. The hook retains request revisions and the flush lock.
+Cancellation invalidates reads that started before the server confirmed it.
 
-Target:
-- Put the per-scope prompt/notice snapshot and queue size in the prompt store
-  slice.
-- Treat canonical inbox/notices as Query data when the transport exposes them;
-  keep only the local outbox/admission queue in the store.
-- Keep timers, the flushing lock and in-flight promise refs as refs.
-- Do not keep a second canonical copy in the hook.
-
-Acceptance:
-- No authoritative `useState`/ref for prompts, notices, queue size or queued
-  inputs.
-- Queue recovery and offline delivery tests pass.
-- `npm run impact -- features/chat/state/use-prompt-inbox.ts` suites pass.
+## Remaining work
 
 ### A3 — Conversation
 

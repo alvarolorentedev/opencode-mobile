@@ -136,6 +136,7 @@ describe('feed attachments', () => {
 describe('provider-owned prompt inbox', () => {
   async function mount(client: any, readMessages = vi.fn(async () => [] as any[]), options: { online?: boolean; connected?: boolean } = {}) {
     const runtime = hookRuntime();
+    client.__opencode = { contract: client.promptInbox ? 'v2' : 'v1', directory: '/test-workspace' };
     const { usePromptInbox } = await loadTs('features/chat/state/use-prompt-inbox.ts', {
     react: runtime.react,
     "@/shared/protocol/opencode/prompt-inbox": { PromptPreparationError },
@@ -190,7 +191,7 @@ describe('provider-owned prompt inbox', () => {
     client.promptInbox.list.mockResolvedValueOnce([]);
     await runtime.value.refreshMessages('s'); runtime.flush();
     expect(runtime.value.pendingPromptsBySession.s).toHaveLength(0);
-    const other = { promptInbox: { list: async () => [pending()] } };
+    const other = { __opencode: { contract: 'v2', directory: '/other-workspace' }, promptInbox: { list: async () => [pending()] } };
     runtime.update({ client: other, queueScope: 'other-workspace', isCurrentClient: (candidate: any) => candidate === other });
     expect(runtime.value.pendingPromptsBySession).toEqual({});
   });
@@ -200,8 +201,16 @@ describe('provider-owned prompt inbox', () => {
     const runtime = await mount(client);
     await runtime.value.refreshMessages('s'); runtime.flush();
     expect(runtime.value.pendingPromptsBySession.s).toHaveLength(1);
+    const staleInbox = deferred();
+    client.promptInbox.list.mockImplementationOnce(async () => {
+      await staleInbox.promise;
+      return [pending('m1')];
+    });
+    const staleRefresh = runtime.value.refreshMessages('s');
     await runtime.value.cancelPrompt('s', 'm1'); runtime.flush();
     expect(client.promptInbox.cancel).toHaveBeenCalledWith('s', 'm1');
+    staleInbox.resolve(undefined);
+    await staleRefresh; runtime.flush();
     expect(runtime.value.pendingPromptsBySession.s).toHaveLength(0);
   });
 

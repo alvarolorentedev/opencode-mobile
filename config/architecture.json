@@ -80,6 +80,7 @@
       "AppCoreProvider",
       "AppState",
       "ChatUiState",
+      "PromptOutbox",
       "PromptUiState",
       "RegistryState",
       "SelectionState",

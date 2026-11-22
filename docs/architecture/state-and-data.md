@@ -181,6 +181,13 @@ Canonical message windows, diffs, todos and VCS diffs are Query data: one
 connection-scoped entry per resource holds the per-session maps, and the action
 layer keeps its setter boundary. Diffs and todos are no longer React state.
 
+OpenCode 2 pending prompts and notices share a project-scoped `prompt-inbox`
+Query entry. Inbox reads, confirmed admissions and confirmed cancellations update
+that entry. The in-memory app store owns local sending and uncertain entries and
+the offline outbox, including the inputs needed for delivery. The pending stack
+combines those sources for the selected session. Credential rotation follows the
+Query partition policy above, and removing a connection discards its outbox.
+
 `diffsBySession` holds normalized `FileDiff` entries. Both contracts pass through `shared/protocol/opencode/diff.ts` before they are stored, so a v1 `before`/`after` pair arrives with a rebuilt unified `patch` and the viewer renders the same line preview for either contract.
 
 Diff scope state:
