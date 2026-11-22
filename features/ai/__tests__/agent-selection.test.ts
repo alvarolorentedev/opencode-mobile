@@ -1,5 +1,10 @@
+// @vitest-environment happy-dom
+
 import { describe, expect, it, vi } from 'vitest';
-import { hookRuntime, loadTs } from '../../../tests/helpers/runtime.mjs';
+import { useCapabilitiesActions } from '@/features/ai/state/use-capabilities-actions';
+import { connectionViewProbe } from '../../../tests/helpers/connection-view-probe';
+import { renderHook } from '../../../tests/helpers/render-hook';
+import type { ScopedOpencodeClient } from '@/shared/protocol/opencode/client';
 import { hydrateCapabilitiesSnapshot, persistCapabilitiesSnapshot } from '@/features/ai/services/capabilities-snapshot';
 import { reconcileEnabledModelIds } from '@/features/ai/model/opencode-model-selection';
 import { patchModelPreferences } from '@/features/ai/model/model-preferences';
@@ -7,37 +12,43 @@ import { defaultChatPreferences } from '@/shared/preferences/opencode-preference
 import type { ModelOption } from '@/shared/contracts/model-options';
 
 vi.mock('@react-native-async-storage/async-storage', () => ({ default: {} }));
+vi.mock('expo-router', () => ({ usePathname: () => '/' }));
+vi.mock('react-native', () => ({ Platform: { OS: 'web' } }));
+vi.mock('expo-constants', () => ({ default: {} }));
+vi.mock('expo-localization', () => ({ getLocales: () => [] }));
+vi.mock('expo/fetch', () => ({}));
+vi.mock('expo-crypto', () => ({}));
+vi.mock('expo-file-system', () => ({}));
+vi.mock('expo-secure-store', () => ({}));
 
 const identity = { connectionId: 'test', connectionScope: 'scope', authRevision: 0 };
 
 const build = { id: 'build', label: 'Build', mode: 'primary' as const };
 const plan = { id: 'plan', label: 'Plan', mode: 'primary' as const };
 
-async function capabilitiesHarness() {
-  const runtime = hookRuntime();
-  const { useCapabilitiesActions } = await loadTs('features/ai/state/use-capabilities-actions.ts', {
-    react: runtime.react,
-    '@/features/ai/services/capabilities-service': {},
-    '@/features/ai/model/auto-model/models': { getLocalAutoModelStatus: () => 'unavailable' },
-    '@/features/ai/model/opencode-auto-model': { getClassifierModelId: () => undefined },
-    '@/features/ai/services/model-routing-service': {},
-  });
-  let preferences = { mode: 'summary', enabledModelIds: [], knownModelIds: [], autoEnableNewModels: true, autoModel: { enabled: false } };
-  const write = vi.fn((update: (value: typeof preferences) => typeof preferences) => { preferences = update(preferences); });
-  const client = { __opencode: { contract: 'v2' } };
-  runtime.mount(useCapabilitiesActions, {
-    identity,
-    scopeKey: 'capabilities-test-workspace',
+function capabilitiesHarness() {
+  type Input = Parameters<typeof useCapabilitiesActions>[0];
+  let preferences: Input['chatPreferences'] = { ...defaultChatPreferences, mode: 'summary', enabledModelIds: [], knownModelIds: [], autoEnableNewModels: true };
+  const write = vi.fn((update: (value: Input['chatPreferences']) => Input['chatPreferences']) => { preferences = update(preferences); });
+  const client = { __opencode: { contract: 'v2', directory: '/a' } } as ScopedOpencodeClient;
+  let props: Input = {
+    identity, scopeKey: 'capabilities-test-workspace',
     client, isCurrentClient: (candidate: unknown) => candidate === client, isHydrated: false,
     activeProjectPath: '/a', availableProviders: [], availableModels: [], chatPreferences: preferences,
-    capabilities: { agents: [build, plan], models: [], providers: [], connected: [], config: { default_agent: 'plan' } },
-    setChatPreferences: write,
-  });
-  return { runtime, write, get preferences() { return preferences; }, set preferences(value) { preferences = value; }, client };
+    capabilities: { agents: [build, plan], models: [], providers: [], connected: [], providerAuthMethodsById: {}, config: { default_agent: 'plan' } },
+    setChatPreferences: write as Input['setChatPreferences'],
+  };
+  const view = renderHook(useCapabilitiesActions, props, connectionViewProbe({} as never));
+  type Patch = Partial<Omit<Input, 'capabilities'>> & { capabilities?: Omit<NonNullable<Input['capabilities']>, 'providerAuthMethodsById'> };
+  const update = ({ capabilities, ...patch }: Patch) => {
+    props = { ...props, ...patch, ...(capabilities ? { capabilities: { ...capabilities, providerAuthMethodsById: {} } } : {}) };
+    view.rerender(props);
+  };
+  return { runtime: { ...view, update }, write, get preferences() { return preferences; }, set preferences(value) { preferences = value; }, client };
 }
 
 describe('agent preference reconciliation', () => {  it('waits for hydration, repairs an invalid selection and preserves valid user choices without loops', async () => {
-    const h = await capabilitiesHarness();
+    const h = capabilitiesHarness();
     expect(h.write).not.toHaveBeenCalled();
     h.runtime.update({ isHydrated: true });
     expect(h.preferences.mode).toBe('plan');
@@ -52,7 +63,7 @@ describe('agent preference reconciliation', () => {  it('waits for hydration, re
   });
 
   it('retains preferences across empty/missing-mode catalogs and rejects stale clients', async () => {
-    const h = await capabilitiesHarness();
+    const h = capabilitiesHarness();
     h.runtime.update({ isHydrated: true, capabilities: { agents: [], models: [], providers: [], connected: [] } });
     expect(h.preferences.mode).toBe('summary');
     h.runtime.update({ capabilities: { agents: [{ id: 'summary', label: 'Summary' }], models: [], providers: [], connected: [] } });
@@ -63,12 +74,12 @@ describe('agent preference reconciliation', () => {  it('waits for hydration, re
   });
 
   it('revalidates on project/server changes and after an agent is disabled or removed', async () => {
-    const h = await capabilitiesHarness();
+    const h = capabilitiesHarness();
     h.runtime.update({ isHydrated: true });
     expect(h.preferences.mode).toBe('plan');
     h.runtime.update({ activeProjectPath: '/b', capabilities: { agents: [build], models: [], providers: [], connected: [] } });
     expect(h.preferences.mode).toBe('build');
-    const client = { __opencode: { contract: 'v2' } };
+    const client = { __opencode: { contract: 'v2', directory: '/b' } } as ScopedOpencodeClient;
     h.runtime.update({ client, isCurrentClient: (candidate: unknown) => candidate === client,
       capabilities: { agents: [plan], models: [], providers: [], connected: [] } });
     expect(h.preferences.mode).toBe('plan');

@@ -416,10 +416,15 @@ npm run validate:commit
   now cover the real SDK and redirect-aware transport. All 39 migrated cases
   retained their identities, and both fake-server contracts passed self-test.
 
-- F9. Connection-manager recovery exercises the native OpenCode client, live
+- F9, `1768fedd`. Connection-manager recovery exercises the native OpenCode client, live
   connection manager, Cloud Link reducer, Query cache and persisted profiles.
   The test measures renewal and reconnect timers through the manager's
   injected clock. The share screen uses real scope selectors and React effects.
+
+- F10. Transcript virtualization, activity rows, conversation animations,
+  connection forms and agent preference reconciliation now exercise real
+  component or hook lifecycles. The connection form uses React Hook Form
+  and the production Zod resolver.
 
 ## Loop protocol
 
