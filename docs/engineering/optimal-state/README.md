@@ -23,7 +23,7 @@ phase you are executing. Do not preload every phase unless you are planning.
 
 | Phase | Document | Status | Outcome |
 | --- | --- | --- | --- |
-| A | [State evacuation](phase-a-state-evacuation.md) | In progress — A1–A6 done, A7 open | No domain data in per-workspace React state |
+| A | [State evacuation](phase-a-state-evacuation.md) | Complete | No domain data in per-workspace React state |
 | B | [Connection manager](phase-b-connection-manager.md) | Not started | Transport, probe, renewal, SSE and polling are plain TS |
 | C | [Command core](phase-c-commands.md) | Not started | Cross-domain commands are plain functions; composition deleted |
 | D | [Transcript](phase-d-transcript.md) | Not started | Per-session infinite messages + store live overlay |
@@ -82,11 +82,16 @@ npm run validate:commit
   network resilience browser tests passed. A fake-clock test verified one
   grouped paint at 50 ms with an optimistic attachment. Comparative latency
   and cold-start measurement remain part of Phase D.
-- A6, `refactor(state): store settings and project interaction state`.
+- A6, `5d5ad465`.
   The commit gate, 144 focused tests, docs and web export passed. All 49 chat,
   settings, extensions, projects and auto-model browser tests passed. The
   credential partition test verifies that an old classifier result does not
   carry into a new credential generation.
+- A7 and Phase A gate, `refactor(runtime): finish workspace state evacuation`.
+  Static checks passed with 1,256 tests and one existing skip. The 139 focused
+  tests, docs, fake-server self-tests and web export passed. All 95 browser
+  checks passed across the Phase A gate and the affected diffs, projects,
+  onboarding and settings specs.
 
 ## Loop protocol
 

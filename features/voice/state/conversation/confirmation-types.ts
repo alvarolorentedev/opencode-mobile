@@ -25,6 +25,7 @@ export type PendingConfirmation = {
 };
 
 export type ConfirmationOptions = {
+  scopeKey: string;
   chatPreferences: ChatPreferences;
   connectionStatus: ConnectionState['status'];
   conversationSessionId?: string;

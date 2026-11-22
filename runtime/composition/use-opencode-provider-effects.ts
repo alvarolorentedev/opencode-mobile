@@ -93,7 +93,6 @@ export function useOpencodeProviderEffects({
 
     // The server list is newest-first, so the most recent session wins.
     const fallbackSessionId = currentSessions[0]?.id;
-    currentSessionIdRef.current = fallbackSessionId;
     setCurrentSessionId(fallbackSessionId);
   }, [activeProjectPath, currentSessionId, currentSessionIdRef, explicitSessionSelectionRef, sessions, sessionsRef, setCurrentSessionId]);
 

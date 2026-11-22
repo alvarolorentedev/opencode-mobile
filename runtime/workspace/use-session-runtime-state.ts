@@ -1,4 +1,4 @@
-import { useLayoutEffect, useMemo, useRef } from 'react';
+import { useMemo, useRef, type SetStateAction } from 'react';
 
 import { getConnectionScope } from '@/shared/contracts/connection-scope';
 import { workspaceKey } from '@/shared/contracts/workspace';
@@ -11,16 +11,35 @@ import type { WorkspaceRuntimeInput } from '@/runtime/workspace/workspace-types'
 
 import { useProjectRuntimeState } from '@/features/projects/runtime';
 import { useSessionState } from '@/features/sessions/runtime';
-import { useChatRuntimeState } from '@/features/chat/runtime';
 import { useExtensionPromptState } from '@/features/extensions/runtime';
+import { useAppCore, useAppStore } from '@/runtime/core';
+import { EMPTY_CHAT, type ChatUiState } from '@/runtime/core/store';
+
 export function useSessionRuntimeState(input: WorkspaceRuntimeInput, connection: ConnectionState, serverContract: ServerContract) {
   const settings = input.connection.settings;
   const setSettings = input.setSettings;
-  const chatPreferences = input.preferences;
+  const connectionId = input.connection.id;
   const scopeKey = workspaceKey({ connectionId: input.connection.id, projectPath: input.projectPath ?? '' });
   const { activeProjectPath, setActiveProjectPath, activeProjectPathRef, projectFileRequestRef } = useProjectRuntimeState(scopeKey, input.projectPath);
   const { currentSessionId, setCurrentSessionId, isBootstrappingChat, setIsBootstrappingChat, activeSessionsVisible, setActiveSessionsVisible, currentSessionIdRef, pendingDeepLinkTargetRef, deepLinkOperationRef, bootstrapPromiseRef, bootstrapTokenRef, explicitSessionSelectionRef, locallyCreatedSessionsRef, suppressedPendingRequestIdsRef } = useSessionState(scopeKey);
-  const { diffScopeBySession, setDiffScopeBySession, selectedDiffMessageBySession, setSelectedDiffMessageBySession, isRefreshingMessages, setIsRefreshingMessages, isRefreshingDiffs, setIsRefreshingDiffs, diffScopeBySessionRef, selectedDiffMessageBySessionRef, busyNotificationsRef, promptSubmissionRef } = useChatRuntimeState(scopeKey);
+  const { store } = useAppCore();
+  const { diffScopeBySession, selectedDiffMessageBySession, isRefreshingMessages, isRefreshingDiffs } = useAppStore((state) => state.chat[scopeKey] ?? EMPTY_CHAT);
+  const chatActions = useMemo(() => {
+    const change = <K extends keyof ChatUiState>(key: K) => (value: SetStateAction<ChatUiState[K]>) => {
+      store.getState().setChat(scopeKey, (current) => ({ [key]: typeof value === 'function' ? value(current[key]) : value }));
+    };
+    return {
+      setDiffScopeBySession: change('diffScopeBySession'),
+      setSelectedDiffMessageBySession: change('selectedDiffMessageBySession'),
+      setIsRefreshingMessages: change('isRefreshingMessages'),
+      setIsRefreshingDiffs: change('isRefreshingDiffs'),
+      readDiffScope: (sessionId: string) => store.getState().chat[scopeKey]?.diffScopeBySession[sessionId],
+      readPinnedDiffMessage: (sessionId: string) => store.getState().chat[scopeKey]?.selectedDiffMessageBySession[sessionId],
+    };
+  }, [scopeKey, store]);
+  // These locks coordinate notification delivery and an in-flight prompt submission.
+  const busyNotificationsRef = useRef(new Set<string>());
+  const promptSubmissionRef = useRef<{ active: boolean; sessionId?: string }>({ active: false });
   const { mcpAuthPrompt, setMcpAuthPrompt } = useExtensionPromptState();
 
   const connectionScope = useMemo(
@@ -28,28 +47,15 @@ export function useSessionRuntimeState(input: WorkspaceRuntimeInput, connection:
     [settings.serverUrl, settings.username],
   );
 
-  const settingsRef = useRef(settings);
-  const chatPreferencesRef = useRef(chatPreferences);
-  const connectionScopeRef = useRef(connectionScope);
-  const connectionRef = useRef(connection);
-  const serverContractRef = useRef<ServerContract>('v2');
+  const settingsRef = useMemo(() => ({
+    get current() { return store.getState().registry.connections.find((entry) => entry.id === connectionId)?.settings ?? settings; },
+  }), [connectionId, settings, store]);
+  const connectionScopeRef = useMemo(() => ({ get current() { return getConnectionScope(settingsRef.current); } }), [settingsRef]);
   const scopeGenerationRef = useRef(0);
   const serverGenerationRef = useRef(0);
   const clientGenerationRef = useRef(new WeakMap<object, number>());
   const sessionRefreshTimeoutsRef = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
   const sessionRefreshOptionsRef = useRef<Record<string, SessionRefreshOptions>>({});
-
-  // Latest-ref mirror. Updating refs in a layout effect (instead of during
-  // render) is the React-sanctioned pattern: the mirrored values are only read
-  // from callbacks, async work, and effects, all of which run after commit.
-  useLayoutEffect(() => {
-    serverContractRef.current = serverContract;
-    settingsRef.current = settings;
-    chatPreferencesRef.current = chatPreferences;
-    connectionScopeRef.current = connectionScope;
-    connectionRef.current = connection;
-    currentSessionIdRef.current = currentSessionId;
-  });
 
   return {
     scopeKey,
@@ -58,20 +64,15 @@ export function useSessionRuntimeState(input: WorkspaceRuntimeInput, connection:
     serverContract,
     activeProjectPath, setActiveProjectPath,
     currentSessionId, setCurrentSessionId,
-    diffScopeBySession, setDiffScopeBySession,
-    selectedDiffMessageBySession, setSelectedDiffMessageBySession,
+    diffScopeBySession, selectedDiffMessageBySession, ...chatActions,
     mcpAuthPrompt, setMcpAuthPrompt,
-    isRefreshingMessages, setIsRefreshingMessages,
-    isRefreshingDiffs, setIsRefreshingDiffs,
+    isRefreshingMessages, isRefreshingDiffs,
     isBootstrappingChat, setIsBootstrappingChat,
     activeSessionsVisible, setActiveSessionsVisible,
     connectionScope,
     settingsRef,
-    chatPreferencesRef,
     connectionScopeRef,
     activeProjectPathRef,
-    connectionRef,
-    serverContractRef,
     currentSessionIdRef,
     pendingDeepLinkTargetRef,
     deepLinkOperationRef,
@@ -82,8 +83,6 @@ export function useSessionRuntimeState(input: WorkspaceRuntimeInput, connection:
     bootstrapTokenRef,
     sessionRefreshTimeoutsRef,
     sessionRefreshOptionsRef,
-    diffScopeBySessionRef,
-    selectedDiffMessageBySessionRef,
     busyNotificationsRef,
     explicitSessionSelectionRef,
     locallyCreatedSessionsRef,

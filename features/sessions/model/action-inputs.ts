@@ -24,7 +24,7 @@ export type SessionActionsInput = {
   currentSessionId?: string;
   currentSessionIdRef: { current: string | undefined };
   explicitSessionSelectionRef: { current: string | undefined };
-  diffScopeBySessionRef: { current: Record<string, DiffScope> };
+  readDiffScope: (sessionId: string) => DiffScope | undefined;
   sessions: Session[];
   sessionsRef: { current: Session[] };
   sessionStatuses: Record<string, SessionStatus>;
@@ -69,7 +69,7 @@ export type SessionActionsInput = {
 export type SessionCrudInput = Pick<SessionActionsInput,
   'client' | 'isCurrentClient' | 'activeProjectPath' | 'connectionScopeRef' | 'currentSessionId' |
   'currentSessionIdRef' | 'explicitSessionSelectionRef' | 'locallyCreatedSessionsRef' | 'availableAgents' | 'availableModels' | 'currentConfig' |
-  'diffScopeBySessionRef' | 'sessions' | 'sessionStatuses' | 'commands' | 'bootstrapPromiseRef' | 'bootstrapTokenRef' |
+  'readDiffScope' | 'sessions' | 'sessionStatuses' | 'commands' | 'bootstrapPromiseRef' | 'bootstrapTokenRef' |
   'setCurrentSessionId' | 'setIsBootstrappingChat' | 'beginHydration' |
   'setSessions' | 'setSessionStatuses' | 'setMessagesBySession' | 'setDiffsBySession' | 'setTodosBySession' |
   'setPendingPermissionsBySession' | 'setPendingQuestionsBySession' | 'setFavoriteSessions' | 'refreshSessions' |

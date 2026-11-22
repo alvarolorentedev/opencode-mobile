@@ -389,7 +389,8 @@ Primary fields:
 The app store owns these fields, the turn sequence and the wake sensor for
 each workspace. Native recognition and playback callbacks read the current
 input and readback phases directly from the store. The device session is cleared
-when its workspace runtime unmounts.
+when its workspace runtime unmounts. The same scope holds the pending
+confirmation and scheduled readback utterances.
 
 Input and readback are independent. Submitting a turn immediately returns input
 to `armed`, so a steer or queued command can arrive while the assistant is
@@ -1314,6 +1315,12 @@ Chat focus is validated against live runtimes. When the focused connection error
 Enabled and recent catalog models, agent mode, auto-routing tiers, and auto-approve are scoped to a server. Explicit composer model and variant choices are owned by each server session. New servers default to auto-approve off. V2 auto-approve is a local per-server policy that answers each pending request once, using the existing permission service; persistent grants keep the server's actual semantics. General UI, language and voice device preferences remain app-wide. Hide subagents defaults to true when missing; a saved false is retained.
 
 Chat focus, terminal target and Settings inspection target are independent composite references. The presentation map holds composer text/attachments, failed input, editor baseline/current text and transcript offsets. Hidden dirty drafts and PTYs participate in update blocking. Removing a connection names unsaved drafts in its confirmation. Drafts are intentionally not written to disk.
+
+The registry holds the recent healthy connection IDs used for failover, as well
+as the terminal and Settings inspection targets. The app store holds profile
+metadata and the per-connection file clipboard. Async chat and project actions
+read the current selection and diff preferences from the app store and the
+current session list from Query.
 
 New chat creation is provider-owned: `createChat(target)` resolves and connects the target runtime, creates and opens the session there, then selects that workspace so the Chat screen follows it. The New chat sheet only holds a local draft target; no project is selected and no session is created before confirmation.
 

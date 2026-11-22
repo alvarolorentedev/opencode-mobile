@@ -40,8 +40,8 @@ export type ProjectActionsInput = {
   suppressedPendingRequestIdsRef?: { current: Set<string> };
   setDiffScopeBySession: Dispatch<SetStateAction<Record<string, DiffScope>>>;
   setSelectedDiffMessageBySession: Dispatch<SetStateAction<Record<string, string | undefined>>>;
-  selectedDiffMessageBySessionRef: { current: Record<string, string | undefined> };
-  diffScopeBySessionRef: { current: Record<string, DiffScope> };
+  readPinnedDiffMessage: (sessionId: string) => string | undefined;
+  readDiffScope: (sessionId: string) => DiffScope | undefined;
   currentSessionIdRef: { current: string | undefined };
   readDisplayedSession: (sessionId: string) => SessionMessageRecord[];
   projectFileRequestRef: { current: number };
@@ -65,6 +65,6 @@ export type ProjectCatalogInput = Pick<ProjectActionsInput,
 export type ProjectFileInput = Pick<ProjectActionsInput,
   'scopeKey' | 'fileClipboard' | 'connectionId' | 'connected' | 'client' | 'isCurrentClient' | 'activeProjectPath' |
   'projectFileRequestRef' | 'currentSessionIdRef' |
-  'diffScopeBySessionRef' | 'settingsRef' | 'refreshServerFeatures'> & {
+  'readDiffScope' | 'settingsRef' | 'refreshServerFeatures'> & {
   refreshVcsDiff: (scope: 'uncommitted' | 'branch', silent?: boolean) => Promise<unknown>;
 };

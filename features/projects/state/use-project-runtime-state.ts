@@ -1,4 +1,4 @@
-import { useCallback, useLayoutEffect, useRef, type Dispatch, type SetStateAction } from 'react';
+import { useCallback, useMemo, useRef, type Dispatch, type SetStateAction } from 'react';
 
 import { useAppCore, useAppStore } from '@/runtime/core';
 
@@ -17,8 +17,7 @@ export function useProjectRuntimeState(scopeKey: string, projectPath?: string) {
     }));
   }, [projectPath, scopeKey, store]);
 
-  const activeProjectPathRef = useRef(activeProjectPath);
-  useLayoutEffect(() => { activeProjectPathRef.current = activeProjectPath; });
+  const activeProjectPathRef = useMemo(() => ({ get current() { return store.getState().selection[scopeKey]?.activeProjectPath ?? projectPath; } }), [projectPath, scopeKey, store]);
 
   const projectFileRequestRef = useRef(0);
   return { activeProjectPath, setActiveProjectPath, activeProjectPathRef, projectFileRequestRef };

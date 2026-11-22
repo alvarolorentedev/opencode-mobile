@@ -26,7 +26,7 @@ export function useProjectFileActions({
   isCurrentClient,
   projectFileRequestRef,
   currentSessionIdRef,
-  diffScopeBySessionRef,
+  readDiffScope,
   settingsRef,
   refreshVcsDiff,
   refreshServerFeatures,
@@ -55,10 +55,10 @@ export function useProjectFileActions({
     await Promise.all([cache.fetchQuery(fileStatusOptions(identity, client)), cache.fetchQuery(vcsInfoOptions(identity, client))]);
     if (!isCurrentClient(client)) return;
     await directoryBrowser.refresh();
-    const scope = diffScopeBySessionRef.current[currentSessionIdRef.current || ''];
+    const scope = readDiffScope(currentSessionIdRef.current || '');
     if (scope === 'uncommitted' || scope === 'branch') await refreshVcsDiff(scope, true);
-  }, [client, currentSessionIdRef, diffScopeBySessionRef, directoryBrowser, isCurrentClient, refreshVcsDiff, cache, identity]);
-  const actions = useProjectEntryActions({ client, isCurrentClient, connectionId, clipboard: fileClipboard, refresh: refreshEntries, enabled: connected });
+  }, [client, currentSessionIdRef, readDiffScope, directoryBrowser, isCurrentClient, refreshVcsDiff, cache, identity]);
+  const actions = useProjectEntryActions({ scopeKey, client, isCurrentClient, connectionId, clipboard: fileClipboard, refresh: refreshEntries, enabled: connected });
   const browser = useMemo(() => ({ ...directoryBrowser, actions }), [directoryBrowser, actions]);
 
   const searchProjectFiles = useCallback(async (query: string) => {
@@ -152,12 +152,12 @@ export function useProjectFileActions({
       setSelectedProjectFile(projectFileFromText(path, saved));
       await refreshServerFeatures();
       const activeSessionId = currentSessionIdRef.current;
-      const scope = activeSessionId ? diffScopeBySessionRef.current[activeSessionId] : undefined;
+      const scope = activeSessionId ? readDiffScope(activeSessionId) : undefined;
       if (scope === 'uncommitted' || scope === 'branch') {
         void refreshVcsDiff(scope, true);
       }
     }
-  }, [client, currentSessionIdRef, diffScopeBySessionRef, isCurrentClient, projectFileRequestRef, refreshServerFeatures, refreshVcsDiff, setSelectedProjectFile]);
+  }, [client, currentSessionIdRef, readDiffScope, isCurrentClient, projectFileRequestRef, refreshServerFeatures, refreshVcsDiff, setSelectedProjectFile]);
 
   return { selectedProjectFile: preview?.data, diagnostics, refreshServerFeatures, refreshDiagnostics, searchProjectFiles, browser, openProjectFile, saveProjectFile, closeProjectFile, downloadProjectFile };
 }

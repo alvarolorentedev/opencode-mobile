@@ -53,6 +53,7 @@ async function confirmationHarness(overrides: Partial<ChatPreferences> = {}) {
   } as ChatPreferences;
 
   runtime.mount(hook.useConversationConfirmation, {
+    scopeKey: 'confirmation-test-workspace',
     chatPreferences: preferences,
     connectionStatus: 'connected',
     conversationSessionId: 'session-1',

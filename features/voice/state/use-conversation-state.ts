@@ -269,6 +269,7 @@ export function useConversationState({ scopeKey, connection, chatPreferences, cu
     wakePhraseSessionRef,
   });
   const confirmation = useConversationConfirmation({
+    scopeKey,
     chatPreferences,
     connectionStatus: connection.status,
     conversationSessionId,
@@ -438,6 +439,7 @@ export function useConversationState({ scopeKey, connection, chatPreferences, cu
   });
 
   useConversationPlayback({
+    scopeKey,
     active: conversationPhase !== 'off',
     chatPreferences,
     conversationSessionId,

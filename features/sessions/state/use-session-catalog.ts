@@ -1,4 +1,4 @@
-import { useCallback, useLayoutEffect, useRef, type Dispatch, type SetStateAction } from 'react';
+import { useCallback, useMemo, type Dispatch, type SetStateAction } from 'react';
 import { skipToken, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import { useQueryIdentity } from '@/shared/server-data/client';
@@ -14,19 +14,20 @@ const EMPTY_STATUSES: Record<string, SessionStatus> = {};
 // status map. The setters keep the action layer's existing contract while the
 // cache becomes the only copy.
 export function useSessionCatalog(client: ScopedOpencodeClient) {
-  const identity = useQueryIdentity();
+  const { connectionId, connectionScope, authRevision } = useQueryIdentity();
+  const identity = useMemo(() => ({ connectionId, connectionScope, authRevision }), [authRevision, connectionId, connectionScope]);
   const queryClient = useQueryClient();
-  const sessionsKey = projectSessionsKey(identity, client);
-  const catalogKey = sessionCatalogKey(identity, client.__opencode.contract);
+  const sessionsKey = useMemo(() => projectSessionsKey(identity, client), [client, identity]);
+  const contract = client.__opencode.contract;
+  const catalogKey = useMemo(() => sessionCatalogKey(identity, contract), [contract, identity]);
   const sessionsQuery = useQuery(projectSessionsOptions(identity, client));
   // The connection owner fetches the catalog; this observer only reads it and
   // re-renders when events or the owner publish a new snapshot.
-  const catalogQuery = useQuery<SessionCatalogData>({ queryKey: sessionCatalogKey(identity, client.__opencode.contract), queryFn: skipToken });
+  const catalogQuery = useQuery<SessionCatalogData>({ queryKey: catalogKey, queryFn: skipToken });
   const sessions = sessionsQuery.data ?? EMPTY_SESSIONS;
   const sessionStatuses = catalogQuery.data?.statuses ?? EMPTY_STATUSES;
 
-  const sessionsRef = useRef(sessions);
-  useLayoutEffect(() => { sessionsRef.current = sessions; });
+  const sessionsRef = useMemo(() => ({ get current() { return queryClient.getQueryData<Session[]>(sessionsKey) ?? EMPTY_SESSIONS; } }), [queryClient, sessionsKey]);
 
   const setSessions = useCallback<Dispatch<SetStateAction<Session[]>>>((value) => {
     queryClient.setQueryData<Session[]>(sessionsKey, (current) => {

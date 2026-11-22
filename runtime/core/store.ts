@@ -3,10 +3,13 @@ import { createStore, type StoreApi } from 'zustand/vanilla';
 import type { OpencodeConnectionSettings } from '@/shared/protocol/opencode/client/types';
 import type { PendingPrompt, PromptInput } from '@/shared/protocol/opencode/prompt-inbox';
 import type { ChatPreferences } from '@/shared/preferences/opencode-preferences';
-import type { FavoriteSession, HiddenProjectsByConnection } from '@/shared/contracts/domain';
+import type { FavoriteSession, HiddenProjectsByConnection, SessionDeepLinkTarget } from '@/shared/contracts/domain';
 import type { ConnectionRecord, WorkspaceTarget } from '@/shared/contracts/workspace';
 import type { WorkspaceSnapshot } from '@/runtime/workspace/workspace-types';
 import type { ConversationInputPhase, ConversationReadbackPhase } from '@/features/voice/index';
+import type { PendingConfirmation } from '@/features/voice/runtime';
+import type { FileClipboardEntry } from '@/features/projects/runtime';
+import type { ConnectionProfile } from '@/shared/contracts/connection-profiles';
 import type { TerminalInstance } from '@/features/terminal/index';
 import type { LiveTranscriptMessage } from '@/features/chat/runtime';
 import type { SessionMessageRecord } from '@/shared/presentation/format';
@@ -22,12 +25,17 @@ export type ShellState = {
   chatPreferences: ChatPreferences;
   favoriteSessions: FavoriteSession[];
   hiddenProjects: HiddenProjectsByConnection;
+  profiles: ConnectionProfile[];
 };
 
 export type RegistryState = {
   connections: ConnectionRecord[];
   focus?: WorkspaceTarget;
   retainedFocus?: WorkspaceTarget;
+  terminalTarget?: WorkspaceTarget;
+  inspectionTarget?: WorkspaceTarget;
+  lastHealthyConnectionId?: string;
+  previousHealthyConnectionId?: string;
   ready: boolean;
   snapshots: Record<string, WorkspaceSnapshot>;
 };
@@ -37,6 +45,8 @@ export type SelectionState = {
   currentSessionId?: string;
   isBootstrappingChat: boolean;
   activeSessionsVisible: boolean;
+  explicitSessionId?: string;
+  pendingDeepLink?: SessionDeepLinkTarget;
 };
 
 export type ChatUiState = {
@@ -69,6 +79,9 @@ type ConversationRuntimeState = {
   feedbackAction: VoiceRecoveryAction;
   latestHeardText?: string;
   wakeSensor: 'phrase' | 'local';
+  confirmation?: PendingConfirmation;
+  confirmationSpeaking?: boolean;
+  readbackQueue?: string[];
 };
 
 const EMPTY_CONVERSATION: ConversationRuntimeState = {
@@ -116,9 +129,16 @@ type WorkspaceUiState = {
     model?: { providerId: string; modelId: string };
     status?: 'checking' | 'unsupported' | 'unavailable';
   };
+  entryOperationsOwner?: symbol;
+  entryOperationFeedback?: { owner: symbol; error?: string; notice?: string };
 };
 
-const EMPTY_CHAT: ChatUiState = {
+type FileClipboardState = {
+  entries: Record<string, FileClipboardEntry | undefined>;
+  busy: Record<string, boolean>;
+};
+
+export const EMPTY_CHAT: ChatUiState = {
   diffScopeBySession: {},
   selectedDiffMessageBySession: {},
   isRefreshingMessages: false,
@@ -147,6 +167,7 @@ export type AppState = {
   transcriptLive: Map<string, TranscriptLiveBuffer>;
   workspaceUi: Record<string, WorkspaceUiState | undefined>;
   localClassifierReady?: boolean;
+  fileClipboard: FileClipboardState;
   presentation: Map<string, unknown>;
   mcpAuthPrompt?: { mcpName: string; url: string };
   focusedValues?: import('@/runtime/workspace/workspace-types').WorkspaceValues;
@@ -170,6 +191,7 @@ export type AppState = {
   setWorkspaceUi: (scopeKey: string, patch: Partial<WorkspaceUiState>) => void;
   clearWorkspaceUi: (connectionId: string) => void;
   setLocalClassifierReady: (ready: boolean) => void;
+  setFileClipboard: (patch: (current: FileClipboardState) => Partial<FileClipboardState>) => void;
 };
 
 export type AppStore = StoreApi<AppState>;
@@ -184,6 +206,7 @@ export function createAppStore(defaults: AppStoreDefaults): AppStore {
       onboardingActive: false,
       favoriteSessions: [],
       hiddenProjects: {},
+      profiles: [],
     },
     registry: { connections: [], ready: false, snapshots: {} },
     selection: {},
@@ -194,6 +217,7 @@ export function createAppStore(defaults: AppStoreDefaults): AppStore {
     transcriptUi: {},
     transcriptLive: new Map(),
     workspaceUi: {},
+    fileClipboard: { entries: {}, busy: {} },
     mcpAuthPrompt: undefined,
     // Mutated in place; the hook only needs the stable map identity.
     presentation: new Map<string, unknown>(),
@@ -277,5 +301,6 @@ export function createAppStore(defaults: AppStoreDefaults): AppStore {
       workspaceUi: Object.fromEntries(Object.entries(state.workspaceUi).filter(([key]) => (JSON.parse(key) as string[])[0] !== connectionId)),
     })),
     setLocalClassifierReady: (ready) => set((state) => state.localClassifierReady === ready ? state : { localClassifierReady: ready }),
+    setFileClipboard: (patch) => set((state) => ({ fileClipboard: { ...state.fileClipboard, ...patch(state.fileClipboard) } })),
   }));
 }

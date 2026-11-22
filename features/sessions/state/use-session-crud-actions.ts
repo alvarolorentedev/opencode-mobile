@@ -13,14 +13,13 @@ export function useSessionCrudActions({
   isCurrentClient,
   connectionScopeRef,
   currentSessionId,
-  currentSessionIdRef,
   explicitSessionSelectionRef,
   locallyCreatedSessionsRef,
   availableAgents,
   availableModels,
   commands,
   currentConfig,
-  diffScopeBySessionRef,
+  readDiffScope,
   sessions,
   sessionStatuses,
   bootstrapPromiseRef,
@@ -54,7 +53,6 @@ export function useSessionCrudActions({
       bootstrapPromiseRef.current = null;
       bootstrapTokenRef.current = undefined;
       setIsBootstrappingChat(false);
-      currentSessionIdRef.current = sessionId;
       explicitSessionSelectionRef.current = sessionId;
       setCurrentSessionId(sessionId);
       // Mark the session as hydrating before the prompt-inbox read, which can
@@ -67,13 +65,13 @@ export function useSessionCrudActions({
         refreshSessionTodos(sessionId),
         refreshPendingInteractions(),
       ]).then(() => {
-        const scope = diffScopeBySessionRef.current[sessionId];
+        const scope = readDiffScope(sessionId);
         if (scope && scope !== 'turn') {
           void refreshVcsDiff(scope, true);
         }
       }).catch(() => undefined).finally(finishHydration);
     },
-    [beginHydration, bootstrapPromiseRef, bootstrapTokenRef, currentSessionIdRef, diffScopeBySessionRef, explicitSessionSelectionRef, refreshMessages, refreshPendingInteractions, refreshSessionDiff, refreshSessionTodos, refreshVcsDiff, setCurrentSessionId, setIsBootstrappingChat],
+    [beginHydration, bootstrapPromiseRef, bootstrapTokenRef, readDiffScope, explicitSessionSelectionRef, refreshMessages, refreshPendingInteractions, refreshSessionDiff, refreshSessionTodos, refreshVcsDiff, setCurrentSessionId, setIsBootstrappingChat],
   );
 
   const createSession = useCallback(
@@ -153,13 +151,12 @@ export function useSessionCrudActions({
         return next;
       });
       if (currentSessionId === sessionId) {
-        currentSessionIdRef.current = undefined;
         explicitSessionSelectionRef.current = undefined;
         setCurrentSessionId(undefined);
       }
       void refreshActiveSessions().catch(() => undefined);
     },
-    [client, connectionScopeRef, currentSessionId, currentSessionIdRef, explicitSessionSelectionRef, isCurrentClient, locallyCreatedSessionsRef, refreshActiveSessions, setCurrentSessionId, setDiffsBySession, setFavoriteSessions, setMessagesBySession, setPendingPermissionsBySession, setPendingQuestionsBySession, setSessionStatuses, setSessions, setTodosBySession],
+    [client, connectionScopeRef, currentSessionId, explicitSessionSelectionRef, isCurrentClient, locallyCreatedSessionsRef, refreshActiveSessions, setCurrentSessionId, setDiffsBySession, setFavoriteSessions, setMessagesBySession, setPendingPermissionsBySession, setPendingQuestionsBySession, setSessionStatuses, setSessions, setTodosBySession],
   );
 
   const renameSession = useCallback(async (sessionId: string, title: string) => {

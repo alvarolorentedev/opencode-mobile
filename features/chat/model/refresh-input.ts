@@ -25,9 +25,9 @@ export type ChatRefreshInput = {
 
   setSelectedDiffMessageBySession: Dispatch<SetStateAction<Record<string, string | undefined>>>;
 
-  selectedDiffMessageBySessionRef: { current: Record<string, string | undefined> };
+  readPinnedDiffMessage: (sessionId: string) => string | undefined;
 
-  diffScopeBySessionRef: { current: Record<string, DiffScope> };
+  readDiffScope: (sessionId: string) => DiffScope | undefined;
 
   currentSessionIdRef: { current: string | undefined };
 

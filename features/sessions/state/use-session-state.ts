@@ -1,4 +1,4 @@
-import { useCallback, useLayoutEffect, useRef, type Dispatch, type SetStateAction } from 'react';
+import { useCallback, useMemo, useRef, type Dispatch, type SetStateAction } from 'react';
 
 import { useAppCore, useAppStore } from '@/runtime/core';
 import type { SelectionState } from '@/runtime/core';
@@ -29,9 +29,12 @@ export function useSessionState(scopeKey: string) {
     write((current) => ({ activeSessionsVisible: typeof value === 'function' ? value(current.activeSessionsVisible) : value }));
   }, [write]);
 
-  const currentSessionIdRef = useRef<string | undefined>(currentSessionId);
+  const currentSessionIdRef = useMemo(() => ({ get current() { return store.getState().selection[scopeKey]?.currentSessionId; } }), [scopeKey, store]);
 
-  const pendingDeepLinkTargetRef = useRef<import('@/shared/contracts/domain').SessionDeepLinkTarget | undefined>(undefined);
+  const pendingDeepLinkTargetRef = useMemo(() => ({
+    get current() { return store.getState().selection[scopeKey]?.pendingDeepLink; },
+    set current(pendingDeepLink: SelectionState['pendingDeepLink']) { write({ pendingDeepLink }); },
+  }), [scopeKey, store, write]);
 
   const deepLinkOperationRef = useRef<object | undefined>(undefined);
 
@@ -39,13 +42,16 @@ export function useSessionState(scopeKey: string) {
 
   const bootstrapTokenRef = useRef<object | undefined>(undefined);
 
-  const explicitSessionSelectionRef = useRef<string | undefined>(undefined);
+  const explicitSessionSelectionRef = useMemo(() => ({
+    get current() { return store.getState().selection[scopeKey]?.explicitSessionId; },
+    set current(explicitSessionId: string | undefined) { write({ explicitSessionId }); },
+  }), [scopeKey, store, write]);
 
+  // Request correlation while a new session waits to appear in the catalog.
   const locallyCreatedSessionsRef = useRef<Map<string, number>>(new Map());
 
+  // Acknowledgement locks while pending-interaction refresh catches up to replies.
   const suppressedPendingRequestIdsRef = useRef<Set<string>>(new Set());
-
-  useLayoutEffect(() => { currentSessionIdRef.current = currentSessionId; });
 
   return { currentSessionId, setCurrentSessionId, isBootstrappingChat, setIsBootstrappingChat, activeSessionsVisible, setActiveSessionsVisible, currentSessionIdRef, pendingDeepLinkTargetRef, deepLinkOperationRef, bootstrapPromiseRef, bootstrapTokenRef, explicitSessionSelectionRef, locallyCreatedSessionsRef, suppressedPendingRequestIdsRef };
 }

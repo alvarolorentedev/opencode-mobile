@@ -16,14 +16,14 @@ import { createPersistenceWriter } from '@/shared/storage/persistence-hydration'
 import { findSessionForNavigation } from '@/shared/protocol/services/session-service';
 import { createSharedEventStream } from '@/shared/network/shared-event-stream';
 import type { WorkspaceShellState } from '@/runtime/workspace/use-workspace-shell-state';
-import type { AppState, RegistryState } from '@/runtime/core/store';
+import type { AppState, RegistryState, ShellState } from '@/runtime/core/store';
 import { connectedWorkspaceTarget } from '@/runtime/workspace/workspace-focus';
 import { createWorkspaceWaiters } from '@/runtime/workspace/workspace-lifecycle';
 import { parseWorkspaces, serializeWorkspaces, WORKSPACES_STORAGE_KEY } from '@/shared/storage/workspace-storage';
 import { workspaceKey, type ConnectionRecord, type SessionTarget, type WorkspaceTarget } from '@/shared/contracts/workspace';
 import type { WorkspaceSnapshot } from '@/runtime/workspace/workspace-types';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 export const SERVER_PREFERENCE_KEYS = ['enabledModelIds', 'knownModelIds', 'autoEnableNewModels', 'recentModelIds', 'mode', 'autoApprove', 'autoModel'] as const;
 export function serverPreferences(value: Partial<ChatPreferences>) {
@@ -33,11 +33,13 @@ export function serverPreferences(value: Partial<ChatPreferences>) {
 export type WorkspaceRegistryAccess = {
   registry: RegistryState;
   getRegistry: () => RegistryState;
+  getShell: () => ShellState;
   setRegistry: AppState['setRegistry'];
 };
 
 export function useWorkspaceConnections(shell: WorkspaceShellState, hydrated: boolean, access: WorkspaceRegistryAccess) {
-  const { registry, getRegistry, setRegistry } = access;
+  const { registry, getRegistry, getShell, setRegistry } = access;
+  const { setSettings, setChatPreferences, setHiddenProjects } = shell;
   const { connections, focus, retainedFocus, ready, snapshots } = registry;
   const records = { get current() { return getRegistry().connections; } };
   const selected = { get current() { return getRegistry().focus; } };
@@ -49,15 +51,12 @@ export function useWorkspaceConnections(shell: WorkspaceShellState, hydrated: bo
     setRegistry((current) => ({ retainedFocus: typeof next === 'function' ? next(current.retainedFocus) : next }));
   }, [setRegistry]);
   const setReady = useCallback((next: boolean) => setRegistry({ ready: next }), [setRegistry]);
-  const lastAvailable = useRef<string | undefined>(undefined);
-  const previousAvailable = useRef<string | undefined>(undefined);
-  const shellRef = useRef(shell);
+  // A single readiness waiter registry for this mounted coordinator.
   const [waiters] = useState(createWorkspaceWaiters);
   const navigation = useRef<AbortController | undefined>(undefined);
   const canPersist = useRef(true);
   const activation = useRef(0);
   const [write] = useState(createPersistenceWriter);
-  useLayoutEffect(() => { shellRef.current = shell; });
   useEffect(() => { waiters.resume(); return () => { waiters.dispose(); navigation.current?.abort(); }; }, [waiters]);
   const change = useCallback((update: (current: ConnectionRecord[]) => ConnectionRecord[]) => {
     const next = update(records.current);
@@ -134,7 +133,7 @@ export function useWorkspaceConnections(shell: WorkspaceShellState, hydrated: bo
         stored = { ...stored, connections: stored.connections.map((entry) => ({ ...entry, projects: [''] })),
           focus: stored.focus ? { connectionId: stored.focus.connectionId, projectPath: '' } : undefined };
       }
-      const initial = shellRef.current;
+      const initial = getShell();
       const profiles = await loadConnectionProfiles();
       const entries: ConnectionRecord[] = stored ? await Promise.all(stored.connections.map(async (entry) => {
         const profile = findMatchingProfile(profiles, entry.settings);
@@ -160,14 +159,14 @@ export function useWorkspaceConnections(shell: WorkspaceShellState, hydrated: bo
       console.error('Could not restore workspaces.', error);
       canPersist.current = false;
       if (cancelled) return;
-      const initial = shellRef.current;
+      const initial = getShell();
       const id = getConnectionUiScope(initial.settings);
       change(() => [{ id, name: getServerHostname(initial.settings.serverUrl), settings: initial.settings, enabled: initial.onboardingVersion > 0,
         preferences: serverPreferences(initial.chatPreferences), projects: [''], events: createSharedEventStream() }]);
       select({ connectionId: id, projectPath: '' }, false); setReady(true);
     });
     return () => { cancelled = true; };
-  }, [hydrated, change, select, saveProfile, write]);
+  }, [hydrated, change, getShell, select, saveProfile, write]);
 
   const persisted = useMemo(() => {
     // Only the connection list and the focused connection survive a restart.
@@ -195,10 +194,10 @@ export function useWorkspaceConnections(shell: WorkspaceShellState, hydrated: bo
   useEffect(() => {
     if (!focus || !records.current.find((entry) => entry.id === focus.connectionId)?.enabled) return;
     if (live.current[resolveKey(focus)]?.values.connectionValue.connection.status !== 'connected') return;
-    if (lastAvailable.current === focus.connectionId) return;
-    previousAvailable.current = lastAvailable.current;
-    lastAvailable.current = focus.connectionId;
-  }, [focus, resolveKey, snapshots]);
+    const last = getRegistry().lastHealthyConnectionId;
+    if (last === focus.connectionId) return;
+    setRegistry({ lastHealthyConnectionId: focus.connectionId, previousHealthyConnectionId: last });
+  }, [focus, getRegistry, resolveKey, setRegistry, snapshots]);
   // A server that errors or is explicitly disconnected must not leave Chat on
   // its failure screen while another enabled server is still connected.
   useEffect(() => {
@@ -206,7 +205,8 @@ export function useWorkspaceConnections(shell: WorkspaceShellState, hydrated: bo
     const entry = records.current.find((item) => item.id === focus.connectionId);
     const status = live.current[resolveKey(focus)]?.values.connectionValue.connection.status;
     if (entry?.enabled && status !== 'error') return;
-    const preferredConnectionId = lastAvailable.current === focus.connectionId ? previousAvailable.current : lastAvailable.current;
+    const { lastHealthyConnectionId, previousHealthyConnectionId } = getRegistry();
+    const preferredConnectionId = lastHealthyConnectionId === focus.connectionId ? previousHealthyConnectionId : lastHealthyConnectionId;
     const target = connectedWorkspaceTarget(records.current, live.current, {
       excludedConnectionId: focus.connectionId,
       preferredConnectionId,
@@ -400,8 +400,8 @@ export function useWorkspaceConnections(shell: WorkspaceShellState, hydrated: bo
       const stillUsed = origin && records.current.some((entry) => entry.settings.certificate && connectionOrigin(entry.settings.serverUrl) === origin);
       if (origin && !stillUsed) void releaseHostTrust(previous.settings.serverUrl);
     }
-    if (selected.current?.connectionId === id) { if (nextId !== id) select({ connectionId: nextId, projectPath: '' }); shellRef.current.setSettings(value); }
-  }, [change, select]);
+    if (selected.current?.connectionId === id) { if (nextId !== id) select({ connectionId: nextId, projectPath: '' }); setSettings(value); }
+  }, [change, select, setSettings]);
   const updatePreferences = useCallback((id: string, value: ChatPreferences) => {
     if (!records.current.some((entry) => entry.id === id)) return;
     const preferences = serverPreferences(value);
@@ -413,7 +413,7 @@ export function useWorkspaceConnections(shell: WorkspaceShellState, hydrated: bo
     // the previous shell value so a close immediately after the change persists
     // the new server-scoped preference instead of the stale one.
     const focused = selected.current?.connectionId === id;
-    shellRef.current.setChatPreferences((current) => {
+    setChatPreferences((current) => {
       const next = focused ? value : current;
       return JSON.stringify(current) === JSON.stringify(next) ? current : next;
     });
@@ -424,7 +424,7 @@ export function useWorkspaceConnections(shell: WorkspaceShellState, hydrated: bo
       const profile = findMatchingProfile(profiles, entry.settings);
       if (profile) await save(profiles.map((item) => item.id === profile.id ? { ...item, modelPreferences: pickModelPreferences(value) } : item));
     }).catch((error) => console.warn('Could not save model preferences.', error));
-  }, [change]);
+  }, [change, setChatPreferences]);
   const hiddenScope = useCallback((connectionId: string) => {
     const entry = records.current.find((item) => item.id === connectionId);
     return entry ? getConnectionScope(entry.settings) : undefined;
@@ -432,22 +432,22 @@ export function useWorkspaceConnections(shell: WorkspaceShellState, hydrated: bo
   const hideProject = useCallback((target: WorkspaceTarget) => {
     const scope = hiddenScope(target.connectionId);
     if (!scope) return;
-    shellRef.current.setHiddenProjects((current) => ({
+    setHiddenProjects((current) => ({
       ...current,
       [scope]: [target.projectPath, ...(current[scope] ?? []).filter((path) => path !== target.projectPath)].slice(0, HIDDEN_PROJECTS_MAX),
     }));
-  }, [hiddenScope]);
+  }, [hiddenScope, setHiddenProjects]);
   const restoreProject = useCallback((target: WorkspaceTarget) => {
     const scope = hiddenScope(target.connectionId);
     if (!scope) return;
-    shellRef.current.setHiddenProjects((current) => {
+    setHiddenProjects((current) => {
       const remaining = (current[scope] ?? []).filter((path) => path !== target.projectPath);
       const next = { ...current };
       if (remaining.length) next[scope] = remaining;
       else delete next[scope];
       return next;
     });
-  }, [hiddenScope]);
+  }, [hiddenScope, setHiddenProjects]);
   const removeConnection = useCallback(async (id: string) => {
     const settings = records.current.find((entry) => entry.id === id)?.settings;
     await disconnect(id);

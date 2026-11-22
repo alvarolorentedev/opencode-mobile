@@ -17,7 +17,8 @@ function mountWorkspaceConnections(driver: ReturnType<typeof hookRuntime>, useWo
       rerender((value: number) => value + 1);
     }, []);
     const getRegistry = driver.react.useCallback(() => registryRef.current, []);
-    return useWorkspaceConnections(shell, true, { registry: registryRef.current, getRegistry, setRegistry });
+    const getShell = driver.react.useCallback(() => shell, [shell]);
+    return useWorkspaceConnections(shell, true, { registry: registryRef.current, getRegistry, getShell, setRegistry });
   }
   driver.mount(useHarness, {});
 }

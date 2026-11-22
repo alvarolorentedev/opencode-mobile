@@ -185,6 +185,7 @@
       "resolveActiveProject",
       "serializeHiddenProjects",
       "useFileClipboard",
+      "FileClipboardEntry",
       "useProjectCatalogActions",
       "useProjectFileActions",
       "useProjectRuntimeState",
@@ -297,7 +298,6 @@
       "migrateTranscriptCaches",
       "pruneProviderTranscripts",
       "useChatRefresh",
-      "useChatRuntimeState",
       "useDiffCatalog",
       "DiffCatalog",
       "useMessageCatalog",
@@ -338,6 +338,7 @@
       "serializeOnboardingVersion"
     ],
     "features/voice/runtime.ts": [
+      "PendingConfirmation",
       "useConversationState",
       "useVoiceSetupTest",
       "VoiceSetupTestContext"

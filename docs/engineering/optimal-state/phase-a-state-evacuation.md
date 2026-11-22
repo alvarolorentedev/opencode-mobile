@@ -1,6 +1,6 @@
 # Phase A — State Evacuation
 
-Status: **in progress**. A1–A6 are complete. A7 remains.
+Status: **complete**. A1–A7 passed their automated checks and the Phase A gate.
 
 Goal: remove every piece of domain data from the per-workspace React runtime so
 the runtime can be deleted in Phase E without losing retained state.
@@ -35,8 +35,7 @@ Cancellation invalidates reads that started before the server confirmed it.
 The [conversation runtime state](../../architecture/state-and-data.md#conversation-state)
 is scoped to its workspace in the app store. Input and readback callbacks read
 the latest phases directly. The workspace retains the recognizer, audio and
-timer lifecycles. The final Phase A audit covers the nested confirmation and
-readback queues.
+timer lifecycles.
 
 ### A4 — Terminal
 
@@ -61,23 +60,26 @@ selection, MCP and diagnostics demand, file browser and preview selection, and
 the current classifier probe. Query still owns server catalogs and now caches
 classifier outcomes by project, credential generation and model.
 
-## Remaining work
-
 ### A7 — Delete the remaining per-workspace state
 
-- Delete `features/chat/state/use-chat-runtime-state.ts` when its last field
-  moves.
-- Remove any ref that only mirrors a store/Query value. A ref is allowed only
-  for a timer, socket, promise, request id or lock.
-- Audit:
+The workspace adapter reads diff preferences, selected sessions, active project
+paths and connection settings directly from the app store. Session lists read
+through to Query. The obsolete chat runtime state hook is deleted. Voice
+confirmation and the readback queue use the conversation slice. Entry-operation
+capability uses Query, and the file clipboard, feedback and inspection targets
+use the app store.
+
+The audit covers retained workspaces. Connection-level catalog publications and
+route scope carriers remain for the connection and React flattening phases.
+Screen editors and native speech setup retain local interaction state. Request
+refs retain tokens, timers, audio handles and locks for in-flight work.
+
+Audit commands:
 
 ```bash
 grep -R "useState" features/*/state runtime/workspace
 grep -R "useRef" features/*/state runtime/workspace
 ```
-
-For each remaining hit, either move the data or add a one-line comment
-explaining why it is ephemeral transport state.
 
 ## Phase A gate
 

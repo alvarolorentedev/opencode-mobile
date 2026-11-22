@@ -19,12 +19,12 @@ async function withDiffLoading<T>(silent: boolean, setLoading: (value: boolean) 
     if (!silent) setLoading(false);
   }
 }
-export function useChatRefresh({ client, isCurrentClient, setIsRefreshingDiffs, setDiffsBySession, setVcsDiffsByScope, setTodosBySession, setDiffScopeBySession, setSelectedDiffMessageBySession, selectedDiffMessageBySessionRef, diffScopeBySessionRef, currentSessionIdRef, readDisplayedSession }: ChatRefreshInput) {
+export function useChatRefresh({ client, isCurrentClient, setIsRefreshingDiffs, setDiffsBySession, setVcsDiffsByScope, setTodosBySession, setDiffScopeBySession, setSelectedDiffMessageBySession, readPinnedDiffMessage, readDiffScope, currentSessionIdRef, readDisplayedSession }: ChatRefreshInput) {
 
   const refreshSessionDiff = useCallback(
     async (sessionId: string, silent = false, messageId?: string, records?: SessionMessageRecord[]) => withDiffLoading(silent, setIsRefreshingDiffs, async () => {
       const messages = records ?? readDisplayedSession(sessionId);
-      const pinned = selectedDiffMessageBySessionRef.current[sessionId];
+      const pinned = readPinnedDiffMessage(sessionId);
       // Resolve through the same selector the diff surface displays with so a
       // request can never ask the server for a different turn than the one the
       // overlay highlights.
@@ -37,7 +37,7 @@ export function useChatRefresh({ client, isCurrentClient, setIsRefreshingDiffs, 
       }
       // A session-wide refresh must not overwrite a turn the user selected
       // while the request was in flight.
-      if (!messageId && selectedDiffMessageBySessionRef.current[sessionId] !== pinned) {
+      if (!messageId && readPinnedDiffMessage(sessionId) !== pinned) {
         return data;
       }
       setDiffsBySession((current) => ({
@@ -47,7 +47,7 @@ export function useChatRefresh({ client, isCurrentClient, setIsRefreshingDiffs, 
 
       return data;
     }),
-    [client, isCurrentClient, readDisplayedSession, selectedDiffMessageBySessionRef, setDiffsBySession, setIsRefreshingDiffs],
+    [client, isCurrentClient, readDisplayedSession, readPinnedDiffMessage, setDiffsBySession, setIsRefreshingDiffs],
   );
 
   const refreshVcsDiff = useCallback(
@@ -98,14 +98,14 @@ export function useChatRefresh({ client, isCurrentClient, setIsRefreshingDiffs, 
       if (!sessionId) {
         return;
       }
-      const scope = diffScopeBySessionRef.current[sessionId] ?? 'turn';
+      const scope = readDiffScope(sessionId) ?? 'turn';
       if (scope === 'turn') {
         await refreshSessionDiff(sessionId, silent);
       } else {
         await refreshVcsDiff(scope, silent);
       }
     },
-    [currentSessionIdRef, diffScopeBySessionRef, refreshSessionDiff, refreshVcsDiff],
+    [currentSessionIdRef, readDiffScope, refreshSessionDiff, refreshVcsDiff],
   );
 
   const refreshSessionTodos = useCallback(

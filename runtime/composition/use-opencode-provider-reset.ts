@@ -42,7 +42,6 @@ export function useOpencodeProviderReset({
     suppressedPendingRequestIdsRef,
     sessionRefreshTimeoutsRef,
     sessionRefreshOptionsRef,
-    currentSessionIdRef,
     explicitSessionSelectionRef,
     locallyCreatedSessionsRef,
     setCurrentSessionId,
@@ -57,7 +56,6 @@ export function useOpencodeProviderReset({
     Object.values(sessionRefreshTimeoutsRef.current).forEach((timeout) => clearTimeout(timeout));
     sessionRefreshTimeoutsRef.current = {};
     sessionRefreshOptionsRef.current = {};
-    currentSessionIdRef.current = undefined;
     explicitSessionSelectionRef.current = undefined;
     locallyCreatedSessionsRef.current.clear();
     setCurrentSessionId(undefined);
@@ -80,7 +78,6 @@ export function useOpencodeProviderReset({
     suppressedPendingRequestIdsRef,
     sessionRefreshOptionsRef,
     sessionRefreshTimeoutsRef,
-    currentSessionIdRef,
     explicitSessionSelectionRef,
     locallyCreatedSessionsRef,
               setCurrentSessionId,

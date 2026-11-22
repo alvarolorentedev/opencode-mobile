@@ -93,7 +93,7 @@ export function dispatchCompatibilityEvent(event: GlobalEvent['payload'], action
       const diffs = toFileDiffs(event.properties.diff);
       // When the surface is pinned to an earlier turn, an incoming latest-turn
       // diff must not overwrite it; refresh the selected turn instead.
-      if (diffs.length > 0 && !actions.selectedDiffMessageBySessionRef.current[sessionId]) {
+      if (diffs.length > 0 && !actions.readPinnedDiffMessage(sessionId)) {
         actions.setDiffsBySession((current) => ({
           ...current,
           [sessionId]: diffs,

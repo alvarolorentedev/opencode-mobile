@@ -2,17 +2,34 @@ import { describe, expect, it, vi } from 'vitest';
 import { hookRuntime, loadTs, deferred } from '../../../tests/helpers/runtime.mjs';
 import { projectPath } from '@/shared/protocol/opencode/project';
 import { EntryOperationError } from '@/shared/protocol/opencode/project-entry-operations';
+import { createAppStore, type AppState } from '@/runtime/core/store';
 
 const t = (key: string) => key;
 const file = { path: 'src/demo.ts', name: 'demo.ts', type: 'file' as const };
 const connection = (id = 'server', enabled = true, password = '') => ({ id, enabled, settings: { password } });
 
+function coreImports(runtime: ReturnType<typeof hookRuntime>) {
+  const store = createAppStore({ settings: { serverUrl: '', username: '', password: '', directory: '' }, chatPreferences: {} as never, controlPlaneUrl: '' });
+  return {
+    react: runtime.react,
+    '@/runtime/core': {
+      useAppCore: () => ({ store }),
+      useAppStore<T>(select: (state: AppState) => T) {
+        const [, refresh] = runtime.react.useState(0);
+        runtime.react.useEffect(() => store.subscribe(() => refresh((version: number) => version + 1)), []);
+        return select(store.getState());
+      },
+    },
+  };
+}
+
 async function mount() {
   const runtime = hookRuntime(), inspect = vi.fn(async () => 'missing'), mutate = vi.fn(async () => {});
   const copy = vi.fn(async () => {}), copyHaptic = vi.fn(), selectionAsync = vi.fn(async () => {}), refreshA = vi.fn(async () => {}), refreshB = vi.fn(async () => {});
-  const { useFileClipboard } = await loadTs('features/projects/state/use-file-clipboard.ts', { react: runtime.react });
+  const imports = coreImports(runtime);
+  const { useFileClipboard } = await loadTs('features/projects/state/use-file-clipboard.ts', imports);
   const { useProjectEntryActions } = await loadTs('features/projects/state/use-project-entry-actions.ts', {
-    react: runtime.react,
+    ...imports,
     '@/shared/platform/clipboard': { setStringAsync: copy },
     '@/shared/platform/haptics': { copyHaptic, selectionAsync },
     'react-i18next': { useTranslation: () => ({ t }) },
@@ -25,7 +42,7 @@ async function mount() {
   const isCurrentClient = () => current;
   runtime.mount(({ connections }: any) => {
     const clipboard = useFileClipboard(connections);
-    const useActions = (client: any, refresh: any) => useProjectEntryActions({ client, refresh, clipboard, connectionId: 'server', enabled: true, isCurrentClient });
+    const useActions = (client: any, refresh: any) => useProjectEntryActions({ scopeKey: client.__opencode.directory, client, refresh, clipboard, connectionId: 'server', enabled: true, isCurrentClient });
     return { clipboard, a: useActions(clientA, refreshA), b: useActions(clientB, refreshB) };
   }, { connections: [connection()] });
   await runtime.value.a.probe(); await runtime.value.b.probe(); runtime.flush();
@@ -35,7 +52,7 @@ async function mount() {
 describe('connection file clipboard and actions', () => {
   it('keeps one entry per connection and clears only disconnected or reconfigured connections', async () => {
     const runtime = hookRuntime();
-    const { useFileClipboard } = await loadTs('features/projects/state/use-file-clipboard.ts', { react: runtime.react });
+    const { useFileClipboard } = await loadTs('features/projects/state/use-file-clipboard.ts', coreImports(runtime));
     runtime.mount(({ connections }: any) => useFileClipboard(connections), { connections: [connection('a'), connection('b')] });
     const entry = { root: '/repo', ...file, mode: 'copy' };
     runtime.value.select('a', entry); runtime.value.select('b', entry); runtime.flush();

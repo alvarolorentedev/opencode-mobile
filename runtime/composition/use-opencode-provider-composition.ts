@@ -285,7 +285,7 @@ export function useOpencodeProviderComposition(input: WorkspaceRuntimeInput) {
       setPendingPermissionsBySession: approvalsCatalog.setPendingPermissionsBySession,
       setPendingQuestionsBySession: approvalsCatalog.setPendingQuestionsBySession,
       setMcpAuthPrompt: state.setMcpAuthPrompt,
-      selectedDiffMessageBySessionRef: state.selectedDiffMessageBySessionRef,
+      readPinnedDiffMessage: state.readPinnedDiffMessage,
     };
   });
   const handleEvent = useCallback((event: OpencodeEvent) => {

@@ -74,7 +74,6 @@ export function useSessionBootstrapActions({
         }
         // Commit the selection before any content request. The chat can render
         // its header and a transcript skeleton while these reads settle.
-        currentSessionIdRef.current = targetSession.id;
         setCurrentSessionId(targetSession.id);
         void Promise.all([
           refreshMessages(targetSession.id),

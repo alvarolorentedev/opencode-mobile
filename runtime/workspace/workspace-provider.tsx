@@ -35,7 +35,7 @@ import { clearWorkspacePresentation, hasWorkspaceDrafts } from '@/runtime/presen
 import { WorkspaceRuntime } from '@/runtime/workspace/workspace-runtime';
 import { workspaceKey, type ConnectionRecord, type NewWorktreeChatResult, type NewWorktreeChatTarget, type WorkspaceCatalog, type WorkspaceTarget } from '@/shared/contracts/workspace';
 import type { SharedWorkspaceState, WorkspaceValues } from '@/runtime/workspace/workspace-types';
-import { useCallback, useEffect, useMemo, useState, type PropsWithChildren } from 'react';
+import { useCallback, useEffect, useMemo, useState, type PropsWithChildren, type SetStateAction } from 'react';
 import { usePathname } from 'expo-router';
 import { ActivityIndicator, View } from 'react-native';
 
@@ -43,6 +43,7 @@ import { migrateConnectConnectionScope } from '@/runtime/persistence/connection-
 import { clearCapabilitiesSnapshots } from '@/features/ai/runtime';
 
 export function WorkspaceProvider({ children }: PropsWithChildren) {
+  const core = useAppCore();
   const shell = useWorkspaceShellState();
   const pathname = usePathname();
   // One NetInfo owner for every retained project. See use-network-status.ts:
@@ -50,17 +51,21 @@ export function WorkspaceProvider({ children }: PropsWithChildren) {
   const network = useNetworkStatus();
   const { isHydrated } = useOpencodePersistence({ ...shell, defaultChatPreferences, defaultSettings: defaultConnectionSettings });
   const presentation = useAppStore((state) => state.presentation);
+  // Catalog publications compose Query snapshots and command handles for the root view.
   const [catalogs, setCatalogs] = useState<Record<string, WorkspaceCatalog>>({});
   const publishCatalog = useCallback((connectionId: string, catalog: WorkspaceCatalog) => {
     setCatalogs((current) => current[connectionId] === catalog ? current : { ...current, [connectionId]: catalog });
   }, []);
-  const [profiles, setProfiles] = useState<ConnectionProfile[]>([]);
+  const profiles = useAppStore((state) => state.shell.profiles);
+  const setProfiles = useCallback((value: SetStateAction<ConnectionProfile[]>) => core.store.getState().setShellValue('profiles', value), [core]);
   const onboardingCompleted = isOnboardingComplete(shell.onboardingVersion);
-  const core = useAppCore();
   const registryState = useAppStore((state) => state.registry);
+  const getShell = useCallback(() => core.store.getState().shell, [core]);
+  const getRegistry = useCallback(() => core.store.getState().registry, [core]);
   const manager = useWorkspaceConnections(shell, isHydrated, {
     registry: registryState,
-    getRegistry: () => core.store.getState().registry,
+    getRegistry,
+    getShell,
     setRegistry: core.store.getState().setRegistry,
   });
   useWorkspaceAutoApprove(manager);
@@ -118,10 +123,9 @@ export function WorkspaceProvider({ children }: PropsWithChildren) {
   const profileRemoved = useCallback(async (profile: ConnectionProfile) => removeConnection(getConnectionUiScope(profile)), [removeConnection]);
   const connectionProfiles = useConnectionProfiles({ clearCapabilitiesSnapshots, settings, switchConnection, updateSettings, profiles, setProfiles, onSaved: profileSaved, onRemoved: profileRemoved });
   const { servicesValue } = useServicesState({ settings, connectSetup, connections: manager.connections, visible: pathname === '/settings' || pathname === '/service' });
-  const [terminalTarget, setTerminalTarget] = useState<WorkspaceTarget>();
-  const [inspectionTarget, setInspectionTarget] = useState<WorkspaceTarget>();
-  const selectTerminalTarget = useCallback(async (target: WorkspaceTarget) => { await ensure(target); setTerminalTarget(target); }, [ensure]);
-  const inspect = useCallback(async (target: WorkspaceTarget) => { await ensure(target); setInspectionTarget(target); }, [ensure]);
+  const { terminalTarget, inspectionTarget } = registryState;
+  const selectTerminalTarget = useCallback(async (target: WorkspaceTarget) => { await ensure(target); core.store.getState().setRegistry({ terminalTarget: target }); }, [core, ensure]);
+  const inspect = useCallback(async (target: WorkspaceTarget) => { await ensure(target); core.store.getState().setRegistry({ inspectionTarget: target }); }, [core, ensure]);
   const openSession = useCallback(async (target: SessionDeepLinkTarget, signal?: AbortSignal) => {
     try {
       let entry: Pick<ConnectionRecord, 'id' | 'projects' | 'enabled'> | undefined = target.connectionScope ? connections.find((value) => getConnectionScope(value.settings) === target.connectionScope) : connections.find((value) => value.id === focus?.connectionId);

@@ -7,6 +7,7 @@ export { locationOptions } from './services/queries/catalog';
 export { projectsOptions } from './services/queries/catalog';
 export { resolveActiveProject } from './model/project-utils';
 export { useFileClipboard } from './state/use-file-clipboard';
+export type { FileClipboardEntry } from './state/use-file-clipboard';
 export { useProjectCatalogActions } from './state/use-project-catalog-actions';
 export { useProjectFileActions } from './state/use-project-file-actions';
 export { useProjectRuntimeState } from './state/use-project-runtime-state';

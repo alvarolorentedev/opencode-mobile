@@ -64,7 +64,7 @@ export type ProviderEventActions = {
   setPendingPermissionsBySession: Dispatch<SetStateAction<Record<string, PendingPermissionRequest[]>>>;
   setPendingQuestionsBySession: Dispatch<SetStateAction<Record<string, PendingQuestionRequest[]>>>;
   setMcpAuthPrompt: Dispatch<SetStateAction<{ mcpName: string; url: string } | undefined>>;
-  selectedDiffMessageBySessionRef: { current: Record<string, string | undefined> };
+  readPinnedDiffMessage: (sessionId: string) => string | undefined;
 };
 
 export function handleProviderEvent(event: OpencodeEvent, actions: ProviderEventActions): void {

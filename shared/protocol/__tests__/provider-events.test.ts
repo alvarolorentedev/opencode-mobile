@@ -32,7 +32,7 @@ function createActions() {
     setPendingPermissionsBySession: vi.fn(),
     setPendingQuestionsBySession: vi.fn(),
     setMcpAuthPrompt: calls.setMcpAuthPrompt,
-    selectedDiffMessageBySessionRef: { current: {} },
+    readPinnedDiffMessage: () => undefined,
   } as unknown as ProviderEventActions;
   return { actions, calls };
 }

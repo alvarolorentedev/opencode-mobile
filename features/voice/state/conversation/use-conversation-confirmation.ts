@@ -1,5 +1,6 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef } from 'react';
 
+import { useAppCore, useAppStore } from '@/runtime/core';
 import { i18n } from '@/shared/i18n/index';
 import { classifyConfirmation, compactConfirmationCommand, isLongConfirmationCommand } from '@/shared/platform/voice/confirmation';
 import { getSpeechPlayback } from '@/shared/platform/voice/speech-config';
@@ -14,6 +15,7 @@ import { useLatest } from '@/features/voice/state/conversation/use-latest';
  * confirm action calls the existing submission path.
  */
 export function useConversationConfirmation({
+  scopeKey,
   chatPreferences,
   connectionStatus,
   conversationSessionId,
@@ -29,9 +31,12 @@ export function useConversationConfirmation({
   stopSystemInput,
   submitCommand,
 }: ConfirmationOptions) {
-  const [pending, setPending] = useState<PendingConfirmation>();
-  const [speaking, setSpeaking] = useState(false);
-  const pendingRef = useRef<PendingConfirmation | undefined>(undefined);
+  const { store } = useAppCore();
+  const pending = useAppStore((state) => state.conversation[scopeKey]?.confirmation);
+  const speaking = useAppStore((state) => state.conversation[scopeKey]?.confirmationSpeaking ?? false);
+  const readPending = useCallback(() => store.getState().conversation[scopeKey]?.confirmation, [scopeKey, store]);
+  const setPending = useCallback((value: PendingConfirmation | undefined) => store.getState().setConversationValue(scopeKey, 'confirmation', value), [scopeKey, store]);
+  const setSpeaking = useCallback((value: boolean) => store.getState().setConversationValue(scopeKey, 'confirmationSpeaking', value), [scopeKey, store]);
   const listeningActiveRef = useRef(false);
   const attemptRef = useRef(0);
   const idRef = useRef(0);
@@ -82,29 +87,29 @@ export function useConversationConfirmation({
     }
   }, []);
   const update = useCallback((patch: Partial<PendingConfirmation>) => {
-    const current = pendingRef.current;
+    const current = readPending();
     if (!current) {
       return;
     }
     const next = { ...current, ...patch };
-    pendingRef.current = next;
+
     if (mountedRef.current) {
       setPending(next);
     }
-  }, []);
+  }, [readPending, setPending]);
   const isCurrent = useCallback((id: number) => (
-    mountedRef.current && pendingRef.current?.id === id
-  ), []);
+    mountedRef.current && readPending()?.id === id
+  ), [readPending]);
   const stopCapture = useCallback(async () => {
     listeningActiveRef.current = false;
     stopSystemRef.current();
     await stopLocalRef.current().catch(() => undefined);
   }, [stopLocalRef, stopSystemRef]);
   const cancelInternal = useCallback((options: { rearm: boolean }) => {
-    const hadPending = Boolean(pendingRef.current);
+    const hadPending = Boolean(readPending());
     clearTimers();
     listeningActiveRef.current = false;
-    pendingRef.current = undefined;
+
     if (mountedRef.current) {
       setPending(undefined);
       setSpeaking(false);
@@ -112,11 +117,11 @@ export function useConversationConfirmation({
     void stopSpeaking().catch(() => undefined);
     void (async () => {
       await stopCapture();
-      if (hadPending && options.rearm && !pendingRef.current) {
+      if (hadPending && options.rearm && !readPending()) {
         await rearmRef.current().catch(() => undefined);
       }
     })();
-  }, [clearTimers, rearmRef, stopCapture]);
+  }, [clearTimers, readPending, rearmRef, setPending, setSpeaking, stopCapture]);
   const startDismissTimer = useCallback((id: number) => {
     if (dismissTimerRef.current) {
       clearTimeout(dismissTimerRef.current);
@@ -145,7 +150,7 @@ export function useConversationConfirmation({
     applyConversationFeedback(setConversationFeedback, setConversationFeedbackAction, message);
     void stopCapture();
     startDismissTimer(id);
-  }, [clearTimers, isCurrent, setConversationFeedback, setConversationFeedbackAction, startDismissTimer, stopCapture, update]);
+  }, [clearTimers, isCurrent, setConversationFeedback, setConversationFeedbackAction, setSpeaking, startDismissTimer, stopCapture, update]);
   const startListenTimer = useCallback((id: number) => {
     if (listenTimerRef.current) {
       clearTimeout(listenTimerRef.current);
@@ -156,7 +161,7 @@ export function useConversationConfirmation({
     }, CONFIRMATION_LISTEN_TIMEOUT_MS);
   }, [expire]);
   const startListening = useCallback(async (id: number) => {
-    const current = pendingRef.current;
+    const current = readPending();
     if (!current || current.id !== id || !mountedRef.current) {
       return;
     }
@@ -177,18 +182,18 @@ export function useConversationConfirmation({
       return;
     }
     startListenTimer(id);
-  }, [expire, isCurrent, startListenTimer, startLocalRef, startSystemRef, stopCapture, update]);
+  }, [expire, isCurrent, readPending, startListenTimer, startLocalRef, startSystemRef, stopCapture, update]);
   const scheduleListening = useCallback((id: number) => {
     if (echoTimerRef.current) {
       clearTimeout(echoTimerRef.current);
     }
     echoTimerRef.current = setTimeout(() => {
       echoTimerRef.current = undefined;
-      if (isCurrent(id) && pendingRef.current?.phase === 'prompting') {
+      if (isCurrent(id) && readPending()?.phase === 'prompting') {
         void startListening(id);
       }
     }, CONFIRMATION_ECHO_GUARD_MS);
-  }, [isCurrent, startListening]);
+  }, [isCurrent, readPending, startListening]);
   const speakPrompt = useCallback(async (record: PendingConfirmation) => {
     const command = compactConfirmationCommand(record.text);
     // Speak the prompt in the command language, not necessarily the UI language.
@@ -227,11 +232,11 @@ export function useConversationConfirmation({
       rate: chatPreferences.speechRate,
       text: prompt,
     }).catch(() => false);
-    if (!started && isCurrent(record.id) && pendingRef.current?.phase === 'prompting') {
+    if (!started && isCurrent(record.id) && readPending()?.phase === 'prompting') {
       setSpeaking(false);
       scheduleListening(record.id);
     }
-  }, [chatPreferences.speechLocale, chatPreferences.speechRate, isCurrent, localeRef, playback, scheduleListening, setConversationFeedback, setConversationFeedbackAction]);
+  }, [chatPreferences.speechLocale, chatPreferences.speechRate, isCurrent, localeRef, playback, readPending, scheduleListening, setConversationFeedback, setConversationFeedbackAction, setSpeaking]);
   const begin = useCallback((text: string, source: ConfirmationSource) => {
     const trimmed = text.trim();
     if (!trimmed || !chatPreferences.confirmVoiceCommands) {
@@ -257,7 +262,7 @@ export function useConversationConfirmation({
       phase: 'prompting',
     };
     attemptRef.current = 0;
-    pendingRef.current = record;
+
     if (mountedRef.current) {
       setPending(record);
       setSpeaking(false);
@@ -276,9 +281,9 @@ export function useConversationConfirmation({
       await speakPrompt(record);
     })();
     return true;
-  }, [chatPreferences.confirmVoiceCommands, clearTimers, isCurrent, setConversationFeedback, setConversationFeedbackAction, setConversationLatestHeardText, setConversationPhase, speakPrompt, stopCapture]);
+  }, [chatPreferences.confirmVoiceCommands, clearTimers, isCurrent, setConversationFeedback, setConversationFeedbackAction, setConversationLatestHeardText, setConversationPhase, setPending, setSpeaking, speakPrompt, stopCapture]);
   const confirm = useCallback((text?: string) => {
-    const current = pendingRef.current;
+    const current = readPending();
     if (!current) {
       return;
     }
@@ -299,7 +304,7 @@ export function useConversationConfirmation({
     }
     clearTimers();
     listeningActiveRef.current = false;
-    pendingRef.current = undefined;
+
     if (mountedRef.current) {
       setPending(undefined);
       setSpeaking(false);
@@ -307,15 +312,15 @@ export function useConversationConfirmation({
     void stopSpeaking().catch(() => undefined);
     void stopCapture();
     submitRef.current(value);
-  }, [cancelInternal, clearTimers, setConversationFeedback, setConversationFeedbackAction, stopCapture, submitRef, update]);
+  }, [cancelInternal, clearTimers, readPending, setConversationFeedback, setConversationFeedbackAction, setPending, setSpeaking, stopCapture, submitRef, update]);
   const retry = useCallback(() => {
-    const current = pendingRef.current;
+    const current = readPending();
     if (!current) {
       return;
     }
     clearTimers();
     listeningActiveRef.current = false;
-    pendingRef.current = undefined;
+
     if (mountedRef.current) {
       setPending(undefined);
       setSpeaking(false);
@@ -325,10 +330,10 @@ export function useConversationConfirmation({
       await stopCapture();
       await retryCommandRef.current().catch(() => false);
     })();
-  }, [clearTimers, retryCommandRef, stopCapture]);
+  }, [clearTimers, readPending, retryCommandRef, setPending, setSpeaking, stopCapture]);
 
   const edit = useCallback(() => {
-    const current = pendingRef.current;
+    const current = readPending();
     if (!current) {
       return;
     }
@@ -339,7 +344,7 @@ export function useConversationConfirmation({
     applyConversationFeedback(setConversationFeedback, setConversationFeedbackAction, undefined);
     void stopSpeaking().catch(() => undefined);
     void stopCapture();
-  }, [clearTimers, setConversationFeedback, setConversationFeedbackAction, stopCapture, update]);
+  }, [clearTimers, readPending, setConversationFeedback, setConversationFeedbackAction, setSpeaking, stopCapture, update]);
 
   const cancel = useCallback(() => {
     cancelInternal({ rearm: true });
@@ -369,7 +374,7 @@ export function useConversationConfirmation({
   }, [clearTimers, expire, isCurrent, setConversationFeedback, setConversationFeedbackAction, startListening]);
 
   const handleResult = useCallback((text: string, isFinal: boolean) => {
-    const current = pendingRef.current;
+    const current = readPending();
     if (!current || current.phase !== 'listening' || !listeningActiveRef.current) {
       return;
     }
@@ -418,23 +423,23 @@ export function useConversationConfirmation({
         void startListening(current.id);
       }
     }, CONFIRMATION_RETRY_DELAY_MS);
-  }, [cancel, chatPreferences.speechLocale, clearTimers, confirm, edit, expire, handleResultEnd, isCurrent, retry, setConversationFeedback, setConversationFeedbackAction, startListening, stopCapture, update]);
+  }, [cancel, chatPreferences.speechLocale, clearTimers, confirm, edit, expire, handleResultEnd, isCurrent, readPending, retry, setConversationFeedback, setConversationFeedbackAction, startListening, stopCapture, update]);
 
   const handleEnd = useCallback(() => {
-    const current = pendingRef.current;
+    const current = readPending();
     if (!current || current.phase !== 'listening') {
       return;
     }
     handleResultEnd(current.id);
-  }, [handleResultEnd]);
+  }, [handleResultEnd, readPending]);
 
   const handleError = useCallback((message: string) => {
-    const current = pendingRef.current;
+    const current = readPending();
     if (!current) {
       return;
     }
     expire(current.id, message || i18n.t('chat:confirmation.unavailable'));
-  }, [expire]);
+  }, [expire, readPending]);
 
   const reset = useCallback(() => {
     cancelInternal({ rearm: false });
@@ -463,13 +468,14 @@ export function useConversationConfirmation({
     mountedRef.current = true;
     return () => {
       mountedRef.current = false;
+      setPending(undefined);
       clearTimers();
       listeningActiveRef.current = false;
-      pendingRef.current = undefined;
+
       void stopCapture();
       void stopSpeaking().catch(() => undefined);
     };
-  }, [clearTimers, stopCapture]);
+  }, [clearTimers, setPending, stopCapture]);
 
   return {
     begin,

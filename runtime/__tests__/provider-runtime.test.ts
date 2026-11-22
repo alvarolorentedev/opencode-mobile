@@ -67,7 +67,7 @@ const context: any = {
   store: createAppStore({ settings: { serverUrl: 'http://server', username: '', password: '', directory: '/repo' }, chatPreferences: {} as never, controlPlaneUrl: '' }),
   client, useCallback: (fn: any) => fn, projectSearchRequestRef: { current: 0 }, projectFileRequestRef: { current: 0 },
   activeProjectPathRef: { current: '/repo' }, isCurrentClient: (candidate: any) => candidate === active,
-  currentSessionIdRef: {}, diffScopeBySessionRef: { current: {} },
+  currentSessionIdRef: {}, readDiffScope: () => undefined,
   findFiles: (_: any, query: any) => { const gate = deferred(); reads.set(query, gate); return gate.promise; },
   readFile: (_: any, path: any) => {
     if (path.startsWith('selection-')) { const gate = deferred(); fileReads.set(path, gate); return gate.promise; }

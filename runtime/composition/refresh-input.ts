@@ -5,5 +5,5 @@ export type ProjectRefreshInput = Pick<ProjectActionsInput,
   'locallyCreatedSessionsRef' | 'setIsRefreshingDiffs' | 'setDiffsBySession' | 'setVcsDiffsByScope' |
   'setTodosBySession' | 'setPendingPermissionsBySession' | 'setPendingQuestionsBySession' |
   'suppressedPendingRequestIdsRef' | 'setDiffScopeBySession' | 'setSelectedDiffMessageBySession' |
-  'selectedDiffMessageBySessionRef' | 'diffScopeBySessionRef' | 'currentSessionIdRef' | 'readDisplayedSession' |
+  'readPinnedDiffMessage' | 'readDiffScope' | 'currentSessionIdRef' | 'readDisplayedSession' |
   'sessionRefreshTimeoutsRef' | 'sessionRefreshOptionsRef' | 'connectionScope' | 'refreshMessages'>;

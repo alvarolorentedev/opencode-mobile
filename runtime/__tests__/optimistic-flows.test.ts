@@ -72,7 +72,7 @@ function sessionCrudInput(patch: Record<string, unknown> = {}) {
       currentSessionId,
       availableAgents: [{ id: 'build', label: 'Build', mode: 'primary' }],
       availableModels: [],
-      diffScopeBySessionRef: { current: {} },
+      readDiffScope: () => undefined,
       sessions,
       sessionStatuses: statuses,
       commands: [],
@@ -122,7 +122,7 @@ describe('local-first session selection', () => {
     const sessionsRef = { current: previous };
     const explicitSessionSelectionRef = { current: 'target' as string | undefined };
     const currentSessionIdRef = { current: 'target' as string | undefined };
-    const setCurrentSessionId = vi.fn();
+    const setCurrentSessionId = vi.fn((id?: string) => { currentSessionIdRef.current = id; });
     runtime.mount(useOpencodeProviderEffects, {
       connection: { status: 'idle' }, isHydrated: false, active: false,
       activeProjectPath: '/repo', connectionScope: 'scope',
