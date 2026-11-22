@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { base64 } from '@scure/base';
 import { z } from 'zod';
 import { loadTs, hookRuntime, deferred, type Deferred } from '../../../tests/helpers/runtime.mjs';
+import { queryRuntime } from '../../../tests/helpers/query-runtime.mjs';
 import { describe, it } from 'vitest';
 
 describe('connect recovery', () => {
@@ -129,13 +130,18 @@ async function fixture({ expired = false, missing = false, storedSession = true,
   imports['@/shared/contracts/server-url'] = imports['@/shared/protocol/opencode/client'];
   const lifecycleModel = await loadTs('features/connections/model/connection-lifecycle.ts');
   const lifecycleManager = await loadTs('runtime/connections/connection-lifecycle.ts', { '@/features/connections/runtime': lifecycleModel });
-  const actions = await loadTs('runtime/connections/connection-runtime.tsx', {
+  const { createConnection } = await loadTs('runtime/connections/create-connection.ts', {
     ...imports,
-    'react/jsx-runtime': {},
     './connection-lifecycle': lifecycleManager,
-    './use-connection-retry': await loadTs('features/connections/state/use-connection-retry.ts', { ...imports, '@/shared/protocol/opencode/client/errors': { isRetryableConnectionFailure: () => true } }, globals),
     "@/shared/protocol/services/session-service": { listServerProjects: async () => { catalogs++; if (catalogFailure) throw new Error(typeof catalogFailure === 'string' ? catalogFailure : 'offline'); return []; }, readCatalogLocation: async () => ({ currentProjectPath: '/fixture', serverRootPath: '/fixture', project: { id: 'p', worktree: '/fixture' } }), combineProjectCatalog: (_: any, serverProjects: any, location: any) => ({ ...location, serverProjects }) }
   }, globals);
+  const manager = createConnection({
+    queryClient: queryRuntime(runtime.react).useQueryClient(),
+    foreground: {
+      isActive: () => native.AppState.currentState === 'active',
+      subscribe: (listener: (active: boolean) => void) => native.AppState.addEventListener('change', (state: string) => listener(state === 'active')).remove,
+    },
+  });
   const profileHook = await loadTs('features/connections/state/use-connection-profiles.ts', {
     ...imports
   }, globals);
@@ -164,7 +170,17 @@ async function fixture({ expired = false, missing = false, storedSession = true,
       migrateConnectConnectionScope: async () => {}, activeMachineId: settings.connect?.machineId, beforeProfileRefresh: async () => {}, onProfileRefreshed: () => {},
       isActiveProfile: (candidate: any) => Boolean(input.settingsRef.current.connect && profiles.findMatchingProfile([candidate], input.settingsRef.current)) });
     const changeSettings = runtime.react.useCallback((_id: string, next: any) => { revision.current++; setSettings(next); }, []);
-    const result = actions.useConnectionLifecycle({ id: scope.getConnectionUiScope(settings), settings, enabled: true, revision: revision.current, projects: ['/fixture'], preferences: {}, events: {} }, connectSetup, changeSettings, true, true);
+    const state = runtime.react.useSyncExternalStore(manager.subscribe, manager.getState) as { connection: { status: string; message?: string }; contract: string };
+    const id = scope.getConnectionUiScope(settings);
+    runtime.react.useLayoutEffect(() => manager.setInput({
+      entry: { id, settings, enabled: true, revision: revision.current, projects: ['/fixture'], preferences: {}, events: {} },
+      identity: { connectionId: 'test', connectionScope: 'scope', authRevision: 0 },
+      setup: connectSetup, translate: (key: string) => key, hydrated: true, updateSettings: changeSettings,
+    }));
+    runtime.react.useEffect(() => manager.syncConnection(), [id, revision.current, settings]);
+    const renewalPaused = connectSetup.phase === 'waitingForApproval' || connectSetup.phase === 'delayed';
+    runtime.react.useEffect(() => manager.syncRenewal(), [id, settings.connect, settings.password, renewalPaused]);
+    const result = { connection: state.connection, serverContract: state.contract, connect: manager.connect, onInvalidated: manager.onInvalidated, handleStreamAuthFailure: manager.handleStreamAuthFailure };
     const switchConnection = runtime.react.useCallback(async (next: any) => {
       revision.current++; setSettings({ ...next, directory: '' }); await Promise.resolve(); runtime.flush();
       return runtime.value.connect();

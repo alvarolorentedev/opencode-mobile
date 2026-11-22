@@ -5,7 +5,7 @@ import { loadConnectionProfiles } from '@/shared/storage/connection-profiles';
 import { getConnectionScope, getConnectionUiScope } from '@/shared/contracts/connection-scope';
 import { HIDDEN_PROJECTS_MAX } from '@/shared/contracts/domain';
 import { defaultConnectionSettings } from '@/shared/protocol/opencode/client';
-import { ConnectionRuntime } from '@/runtime/connections/connection-runtime';
+import { ConnectionRuntime, useConnectionRegistryBinding } from '@/runtime/connections/connection-runtime';
 import { CURRENT_ONBOARDING_VERSION, isOnboardingComplete } from '@/features/onboarding/runtime';
 import { defaultChatPreferences } from '@/shared/preferences/opencode-preferences';
 import type { ConnectionContextValue } from '@/features/connections/index';
@@ -103,6 +103,7 @@ export function WorkspaceProvider({ children }: PropsWithChildren) {
   const connectSetup = useConnectState({ controlPlaneUrl: shell.controlPlaneUrl, setControlPlaneUrl: shell.setControlPlaneUrl,
     switchConnection, disconnect: disconnectProfile, isHydrated, activeMachineId: settings.connect?.machineId,
     beforeProfileRefresh, migrateConnectConnectionScope, profiles, setProfiles, onProfileRefreshed: profileRefreshed, isActiveProfile });
+  useConnectionRegistryBinding(connectSetup, updateWorkspaceSettings, isHydrated);
   const profileSaved = useCallback((profile: ConnectionProfile, secrets: { password: string; headers: Record<string, string>; certificate?: import('@/shared/contracts/connection-certificate').ConnectionCertificate }, previous?: ConnectionProfile) => {
     const id = getConnectionUiScope(previous ?? profile);
     change((current) => current.map((entry) => entry.id === id ? { ...entry, name: profile.name } : entry));
@@ -263,7 +264,7 @@ export function WorkspaceProvider({ children }: PropsWithChildren) {
     <WorkspaceActionsContext.Provider value={workspaceActions}>
     <WorkspaceContext.Provider value={registry}>
     {connections.map((entry) => <ServerDataScope key={entry.id} connection={entry} active={readTarget?.connectionId === entry.id}>
-      <ConnectionRuntime entry={entry} setup={connectSetup} updateSettings={updateWorkspaceSettings} online={network.online} hydrated={isHydrated} libraryVisible={pathname === '/' && focus?.connectionId === entry.id && Boolean(selectedRuntime?.libraryVisible)} missionVisible={pathname === MISSION_PATH} onCatalog={publishCatalog}>
+      <ConnectionRuntime entry={entry} online={network.online} libraryVisible={pathname === '/' && focus?.connectionId === entry.id && Boolean(selectedRuntime?.libraryVisible)} missionVisible={pathname === MISSION_PATH} onCatalog={publishCatalog}>
       {entry.projects.map((path, index) => {
         const visible = focus?.connectionId === entry.id && (focus.projectPath === path || current === snapshots[workspaceKey({ connectionId: entry.id, projectPath: path })]);
         const demanded = readTarget?.connectionId === entry.id && (readTarget.projectPath === path || readTarget === focus && visible);

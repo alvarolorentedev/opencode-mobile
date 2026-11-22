@@ -94,11 +94,15 @@ npm run validate:commit
   onboarding and settings specs.
 - Phase B baseline from the Phase A export passed the live renewal, credential
   rotation and second-device Restore scenarios in `connect.spec.mjs`.
-- B1, `refactor(connections): extract probing and renewal into a manager`.
+- B1, `63e58c7c`.
   The commit gate reported 1,257 passing tests and one existing skip. The
   focused lifecycle and Cloud Link recovery tests, docs, web export and all 72
   connection, realtime, network resilience and multi-server browser tests
   passed, including live renewal across panel reopening.
+- B2. The commit gate reported 1,258 passing tests and one existing skip.
+  The 19 focused tests, docs, web export and all 68 Cloud Link, manual
+  connection and multi-server browser tests passed. The registry test covers
+  revision changes, credential partitions, disable, removal and teardown.
 
 ## Loop protocol
 

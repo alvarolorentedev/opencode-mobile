@@ -13,6 +13,7 @@ export type ReactHooks = {
   useState<T = undefined>(): [T | undefined, Dispatch<SetStateAction<T | undefined>>];
   useEffect(effect: () => void | (() => void), deps?: readonly unknown[]): void;
   useLayoutEffect(effect: () => void | (() => void), deps?: readonly unknown[]): void;
+  useSyncExternalStore<T>(subscribe: (listener: () => void) => () => void, getSnapshot: () => T): T;
   useRef<T>(initial: T): { current: T };
   useRef<T = undefined>(): { current: T | undefined };
   useMemo<T>(factory: () => T, deps?: readonly unknown[]): T;

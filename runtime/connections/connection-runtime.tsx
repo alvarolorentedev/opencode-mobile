@@ -1,13 +1,14 @@
 import { buildClient, type OpencodeConnectionSettings } from '@/shared/protocol/opencode/client';
 import { isServerConnectedEvent, serverDataResources } from '@/shared/protocol/opencode/server-data-events';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { createContext, useCallback, useContext, useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore, type PropsWithChildren } from 'react';
+import { createContext, useCallback, useContext, useEffect, useLayoutEffect, useMemo, useRef, useSyncExternalStore, type PropsWithChildren } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { TFunction } from 'i18next';
 import { AppState } from 'react-native';
 import { useConnectionRetry } from '@/features/connections/runtime';
 import { createConnection } from '@/runtime/connections/create-connection';
-import { replaceQueryPartition } from '@/shared/server-data/keys';
+import { useAppCore } from '@/runtime/core';
+import type { ConnectionLifecycle } from '@/features/connections/index';
 import { projectsOptions } from '@/features/projects/runtime';
 import { useQueryActivity, useQueryForeground, useQueryIdentity } from '@/shared/server-data/client';
 import { readSessionStats } from '@/shared/protocol/services/session-stats';
@@ -28,46 +29,47 @@ function connectionTranslator(t: TFunction) {
     (options ? t(key, options as never) : t(key)) as string;
 }
 
-const foregroundLifecycle = {
-  isActive: () => AppState.currentState === 'active',
-  subscribe(listener: (active: boolean) => void) {
-    const subscription = AppState.addEventListener('change', (state) => listener(state === 'active'));
-    return () => subscription.remove();
-  },
-};
+const IDLE: ConnectionLifecycle = { phase: 'idle', operation: 0, connection: { status: 'idle', message: 'Disconnected' }, contract: 'v2' };
+const readIdle = () => IDLE;
+const noSubscription = () => () => {};
+const noAuthFailure = () => {};
 
-export function useConnectionLifecycle(entry: ConnectionRecord, setup: ConnectSetup, updateSettings: (id: string, settings: OpencodeConnectionSettings) => void, online: boolean, hydrated: boolean) {
+export function useConnectionRegistryBinding(setup: ConnectSetup, updateSettings: (id: string, settings: OpencodeConnectionSettings) => void, hydrated: boolean) {
+  const { connections } = useAppCore();
   const { t } = useTranslation();
-  const queryClient = useQueryClient();
-  const identity = useQueryIdentity();
-  const active = useQueryActivity();
-  const [manager] = useState(() => createConnection({ queryClient, foreground: foregroundLifecycle }));
-  const state = useSyncExternalStore(manager.subscribe, manager.getState, manager.getState);
+  const { phase, prepareSettings } = setup;
   useLayoutEffect(() => {
-    manager.setInput({ entry, setup, identity, translate: connectionTranslator(t), hydrated, updateSettings });
-  });
-  useEffect(() => manager.syncConnection(), [entry.enabled, entry.id, entry.revision, entry.settings, hydrated, manager]);
-  const renewalPaused = setup.phase === 'waitingForApproval' || setup.phase === 'delayed';
-  useEffect(() => manager.syncRenewal(), [entry.enabled, entry.id, entry.settings.connect, entry.settings.password, manager, renewalPaused]);
-  const reconnect = useConnectionRetry({ active, paused: Boolean(entry.settings.connect), status: state.connection.status, kind: 'kind' in state.connection ? state.connection.kind : undefined, online, connect: manager.connect });
-  return useMemo(() => ({
-    connection: entry.enabled ? state.connection : { status: 'idle' as const, message: 'Disconnected' },
-    serverContract: state.contract,
-    connect: manager.connect,
-    handleStreamAuthFailure: manager.handleStreamAuthFailure,
-    onInvalidated: manager.onInvalidated,
-    reconnect,
-  }), [entry.enabled, manager, reconnect, state.connection, state.contract]);
+    connections.setForeground(AppState.currentState === 'active');
+    const subscription = AppState.addEventListener('change', (state) => connections.setForeground(state === 'active'));
+    return () => { subscription.remove(); connections.dispose(); };
+  }, [connections]);
+  useLayoutEffect(() => {
+    connections.configure({ setup: { phase, prepareSettings }, translate: connectionTranslator(t), hydrated, updateSettings, createManager: createConnection });
+  }, [connections, hydrated, phase, prepareSettings, t, updateSettings]);
 }
 
-type Handle = ReturnType<typeof useConnectionLifecycle> & { catalogClient: ReturnType<typeof buildClient>; catalog: WorkspaceCatalog; isCurrentCatalogClient: (client: object) => boolean };
+function useManagedConnection(entry: ConnectionRecord, online: boolean) {
+  const { connections } = useAppCore();
+  const active = useQueryActivity();
+  const managerForThisId = useCallback(() => connections.get(entry.id), [connections, entry.id]);
+  const manager = useSyncExternalStore(connections.subscribe, managerForThisId, managerForThisId);
+  const state = useSyncExternalStore(manager?.subscribe ?? noSubscription, manager?.getState ?? readIdle, readIdle);
+  const connect = useCallback(() => managerForThisId()?.connect() ?? Promise.resolve(IDLE.connection), [managerForThisId]);
+  const reconnect = useConnectionRetry({ active, paused: Boolean(entry.settings.connect), status: state.connection.status, kind: state.connection.kind, online, connect });
+  return useMemo(() => ({
+    connection: entry.enabled ? state.connection : IDLE.connection,
+    serverContract: state.contract,
+    connect,
+    handleStreamAuthFailure: manager?.handleStreamAuthFailure ?? noAuthFailure,
+    onInvalidated: manager?.onInvalidated ?? noSubscription,
+    reconnect,
+  }), [connect, entry.enabled, manager, reconnect, state.connection, state.contract]);
+}
+
+type Handle = ReturnType<typeof useManagedConnection> & { catalogClient: ReturnType<typeof buildClient>; catalog: WorkspaceCatalog; isCurrentCatalogClient: (client: object) => boolean };
 const ConnectionRuntimeContext = createContext<Handle | null>(null);
-export function ConnectionRuntime({ entry, setup, updateSettings, online, hydrated, onCatalog, libraryVisible, missionVisible, children }: PropsWithChildren<{ entry: ConnectionRecord; setup: ConnectSetup; updateSettings: (id: string, settings: OpencodeConnectionSettings) => void; online: boolean; hydrated: boolean; libraryVisible: boolean; missionVisible?: boolean; onCatalog: (id: string, catalog: WorkspaceCatalog) => void }>) {
+export function ConnectionRuntime({ entry, online, onCatalog, libraryVisible, missionVisible, children }: PropsWithChildren<{ entry: ConnectionRecord; online: boolean; libraryVisible: boolean; missionVisible?: boolean; onCatalog: (id: string, catalog: WorkspaceCatalog) => void }>) {
   const cache = useQueryClient();
-  useEffect(() => () => {
-    void cache.cancelQueries({ queryKey: ['opencode', entry.id] });
-    cache.removeQueries({ queryKey: ['opencode', entry.id] });
-  }, [cache, entry.id]);
   const dirty = useRef(new Map<string, Set<string>>());
   const flush = useCoalescedRefresh(async () => {
     const changes = new Map(dirty.current); dirty.current.clear();
@@ -92,19 +94,8 @@ export function ConnectionRuntime({ entry, setup, updateSettings, online, hydrat
     resources.forEach((resource) => pending.add(resource)); dirty.current.set(directory, pending); flush();
   });
   }, [entry.events, flush]);
-  const lifecycle = useConnectionLifecycle(entry, setup, updateSettings, online, hydrated);
+  const lifecycle = useManagedConnection(entry, online);
   const identity = useQueryIdentity();
-  const partition = useRef({ identity, settings: entry.settings });
-  useLayoutEffect(() => {
-    const previous = partition.current;
-    if (previous.identity.connectionScope === identity.connectionScope && previous.identity.authRevision === identity.authRevision) return;
-    const sameMachine = entry.settings.connect && previous.settings.connect
-      && entry.settings.connect.machineId === previous.settings.connect.machineId
-      && entry.settings.connect.controlPlaneUrl === previous.settings.connect.controlPlaneUrl
-      && entry.settings.serverUrl === previous.settings.serverUrl;
-    replaceQueryPartition(cache, previous.identity, identity, Boolean(sameMachine));
-    partition.current = { identity, settings: entry.settings };
-  }, [cache, entry.id, entry.settings, identity]);
   const active = useQueryActivity();
   const catalogClient = useMemo(() => buildClient({ ...entry.settings, directory: '' }, lifecycle.serverContract), [entry.settings, lifecycle.serverContract]);
   useEffect(() => {
