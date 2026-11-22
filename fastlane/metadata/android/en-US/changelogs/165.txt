@@ -1,0 +1,5 @@
+- Needs-input notifications now use one alert per chat and clear when the request is resolved.
+- New chats keep their starter prompts when a model is already selected.
+- Chat transcripts stay visible when switching projects or worktrees.
+- Sessions no longer look busy while the offline catalog is paused.
+- Reworked internal state handling for smoother chat updates.
