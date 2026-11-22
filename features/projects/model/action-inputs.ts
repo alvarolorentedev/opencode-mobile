@@ -14,7 +14,6 @@ export type ProjectActionsInput = {
   identity: QueryIdentity;
   queryActive: boolean;
   scopeKey: string;
-  fileClipboard?: import('@/features/projects/state/use-file-clipboard').FileClipboard;
   connectionId: string;
   connected: boolean;
   refreshServerFeatures: () => Promise<void>;
@@ -39,7 +38,6 @@ export type ProjectActionsInput = {
   readDiffScope: (sessionId: string) => DiffScope | undefined;
   currentSessionIdRef: { current: string | undefined };
   readDisplayedSession: (sessionId: string) => SessionMessageRecord[];
-  projectFileRequestRef: { current: number };
   scopeGenerationRef: { current: number };
   serverContract: ServerContract;
   settingsRef: { current: OpencodeConnectionSettings };
@@ -55,8 +53,8 @@ export type ProjectCatalogInput = Pick<ProjectActionsInput,
   'connectionScope' | 'connectionScopeRef' | 'isHydrated' | 'scopeGenerationRef' | 'serverContract' | 'settingsRef'>;
 
 export type ProjectFileInput = Pick<ProjectActionsInput,
-  'identity' | 'queryActive' | 'scopeKey' | 'fileClipboard' | 'connectionId' | 'connected' | 'client' | 'isCurrentClient' | 'activeProjectPath' |
-  'projectFileRequestRef' | 'currentSessionIdRef' |
-  'readDiffScope' | 'settingsRef' | 'refreshServerFeatures'> & {
+  'identity' | 'queryActive' | 'scopeKey' | 'connectionId' | 'connected' | 'client' | 'isCurrentClient' | 'refreshServerFeatures'> & {
+  settings: OpencodeConnectionSettings;
+  fileClipboard: import('@/features/projects/state/use-file-clipboard').FileClipboard;
   refreshVcsDiff: (scope: 'uncommitted' | 'branch', silent?: boolean) => Promise<unknown>;
 };

@@ -322,9 +322,14 @@ npm run validate:commit
   101 focused tests passed. All 81 affected browser flows passed before the
   catalog read extraction. All 15 Projects and Terminal flows passed on the
   final build.
-- E21. The app core owns the file clipboard controller. The final commit gate
+- E21, `ca1dca78`. The app core owns the file clipboard controller. The final commit gate
   passed with 1,283 tests and one existing skip. All 58 focused tests and 42
   browser flows across Projects, multi-server, app updates and Settings passed.
+- E22. File views use their scoped Query entries and device state. Preview
+  requests have per-open tokens, and clipboard writes invalidate detached roots.
+  The commit gate passed with 1,284 tests and one existing skip. All 59 focused
+  tests and 65 browser flows across Projects, Chat, diffs, multi-server,
+  Terminal, Settings and Extensions passed.
 
 ## Loop protocol
 

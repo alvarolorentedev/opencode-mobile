@@ -18,7 +18,7 @@ export function useSessionRuntimeState(input: ProjectBindingInput, connection: C
   const setSettings = input.setSettings;
   const connectionId = input.connection.id;
   const scopeKey = workspaceKey({ connectionId: input.connection.id, projectPath: input.projectPath ?? '' });
-  const { activeProjectPath, setActiveProjectPath, activeProjectPathRef, projectFileRequestRef } = useProjectRuntimeState(scopeKey, input.projectPath);
+  const { activeProjectPath, setActiveProjectPath, activeProjectPathRef } = useProjectRuntimeState(scopeKey, input.projectPath);
   const { currentSessionId, setCurrentSessionId, isBootstrappingChat, currentSessionIdRef, pendingDeepLinkTargetRef, explicitSessionSelectionRef } = useSessionState(scopeKey);
   const { store, commands } = useAppCore();
   const cancelBootstrap = useCallback(() => commands.session.cancelBootstrap(scopeKey), [commands, scopeKey]);
@@ -75,7 +75,6 @@ export function useSessionRuntimeState(input: ProjectBindingInput, connection: C
     serverGenerationRef,
     clientGenerationRef,
     explicitSessionSelectionRef,
-    projectFileRequestRef,
   };
 }
 

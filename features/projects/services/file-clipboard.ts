@@ -4,7 +4,8 @@ import type { EntrySource } from '@/shared/protocol/opencode/project-entry-opera
 
 export type FileClipboardEntry = EntrySource & { mode: 'copy' | 'cut' };
 
-export function createFileClipboard(store: Pick<AppCore['store'], 'getState' | 'subscribe'>) {
+export function createFileClipboard(store: Pick<AppCore['store'], 'getState' | 'subscribe'>,
+  refreshDetached: (connectionId: string, root: string) => Promise<void>) {
   let settingsByConnection = new Map<string, ConnectionRecord['settings']>();
   const refreshers = new Map<string, () => Promise<void>>();
   const { setFileClipboard } = store.getState();
@@ -47,7 +48,10 @@ export function createFileClipboard(store: Pick<AppCore['store'], 'getState' | '
   }
 
   async function refresh(id: string, roots: string[]) {
-    await Promise.all([...new Set(roots)].map((root) => refreshers.get(JSON.stringify([id, root]))?.()));
+    await Promise.all([...new Set(roots)].map((root) => {
+      const mounted = refreshers.get(JSON.stringify([id, root]));
+      return mounted ? mounted() : refreshDetached(id, root);
+    }));
   }
 
   return { start, select, run, register, refresh };

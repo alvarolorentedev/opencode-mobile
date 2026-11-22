@@ -1,6 +1,6 @@
 import { createServerQueryClient } from '@/shared/server-data/query-client';
 import { createConnectionRegistry } from '@/runtime/connections/registry';
-import { createFileClipboard } from '@/features/projects/runtime';
+import { createFileClipboard, invalidateProjectFileReads } from '@/features/projects/runtime';
 import type { CommandContext } from './commands/context';
 import { createWorkspaceCommands } from './commands/workspace';
 import { createSessionCommands } from './commands/session';
@@ -39,7 +39,11 @@ export function createAppCore(defaults: AppStoreDefaults): AppCore {
   };
   const session = createSessionCommands(context);
   const workspace = createWorkspaceCommands(context, session);
-  return { ...context, events: createCoreEvents(context), autoApproval: createAutoApproval(context, session.interactions), terminal: createTerminalRuntime(context), clipboard: createFileClipboard(store), commands: {
+  const clipboard = createFileClipboard(store, async (id, root) => {
+    const access = context.connections.get(id)?.getProjectAccess(root);
+    if (access?.isCurrent()) await invalidateProjectFileReads(queryClient, access.identity, access.client);
+  });
+  return { ...context, events: createCoreEvents(context), autoApproval: createAutoApproval(context, session.interactions), terminal: createTerminalRuntime(context), clipboard, commands: {
     workspace, session, prompt: createPromptCommands(context),
     connection: createConnectionCommands(context, workspace),
   } };

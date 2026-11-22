@@ -10,6 +10,7 @@ import { EntryOperationError, type EntryOperation } from '@/shared/protocol/open
 import { projectQueryKey, type QueryIdentity } from '@/shared/server-data/keys';
 import { projectEntryOperations } from '@/features/projects/services/project-service';
 import type { FileClipboard } from '@/features/projects/state/use-file-clipboard';
+import { projectClientOwner } from '@/features/projects/model/project-client-owner';
 
 export function useProjectEntryActions({ scopeKey, client, identity, isCurrentClient, connectionId, clipboard, refresh, enabled }: {
   identity: QueryIdentity;
@@ -26,7 +27,7 @@ export function useProjectEntryActions({ scopeKey, client, identity, isCurrentCl
   const cache = useQueryClient();
   const root = client.__opencode.directory || '';
   const adapter = useMemo(() => projectEntryOperations(client), [client]);
-  const owner = useMemo(() => Symbol(client.__opencode.directory), [client]);
+  const owner = projectClientOwner(client);
   const capabilityKey = useMemo(() => projectQueryKey(identity, client, 'entry-operations'), [client, identity]);
   const availability = useQuery<boolean>({ queryKey: capabilityKey, queryFn: skipToken });
   const probeOwner = useAppStore((state) => state.workspaceUi[scopeKey]?.entryOperationsOwner);

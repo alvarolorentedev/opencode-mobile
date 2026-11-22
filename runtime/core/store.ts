@@ -117,7 +117,7 @@ type WorkspaceUiState = {
   selectedPluginId?: string;
   mcpRequested?: boolean;
   browser?: { owner: symbol; path: string; query?: string };
-  preview?: { owner: symbol; path: string };
+  preview?: { owner: symbol; path: string; request: symbol };
   diagnosticsRequested?: boolean;
   classifierProbe?: {
     owner: symbol;

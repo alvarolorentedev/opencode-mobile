@@ -131,7 +131,6 @@
     ],
     "features/projects/index.ts": [
       "DiffScope",
-      "FileClipboard",
       "HiddenProjectsByConnection",
       "ProjectActionsInput",
       "ProjectDirectoryPicker",
@@ -200,7 +199,6 @@
     ],
     "features/projects/runtime.ts": [
       "HIDDEN_PROJECTS_MAX",
-      "useProjectPresentation",
       "createWorktreeCommands",
       "fetchProjectCatalog",
       "fileStatusOptions",
@@ -209,11 +207,11 @@
       "parseHiddenProjects",
       "projectsOptions",
       "serializeHiddenProjects",
-      "useFileClipboard",
       "createFileClipboard",
+      "invalidateProjectFileReads",
+      "searchProjectFiles",
       "FileClipboardEntry",
       "useProjectCatalogActions",
-      "useProjectFileActions",
       "useProjectRuntimeState",
       "vcsInfoOptions"
     ],

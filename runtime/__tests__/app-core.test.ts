@@ -54,6 +54,7 @@ vi.mock('@/features/ai/runtime', () => ({
 vi.mock('@/features/projects/runtime', async () => ({
   HIDDEN_PROJECTS_MAX: (await import('@/features/projects/model/types')).HIDDEN_PROJECTS_MAX,
   createFileClipboard: (await import('@/features/projects/services/file-clipboard')).createFileClipboard,
+  invalidateProjectFileReads: vi.fn(),
   createWorktreeCommands: (await import('@/features/projects/services/worktree-commands')).createWorktreeCommands,
 }));
 vi.mock('@/features/projects/services/project-service', () => ({

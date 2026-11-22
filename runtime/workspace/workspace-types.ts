@@ -6,21 +6,15 @@ import type { ChatPreferences } from '@/shared/preferences/opencode-preferences'
 
 import type { CapabilitiesContextValue } from '@/features/ai/index';
 import type { ChatContextValue } from '@/features/chat/index';
-import type { ProjectFilesContextValue, ProjectsContextValue } from '@/features/projects/index';
+import type { ProjectsContextValue } from '@/features/projects/index';
 import type { useProjectCatalogActions } from '@/features/projects/runtime';
 import type { ActiveSessionItem } from '@/features/sessions/index';
 import type { ConversationContextValue } from '@/features/voice/index';
 import type { useWidgetState } from '@/features/widgets/runtime';
 
-import type { WorkspaceShellState } from '@/runtime/workspace/use-workspace-shell-state';
-
 import type { Dispatch, SetStateAction } from 'react';
 
 import type { ConnectionRecord, WorkspaceCatalog } from '@/shared/contracts/workspace';
-
-export type SharedWorkspaceState = Pick<WorkspaceShellState,
-  'controlPlaneUrl' | 'setControlPlaneUrl' |
-  'hiddenProjects' | 'setHiddenProjects'> & { fileClipboard?: import('@/features/projects/index').FileClipboard };
 
 export type ProjectBindingInput = {
   connection: ConnectionRecord;
@@ -29,7 +23,6 @@ export type ProjectBindingInput = {
   preferences: ChatPreferences;
   setChatPreferences: Dispatch<SetStateAction<ChatPreferences>>;
   setSettings: Dispatch<SetStateAction<OpencodeConnectionSettings>>;
-  shared: SharedWorkspaceState;
   network: NetworkStatus;
   isHydrated: boolean;
   visible: boolean;
@@ -54,7 +47,6 @@ export type WorkspaceSnapshot = {
 export type WorkspaceValues = {
   capabilitiesValue: CapabilitiesContextValue;
   projectsValue: Pick<ProjectsContextValue, 'addProject' | 'refreshProjectCatalog' | 'refreshProjectStatus'>;
-  projectFilesValue: ProjectFilesContextValue;
   chatValue: ChatContextValue;
   conversationValue: ConversationContextValue;
 };

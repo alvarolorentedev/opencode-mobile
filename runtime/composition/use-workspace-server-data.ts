@@ -20,8 +20,7 @@ export function useWorkspaceServerData(identity: QueryIdentity, client: ScopedOp
   const [skills] = useQueries({ queries: [{ ...skillsOptions(identity, client), enabled }].filter(() => demanded) });
   const [references] = useQueries({ queries: [{ ...referencesOptions(identity, client), enabled }].filter(() => demanded) });
   const [commands] = useQueries({ queries: [{ ...commandsOptions(identity, client), enabled }].filter(() => demanded) });
-  const [statuses] = useQueries({ queries: [{ ...fileStatusOptions(identity, client), enabled }].filter(() => demanded) });
-  const [vcs] = useQueries({ queries: [{ ...vcsInfoOptions(identity, client), enabled }].filter(() => demanded) });
+  useQueries({ queries: [{ ...fileStatusOptions(identity, client), enabled }, { ...vcsInfoOptions(identity, client), enabled }].filter(() => demanded) });
   const capabilities = useMemo<CachedCapabilities | undefined>(() => {
     if (!discovery?.data || !configuration?.data || !agents?.data) return undefined;
     const ids = getConfiguredProviderIds(configuration?.data?.config, discovery?.data.connected, discovery?.data.models);
@@ -72,6 +71,5 @@ export function useWorkspaceServerData(identity: QueryIdentity, client: ScopedOp
     availableModels: capabilities?.models ?? EMPTY, availableAgents: capabilities?.agents ?? EMPTY,
     availableSkills: capabilities?.skills ?? EMPTY, availableReferences: capabilities?.references ?? EMPTY,
     commands: commands?.data ?? EMPTY,
-    projectFileStatuses: statuses?.data ?? EMPTY, vcsInfo: vcs?.data,
   };
 }

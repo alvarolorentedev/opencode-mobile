@@ -46,6 +46,9 @@ client as its Query reads.
 One app-core clipboard controller follows the connection registry, serializes
 file mutations per connection, and clears staged entries when their settings
 change or the connection is disabled.
+The Projects screen reads file and VCS results from its scoped Query entries.
+Browser and preview state belong to the scoped client, and each file open
+has a request token. Clipboard writes invalidate reads for detached roots.
 
 Navigation, the share picker and Chat Library read project and session
 selection from the app store. Session presentation selects the active row

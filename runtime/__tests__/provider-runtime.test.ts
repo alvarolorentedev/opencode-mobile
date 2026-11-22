@@ -92,7 +92,7 @@ function extractDeclarations(source: string, names: string[]) {
 const projectActionsSource = await readSource('../../features/projects/state/use-project-file-actions.ts');
 const names = ['openProjectFile', 'saveProjectFile'];
 const declarations = [
-  extractDeclarations(projectActionsSource, ['openProjectFile', 'saveProjectFile']),
+  extractDeclarations(projectActionsSource, ['readSelectedDiff', 'readPreviewRequest', 'openProjectFile', 'saveProjectFile']),
 ].join('\n');
 let aborted = false;
 const client = { __opencode: { directory: '/repo' }, session: { abort: async () => { aborted = true; } } };
@@ -104,7 +104,7 @@ const context: any = {
   identity: { connectionId: 'test', connectionScope: 'scope', authRevision: 0 }, projectQueryKey, withReadSignal: (client: any) => client,
   scopeKey: 'preview-test-workspace', owner: Symbol(),
   store: createAppStore({ settings: { serverUrl: 'http://server', username: '', password: '', directory: '/repo' }, chatPreferences: {} as never, controlPlaneUrl: '' }),
-  client, useCallback: (fn: any) => fn, projectSearchRequestRef: { current: 0 }, projectFileRequestRef: { current: 0 },
+  client, useCallback: (fn: any) => fn, projectSearchRequestRef: { current: 0 },
   activeProjectPathRef: { current: '/repo' }, isCurrentClient: (candidate: any) => candidate === active,
   currentSessionIdRef: {}, readDiffScope: () => undefined,
   findFiles: (_: any, query: any) => { const gate = deferred(); reads.set(query, gate); return gate.promise; },

@@ -4,6 +4,7 @@ import type { ScopedOpencodeClient } from '@/shared/protocol/opencode/client';
 import { projectPath, type ProjectFileEntry } from '@/shared/protocol/opencode/project';
 import { directoryOptions, searchOptions } from '@/features/projects/services/queries/files';
 import { projectParentPath } from '@/features/projects/model/project-utils';
+import { projectClientOwner } from '@/features/projects/model/project-client-owner';
 import { useQueries, useQueryClient } from '@tanstack/react-query';
 import { useCallback, useMemo } from 'react';
 
@@ -15,7 +16,7 @@ const EMPTY: never[] = [];
 export function useProjectBrowser({ scopeKey, client, identity, isCurrentClient, queryActive: active }: { scopeKey: string; client: ScopedOpencodeClient; identity: QueryIdentity; isCurrentClient: (client: object) => boolean; queryActive: boolean }) {
   const cache = useQueryClient();
   const { store } = useAppCore();
-  const owner = useMemo(() => Symbol(client.__opencode.directory), [client]);
+  const owner = projectClientOwner(client);
   const selection = useAppStore((state) => state.workspaceUi[scopeKey]?.browser);
   const current = selection?.owner === owner ? selection : undefined;
   const path = current?.path ?? '';

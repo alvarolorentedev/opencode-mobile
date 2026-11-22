@@ -60,6 +60,8 @@ Start only after Phase D is complete and green.
   to their project scope.
 - File clipboard registration and mutation locks live in one app-core
   controller. Entries and busy flags remain in the app store.
+- Project files bind to their scoped client, Query reads and device selection.
+  A workspace projection no longer carries browser or preview state.
 - `runtime/core/workspace-selectors.ts` selects the retained project projection.
 - [ADR 0052](../../adr/0052-explicit-overlay-dependencies.md) records explicit
   portal targets and update blocker callbacks. Shared controls use shared imports.

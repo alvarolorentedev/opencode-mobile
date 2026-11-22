@@ -4,7 +4,7 @@ import { memo, useCallback, useEffect, useLayoutEffect, useMemo, type Dispatch, 
 import { buildClient, type OpencodeConnectionSettings } from '@/shared/protocol/opencode/client';
 import { getActiveSessions, MAX_ACTIVE_SESSIONS, useApprovalsCatalog, useSessionCatalog, useSessionExecutionActions, useSessionPreviews } from '@/features/sessions/runtime';
 import { useConnectionRuntime } from '@/runtime/connections/connection-runtime';
-import { useProjectPresentation } from '@/features/projects/runtime';
+import { searchProjectFiles as searchFiles } from '@/features/projects/runtime';
 import { useActivityNotifications } from '@/features/notifications/runtime';
 import { useCapabilitiesActions, useCapabilitiesPresentation } from '@/features/ai/runtime';
 import { useConversationState } from '@/features/voice/runtime';
@@ -34,7 +34,7 @@ type Props = Omit<ProjectBindingInput, 'setSettings' | 'setChatPreferences' | 'p
   forget: (key: string) => void;
 };
 export const RetainedProject = memo(function RetainedProject({ defaults, updateSettings, updatePreferences, publish, forget, ...props }: Props) {
-  const { store, commands: { session: sessionCommands }, events, terminal } = useAppCore();
+  const { store, queryClient, commands: { session: sessionCommands }, events, terminal } = useAppCore();
   const id = props.connection.id;
   const key = workspaceKey({ connectionId: id, projectPath: props.projectPath ?? '' });
   const hasTerminal = useAppStore((state) => Boolean(state.terminal[key]?.instances.length));
@@ -58,7 +58,7 @@ export const RetainedProject = memo(function RetainedProject({ defaults, updateS
   const identity = useConnectionQueryIdentity(input.connection);
   const foreground = useQueryForeground();
   const demanded = input.demanded && input.connection.enabled && foreground;
-  const state = { ...local, ...input.shared, identity, queryActive: demanded, chatPreferences: input.preferences, setChatPreferences: input.setChatPreferences };
+  const state = { ...local, identity, queryActive: demanded, chatPreferences: input.preferences, setChatPreferences: input.setChatPreferences };
   // Connectivity is owned by WorkspaceProvider. NetInfo.configure() is global
   // and tears down existing listeners, so a per-runtime hook would freeze every
   // workspace except the one that mounted last.
@@ -285,23 +285,27 @@ export const RetainedProject = memo(function RetainedProject({ defaults, updateS
 
   const activeSession = sessionCatalog.sessions.find(({ id }) => id === state.currentSessionId);
   const sessionPreviews = useSessionPreviews(transcript.messagesBySession);
+  const searchProjectFiles = useCallback((query: string) => isCurrentClient(client) ? searchFiles(queryClient, identity, client, query) : Promise.resolve([]),
+    [client, identity, isCurrentClient, queryClient]);
   const chatValue = useChatPresentation({
     ...domain, ...transcript, ...project, ...sessionActions, ...interactions, ...capabilities, ...prompt,
-    activeSession,
+    activeSession, searchProjectFiles,
     transcriptReadError: state.currentSessionId ? transcriptRead.errors[state.currentSessionId] : undefined,
     retryTranscript, pendingPromptsBySession: inbox.pendingPromptsBySession, pendingNoticesBySession: inbox.pendingNoticesBySession,
     cancelPrompt: inbox.cancelPrompt,
   });
 
   const capabilitiesValue = useCapabilitiesPresentation(serverData, capabilities);
-  const { projectsValue, projectFilesValue } = useProjectPresentation({ ...domain, ...project });
+  const { addProject, refreshProjectCatalog } = project;
+  const { refreshServerFeatures: refreshProjectStatus } = serverData;
+  const projectsValue = useMemo(() => ({ addProject, refreshProjectCatalog, refreshProjectStatus }), [addProject, refreshProjectCatalog, refreshProjectStatus]);
   const conversationValue = useMemo<WorkspaceValues['conversationValue']>(() => ({
     conversation, clearConversationFeedback, toggleConversationMode,
   }), [conversation, clearConversationFeedback, toggleConversationMode]);
   const values = useMemo<WorkspaceValues>(() => ({
-    capabilitiesValue, projectsValue, projectFilesValue,
+    capabilitiesValue, projectsValue,
     chatValue, conversationValue,
-  }), [capabilitiesValue, projectsValue, projectFilesValue,
+  }), [capabilitiesValue, projectsValue,
     chatValue, conversationValue]);
 
   const suspend = useCallback(() => {

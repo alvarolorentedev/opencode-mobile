@@ -15,7 +15,8 @@ const connection = (id = 'server', enabled = true, password = '') => ({
 
 function clipboardFixture() {
   const store = createAppStore({ settings: { serverUrl: '', username: '', password: '', directory: '' }, chatPreferences: {} as never, controlPlaneUrl: '' });
-  return { store, clipboard: createFileClipboard(store) };
+  const refreshDetached = vi.fn(async () => {});
+  return { store, clipboard: createFileClipboard(store, refreshDetached), refreshDetached };
 }
 
 function coreImports(runtime: ReturnType<typeof hookRuntime>) {
@@ -78,6 +79,15 @@ describe('connection file clipboard and actions', () => {
     expect(entries().a).toBeUndefined(); expect(entries().b).toEqual(entry);
     setRegistry({ connections: [connection('b', true, 'changed')] });
     expect(entries().b).toBeUndefined();
+    stop();
+  });
+  it('invalidates a detached source once when a paste refreshes both roots', async () => {
+    const { clipboard, refreshDetached } = clipboardFixture();
+    const refreshMounted = vi.fn(async () => {});
+    const stop = clipboard.register('server', '/destination', refreshMounted);
+    await clipboard.refresh('server', ['/destination', '/source', '/source']);
+    expect(refreshMounted).toHaveBeenCalledOnce();
+    expect(refreshDetached).toHaveBeenCalledExactlyOnceWith('server', '/source');
     stop();
   });
   it('serializes mutations on the same connection and ignores duplicate taps', async () => {

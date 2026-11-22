@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useRef, type Dispatch, type SetStateAction } from 'react';
+import { useCallback, useMemo, type Dispatch, type SetStateAction } from 'react';
 
 import { useAppCore, useAppStore } from '@/runtime/core';
 
@@ -19,6 +19,5 @@ export function useProjectRuntimeState(scopeKey: string, projectPath?: string) {
 
   const activeProjectPathRef = useMemo(() => ({ get current() { return store.getState().selection[scopeKey]?.activeProjectPath ?? projectPath; } }), [projectPath, scopeKey, store]);
 
-  const projectFileRequestRef = useRef(0);
-  return { activeProjectPath, setActiveProjectPath, activeProjectPathRef, projectFileRequestRef };
+  return { activeProjectPath, setActiveProjectPath, activeProjectPathRef };
 }
