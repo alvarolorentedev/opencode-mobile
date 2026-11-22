@@ -122,12 +122,15 @@ describe('handleProviderEvent', () => {
     const setStatuses = vi.fn();
     const schedule = vi.fn();
     const removeCatalogSession = vi.fn();
+    let explicitSessionId: string | undefined = 's1';
     Object.assign(actions, {
       setSessions,
       setSessionStatuses: setStatuses,
       scheduleSessionsRefresh: schedule,
       removeCatalogSession,
-      explicitSessionSelectionRef: { current: 's1' },
+      clearExplicitSelection(sessionId: string) {
+        if (explicitSessionId === sessionId) explicitSessionId = undefined;
+      },
     });
 
     handleProviderEvent({ id: 'e', type: 'session.deleted', data: { sessionID: 's1' } } as never, actions);
@@ -136,7 +139,7 @@ describe('handleProviderEvent', () => {
     expect(update([{ id: 's1' }, { id: 's2' }])).toEqual([{ id: 's2' }]);
     expect(setStatuses).toHaveBeenCalledOnce();
     expect(removeCatalogSession).toHaveBeenCalledWith('s1');
-    expect(actions.explicitSessionSelectionRef?.current).toBeUndefined();
+    expect(explicitSessionId).toBeUndefined();
     expect(schedule).toHaveBeenCalledOnce();
   });
 

@@ -1,8 +1,7 @@
 import { useCallback, type Dispatch, type SetStateAction } from 'react';
 
 import type { useWorkspaceRuntimeState } from '@/runtime/workspace/use-workspace-runtime-state';
-import type { Session } from '@/shared/protocol/opencode/types';
-import type { FileDiff, Todo } from '@/shared/protocol/opencode/types';
+import type { FileDiff, Session, Todo } from '@/shared/protocol/opencode/types';
 import type { ApprovalsCatalog } from '@/features/sessions/runtime';
 import type { MessagesBySession } from '@/features/chat/runtime';
 
@@ -10,6 +9,7 @@ type ResetInput = {
   state: ReturnType<typeof useWorkspaceRuntimeState>;
   resetTerminal: () => void;
   resetTranscript: () => void;
+  clearRefreshes: () => void;
   setSessions: Dispatch<SetStateAction<Session[]>>;
   setMessagesBySession: Dispatch<SetStateAction<MessagesBySession>>;
   setDiffsBySession: Dispatch<SetStateAction<Record<string, FileDiff[]>>>;
@@ -28,6 +28,7 @@ export function useOpencodeProviderReset({
   state,
   resetTerminal,
   resetTranscript,
+  clearRefreshes,
   setSessions,
   setMessagesBySession,
   setDiffsBySession,
@@ -39,8 +40,6 @@ export function useOpencodeProviderReset({
 }: ResetInput) {
   const {
     cancelBootstrap,
-    sessionRefreshTimeoutsRef,
-    sessionRefreshOptionsRef,
     explicitSessionSelectionRef,
     setCurrentSessionId,
     setMcpAuthPrompt,
@@ -48,9 +47,7 @@ export function useOpencodeProviderReset({
 
   return useCallback(() => {
     cancelBootstrap();
-    Object.values(sessionRefreshTimeoutsRef.current).forEach((timeout) => clearTimeout(timeout));
-    sessionRefreshTimeoutsRef.current = {};
-    sessionRefreshOptionsRef.current = {};
+    clearRefreshes();
     explicitSessionSelectionRef.current = undefined;
     forgetSessionCreation();
     setCurrentSessionId(undefined);
@@ -68,8 +65,7 @@ export function useOpencodeProviderReset({
     resetTerminal,
     resetTranscript,
     cancelBootstrap,
-    sessionRefreshOptionsRef,
-    sessionRefreshTimeoutsRef,
+    clearRefreshes,
     explicitSessionSelectionRef,
     forgetSessionCreation,
     setCurrentSessionId,

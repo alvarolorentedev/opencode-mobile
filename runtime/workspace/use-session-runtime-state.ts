@@ -4,7 +4,6 @@ import { getConnectionScope } from '@/shared/contracts/connection-scope';
 import { workspaceKey } from '@/shared/contracts/workspace';
 import type { ServerContract } from '@/shared/protocol/opencode/client';
 
-import type { SessionRefreshOptions } from '@/shared/protocol/opencode/event-dispatch';
 import type { ConnectionState } from '@/shared/contracts/domain';
 
 import type { WorkspaceRuntimeInput } from '@/runtime/workspace/workspace-types';
@@ -52,8 +51,6 @@ export function useSessionRuntimeState(input: WorkspaceRuntimeInput, connection:
   const scopeGenerationRef = useRef(0);
   const serverGenerationRef = useRef(0);
   const clientGenerationRef = useRef(new WeakMap<object, number>());
-  const sessionRefreshTimeoutsRef = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
-  const sessionRefreshOptionsRef = useRef<Record<string, SessionRefreshOptions>>({});
 
   return {
     scopeKey,
@@ -77,8 +74,6 @@ export function useSessionRuntimeState(input: WorkspaceRuntimeInput, connection:
     scopeGenerationRef,
     serverGenerationRef,
     clientGenerationRef,
-    sessionRefreshTimeoutsRef,
-    sessionRefreshOptionsRef,
     explicitSessionSelectionRef,
     projectFileRequestRef,
   };

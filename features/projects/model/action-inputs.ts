@@ -6,8 +6,6 @@ import type { SessionMessageRecord } from '@/shared/presentation/format';
 
 import type { FileDiff, Todo } from '@/shared/protocol/opencode/types';
 
-import type { SessionRefreshOptions } from '@/shared/protocol/opencode/event-dispatch';
-
 import type { DiffScope, TranscriptReadOptions } from '@/shared/contracts/domain';
 
 export type ProjectActionsInput = {
@@ -39,8 +37,6 @@ export type ProjectActionsInput = {
   readDisplayedSession: (sessionId: string) => SessionMessageRecord[];
   projectFileRequestRef: { current: number };
   scopeGenerationRef: { current: number };
-  sessionRefreshTimeoutsRef: { current: Record<string, ReturnType<typeof setTimeout>> };
-  sessionRefreshOptionsRef: { current: Record<string, SessionRefreshOptions> };
   serverContract: ServerContract;
   settingsRef: { current: OpencodeConnectionSettings };
   refreshMessages: (sessionId: string, silent?: boolean, options?: TranscriptReadOptions) => Promise<SessionMessageRecord[]>;

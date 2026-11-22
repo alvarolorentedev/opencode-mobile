@@ -7,6 +7,7 @@ import { getConnectionUiScope } from '@/shared/contracts/connection-scope';
 import { workspaceKey, type WorkspaceTarget } from '@/shared/contracts/workspace';
 import { connectionQueryKey, projectQueryKey } from '@/shared/server-data/keys';
 import type { ScopedOpencodeClient } from '@/shared/protocol/opencode/client';
+import type { OpencodeEvent } from '@/shared/protocol/opencode/events';
 
 const protocol = vi.hoisted(() => ({
   replyToPendingPermission: vi.fn(),
@@ -115,6 +116,44 @@ describe('app core', () => {
     ]);
     expect(core.store.getState().shell.settings.password).toBe('replacement');
     await expect(core.commands.connection.connect(connectionId)).resolves.toMatchObject({ status: 'idle' });
+    core.commands.workspace.dispose();
+  });
+
+  it('uses the current workspace selection for events and drops a superseded transport', () => {
+    const core = newCore();
+    const workspaceKey = '["server","/repo"]';
+    const otherKey = '["other","/repo"]';
+    const { setSelection, setPrompt } = core.store.getState();
+    const scheduleSessionRefresh = vi.fn();
+    const scheduleSessionsRefresh = vi.fn();
+    const setSessionStatuses = vi.fn();
+    let current = true;
+    const binding = { workspaceKey, isCurrent: () => current, pendingSessionIds: [], actions: {
+      scheduleSessionRefresh, scheduleSessionsRefresh, setSessionStatuses,
+      refreshSessions: async () => {}, refreshPendingInteractions: async () => {}, refreshTerminals: async () => {},
+      setDiffsBySession: vi.fn(), setTodosBySession: vi.fn(), setPendingPermissionsBySession: vi.fn(), setPendingQuestionsBySession: vi.fn(),
+    } };
+    const start = { type: 'session.execution.started', data: { sessionID: 'chat' } } as OpencodeEvent;
+    setSelection(workspaceKey, { currentSessionId: 'chat', explicitSessionId: 'chat' });
+    setSelection(otherKey, { currentSessionId: 'chat', explicitSessionId: 'chat' });
+    setPrompt(workspaceKey, { sending: { active: true, sessionId: 'chat' } });
+    core.events.dispatch(start, binding);
+    expect(scheduleSessionRefresh).toHaveBeenCalledWith('chat', { sessions: true, todos: true, delayMs: undefined });
+
+    setPrompt(workspaceKey, { sending: { active: false } });
+    core.events.dispatch(start, binding);
+    expect(scheduleSessionRefresh).toHaveBeenLastCalledWith('chat', { sessions: true, messages: true, todos: true, delayMs: undefined });
+
+    const deleted = { type: 'session.deleted', data: { sessionID: 'chat' } } as OpencodeEvent;
+    current = false;
+    core.events.dispatch(deleted, binding);
+    expect(scheduleSessionsRefresh).not.toHaveBeenCalled();
+    expect(core.store.getState().selection[workspaceKey].explicitSessionId).toBe('chat');
+    current = true;
+    core.events.dispatch(deleted, binding);
+    expect(scheduleSessionsRefresh).toHaveBeenCalledOnce();
+    expect(core.store.getState().selection[workspaceKey].explicitSessionId).toBeUndefined();
+    expect(core.store.getState().selection[otherKey].explicitSessionId).toBe('chat');
     core.commands.workspace.dispose();
   });
 

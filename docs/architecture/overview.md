@@ -270,14 +270,14 @@ The completion version, preference schema and first-run migration are unchanged.
   Layers app-scope overrides over a runtime's memoized domain values. Each
   domain is memoized separately, so transcript updates do not invalidate
   connection, project, or onboarding contexts.
-- `runtime/realtime/use-coalesced-refresh.ts`
-  Collapses event-driven refresh bursts into one trailing call without
-  resetting the timer when callbacks are recreated.
+- `runtime/realtime/project-refresh-queue.ts`
+  Coalesces catalog, transcript and inbox refreshes and clears pending work
+  when the project is suspended or reset.
 - `runtime/composition/use-opencode-provider-effects.ts`
   Project lifecycle effects: session bootstrap, transcript pruning, and working sound.
-- `shared/protocol/opencode/event-dispatch.ts`
-  Pure global-event dispatch (`handleProviderEvent(event, actions)`), kept
-  testable outside React.
+- `runtime/core/events.ts` and `shared/protocol/opencode/event-dispatch.ts`
+  Event commands read device state from the store and apply protocol events
+  through scoped transcript, catalog and interaction operations.
 - `runtime/composition/opencode-provider-values.ts`
   Derived selectors and the memoized domain context values rendered by
   `OpencodeProvider`.

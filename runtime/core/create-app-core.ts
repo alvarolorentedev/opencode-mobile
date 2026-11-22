@@ -5,10 +5,12 @@ import { createWorkspaceCommands } from './commands/workspace';
 import { createSessionCommands } from './commands/session';
 import { createPromptCommands } from './commands/prompt';
 import { createConnectionCommands } from './commands/connection';
+import { createCoreEvents } from './events';
 
 import { createAppStore, type AppStoreDefaults } from './store';
 
 export type AppCore = CommandContext & {
+  events: ReturnType<typeof createCoreEvents>;
   commands: {
     workspace: ReturnType<typeof createWorkspaceCommands>;
     session: ReturnType<typeof createSessionCommands>;
@@ -30,7 +32,7 @@ export function createAppCore(defaults: AppStoreDefaults): AppCore {
     clock: () => Date.now(),
   };
   const workspace = createWorkspaceCommands(context);
-  return { ...context, commands: {
+  return { ...context, events: createCoreEvents(context), commands: {
     workspace, session: createSessionCommands(context), prompt: createPromptCommands(context),
     connection: createConnectionCommands(context, workspace),
   } };

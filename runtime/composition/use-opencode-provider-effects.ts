@@ -1,10 +1,8 @@
 import { useEffect, useRef, type Dispatch, type SetStateAction } from 'react';
 
 import type { ScopedOpencodeClient } from '@/shared/protocol/opencode/client';
-import type { Session, SessionStatus } from '@/shared/protocol/opencode/types';
-import type { FileDiff, Todo } from '@/shared/protocol/opencode/types';
-import type { MessagesBySession } from '@/features/chat/runtime';
-import { pruneProviderTranscripts } from '@/features/chat/runtime';
+import type { FileDiff, Session, SessionStatus, Todo } from '@/shared/protocol/opencode/types';
+import { pruneProviderTranscripts, type MessagesBySession } from '@/features/chat/runtime';
 import type { useWorkspaceRuntimeState } from '@/runtime/workspace/use-workspace-runtime-state';
 
 // Keep a small bounded history so returning to a recent chat paints from
@@ -49,8 +47,6 @@ export function useOpencodeProviderEffects({
   setTodosBySession,
   isBootstrappingChat,
   pendingDeepLinkTargetRef,
-  sessionRefreshTimeoutsRef,
-  sessionRefreshOptionsRef,
 }: ProviderEffectsInput) {
   useEffect(() => {
     if (!active || connection.status !== 'connected' || !activeProjectPath) {
@@ -70,15 +66,6 @@ export function useOpencodeProviderEffects({
       cancelled = true;
     };
   }, [active, activeProjectPath, client, connection.status, ensureActiveSession, isCurrentClient, setPromptError]);
-
-  useEffect(
-    () => () => {
-      Object.values(sessionRefreshTimeoutsRef.current).forEach((timeout) => clearTimeout(timeout));
-      sessionRefreshTimeoutsRef.current = {};
-      sessionRefreshOptionsRef.current = {};
-    },
-    [sessionRefreshOptionsRef, sessionRefreshTimeoutsRef],
-  );
 
   useEffect(() => {
     // A rendered catalog row can arrive before the project's session list.

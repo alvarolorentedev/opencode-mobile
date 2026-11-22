@@ -154,7 +154,6 @@ describe('local-first session selection', () => {
       currentSessionId: 'target', currentSessionIdRef, explicitSessionSelectionRef,
       sessions: previous, sessionsRef,
       setCurrentSessionId,
-      sessionRefreshTimeoutsRef: { current: {} }, sessionRefreshOptionsRef: { current: {} },
     });
     expect(setCurrentSessionId).not.toHaveBeenCalled();
     expect(currentSessionIdRef.current).toBe('target');

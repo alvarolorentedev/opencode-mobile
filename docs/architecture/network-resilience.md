@@ -126,6 +126,11 @@ register reconciliation and event callbacks with `runtime/realtime/create-realti
 Project events route by directory, and Mission Control and widgets observe
 the same stream. Polling is the safety net.
 
+`runtime/core/events.ts` checks the current project binding and reads local
+chat and sending state from the store before applying an event.
+`runtime/realtime/project-refresh-queue.ts` coalesces the resulting refreshes
+and discards dependent reads when a project binding is cleared.
+
 - A stream attempt has a first-byte/connect timeout (15 s).
 - Reconnect backoff starts at 1 s and caps at 15 s, with jitter above the first
   attempt to avoid a cell-wide retry herd.

@@ -159,11 +159,16 @@ npm run validate:commit
   docs, web export and 60 chat, auto-model, settings, onboarding, network and
   multi-server browser tests passed. Settlement tests cover credential changes
   and the fast completion path after observing a busy status.
-- C4. The connection core owns explicit actions, saved profile activation,
+- C4, `386dca9a`. The connection core owns explicit actions, saved profile activation,
   registry restoration, credential edits and failover. The commit gate passed
   with 1,271 tests and one existing skip. The 207 focused tests, docs, web
   export and 97 browser tests passed across Cloud Link, manual connections,
   multi-server, network, onboarding and Settings.
+- C5. Core event dispatch reads the current app store and the realtime owner
+  coalesces project refreshes. The commit gate passed with 1,274 tests, one
+  existing skip and no lint warnings. The 82 focused tests, both fake-server
+  self-tests, docs, web export and all 56 chat, diffs, interactions, multi-server,
+  network, realtime and terminal browser tests passed.
 
 ## Loop protocol
 

@@ -4,4 +4,4 @@ export type ProjectRefreshInput = Pick<ProjectActionsInput,
   'client' | 'isCurrentClient' | 'setIsRefreshingDiffs' | 'setDiffsBySession' | 'setVcsDiffsByScope' |
   'setTodosBySession' | 'setDiffScopeBySession' | 'setSelectedDiffMessageBySession' |
   'readPinnedDiffMessage' | 'readDiffScope' | 'currentSessionIdRef' | 'readDisplayedSession' |
-  'sessionRefreshTimeoutsRef' | 'sessionRefreshOptionsRef' | 'connectionScope' | 'refreshMessages'>;
+  'connectionScope' | 'refreshMessages'>;

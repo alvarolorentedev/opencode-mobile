@@ -1,5 +1,4 @@
 // Per-workspace domain composition. See docs/architecture/overview.md#top-level-runtime-composition.
-import type { OpencodeEvent } from '@/shared/protocol/opencode/events';
 import { emptySharedInput } from '@/features/sharing/runtime';
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef } from 'react';
 
@@ -8,12 +7,10 @@ import { useOidcAccessToken } from '@/shared/auth/oidc/use-oidc-access-token';
 import { getActiveSessions , MAX_ACTIVE_SESSIONS , useApprovalsCatalog , useConnectionLinkActions , usePermissionRulesState , useSessionActions , useSessionCatalog } from '@/features/sessions/runtime';
 import { useConnectionRuntime } from '@/runtime/connections/connection-runtime';
 import { CURRENT_ONBOARDING_VERSION, isOnboardingComplete } from '@/features/onboarding/runtime';
-import { handleProviderEvent, type ProviderEventActions } from '@/shared/protocol/opencode/event-dispatch';
 import { buildOpencodeProjects, resolveActiveProject , useWorktreeState } from '@/features/projects/runtime';
 import { useOpencodeProviderValues } from '@/runtime/composition/opencode-provider-values';
 import { useActivityNotifications } from '@/features/notifications/runtime';
 import { useCapabilitiesActions } from '@/features/ai/runtime';
-import { useCoalescedRefresh } from '@/runtime/realtime/use-coalesced-refresh';
 import { useConversationState } from '@/features/voice/runtime';
 import { useExtensionsState , useMcpState } from '@/features/extensions/runtime';
 import { useOpencodeProviderEffects } from '@/runtime/composition/use-opencode-provider-effects';
@@ -37,7 +34,9 @@ export function useOpencodeProviderComposition(input: WorkspaceRuntimeInput) {
   // workspace except the one that mounted last.
   const network = input.network;
   const { connection: inputConnection } = input;
-  const sessionCommands = useAppCore().commands.session;
+  const { commands: { session: sessionCommands }, events } = useAppCore();
+  const refreshQueue = useMemo(() => events.createProjectRefreshQueue(), [events]);
+  useEffect(() => refreshQueue.clear, [refreshQueue]);
   const identity = useQueryIdentity();
   const demanded = useQueryActivity();
   const isHydrated = input.isHydrated && input.connection.enabled;
@@ -45,8 +44,6 @@ export function useOpencodeProviderComposition(input: WorkspaceRuntimeInput) {
     setOnboardingVersion,
     setOnboardingActive,
     setMcpAuthPrompt,
-    sessionRefreshTimeoutsRef,
-    sessionRefreshOptionsRef,
     clientGenerationRef,
     scopeGenerationRef,
     serverGenerationRef,
@@ -181,6 +178,7 @@ export function useOpencodeProviderComposition(input: WorkspaceRuntimeInput) {
     state,
     resetTerminal,
     resetTranscript,
+    clearRefreshes: refreshQueue.clear,
     setSessions: sessionCatalog.setSessions,
     setMessagesBySession: messageCatalog.setMessagesBySession,
     setDiffsBySession: diffCatalog.setDiffsBySession,
@@ -196,12 +194,9 @@ export function useOpencodeProviderComposition(input: WorkspaceRuntimeInput) {
   }), [inputConnection.id, state.activeProjectPath]);
   const sessionRefresh = useMemo(() => sessionCommands.refresh(sessionTarget, state.scopeKey, inputConnection.revision),
     [inputConnection.revision, sessionCommands, sessionTarget, state.scopeKey]);
-  const project = useProjectActions({ ...domain, connectionId: inputConnection.id, connected: state.connection.status === 'connected', client, catalogClient, isCurrentClient, isCurrentCatalogClient, clearProjectState, isHydrated, refreshMessages: inbox.refreshMessages }, sessionRefresh);
+  const project = useProjectActions({ ...domain, connectionId: inputConnection.id, connected: state.connection.status === 'connected', client, catalogClient, isCurrentClient, isCurrentCatalogClient, clearProjectState, isHydrated, refreshMessages: inbox.refreshMessages }, sessionRefresh, refreshQueue);
 
   const capabilities = useCapabilitiesActions({ ...domain, client, isCurrentClient, isHydrated });
-  // Event bursts (rename + update, config fan-out, file-save VCS events) share
-  // one refresh instead of starting overlapping reads.
-  const scheduleSessionsRefresh = useCoalescedRefresh(() => project.refreshSessions(), 150);
   const extensions = useExtensionsState({
     scopeKey: state.scopeKey,
     client,
@@ -268,49 +263,7 @@ export function useOpencodeProviderComposition(input: WorkspaceRuntimeInput) {
   });
   const { phase: conversationPhase, sessionId: conversationSessionId } = conversation;
 
-  const eventActionsRef = useRef<ProviderEventActions | null>(null);
-
-  // Latest-ref bridges for callbacks defined before the actions they forward to.
-  // Written in a layout effect so no ref is touched during render; all readers
-  // are event handlers, realtime callbacks, or passive effects that run later.
-  useLayoutEffect(() => {
-    const focusSessionIds = new Set<string>();
-    if (state.currentSessionId) focusSessionIds.add(state.currentSessionId);
-    if (conversationSessionId) focusSessionIds.add(conversationSessionId);
-    const transcriptSessionIds = new Set(focusSessionIds);
-    for (const [sessionId, prompts] of Object.entries(inbox.pendingPromptsBySession)) {
-      if (prompts.length > 0) focusSessionIds.add(sessionId);
-    }
-    eventActionsRef.current = {
-      refreshSessions: project.refreshSessions,
-      scheduleSessionRefresh: project.scheduleSessionRefresh,
-      scheduleSessionsRefresh,
-      applyTranscriptEvent: transcript.applyTranscriptEvent,
-      liveTranscriptMessageId: transcript.liveTranscriptMessageId,
-      sendingSessionId: prompt.sendingState.active ? prompt.sendingState.sessionId : undefined,
-      isLocalSendRecent: transcript.isLocalSendRecent,
-      refreshPendingInteractions: project.refreshPendingInteractions,
-      refreshTerminals: terminal.refreshTerminals,
-      focusSessionIds,
-      transcriptSessionIds,
-      setSessions: sessionCatalog.setSessions,
-      removeCatalogSession: catalog.removeSession,
-      setSessionStatuses: sessionCatalog.setSessionStatuses,
-      explicitSessionSelectionRef: state.explicitSessionSelectionRef,
-      setPromptError: prompt.setPromptError,
-      setDiffsBySession: diffCatalog.setDiffsBySession,
-      setTodosBySession: diffCatalog.setTodosBySession,
-      setPendingPermissionsBySession: approvalsCatalog.setPendingPermissionsBySession,
-      setPendingQuestionsBySession: approvalsCatalog.setPendingQuestionsBySession,
-      setMcpAuthPrompt: state.setMcpAuthPrompt,
-      readPinnedDiffMessage: state.readPinnedDiffMessage,
-    };
-  });
-  const handleEvent = useCallback((event: OpencodeEvent) => {
-    if (eventActionsRef.current) {
-      handleProviderEvent(event, eventActionsRef.current);
-    }
-  }, []);
+  const pendingSessionIds = Object.keys(inbox.pendingPromptsBySession).filter((id) => inbox.pendingPromptsBySession[id].length > 0);
 
   const handleActivityEvent = useActivityNotifications({
     catalogClient, settings: state.settings, contract: state.serverContract,
@@ -325,11 +278,30 @@ export function useOpencodeProviderComposition(input: WorkspaceRuntimeInput) {
     demanded,
     projectPath: state.activeProjectPath,
     constrained: network.constrained,
-    pendingSessionIds: Object.keys(inbox.pendingPromptsBySession).filter((id) => inbox.pendingPromptsBySession[id].length > 0),
-    busy: Object.values(inbox.pendingPromptsBySession).some((prompts) => prompts.length > 0) || prompt.sendingState.active || conversationPhase !== 'off' || Object.values(sessionCatalog.sessionStatuses).some((status) => status.type !== 'idle'),
+    pendingSessionIds,
+    busy: pendingSessionIds.length > 0 || prompt.sendingState.active || conversationPhase !== 'off' || Object.values(sessionCatalog.sessionStatuses).some((status) => status.type !== 'idle'),
     currentSessionId: state.currentSessionId,
     conversationSessionId,
-    onEvent: handleEvent,
+    onEvent: (event) => events.dispatch(event, {
+      workspaceKey: state.scopeKey, isCurrent: () => isCurrentClient(client), pendingSessionIds,
+      actions: {
+        refreshSessions: project.refreshSessions,
+        scheduleSessionRefresh: project.scheduleSessionRefresh,
+        scheduleSessionsRefresh: project.scheduleSessionsRefresh,
+        applyTranscriptEvent: transcript.applyTranscriptEvent,
+        liveTranscriptMessageId: transcript.liveTranscriptMessageId,
+        isLocalSendRecent: transcript.isLocalSendRecent,
+        refreshPendingInteractions: project.refreshPendingInteractions,
+        refreshTerminals: terminal.refreshTerminals,
+        setSessions: sessionCatalog.setSessions,
+        removeCatalogSession: catalog.removeSession,
+        setSessionStatuses: sessionCatalog.setSessionStatuses,
+        setDiffsBySession: diffCatalog.setDiffsBySession,
+        setTodosBySession: diffCatalog.setTodosBySession,
+        setPendingPermissionsBySession: approvalsCatalog.setPendingPermissionsBySession,
+        setPendingQuestionsBySession: approvalsCatalog.setPendingQuestionsBySession,
+      },
+    }),
     onGlobalEvent: handleActivityEvent,
     refreshSessions: project.refreshSessions,
     refreshSessionStatuses: project.refreshSessionStatuses,
@@ -406,15 +378,14 @@ export function useOpencodeProviderComposition(input: WorkspaceRuntimeInput) {
 
   const suspend = useCallback(() => {
     scopeGenerationRef.current++; serverGenerationRef.current++;
-    for (const timeout of Object.values(sessionRefreshTimeoutsRef.current)) clearTimeout(timeout);
-    sessionRefreshTimeoutsRef.current = {}; sessionRefreshOptionsRef.current = {};
-  }, [scopeGenerationRef, serverGenerationRef, sessionRefreshTimeoutsRef, sessionRefreshOptionsRef ]);
+    refreshQueue.clear();
+  }, [refreshQueue, scopeGenerationRef, serverGenerationRef]);
   const busy = prompt.sendingState.active || conversationPhase !== 'off' || state.isBootstrappingChat ||
     state.connection.status === 'connecting' || Boolean(state.mcpAuthPrompt) ||
     Object.values(sessionCatalog.sessionStatuses).some((status) => status.type !== 'idle') ||
     Object.values(approvalsCatalog.pendingPermissionsBySession).some((items) => items.length > 0) ||
     Object.values(approvalsCatalog.pendingQuestionsBySession).some((items) => items.length > 0) ||
-    Object.values(inbox.pendingPromptsBySession).some((items) => items.length > 0) || terminal.terminalRuntime.instances.length > 0;
+    pendingSessionIds.length > 0 || terminal.terminalRuntime.instances.length > 0;
   return useMemo(() => ({ libraryVisible: state.activeSessionsVisible, revision: input.connection.revision, enabled: input.connection.enabled, values, busy, suspend, catalogClient, catalogSessions: catalog.sessions, catalogStatuses: catalog.statuses,
     loadProjectCatalog: project.loadProjectCatalog,
     pendingPermissions: approvalsCatalog.pendingPermissionsBySession, pendingQuestions: approvalsCatalog.pendingQuestionsBySession,
