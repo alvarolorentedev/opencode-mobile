@@ -239,13 +239,17 @@ npm run validate:commit
   contracts. The commit gate passed with 1,281 tests and one existing skip.
   Focused Vitest passed 470 tests with one existing skip. Web export and 89
   Connect, project, session, multi-server and diff browser flows passed.
-- E4c. Preference controls read scoped choices from the store and reconcile
+- E4c, `f6d33d49`. Preference controls read scoped choices from the store and reconcile
   model selections against the exact Query partition. The shared preferences
   context and the per-project preference projection are gone. The commit gate
   passed with 1,282 tests and one existing skip. All 59 focused tests and 58
   auto-model, Settings, multi-server, onboarding and Chat browser flows passed.
   Android API 36 smoke verified hardware Back through connection setup and
   the onboarding provider setup and selector screens.
+- E5. PTY lifecycle commands moved to a plain scoped controller. The commit
+  gate passed with 1,282 tests and one existing skip. All 43 focused tests and
+  12 Terminal and multi-server browser flows passed. The Android emulator
+  retained its PTY output and WebSocket across tabs after loading the new bundle.
 
 ## Loop protocol
 

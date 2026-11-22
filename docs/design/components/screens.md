@@ -69,13 +69,15 @@ Route-level controllers and platform-specific presentation surfaces. Back to the
 
 #### Responsibility
 
-- fourth tab and thin controller over provider-owned PTY state
+- fourth tab over a scoped PTY controller, with the list in Query and opened
+  instances in the app store
 - render a full-height PTY selector whose list scrolls internally with the New terminal action pinned below it; each terminal opens on tap and reveals Close on swipe
 - refresh the PTY list when the tab regains focus or the selector opens; there is no header refresh action
 - create default-shell PTYs and select/reconnect existing PTYs
 - delegate rendering and keyboard controls to `features/terminal/ui/`
 - opening the selector or the new-terminal sheet blurs the active terminal field through the DOM bridge, because the WebView keyboard is not an RN input the shared overlay hook can dismiss
-- stream immediate terminal input through provider actions; the server owns line editing/history
+- stream immediate terminal input through the PTY controller. The server owns
+  line editing and history.
 
 ### `features/sharing/ui/share-screen.tsx`
 

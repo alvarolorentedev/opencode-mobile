@@ -27,6 +27,8 @@ Start only after Phase D is complete and green.
   Query has one app-level provider.
 - Onboarding and preferences read device facts directly from the app store.
   Preference updates reconcile model choices against the scoped Query catalog.
+- Terminal lifecycle commands run in a scoped controller. Its React adapter
+  binds inputs and selects opened PTYs from the app store and the list from Query.
 - `runtime/core/workspace-selectors.ts` selects the retained project projection.
 - [ADR 0052](../../adr/0052-explicit-overlay-dependencies.md) records explicit
   portal targets and update blocker callbacks. Shared controls use shared imports.
@@ -50,6 +52,9 @@ The ARM64 Android development build launched on an API 36 emulator. Hardware
 Back dismissed the keyboard, returned from connection details with the typed
 URL intact, and closed the provider setup screen and the opening screen selector
 without exiting onboarding. Save & connect reached the loopback V2 fixture.
+In Settings, Back closed the theme selector first and then closed the Appearance
+sheet. After the terminal controller refactor, the emulator created a PTY and
+preserved its output and one WebSocket across Terminal, Chat and Terminal.
 
 ## Target shape
 

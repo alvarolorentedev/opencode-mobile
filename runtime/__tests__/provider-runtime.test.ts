@@ -13,7 +13,7 @@ import * as realtimeBackoff from '@/runtime/realtime/backoff';
 import * as realtimeLiveness from '@/runtime/realtime/liveness';
 import * as realtimePolling from '@/runtime/realtime/polling';
 import * as realtimeReconcile from '@/runtime/realtime/reconcile';
-import { createAppStore, type AppState } from '@/runtime/core/store';
+import { createAppStore } from '@/runtime/core/store';
 import type { RealtimeScopeInput } from '@/runtime/realtime/create-realtime';
 import type { ConnectionFailureKind } from '@/shared/protocol/opencode/client';
 import { fixturePromptCommands } from './prompt-command-fixture';
@@ -1184,7 +1184,7 @@ assert.deepEqual(Object.keys(cachedTodos).sort(), ['background', 'stale', 'targe
 
 // Real terminal orchestration: stale lists/input and failed removal cannot destroy an opened PTY.
 {
-  const runtime = hookRuntime(), records = new Map(), listGate = deferred();
+  const records = new Map(), listGate = deferred();
   const client = { __opencode: { contract: 'v1', directory: '/repo' } };
   const store = createAppStore({
     settings: { serverUrl: 'http://example.test', username: '', password: '', directory: '/repo' },
@@ -1192,17 +1192,7 @@ assert.deepEqual(Object.keys(cachedTodos).sort(), ['background', 'stale', 'targe
     controlPlaneUrl: '',
   });
   let listed = [{ id: 'first', status: 'running' }], pendingList = false, rejectRemoval = false;
-  const { useTerminalState } = await loadTs('features/terminal/state/use-terminal-state.ts', {
-    react: runtime.react,
-    '@/runtime/core': {
-      useAppCore: () => ({ store }),
-      useAppStore<T>(select: (state: AppState) => T) {
-        const [, update] = runtime.react.useState(0);
-        runtime.react.useEffect(() => store.subscribe(() => update((version: number) => version + 1)), []);
-        return select(store.getState());
-      },
-    },
-    'react-native': { AppState: { currentState: 'active', addEventListener: () => ({ remove() {} }) } },
+  const { createProjectTerminal } = await loadTs('features/terminal/services/project-terminal.ts', {
     "@/features/terminal/services/terminal-service": { listTerminals: () => pendingList ? listGate.promise : Promise.resolve(listed), createTerminal: async () => ({ id: 'new' }), removeTerminal: async () => { if (rejectRemoval) throw new Error('Rejected'); } },
     "@/features/terminal/services/terminal-connection": { createTerminalConnection: ({ id, publish, readState }: any) => {
       const record: any = { get state() { return readState(); }, disposed: false, sent: [], reconnects: 0,
@@ -1213,32 +1203,40 @@ assert.deepEqual(Object.keys(cachedTodos).sort(), ['background', 'stale', 'targe
       records.set(id, record); return record;
     } }
   });
-  runtime.mount(useTerminalState, { identity, scopeKey: 'terminal-test-workspace', client, isCurrentClient: () => true, serverUrl: 'http://example.test', directory: '/repo', serverContract: 'v1' });
-  await runtime.value.openTerminal('first'); runtime.flush();
+  const scopeKey = 'terminal-test-workspace';
+  const terminal = createProjectTerminal({ scopeKey, cache: new QueryClient(), getState: store.getState, foreground: true });
+  const input = { identity, client, isCurrentClient: () => true, serverUrl: 'http://example.test', directory: '/repo', serverContract: 'v1' };
+  const device = () => {
+    const state = store.getState().terminal[scopeKey];
+    assert.ok(state);
+    return state;
+  };
+  terminal.configure(input);
+  await terminal.openTerminal('first');
   const rotatedClient = { ...client };
-  runtime.update({ client: rotatedClient });
+  terminal.configure({ ...input, client: rotatedClient });
   assert.ok(records.get('first').reconnects >= 1, 'a rotated credential client reconnects the retained PTY');
-  runtime.update({ client });
+  terminal.configure(input);
   pendingList = true;
-  const refresh = runtime.value.refreshTerminals();
-  await runtime.value.openTerminal('second'); runtime.flush();
-  listGate.resolve(listed); await refresh; runtime.flush(); pendingList = false;
+  const refresh = terminal.refreshTerminals();
+  await terminal.openTerminal('second');
+  listGate.resolve(listed); await refresh; pendingList = false;
   assert.equal(records.get('second').state.status, 'connected', 'a list started before opening cannot exit the new PTY');
-  const oldScope = runtime.value.terminalRuntime.scope;
-  runtime.value.resetTerminal(); runtime.flush();
+  const oldScope = device().scope;
+  terminal.resetTerminal();
   assert.equal(records.get('first').disposed, true); assert.equal(records.get('second').disposed, true);
-  await runtime.value.openTerminal('first'); runtime.flush();
-  assert.throws(() => runtime.value.sendTerminalInput('first', 'stale', 0, oldScope), /scope changed/);
+  await terminal.openTerminal('first');
+  assert.throws(() => terminal.sendTerminalInput('first', 'stale', 0, oldScope), /scope changed/);
   assert.equal(records.get('first').sent.length, 0, 'a reused PTY ID cannot receive input queued in an old scope');
   rejectRemoval = true;
-  await assert.rejects(runtime.value.closeTerminal('first'), /Rejected/); runtime.flush();
-  assert.equal(runtime.value.activeTerminalId, 'first'); assert.equal(records.get('first').disposed, false);
-  await runtime.value.openTerminal('second'); runtime.flush();
-  await runtime.value.openTerminal('first'); runtime.flush();
+  await assert.rejects(terminal.closeTerminal('first'), /Rejected/);
+  assert.equal(device().activeTerminalId, 'first'); assert.equal(records.get('first').disposed, false);
+  await terminal.openTerminal('second');
+  await terminal.openTerminal('first');
   rejectRemoval = false; listed = [{ id: 'second', status: 'running' }];
-  await runtime.value.closeTerminal('first'); runtime.flush();
-  assert.equal(runtime.value.activeTerminalId, 'second'); assert.equal(records.get('first').disposed, true);
-  runtime.unmount(); assert.equal(records.get('second').disposed, true);
+  await terminal.closeTerminal('first');
+  assert.equal(device().activeTerminalId, 'second'); assert.equal(records.get('first').disposed, true);
+  terminal.dispose(); assert.equal(records.get('second').disposed, true);
 }
 
   });
