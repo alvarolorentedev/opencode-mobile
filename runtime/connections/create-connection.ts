@@ -80,8 +80,10 @@ export function createConnection({ queryClient, foreground, clock = systemClock 
     }
     return catalog.client;
   }
-  function getProjectClient(projectPath: string) {
+  function getProjectClient(projectPath: string, expected?: ConnectionRecord) {
     if (!input?.entry.enabled) return undefined;
+    if (expected && (expected.settings !== input.entry.settings || expected.revision !== input.entry.revision
+      || expected.authRevision !== input.entry.authRevision)) return undefined;
     const { contract } = lifecycle.getState();
     const cached = projectClients.get(projectPath);
     if (cached?.contract === contract) return cached.client;

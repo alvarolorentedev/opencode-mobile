@@ -26,7 +26,7 @@ checking whether a platform-specific gap is intentional.
 | Chat, sessions, prompts, approvals | `runtime/` + `features/chat/ui/` |
 | Projects, worktrees, files | `runtime/` + `features/projects/ui/` + `features/projects/ui/projects-screen.tsx` |
 | Settings, providers, extensions, voice | `runtime/` + `features/settings/ui/` |
-| Terminal | `features/terminal/state/use-terminal-state.ts` + `features/terminal/ui/` |
+| Terminal | `features/terminal/services/project-terminal.ts` + `features/terminal/ui/` |
 | Cloud Link | `features/cloud-link/state/connect/` + `features/settings/ui/` |
 | Notifications, widgets, quick actions | `shared/` + `runtime/` |
 | Inbound sharing | `features/sharing/state/use-share-state.ts` + `features/sharing/model/` + `features/sharing/ui/share-screen.tsx` |

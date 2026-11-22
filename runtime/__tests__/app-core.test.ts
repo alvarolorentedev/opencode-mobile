@@ -50,6 +50,7 @@ vi.mock('@/features/ai/runtime', () => ({
 vi.mock('@/features/projects/runtime', async () => ({
   HIDDEN_PROJECTS_MAX: (await import('@/features/projects/model/types')).HIDDEN_PROJECTS_MAX,
 }));
+vi.mock('@/features/terminal/runtime', () => ({ createProjectTerminal: vi.fn() }));
 vi.mock('@/shared/server-data/catalogs', () => ({ configurationOptions: () => ({ queryKey: ['configuration'] }) }));
 vi.mock('@react-native-async-storage/async-storage', () => ({ default: {} }));
 vi.mock('expo-constants', () => ({ default: { expoConfig: { extra: {} } } }));

@@ -252,7 +252,7 @@ export function createConnectionCommands(
     const entry = registry.connections.find(({ id }) => id === target.connectionId);
     if (!entry) return;
     const directory = selection[resolveKey(target)]?.activeProjectPath ?? target.projectPath;
-    const client = connections.get(entry.id)?.getProjectClient(directory);
+    const client = connections.get(entry.id)?.getProjectClient(directory, entry);
     const identity = { connectionId: entry.id, connectionScope: getConnectionScope(entry.settings), authRevision: entry.authRevision ?? 0 };
     const discovery = client && queryClient.getQueryData(capabilitiesOptions(identity, client).queryKey);
     const config = client && queryClient.getQueryData(configurationOptions(identity, client).queryKey);

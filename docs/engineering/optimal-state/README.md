@@ -250,11 +250,17 @@ npm run validate:commit
   gate passed with 1,282 tests and one existing skip. All 43 focused tests and
   12 Terminal and multi-server browser flows passed. The Android emulator
   retained its PTY output and WebSocket across tabs after loading the new bundle.
-- E6. The core observes scoped pending approvals and applies each connection's
+- E6, `157f0958`. The core observes scoped pending approvals and applies each connection's
   V2 policy. Settings replies in the request's own project without reading
   workspace projections for pending items. The commit gate passed with 1,282
   tests and one existing skip. All 74 focused tests and 106 Connect, interaction,
   multi-server, onboarding, realtime and Settings browser flows passed.
+- E7. The core owns retained terminal controllers and credentials. The first
+  browser run exposed a lost renderer after disconnecting and re-enabling a
+  server. The corrected controller pauses the transport and retains its renderer.
+  The commit gate passed with 1,282 tests and one existing skip. All 58 focused
+  tests and 32 Terminal, multi-server, Settings, auto-model and update browser
+  flows passed. Android retained the displayed output and one WebSocket across tabs.
 
 ## Loop protocol
 

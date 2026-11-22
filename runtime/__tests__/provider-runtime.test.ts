@@ -1196,7 +1196,8 @@ assert.deepEqual(Object.keys(cachedTodos).sort(), ['background', 'stale', 'targe
     "@/features/terminal/services/terminal-service": { listTerminals: () => pendingList ? listGate.promise : Promise.resolve(listed), createTerminal: async () => ({ id: 'new' }), removeTerminal: async () => { if (rejectRemoval) throw new Error('Rejected'); } },
     "@/features/terminal/services/terminal-connection": { createTerminalConnection: ({ id, publish, readState }: any) => {
       const record: any = { get state() { return readState(); }, disposed: false, sent: [], reconnects: 0,
-        foreground() { publish({ id, generation: 0, status: 'connected' }); }, reconnect() { record.reconnects += 1; }, register: () => () => {}, resize() {},
+        foreground(active: boolean) { publish({ id, generation: 0, status: active ? 'connected' : 'idle' }); },
+        reconnect() { record.reconnects += 1; }, register: () => () => {}, resize() {},
         send(input: any) { record.sent.push(input); },
         exit() { publish({ ...readState(), status: 'exited' }); }, dispose() { record.disposed = true; },
       };
@@ -1213,6 +1214,12 @@ assert.deepEqual(Object.keys(cachedTodos).sort(), ['background', 'stale', 'targe
   };
   terminal.configure(input);
   await terminal.openTerminal('first');
+  terminal.pause();
+  assert.equal(device().activeTerminalId, 'first');
+  assert.equal(records.get('first').state.status, 'idle');
+  assert.equal(records.get('first').disposed, false, 'disconnect pauses an opened PTY without disposing the renderer');
+  terminal.configure(input);
+  assert.equal(records.get('first').state.status, 'connected');
   const rotatedClient = { ...client };
   terminal.configure({ ...input, client: rotatedClient });
   assert.ok(records.get('first').reconnects >= 1, 'a rotated credential client reconnects the retained PTY');

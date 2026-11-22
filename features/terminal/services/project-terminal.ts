@@ -24,8 +24,6 @@ type TerminalInput = {
   online?: boolean;
 };
 
-export type TerminalStateInput = TerminalInput & { scopeKey: string };
-
 export function createProjectTerminal({ scopeKey, cache, getState, foreground }: {
   scopeKey: string;
   cache: QueryClient;
@@ -38,7 +36,7 @@ export function createProjectTerminal({ scopeKey, cache, getState, foreground }:
   const connections = new Map<string, ReturnType<typeof createTerminalConnection>>();
   const device = () => getState().terminal[scopeKey];
   const setDevice = (patch: Parameters<AppState['setTerminalState']>[1]) => getState().setTerminalState(scopeKey, patch);
-  const isCurrent = (captured: TerminalInput) => input?.client === captured.client && captured.isCurrentClient(captured.client);
+  const isCurrent = (captured: TerminalInput) => input?.client === captured.client && input.enabled !== false && captured.isCurrentClient(captured.client);
   const isForeground = () => foreground && input?.enabled !== false && input?.online !== false;
   const key = ({ client, identity }: TerminalInput) => projectQueryKey(identity, client, 'terminals');
 
@@ -48,8 +46,7 @@ export function createProjectTerminal({ scopeKey, cache, getState, foreground }:
     input = next;
     if (isForeground() !== wasForeground) {
       for (const connection of connections.values()) connection.foreground(isForeground());
-    }
-    if (previous && (previous.client !== next.client || previous.directory !== next.directory
+    } else if (previous && (previous.client !== next.client || previous.directory !== next.directory
       || previous.serverUrl !== next.serverUrl || previous.serverContract !== next.serverContract
       || previous.headers !== next.headers || previous.rejectRedirects !== next.rejectRedirects)) {
       for (const connection of connections.values()) connection.reconnect();
@@ -152,6 +149,7 @@ export function createProjectTerminal({ scopeKey, cache, getState, foreground }:
 
   return {
     configure, setForeground, resetTerminal, refreshTerminals, createTerminal, openTerminal, sendTerminalInput, closeTerminal,
+    pause() { if (input) configure({ ...input, enabled: false }); },
     dispose() { discardConnections(); input = undefined; },
     registerRenderer: (ptyId: string, renderer: TerminalRenderer) => connections.get(ptyId)?.register(renderer) ?? (() => {}),
     resize(ptyId: string, cols: number, rows: number) { connections.get(ptyId)?.resize(cols, rows); },

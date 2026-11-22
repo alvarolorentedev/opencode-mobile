@@ -31,6 +31,7 @@ export function createConnectionRegistry({ store, queryClient }: { store: AppSto
   const slots = new Map<string, Slot>();
   const listeners = new Set<() => void>();
   const stateListeners = new Set<() => void>();
+  const environmentListeners = new Set<() => void>();
   const foregroundListeners = new Set<(active: boolean) => void>();
   let foregroundActive = true;
   let activeId: string | undefined;
@@ -47,6 +48,7 @@ export function createConnectionRegistry({ store, queryClient }: { store: AppSto
   };
   function notify() { for (const listener of listeners) listener(); }
   function notifyState() { for (const listener of stateListeners) listener(); }
+  function notifyEnvironment() { for (const listener of environmentListeners) listener(); }
 
   function drop(id: string, slot: Slot) {
     slots.delete(id);
@@ -104,6 +106,14 @@ export function createConnectionRegistry({ store, queryClient }: { store: AppSto
 
   return {
     get: (id: string) => slots.get(id)?.manager,
+    environment: {
+      isForeground: () => foregroundActive,
+      isOnline: () => online,
+      subscribe(listener: () => void) {
+        environmentListeners.add(listener);
+        return () => { environmentListeners.delete(listener); };
+      },
+    },
     subscribe(listener: () => void) {
       listeners.add(listener);
       return () => { listeners.delete(listener); };
@@ -123,12 +133,15 @@ export function createConnectionRegistry({ store, queryClient }: { store: AppSto
       if (foregroundActive === active) return;
       foregroundActive = active;
       for (const listener of foregroundListeners) listener(active);
+      notifyEnvironment();
     },
     setDemand(connectionId: string | undefined, nextOnline: boolean, nextQueryForeground: boolean) {
       activeId = connectionId;
+      const onlineChanged = online !== nextOnline;
       online = nextOnline;
       queryForeground = nextQueryForeground;
       for (const [id, { manager }] of slots) manager.setDemand(queryForeground && activeId === id, online);
+      if (onlineChanged) notifyEnvironment();
     },
     dispose() {
       unsubscribed?.();

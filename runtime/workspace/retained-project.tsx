@@ -1,8 +1,7 @@
 // Observe the retained project and publish its scoped presentation to the app shell.
 import { memo, useCallback, useEffect, useLayoutEffect, useMemo, type Dispatch, type SetStateAction } from 'react';
 
-import { buildClient, getRequestHeaders, withOidcAuthorizationObject, type OpencodeConnectionSettings } from '@/shared/protocol/opencode/client';
-import { useOidcAccessToken } from '@/shared/auth/oidc/use-oidc-access-token';
+import { buildClient, type OpencodeConnectionSettings } from '@/shared/protocol/opencode/client';
 import { getActiveSessions, MAX_ACTIVE_SESSIONS, useApprovalsCatalog, usePermissionRulesState, useSessionActions, useSessionCatalog, useSessionPresentation } from '@/features/sessions/runtime';
 import { useConnectionRuntime } from '@/runtime/connections/connection-runtime';
 import { buildOpencodeProjects, resolveActiveProject, useProjectPresentation, useWorktreeState } from '@/features/projects/runtime';
@@ -15,10 +14,9 @@ import { useOpencodeProviderReset } from '@/runtime/composition/use-opencode-pro
 import { useWorkspaceRealtime } from '@/runtime/realtime/use-workspace-realtime';
 import { useProjectActions } from '@/runtime/composition/use-project-actions';
 import { useChatPresentation, useDiffCatalog, usePromptInbox, usePromptLifecycle, useTranscriptReadErrors, useTranscriptState } from '@/features/chat/runtime';
-import { useTerminalState } from '@/features/terminal/runtime';
 import { useSessionRuntimeState } from '@/runtime/workspace/use-session-runtime-state';
 import { useWorkspaceServerData } from '@/runtime/composition/use-workspace-server-data';
-import { useAppCore } from '@/runtime/core';
+import { useAppCore, useAppStore } from '@/runtime/core';
 import { useConnectionQueryIdentity, useQueryForeground } from '@/shared/server-data/client';
 
 import { workspaceChatPreferences } from '@/runtime/core/commands/connection';
@@ -37,9 +35,12 @@ type Props = Omit<ProjectBindingInput, 'setSettings' | 'setChatPreferences' | 'p
   forget: (key: string) => void;
 };
 export const RetainedProject = memo(function RetainedProject({ defaults, updateSettings, updatePreferences, publish, forget, ...props }: Props) {
-  const { store, commands: { session: sessionCommands }, events } = useAppCore();
+  const { store, commands: { session: sessionCommands }, events, terminal } = useAppCore();
   const id = props.connection.id;
   const key = workspaceKey({ connectionId: id, projectPath: props.projectPath ?? '' });
+  const hasTerminal = useAppStore((state) => Boolean(state.terminal[key]?.instances.length));
+  const refreshTerminals = useCallback(() => terminal.get(key)?.controller.refreshTerminals() ?? Promise.resolve(), [key, terminal]);
+  const resetTerminal = useCallback(() => terminal.get(key)?.controller.resetTerminal(), [key, terminal]);
   const preferences = useMemo(() => workspaceChatPreferences(defaults, props.connection.preferences), [defaults, props.connection.preferences]);
   const setSettings = useCallback<Dispatch<SetStateAction<OpencodeConnectionSettings>>>((next) => {
     const entry = store.getState().registry.connections.find((candidate) => candidate.id === id);
@@ -144,28 +145,6 @@ export const RetainedProject = memo(function RetainedProject({ defaults, updateS
     if (!sessionId) return;
     await refreshInboxMessages(sessionId, false).catch(() => undefined);
   }, [refreshInboxMessages, state.currentSessionId]);
-  // Memoized so the terminal reconnect effect only runs when headers actually
-  // change, not on every render (getRequestHeaders returns a new object).
-  // OpenID Connect servers also need the current bearer token on the WebSocket
-  // upgrade; the hook renews it silently and re-renders on a new token.
-  const oidcAccessToken = useOidcAccessToken(state.settings, state.settings.oidc);
-  const terminalHeaders = useMemo(
-    () => state.settings.oidc && oidcAccessToken
-      ? withOidcAuthorizationObject(getRequestHeaders(state.settings), oidcAccessToken, state.settings.oidc)
-      : getRequestHeaders(state.settings),
-    [state.settings, oidcAccessToken],
-  );
-  const terminal = useTerminalState({
-    enabled: input.connection.enabled,
-    ...domain,
-    client,
-    directory: state.activeProjectPath || '',
-    isCurrentClient,
-    serverUrl: state.settings.serverUrl,
-    headers: terminalHeaders,
-    rejectRedirects: Boolean(state.settings.oidc),
-    online: network.online,
-  });
   const worktree = useWorktreeState({ ...domain, client, isCurrentClient, connected: state.connection.status === 'connected' });
   const activeProject = useMemo(
     () => resolveActiveProject(projects, state.activeProjectPath, worktree.worktrees) ?? (state.activeProjectPath
@@ -193,7 +172,6 @@ export const RetainedProject = memo(function RetainedProject({ defaults, updateS
 
   const { manager } = connectionRuntime;
   const isStreamConnected = useCallback(() => manager?.realtime.getStatus() === 'connected', [manager]);
-  const { resetTerminal } = terminal;
   const { reset: resetTranscript } = transcript;
   const forgetSessionCreation = useCallback((id?: string) => sessionCommands.forgetSessionCreation(identity, client, id), [client, identity, sessionCommands]);
   const clearProjectState = useOpencodeProviderReset({
@@ -312,7 +290,7 @@ export const RetainedProject = memo(function RetainedProject({ defaults, updateS
         liveTranscriptMessageId: transcript.liveTranscriptMessageId,
         isLocalSendRecent: transcript.isLocalSendRecent,
         refreshPendingInteractions: project.refreshPendingInteractions,
-        refreshTerminals: terminal.refreshTerminals,
+        refreshTerminals,
         setSessions: sessionCatalog.setSessions,
         removeCatalogSession: catalog.removeSession,
         setSessionStatuses: sessionCatalog.setSessionStatuses,
@@ -381,10 +359,6 @@ export const RetainedProject = memo(function RetainedProject({ defaults, updateS
   const conversationValue = useMemo<WorkspaceValues['conversationValue']>(() => ({
     conversation, clearConversationFeedback, toggleConversationMode,
   }), [conversation, clearConversationFeedback, toggleConversationMode]);
-  const { terminals, activeTerminalId, terminalRuntime, terminalConnection, refreshTerminals, createTerminal, openTerminal, sendTerminalInput, closeTerminal } = terminal;
-  const terminalValue = useMemo<WorkspaceValues['terminalValue']>(() => ({
-    terminals, activeTerminalId, terminalRuntime, terminalConnection, refreshTerminals, createTerminal, openTerminal, sendTerminalInput, closeTerminal,
-  }), [terminals, activeTerminalId, terminalRuntime, terminalConnection, refreshTerminals, createTerminal, openTerminal, sendTerminalInput, closeTerminal]);
   const { mcpStatuses, refreshMcpServers, addMcpServer, connectMcpServer, disconnectMcpServer, mcpOAuth } = mcp;
   const mcpValue = useMemo<WorkspaceValues['mcpValue']>(() => ({
     mcpStatuses, refreshMcpServers, addMcpServer, connectMcpServer, disconnectMcpServer, mcpOAuth,
@@ -393,9 +367,9 @@ export const RetainedProject = memo(function RetainedProject({ defaults, updateS
   const extensionsValue = useMemo(() => ({ extensions: extensionItems }), [extensionItems]);
   const values = useMemo<WorkspaceValues>(() => ({
     connectionValue, diagnosticsValue, capabilitiesValue, projectsValue, projectFilesValue,
-    currentSessionValue, sessionLibraryValue, chatValue, approvalsValue, conversationValue, terminalValue, mcpValue, extensionsValue,
+    currentSessionValue, sessionLibraryValue, chatValue, approvalsValue, conversationValue, mcpValue, extensionsValue,
   }), [connectionValue, diagnosticsValue, capabilitiesValue, projectsValue, projectFilesValue,
-    currentSessionValue, sessionLibraryValue, chatValue, approvalsValue, conversationValue, terminalValue, mcpValue, extensionsValue]);
+    currentSessionValue, sessionLibraryValue, chatValue, approvalsValue, conversationValue, mcpValue, extensionsValue]);
 
   const suspend = useCallback(() => {
     scopeGenerationRef.current++; serverGenerationRef.current++;
@@ -406,7 +380,7 @@ export const RetainedProject = memo(function RetainedProject({ defaults, updateS
     Object.values(sessionCatalog.sessionStatuses).some((status) => status.type !== 'idle') ||
     Object.values(approvalsCatalog.pendingPermissionsBySession).some((items) => items.length > 0) ||
     Object.values(approvalsCatalog.pendingQuestionsBySession).some((items) => items.length > 0) ||
-    pendingSessionIds.length > 0 || terminal.terminalRuntime.instances.length > 0;
+    pendingSessionIds.length > 0 || hasTerminal;
   const snapshot = useMemo<WorkspaceSnapshot>(() => ({ libraryVisible: state.activeSessionsVisible, revision: input.connection.revision, enabled: input.connection.enabled, values, busy, suspend, catalogClient, catalogSessions: catalog.sessions, catalogStatuses: catalog.statuses,
     loadProjectCatalog: project.loadProjectCatalog,
     native: { settings: state.settings, catalogClient, contract: state.serverContract, isCurrentCatalogClient,

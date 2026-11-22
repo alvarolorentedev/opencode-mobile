@@ -11,7 +11,6 @@ import type { ExtensionsContextValue, McpContextValue } from '@/features/extensi
 import type { ProjectFilesContextValue, ProjectsContextValue } from '@/features/projects/index';
 import type { useProjectCatalogActions } from '@/features/projects/runtime';
 import type { ApprovalsContextValue, CurrentSessionContextValue, SessionLibraryContextValue , ActiveSessionItem } from '@/features/sessions/index';
-import type { TerminalContextValue } from '@/features/terminal/index';
 import type { ConversationContextValue } from '@/features/voice/index';
 import type { useWidgetState } from '@/features/widgets/runtime';
 import type { Session, SessionStatus } from '@/shared/protocol/opencode/types';
@@ -72,7 +71,6 @@ export type WorkspaceValues = {
   chatValue: ChatContextValue;
   approvalsValue: ApprovalsContextValue;
   conversationValue: ConversationContextValue;
-  terminalValue: TerminalContextValue;
   mcpValue: McpContextValue;
   extensionsValue: ExtensionsContextValue;
 };

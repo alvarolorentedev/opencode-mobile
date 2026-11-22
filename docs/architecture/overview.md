@@ -358,9 +358,10 @@ The completion version, preference schema and first-run migration are unchanged.
   Favorites DTO validation, bounded serialization, and legacy-entry migration.
 - `features/voice/state/use-conversation-keep-awake.ts`
   Keeps device awake during conversation mode.
-- `features/terminal/state/use-terminal-state.ts`
-  Project-scoped PTY list and retained per-PTY transports, connect tickets,
-  reconnect, renderer registration, cursor acknowledgements, and resize.
+- `runtime/core/commands/terminal.ts` and `features/terminal/services/project-terminal.ts`
+  Core lifecycle for scoped PTYs and the feature controller for lists,
+  reconnect, renderer registration, and resize. Terminals read the Query list
+  and opened instances from their scoped stores.
   `terminal-connection.ts` owns each connection lifecycle; protocol decoding
   and bounded output delivery live in `shared/protocol/opencode/terminal-stream.ts`.
 - `features/extensions/state/use-mcp-state.ts`

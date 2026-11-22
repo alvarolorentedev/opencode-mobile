@@ -27,8 +27,8 @@ Start only after Phase D is complete and green.
   Query has one app-level provider.
 - Onboarding and preferences read device facts directly from the app store.
   Preference updates reconcile model choices against the scoped Query catalog.
-- Terminal lifecycle commands run in a scoped controller. Its React adapter
-  binds inputs and selects opened PTYs from the app store and the list from Query.
+- The core retains terminal controllers by workspace key. Terminal views read
+  opened PTYs from the app store and the list from Query.
 - The app core runs automatic approval from Query and the per-connection
   policy. Settings reads pending permissions and questions from their owning
   partitions.

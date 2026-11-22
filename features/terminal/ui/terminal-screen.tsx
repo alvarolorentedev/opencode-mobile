@@ -17,7 +17,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Fonts } from '@/shared/ui/theme/theme';
 import { RetainedTerminals } from '@/features/terminal/ui/retained-terminals';
 import { NewTerminalSheet } from '@/features/terminal/ui/new-terminal-sheet';
-import { useWorkspaceTerminals } from '@/features/terminal/ui/use-workspace-terminals';
+import { useWorkspaceTerminals } from '@/features/terminal/state/use-workspace-terminals';
 import { useResolvedWorkspaceTarget, useWorkspacePreferences, useWorkspaces } from '@/runtime/workspace';
 import type { WorkspaceTarget } from '@/shared/contracts/workspace';
 import { SwipeRow } from '@/shared/ui/swipe-row';
@@ -122,7 +122,7 @@ function TerminalContent({ target }: { target: WorkspaceTarget }) {
           </View></ScreenHeader>
 
         <View className={cn(stylesClasses.output)}>
-          <RetainedTerminals visible={visible} slim={slim} palette={palette} dismissKeyboard={terminalPickerVisible || creating} onCopied={() => setCopied(true)} onError={setError} />
+          <RetainedTerminals target={target} connected={connection.status === 'connected'} visible={visible} slim={slim} palette={palette} dismissKeyboard={terminalPickerVisible || creating} onCopied={() => setCopied(true)} onError={setError} />
         {connection.status !== 'connected' || !activeProject ? (
           <View className={cn(stylesClasses.emptyScreen)}>
             <View className={cn(stylesClasses.emptyPanel, "bg-surface")}><Text  variant="display">{connection.status !== 'connected' ? t('terminal:screen.connectTitle') : t('terminal:screen.chooseProject')}</Text><Text>{connection.status !== 'connected' ? connection.message : t('terminal:screen.selectProject')}</Text><Button onPress={() => {

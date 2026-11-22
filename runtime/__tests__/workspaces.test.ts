@@ -474,18 +474,19 @@ it('moves chat focus to a connected server when the focused server fails', async
 });
 
 it('flattens terminal catalogs once per server PTY and keeps the owning workspace actions', async () => {
-  const { workspaceTerminals } = await loadTs('features/terminal/ui/use-workspace-terminals.ts', {
-    react: {}
-  });
-  const connections = ['a', 'b'].map((id) => ({ id, name: id, settings: { serverUrl: `http://${id}` } }));
+  const { workspaceTerminals } = await loadTs('features/terminal/model/workspace-terminals.ts');
+  const connections = ['a', 'b'].map((id) => ({ id, name: id, enabled: true, settings: { serverUrl: `http://${id}` } }));
   const pty = { id: 'same', cwd: '/repo', title: 'Terminal' };
-  const runtime = (path: string) => ({ values: { projectsValue: { activeProjectPath: path }, terminalValue: { terminals: [pty] } } });
-  const owner = runtime('/repo'), unrelated = runtime('/other'), otherServer = runtime('/repo');
-  const rows = workspaceTerminals(connections, { '["a","/repo"]': owner, '["a","/other"]': unrelated, '["b","/repo"]': otherServer });
+  const scope = (connectionId: string, projectPath: string) => ({
+    key: workspaceKey({ connectionId, projectPath }), connectionId, projectPath, terminals: [pty],
+    actions: { openTerminal: vi.fn(), closeTerminal: vi.fn() },
+  });
+  const owner = scope('a', '/repo'), unrelated = scope('a', '/other'), otherServer = scope('b', '/repo');
+  const rows = workspaceTerminals(connections, [owner, unrelated, otherServer]);
   expect(rows).toHaveLength(2);
   expect(rows.map((row: any) => row.serverName)).toEqual(['a', 'b']);
-  expect(rows[0].actions).toBe(owner.values.terminalValue);
-  expect(rows[1].actions).toBe(otherServer.values.terminalValue);
+  expect(rows[0].actions).toBe(owner.actions);
+  expect(rows[1].actions).toBe(otherServer.actions);
 });
 
 it('reads the shared active-session catalog only for the owning runtime', async () => {

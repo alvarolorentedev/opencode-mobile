@@ -30,7 +30,7 @@ export function useServerPendingInteractions(connectionId: string) {
   const paths = [...new Set(entry?.projects.map((projectPath) =>
     selection[workspaceKey({ connectionId, projectPath })]?.activeProjectPath ?? projectPath))];
   const projects = identity && lifecycle ? paths.flatMap((projectPath) => {
-    const client = manager?.getProjectClient(projectPath);
+    const client = manager?.getProjectClient(projectPath, entry);
     return client ? [{ projectPath, approvalsKey: pendingInteractionsKey(identity, client), sessionsKey: projectSessionsKey(identity, client) }] : [];
   }) : [];
   const pending = useQueries({ queries: projects.map(({ approvalsKey }) => queryOptions<PendingInteractionsData>({ queryKey: approvalsKey, queryFn: skipToken })) });

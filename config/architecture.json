@@ -382,7 +382,7 @@
       "VoiceSetupTestContext"
     ],
     "features/terminal/runtime.ts": [
-      "useTerminalState"
+      "createProjectTerminal"
     ],
     "features/widgets/runtime.ts": [
       "useMissionWidget",

@@ -282,6 +282,9 @@ and transient media, and keeps safe text from mixed prompts.
 
 Terminal transports reconnect when the radio returns, not only on foreground.
 The existing jittered 1/2/4/8/15 s retry and cursor replay are unchanged.
+Disconnecting a server pauses its sockets and retains opened renderers. The
+core resumes them with the current credentials when the connection is enabled.
+Removing a connection releases its terminal controllers and renderers.
 
 ## Validation
 
