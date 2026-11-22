@@ -286,6 +286,7 @@
       "serializeFavoriteSessions",
       "sessionCatalogOptions",
       "sessionCreationCommands",
+      "sessionEditCommands",
       "useActiveSessions",
       "ApprovalsCatalog",
       "MissionOverview",
@@ -302,6 +303,7 @@
       "useSessionState"
     ],
     "features/chat/runtime.ts": [
+      "forgetSessionContent",
       "isPromptErrorVisible",
       "migrateTranscriptCaches",
       "pruneProviderTranscripts",

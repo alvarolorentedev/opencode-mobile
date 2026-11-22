@@ -505,6 +505,10 @@ The app-core session commands publish the server's created or forked session
 immediately. Query retains the mutation's session ID for up to ten seconds so
 an older list response cannot drop the new chat before the catalog catches up.
 The project list remains the single cached session record.
+The same command path serializes title changes per session. A confirmed
+deletion clears the session's selection, favorites, approvals and cached
+content from its owning scope. Reverting waits for execution to settle and
+then reloads the session's message window and diff.
 Session-list workflow refreshes and connection-owned routine Query invalidations are
 coalesced independently; `session.deleted` removes its row immediately before reconciliation.
 The focused workspace's overridden domains are memoized independently, so a

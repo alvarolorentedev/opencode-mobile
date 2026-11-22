@@ -4,7 +4,7 @@ import { createAppCore } from '@/runtime/core/create-app-core';
 import type { WorkspaceSnapshot } from '@/runtime/workspace/workspace-types';
 import type { ChatPreferences } from '@/shared/preferences/opencode-preferences';
 import { workspaceKey, type WorkspaceTarget } from '@/shared/contracts/workspace';
-import { projectQueryKey } from '@/shared/server-data/keys';
+import { connectionQueryKey, projectQueryKey } from '@/shared/server-data/keys';
 import type { ScopedOpencodeClient } from '@/shared/protocol/opencode/client';
 
 const protocol = vi.hoisted(() => ({
@@ -15,6 +15,8 @@ const protocol = vi.hoisted(() => ({
   createSession: vi.fn(),
   forkSession: vi.fn(),
   switchSessionModel: vi.fn(),
+  deleteSession: vi.fn(),
+  updateSessionTitle: vi.fn(),
 }));
 
 vi.mock('@/shared/protocol/opencode/client', () => ({
@@ -26,12 +28,18 @@ vi.mock('@/features/sessions/runtime', async () => ({
   approvalsAccess: (await import('@/features/sessions/services/approvals')).approvalsAccess,
   createInteractionCommands: (await import('@/features/sessions/services/interaction-commands')).createInteractionCommands,
   ...(await import('@/features/sessions/services/session-creation')),
+  ...(await import('@/features/sessions/services/session-editing')),
   ...(await import('@/features/sessions/services/queries')),
 }));
 vi.mock('@/shared/protocol/services/session-service', () => ({
   createSession: protocol.createSession,
   forkSession: protocol.forkSession,
   switchSessionModel: protocol.switchSessionModel,
+  deleteSession: protocol.deleteSession,
+  updateSessionTitle: protocol.updateSessionTitle,
+}));
+vi.mock('@/features/chat/runtime', async () => ({
+  forgetSessionContent: (await import('@/features/chat/services/queries')).forgetSessionContent,
 }));
 vi.mock('@/features/ai/runtime', () => ({
   agentsOptions: () => ({ queryKey: ['agents'] }),
@@ -227,6 +235,63 @@ describe('app core', () => {
     expect(sources.refreshMessages).toHaveBeenCalledExactlyOnceWith('forked', false);
     await expect(commands.session.creation(target, scopeKey, 2).createSession()).rejects.toThrow('no longer available');
     expect(protocol.createSession).toHaveBeenCalledTimes(1);
+    commands.workspace.dispose();
+    queryClient.clear();
+  });
+
+  it('serializes competing titles and deletes content only from the originating credential partition', async () => {
+    const core = newCore();
+    const { queryClient, commands, store } = core;
+    const target = { connectionId: 'server', projectPath: '/a' };
+    const scopeKey = workspaceKey(target);
+    const identity = { connectionId: 'server', connectionScope: 'scope', authRevision: 1 };
+    const client = { __opencode: { contract: 'v2', directory: '/a' } } as ScopedOpencodeClient;
+    const manager = {
+      getProjectAccess: () => ({ client, identity, revision: 3, isCurrent: () => true }),
+      getCatalogClient: () => undefined,
+      realtime: { getProjectSources: () => ({}) },
+    } as unknown as NonNullable<ReturnType<typeof core.connections.get>>;
+    vi.spyOn(core.connections, 'get').mockReturnValue(manager);
+    const ownerKey = connectionQueryKey(identity, 'v2');
+    const oldKey = connectionQueryKey({ ...identity, authRevision: 0 }, 'v2');
+    const sessionsKey = [...ownerKey, 'sessions', 'project', '/a'];
+    const approvalsKey = [...ownerKey, 'project', '/a', 'pending-interactions'];
+    const statusesKey = [...ownerKey, 'sessions', 'catalog'];
+    queryClient.setQueryData(sessionsKey, [{ id: 's', title: 'Original' }, { id: 'other', title: 'Keep' }]);
+    queryClient.setQueryData(approvalsKey, { permissions: { s: [{ id: 'pending' }] }, questions: {} });
+    queryClient.setQueryData(statusesKey, { sessions: [], statuses: { s: { type: 'idle' }, other: { type: 'busy' } } });
+    for (const name of ['messages', 'diffs', 'todos']) {
+      queryClient.setQueryData([...ownerKey, name], { s: ['remove'], other: ['keep'] });
+      queryClient.setQueryData([...oldKey, name], { s: ['old partition'] });
+    }
+    store.getState().setSelection(scopeKey, { currentSessionId: 's', explicitSessionId: 's' });
+    store.getState().setShellValue('favoriteSessions', [
+      { sessionId: 's', connectionScope: 'scope', projectPath: '/a', favoritedAt: 1 },
+      { sessionId: 's', connectionScope: 'another server', projectPath: '/a', favoritedAt: 2 },
+    ]);
+    const editing = commands.session.editing(target, scopeKey, 3);
+    let rejectRename: (reason: Error) => void = () => {};
+    protocol.updateSessionTitle.mockReset().mockReturnValueOnce(new Promise<void>((_, reject) => { rejectRename = reject; })).mockResolvedValueOnce(undefined);
+    const failed = expect(editing.renameSession('s', 'First')).rejects.toThrow('first failed');
+    const succeeds = editing.renameSession('s', 'Second');
+    expect(protocol.updateSessionTitle).toHaveBeenCalledExactlyOnceWith(client, 's', 'First');
+    rejectRename(new Error('first failed'));
+    await failed;
+    await succeeds;
+    expect(queryClient.getQueryData(sessionsKey)).toEqual([{ id: 's', title: 'Second' }, { id: 'other', title: 'Keep' }]);
+
+    protocol.deleteSession.mockResolvedValueOnce(undefined);
+    await editing.deleteSession('s');
+    expect(protocol.deleteSession).toHaveBeenCalledExactlyOnceWith(client, 's');
+    expect(queryClient.getQueryData(sessionsKey)).toEqual([{ id: 'other', title: 'Keep' }]);
+    expect(queryClient.getQueryData(approvalsKey)).toEqual({ permissions: {}, questions: {} });
+    expect(queryClient.getQueryData(statusesKey)).toEqual({ sessions: [], statuses: { other: { type: 'busy' } } });
+    for (const name of ['messages', 'diffs', 'todos']) {
+      expect(queryClient.getQueryData([...ownerKey, name])).toEqual({ other: ['keep'] });
+      expect(queryClient.getQueryData([...oldKey, name])).toEqual({ s: ['old partition'] });
+    }
+    expect(store.getState().shell.favoriteSessions.map(({ connectionScope }) => connectionScope)).toEqual(['another server']);
+    expect(store.getState().selection[scopeKey]).toMatchObject({ currentSessionId: undefined, explicitSessionId: undefined });
     commands.workspace.dispose();
     queryClient.clear();
   });

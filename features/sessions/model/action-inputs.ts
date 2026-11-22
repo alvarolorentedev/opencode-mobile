@@ -1,71 +1,26 @@
 import type { Dispatch, SetStateAction } from 'react';
 
-import type { PendingPermissionRequest, PendingQuestionRequest, ScopedOpencodeClient } from '@/shared/protocol/opencode/client';
-
-import type { SessionMessageRecord } from '@/shared/presentation/format';
-
-import type { Command, Config, FileDiff, Session, SessionStatus, Todo } from '@/shared/protocol/opencode/types';
-
-import type { AgentOption, ModelOption } from '@/shared/contracts/model-options';
-
+import type { AgentOption } from '@/shared/contracts/model-options';
+import type { FavoriteSession, TranscriptReadOptions } from '@/shared/contracts/domain';
 import type { ChatPreferences } from '@/shared/preferences/opencode-preferences';
+import type { ScopedOpencodeClient } from '@/shared/protocol/opencode/client';
+import type { Command, Config, Session } from '@/shared/protocol/opencode/types';
 
-import type { ConnectionState, DiffScope, FavoriteSession, SessionDeepLinkTarget, TranscriptReadOptions } from '@/shared/contracts/domain';
-
-export type SessionActionsInput = {
+export type SessionExecutionInput = {
   client: ScopedOpencodeClient;
-  catalogClient: ScopedOpencodeClient;
   isCurrentClient: (candidate: object) => boolean;
-  isCurrentCatalogClient: (candidate: object) => boolean;
-  activeProjectPath?: string;
-  connection: ConnectionState;
-  connectionScope: string;
-  connectionScopeRef: { current: string };
-  currentSessionId?: string;
-  currentSessionIdRef: { current: string | undefined };
-  explicitSessionSelectionRef: { current: string | undefined };
-  readDiffScope: (sessionId: string) => DiffScope | undefined;
-  sessions: Session[];
-  sessionsRef: { current: Session[] };
-  sessionStatuses: Record<string, SessionStatus>;
   commands: Command[];
   availableAgents: AgentOption[];
-  availableModels: ModelOption[];
   currentConfig?: Config;
-  messagesBySession: Record<string, SessionMessageRecord[]>;
-  favoriteSessions: FavoriteSession[];
-  setCurrentSessionId: Dispatch<SetStateAction<string | undefined>>;
-  setSessions: Dispatch<SetStateAction<Session[]>>;
-  setSessionStatuses: Dispatch<SetStateAction<Record<string, SessionStatus>>>;
-  forgetSessionCreation: (sessionId: string) => void;
-  setMessagesBySession: Dispatch<SetStateAction<Record<string, SessionMessageRecord[]>>>;
-  setDiffsBySession: Dispatch<SetStateAction<Record<string, FileDiff[]>>>;
-  setTodosBySession: Dispatch<SetStateAction<Record<string, Todo[]>>>;
-  setPendingPermissionsBySession: Dispatch<SetStateAction<Record<string, PendingPermissionRequest[]>>>;
-  setPendingQuestionsBySession: Dispatch<SetStateAction<Record<string, PendingQuestionRequest[]>>>;
-  setFavoriteSessions: Dispatch<SetStateAction<FavoriteSession[]>>;
-  pendingDeepLinkTargetRef: { current: SessionDeepLinkTarget | undefined };
+  chatPreferences: Pick<ChatPreferences, 'mode'>;
+  refreshMessages: (sessionId: string, silent?: boolean, options?: TranscriptReadOptions) => Promise<unknown>;
   refreshSessions: () => Promise<Session[]>;
-  refreshMessages: (sessionId: string, silent?: boolean, options?: TranscriptReadOptions) => Promise<SessionMessageRecord[]>;
-  refreshSessionDiff: (sessionId: string, silent?: boolean, messageId?: string, records?: SessionMessageRecord[]) => Promise<FileDiff[]>;
-  refreshSessionTodos: (sessionId: string) => Promise<Todo[]>;
-  refreshVcsDiff: (scope: 'uncommitted' | 'branch', silent?: boolean) => Promise<FileDiff[]>;
-  refreshPendingInteractions: () => Promise<unknown>;
-  refreshChatCapabilities: () => Promise<unknown>;
-  refreshServerFeatures: () => Promise<unknown>;
-  refreshDiagnostics: () => Promise<unknown>;
-  refreshActiveSessions: () => Promise<unknown>;
-  chatPreferences: ChatPreferences;
 };
 
-export type SessionCrudInput = Pick<SessionActionsInput,
-  'client' | 'isCurrentClient' | 'activeProjectPath' | 'connectionScopeRef' | 'currentSessionId' |
-  'currentSessionIdRef' | 'explicitSessionSelectionRef' | 'forgetSessionCreation' | 'availableAgents' | 'currentConfig' |
-  'sessions' | 'sessionStatuses' | 'commands' |
-  'setCurrentSessionId' |
-  'setSessions' | 'setSessionStatuses' | 'setMessagesBySession' | 'setDiffsBySession' | 'setTodosBySession' |
-  'setPendingPermissionsBySession' | 'setPendingQuestionsBySession' | 'setFavoriteSessions' | 'refreshSessions' |
-  'refreshMessages' | 'refreshSessionDiff' | 'refreshActiveSessions' | 'chatPreferences'>;
+export type SessionFavoriteInput = {
+  connectionScopeRef: { current: string };
+  favoriteSessions: FavoriteSession[];
+  setFavoriteSessions: Dispatch<SetStateAction<FavoriteSession[]>>;
+};
 
-export type SessionFavoriteInput = Pick<SessionActionsInput,
-  'connectionScopeRef' | 'favoriteSessions' | 'setFavoriteSessions'>;
+export type SessionActionsInput = SessionExecutionInput & SessionFavoriteInput;

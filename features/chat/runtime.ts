@@ -1,3 +1,4 @@
+export { forgetSessionContent } from './services/queries';
 export { isPromptErrorVisible } from './model/selectors';
 export { migrateTranscriptCaches } from './services/transcript-cache';
 export { pruneProviderTranscripts } from './model/transcript-pruning';

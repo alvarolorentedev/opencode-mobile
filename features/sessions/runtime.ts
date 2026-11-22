@@ -6,6 +6,7 @@ export { getActiveSessions } from './model/active-sessions';
 export { getCurrentPendingRequests } from './model/selectors';
 export { getSessionPreviewById } from './model/selectors';
 export { forgetSessionCreation, recentlyCreatedSessionIds, sessionCreationCommands } from './services/session-creation';
+export { sessionEditCommands } from './services/session-editing';
 export { librarySessions } from './model/workspace-library';
 export { MAX_ACTIVE_SESSIONS } from './state/use-active-sessions';
 export { mergeSessionStatuses } from './model/session-utils';

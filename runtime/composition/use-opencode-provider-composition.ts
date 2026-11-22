@@ -213,17 +213,20 @@ export function useOpencodeProviderComposition(input: WorkspaceRuntimeInput) {
     [inputConnection.revision, sessionCommands, sessionTarget, state.scopeKey]);
   const sessionCreation = useMemo(() => sessionCommands.creation(sessionTarget, state.scopeKey, inputConnection.revision),
     [inputConnection.revision, sessionCommands, sessionTarget, state.scopeKey]);
+  const sessionEditing = useMemo(() => sessionCommands.editing(sessionTarget, state.scopeKey, inputConnection.revision),
+    [inputConnection.revision, sessionCommands, sessionTarget, state.scopeKey]);
   const sessionActions = useSessionActions({
-    ...domain,
-    ...project,
     client,
-    catalogClient,
     isCurrentClient,
-    isCurrentCatalogClient,
+    availableAgents: serverData.availableAgents,
+    commands: serverData.commands,
+    currentConfig: serverData.currentConfig,
+    chatPreferences: state.chatPreferences,
+    connectionScopeRef: state.connectionScopeRef,
+    favoriteSessions: state.favoriteSessions,
+    setFavoriteSessions: state.setFavoriteSessions,
     refreshMessages: inbox.refreshMessages,
-    refreshActiveSessions: catalog.refresh,
-    refreshChatCapabilities: capabilities.refreshChatCapabilities,
-    forgetSessionCreation,
+    refreshSessions: project.refreshSessions,
   });
   const interactions = useMemo(() => sessionCommands.interactions(sessionTarget, inputConnection.revision),
     [inputConnection.revision, sessionCommands, sessionTarget]);
@@ -377,6 +380,7 @@ export function useOpencodeProviderComposition(input: WorkspaceRuntimeInput) {
     ...sessionActions,
     ...sessionNavigation,
     ...sessionCreation,
+    ...sessionEditing,
     ...interactions,
     ...capabilities,
     ...prompt,

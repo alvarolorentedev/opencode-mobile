@@ -4,6 +4,7 @@ import { QueryClient } from '@tanstack/react-query';
 import { createSessionNavigationCommands } from '@/runtime/core/commands/session-navigation';
 import { forgetSessionCreation, recentlyCreatedSessionIds, sessionCreationCommands } from '@/features/sessions/services/session-creation';
 import { sessionCatalogAccess } from '@/features/sessions/services/session-catalog-access';
+import { sessionEditCommands } from '@/features/sessions/services/session-editing';
 import type { ModelOption } from '@/shared/contracts/model-options';
 import { createAppStore } from '@/runtime/core/store';
 import type { CommandContext } from '@/runtime/core/commands/context';
@@ -22,6 +23,12 @@ const sessionService = vi.hoisted(() => ({
   createSession: vi.fn(),
   forkSession: vi.fn(),
   switchSessionModel: vi.fn(),
+  deleteSession: vi.fn(),
+  updateSessionTitle: vi.fn(),
+  interruptSession: vi.fn(),
+  waitForSessionIdle: vi.fn(),
+  revertSession: vi.fn(),
+  unrevertSession: vi.fn(),
 }));
 vi.mock('@/shared/protocol/services/session-service', () => sessionService);
 vi.mock('@/shared/protocol/opencode/client', () => ({ withReadSignal: (client: ScopedOpencodeClient) => client }));
@@ -37,6 +44,18 @@ function sessionCreationFixture({ api = false, preferred = false }: { api?: bool
   const model = { id: 'openai/gpt-5', providerID: 'openai', modelID: 'gpt-5' } as ModelOption;
   const commands = sessionCreationCommands({ cache, identity, client, isCurrent: () => true, clock: () => 1_000, recentModel: () => preferred ? model : undefined });
   return { ...commands, cache, catalog, client, identity };
+}
+
+function sessionEditFixture() {
+  const { cache, catalog, client, identity } = sessionCreationFixture();
+  for (const command of [sessionService.deleteSession, sessionService.updateSessionTitle, sessionService.interruptSession,
+    sessionService.waitForSessionIdle, sessionService.revertSession, sessionService.unrevertSession]) command.mockReset().mockResolvedValue(undefined);
+  const refreshMessages = vi.fn(async (..._args: unknown[]) => []);
+  const commands = sessionEditCommands({ cache, client, identity, isCurrent: () => true,
+    clearSession: vi.fn(), runRename: (_key, rename) => rename(), refreshSessions: async () => [],
+    refreshSessionDiff: async () => [], refreshMessages, refreshActiveSessions: async () => {},
+  });
+  return { cache, catalog, client, ...commands, refreshMessages };
 }
 
 function sessionNavigationFixture(sessions: { id: string }[] = [], overrides: Partial<RealtimeScopeInput> = {}) {
@@ -86,89 +105,28 @@ function deferredGate<T = void>() {
   return { promise, resolve, reject };
 }
 
-async function loadSessionCrud(runtime: ReturnType<typeof hookRuntime>) {
+async function loadSessionExecution(runtime: ReturnType<typeof hookRuntime>) {
   const services = {
-    archiveSession: vi.fn(async () => undefined),
     compactSession: vi.fn(async () => undefined),
-    createSession: vi.fn(async () => ({ id: 'new', title: '' })),
-    deleteSession: vi.fn(async () => undefined),
     executeCommand: vi.fn(async () => undefined),
-    forkSession: vi.fn(async () => ({ id: 'forked' })),
     generateSessionText: vi.fn(async () => 'answer'),
-    interruptSession: vi.fn(async () => undefined),
-    listArchivedSessions: vi.fn(async () => []),
-    revertSession: vi.fn(async () => undefined),
-    shareSession: vi.fn(async () => ({ id: 's' })),
-    switchSessionModel: vi.fn(async () => undefined),
-    summarizeSession: vi.fn(async () => undefined),
-    unrevertSession: vi.fn(async () => undefined),
-    unshareSession: vi.fn(async () => ({ id: 's' })),
-    updateSessionTitle: vi.fn(async () => ({ id: 's' })),
-    waitForSessionIdle: vi.fn(async () => undefined),
   };
-  const { useSessionCrudActions } = await loadTs('features/sessions/state/use-session-crud-actions.ts', {
+  const { useSessionExecutionActions } = await loadTs('features/sessions/state/use-session-execution-actions.ts', {
     react: runtime.react,
     '@/shared/protocol/services/session-service': services,
-    "@/features/sessions/services/session-cache": { persistSessionCache: vi.fn(async () => undefined) }
   });
-  return { useSessionCrudActions, services };
+  return { useSessionExecutionActions, services };
 }
 
-function sessionCrudInput(patch: Record<string, unknown> = {}) {
-  let sessions: any[] = (patch.sessions as any[] | undefined) ?? [];
-  let statuses: Record<string, any> = {};
-  let currentSessionId: string | undefined = patch.currentSessionId as string | undefined;
-  const currentSessionIdRef: { current: string | undefined } = { current: currentSessionId };
-  const explicitSessionSelectionRef: { current: string | undefined } = { current: undefined };
+function sessionExecutionInput() {
   return {
-    currentSessionIdRef,
-    explicitSessionSelectionRef,
-    state: {
-      get sessions() { return sessions; },
-      get statuses() { return statuses; },
-      get currentSessionId() { return currentSessionId; },
-    },
-    input: {
-      client: { __opencode: { contract: 'v2' } },
-      catalogClient: {},
-      isCurrentClient: () => true,
-      isCurrentCatalogClient: () => true,
-      activeProjectPath: '/repo',
-      connectionScopeRef: { current: 'scope' },
-      currentSessionId,
-      availableAgents: [{ id: 'build', label: 'Build', mode: 'primary' }],
-      availableModels: [],
-      readDiffScope: () => undefined,
-      sessions,
-      sessionStatuses: statuses,
-      commands: [],
-      currentSessionIdRef,
-      explicitSessionSelectionRef,
-        forgetSessionCreation: vi.fn(),
-      setCurrentSessionId: (value: any) => {
-        currentSessionId = typeof value === 'function' ? value(currentSessionId) : value;
-        currentSessionIdRef.current = currentSessionId;
-      },
-      setSessions: (value: any) => { sessions = typeof value === 'function' ? value(sessions) : value; },
-      setSessionStatuses: (value: any) => { statuses = typeof value === 'function' ? value(statuses) : value; },
-      setMessagesBySession: () => undefined,
-      setDiffsBySession: () => undefined,
-      setTodosBySession: () => undefined,
-      setPendingPermissionsBySession: () => undefined,
-      setPendingQuestionsBySession: () => undefined,
-      setFavoriteSessions: () => undefined,
-      setArchivedSessions: () => undefined,
-      refreshSessions: async () => [],
-      refreshMessages: async () => [],
-      beginHydration: () => () => undefined,
-      refreshSessionDiff: async () => [],
-      refreshSessionTodos: async () => [],
-      refreshVcsDiff: async () => [],
-      refreshPendingInteractions: async () => undefined,
-      refreshActiveSessions: async () => undefined,
-      chatPreferences: { mode: 'build', promptDelivery: 'steer', recentModelIds: [] },
-      ...patch,
-    },
+    client: { __opencode: { contract: 'v2' } },
+    isCurrentClient: () => true,
+    availableAgents: [{ id: 'build', label: 'Build', mode: 'primary' }],
+    commands: [],
+    refreshSessions: async () => [],
+    refreshMessages: async () => [],
+    chatPreferences: { mode: 'build' },
   };
 }
 
@@ -328,53 +286,51 @@ describe('local-first session selection', () => {
   });
 
   it('renameSession echoes the title and rolls back on failure', async () => {
-    const runtime = hookRuntime();
-    const { useSessionCrudActions, services } = await loadSessionCrud(runtime);
-    const rename = deferredGate<{ id: string }>();
-    services.updateSessionTitle.mockReturnValueOnce(rename.promise);
-    const { state, input } = sessionCrudInput({ sessions: [{ id: 's', title: 'Old' }] });
-    runtime.mount(useSessionCrudActions, input);
+    const fixture = sessionEditFixture();
+    const rename = deferredGate<void>();
+    sessionService.updateSessionTitle.mockReturnValueOnce(rename.promise);
+    fixture.catalog.setSessions([{ id: 's', title: 'Old' }] as ReturnType<typeof fixture.catalog.readSessions>);
 
-    const renaming = runtime.value.renameSession('s', 'New');
-    await Promise.resolve();
-    expect(state.sessions[0].title).toBe('New');
-
+    const renaming = fixture.renameSession('s', 'New');
+    expect(fixture.catalog.readSessions()[0].title).toBe('New');
     rename.reject(new Error('rename failed'));
     await expect(renaming).rejects.toThrow('rename failed');
-    expect(state.sessions[0].title).toBe('Old');
-
-    runtime.unmount();
+    expect(fixture.catalog.readSessions()[0].title).toBe('Old');
+    fixture.cache.clear();
   });
 
   it('revertSession stops and settles a running session before staging', async () => {
-    const runtime = hookRuntime();
-    const { useSessionCrudActions, services } = await loadSessionCrud(runtime);
+    const fixture = sessionEditFixture();
     const order: string[] = [];
-    services.interruptSession.mockImplementation(async () => { order.push('interrupt'); });
-    services.waitForSessionIdle.mockImplementation(async () => { order.push('wait'); });
-    services.revertSession.mockImplementation(async () => { order.push('revert'); });
-    const { input } = sessionCrudInput();
-    runtime.mount(useSessionCrudActions, input);
+    sessionService.interruptSession.mockImplementation(async () => { order.push('interrupt'); });
+    sessionService.waitForSessionIdle.mockImplementation(async () => { order.push('wait'); });
+    sessionService.revertSession.mockImplementation(async () => { order.push('revert'); });
 
-    await runtime.value.revertSession('s', 'm1');
+    await fixture.revertSession('s', 'm1');
 
     expect(order).toEqual(['interrupt', 'wait', 'revert']);
-    expect(services.revertSession).toHaveBeenCalledWith(expect.anything(), 's', 'm1');
-    runtime.unmount();
+    expect(sessionService.revertSession).toHaveBeenCalledWith(fixture.client, 's', 'm1');
+    fixture.cache.clear();
   });
 
   it('revertSession does not stage when the session cannot be stopped', async () => {
-    const runtime = hookRuntime();
-    const { useSessionCrudActions, services } = await loadSessionCrud(runtime);
-    services.interruptSession.mockRejectedValueOnce(new Error('stop failed'));
-    const { input } = sessionCrudInput();
-    runtime.mount(useSessionCrudActions, input);
+    const fixture = sessionEditFixture();
+    sessionService.interruptSession.mockRejectedValueOnce(new Error('stop failed'));
 
-    await expect(runtime.value.revertSession('s', 'm1')).rejects.toThrow('stop failed');
+    await expect(fixture.revertSession('s', 'm1')).rejects.toThrow('stop failed');
 
-    expect(services.waitForSessionIdle).not.toHaveBeenCalled();
-    expect(services.revertSession).not.toHaveBeenCalled();
-    runtime.unmount();
+    expect(sessionService.waitForSessionIdle).not.toHaveBeenCalled();
+    expect(sessionService.revertSession).not.toHaveBeenCalled();
+    fixture.cache.clear();
+  });
+
+  it('unrevert replaces the displayed transcript after the server clears the rewind', async () => {
+    const fixture = sessionEditFixture();
+    await fixture.unrevertSession('s');
+
+    expect(sessionService.unrevertSession).toHaveBeenCalledExactlyOnceWith(fixture.client, 's');
+    expect(fixture.refreshMessages).toHaveBeenCalledExactlyOnceWith('s', true, { mode: 'replace' });
+    fixture.cache.clear();
   });
 });
 
@@ -589,9 +545,9 @@ describe('optimistic interaction replies', () => {
 describe('command agent eligibility', () => {
   it('repairs stale selections at execution and refuses an unverifiable agent', async () => {
     const runtime = hookRuntime();
-    const { useSessionCrudActions, services } = await loadSessionCrud(runtime);
-    const { input } = sessionCrudInput({});
-    runtime.mount(useSessionCrudActions, { ...input, chatPreferences: { ...input.chatPreferences, mode: 'summary' },
+    const { useSessionExecutionActions, services } = await loadSessionExecution(runtime);
+    const input = sessionExecutionInput();
+    runtime.mount(useSessionExecutionActions, { ...input, chatPreferences: { ...input.chatPreferences, mode: 'summary' },
       availableAgents: [{ id: 'build', label: 'Build', mode: 'primary' }, { id: 'plan', label: 'Plan', mode: 'all' }], currentConfig: { default_agent: 'plan' } });
     await runtime.value.executeCommand('s', 'review', '');
     expect(services.executeCommand).toHaveBeenCalledWith(input.client, 's', 'review', '', expect.objectContaining({ agent: 'plan' }));
@@ -603,9 +559,9 @@ describe('command agent eligibility', () => {
 
   it('routes built-in compact and btw before the server command', async () => {
     const runtime = hookRuntime();
-    const { useSessionCrudActions, services } = await loadSessionCrud(runtime);
-    const { input } = sessionCrudInput({});
-    runtime.mount(useSessionCrudActions, input);
+    const { useSessionExecutionActions, services } = await loadSessionExecution(runtime);
+    const input = sessionExecutionInput();
+    runtime.mount(useSessionExecutionActions, input);
 
     await runtime.value.executeCommand('s', 'compact', '');
     expect(services.compactSession).toHaveBeenCalledWith(input.client, 's');

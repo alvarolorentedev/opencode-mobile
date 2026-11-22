@@ -132,10 +132,14 @@ npm run validate:commit
   web export and all 67 browser tests across chat, sessions, projects,
   multi-server and onboarding passed. The tests retain checks for a
   superseded bootstrap, cached windows and delayed hydration.
-- C2c. Session creation and forking use app-core commands and a shared
+- C2c, `3407fd31`. Session creation and forking use app-core commands and a shared
   Query catalog writer. The commit gate passed with 1,264 tests and one
   existing skip. The 29 focused tests, docs, web export and all 67 owning
   browser tests passed, including server defaults and model selection.
+- C2d. Rename, delete, revert and unrevert use scoped app-core commands.
+  Static checks passed with 1,266 tests and one existing skip. The focused
+  tests, docs, web export and all 53 chat, sessions, diffs, interactions
+  and multi-server browser tests passed.
 
 ## Loop protocol
 

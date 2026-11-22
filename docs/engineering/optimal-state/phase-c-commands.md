@@ -14,7 +14,8 @@ Explicit session opening and automatic bootstrap share the app-core selection
 command. It reads the project session catalog and supersedes pending bootstrap
 when the user opens a chat. Creation and forking share scoped Query writes
 and use the saved model when the demanded project's catalog supports it.
-The retained project still supplies transcript reads.
+Rename and delete are scoped commands, and revert settles execution before
+staging the rewind. The retained project still supplies transcript reads.
 
 Goal: cross-domain behavior becomes plain TypeScript commands. Hooks adapt;
 they no longer own command logic. The per-workspace composition and its value

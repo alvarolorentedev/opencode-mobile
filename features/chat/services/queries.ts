@@ -1,3 +1,5 @@
+import type { QueryClient } from '@tanstack/react-query';
+
 import type { ScopedOpencodeClient } from '@/shared/protocol/opencode/client';
 import type { SessionMessageRecord } from '@/shared/presentation/format';
 import { connectionQueryKey, projectQueryKey, type QueryIdentity } from '@/shared/server-data/keys';
@@ -29,4 +31,15 @@ export function promptInboxKey(identity: QueryIdentity, client: ScopedOpencodeCl
 
 export function transcriptMetadataKey(identity: QueryIdentity, client: ScopedOpencodeClient) {
   return projectQueryKey(identity, client, 'transcript-metadata');
+}
+
+export function forgetSessionContent(cache: QueryClient, identity: QueryIdentity, client: ScopedOpencodeClient, sessionId: string) {
+  for (const queryKey of [messagesKey(identity, client), diffsKey(identity, client), todosKey(identity, client)]) {
+    cache.setQueryData<Record<string, unknown>>(queryKey, (current) => {
+      if (!current || !(sessionId in current)) return current;
+      const next = { ...current };
+      delete next[sessionId];
+      return next;
+    });
+  }
 }

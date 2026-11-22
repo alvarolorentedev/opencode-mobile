@@ -1,6 +1,7 @@
 import type { CommandContext } from '@/runtime/core/commands/context';
 import { agentsOptions, capabilitiesOptions } from '@/features/ai/runtime';
-import { approvalsAccess, createInteractionCommands, forgetSessionCreation, pendingInteractionsKey, recentlyCreatedSessionIds, savedPermissionOptions, sessionCreationCommands } from '@/features/sessions/runtime';
+import { forgetSessionContent } from '@/features/chat/runtime';
+import { approvalsAccess, createInteractionCommands, forgetSessionCreation, pendingInteractionsKey, recentlyCreatedSessionIds, savedPermissionOptions, sessionCatalogOptions, sessionCreationCommands, sessionEditCommands } from '@/features/sessions/runtime';
 import type { PendingQuestionAnswer, ScopedOpencodeClient } from '@/shared/protocol/opencode/client';
 import type { WorkspaceTarget } from '@/shared/contracts/workspace';
 import type { QueryIdentity } from '@/shared/server-data/keys';
@@ -11,6 +12,14 @@ const permissionReplyKey = (queryKey: readonly unknown[], id: string) => [...que
 
 export function createSessionCommands(context: CommandContext) {
   const { connections, queryClient, store, clock } = context;
+  const pendingRenames = new Map<string, Promise<void>>();
+
+  function runRename(key: string, rename: () => Promise<void>) {
+    const previous = pendingRenames.get(key);
+    const next = previous ? previous.then(rename, rename) : rename();
+    pendingRenames.set(key, next);
+    return next.finally(() => { if (pendingRenames.get(key) === next) pendingRenames.delete(key); });
+  }
 
   function creation(target: WorkspaceTarget, scopeKey: string, revision?: number) {
     function requireCommands() {
@@ -44,6 +53,37 @@ export function createSessionCommands(context: CommandContext) {
 
   const { navigation, cancelBootstrap } = createSessionNavigationCommands(context,
     (target, scopeKey, revision) => creation(target, scopeKey, revision).createSession());
+
+  function editing(target: WorkspaceTarget, scopeKey: string, revision?: number) {
+    function requireCommands() {
+      const manager = connections.get(target.connectionId);
+      const access = manager?.getProjectAccess(target.projectPath);
+      const sources = manager?.realtime.getProjectSources(target.projectPath, scopeKey);
+      if (!manager || !access || !sources || (access.revision ?? 0) !== (revision ?? 0)) throw new Error('This server is no longer available.');
+      const { client, identity } = access;
+      return sessionEditCommands({
+        cache: queryClient, identity, client, runRename,
+        isCurrent: () => access.isCurrent() && Boolean(manager.realtime.getProjectSources(target.projectPath, scopeKey)),
+        refreshSessions: sources.refreshSessions, refreshSessionDiff: sources.refreshSessionDiff, refreshMessages: sources.refreshMessages,
+        refreshActiveSessions: async () => {
+          const catalogClient = manager.getCatalogClient();
+          if (catalogClient) await queryClient.fetchQuery({ ...sessionCatalogOptions(identity, catalogClient), staleTime: 0 });
+        },
+        clearSession(sessionId) {
+          forgetSessionContent(queryClient, identity, client, sessionId);
+          const state = store.getState();
+          state.setShellValue('favoriteSessions', (items) => items.filter((item) => item.connectionScope !== identity.connectionScope || item.sessionId !== sessionId));
+          if (state.selection[scopeKey]?.currentSessionId === sessionId) state.setSelection(scopeKey, { currentSessionId: undefined, explicitSessionId: undefined });
+        },
+      });
+    }
+    return {
+      async deleteSession(id: string) { return requireCommands().deleteSession(id); },
+      async renameSession(id: string, title: string) { return requireCommands().renameSession(id, title); },
+      async revertSession(id: string, messageId: string) { return requireCommands().revertSession(id, messageId); },
+      async unrevertSession(id: string) { return requireCommands().unrevertSession(id); },
+    };
+  }
   function interactions(target: WorkspaceTarget, revision?: number) {
     function readScope() {
       const manager = connections.get(target.connectionId);
@@ -84,7 +124,7 @@ export function createSessionCommands(context: CommandContext) {
 
   return {
     navigation, cancelBootstrap,
-    creation,
+    creation, editing,
     recentlyCreatedSessionIds: (identity: QueryIdentity, client: ScopedOpencodeClient, seen: ReadonlySet<string>) =>
       recentlyCreatedSessionIds(queryClient, identity, client, seen, clock()),
     forgetSessionCreation: (identity: QueryIdentity, client: ScopedOpencodeClient, sessionId?: string) =>
