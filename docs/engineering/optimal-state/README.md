@@ -210,11 +210,16 @@ npm run validate:commit
   previous exception. The commit gate passed with 1,280 tests and one existing
   skip. The 59 focused Vitest cases, Storybook, web export and all 49 update,
   chat, Settings and multi-server browser flows passed.
-- E2a. Focused and explicitly targeted views now use one project projection.
+- E2a, `37be0f0a`. Focused and explicitly targeted views now use one project projection.
   Workspace actions read the app core, and a separate chat draft adapter
   consumes app-wide share receipts. The commit gate passed with 1,280 tests
   and one existing skip. The 60 focused Vitest cases, web export, and all 55
   share, chat, multi-server, project, session and terminal browser flows passed.
+- E native terminal. Simulator creation exposed an Expo DOM ref whose methods
+  were unavailable while the setup sheet was closing. The corrected build
+  created the terminal and retained its output and single WebSocket connection
+  across tab switches. The commit gate passed with 1,280 tests and one existing
+  skip, and all 12 Terminal and multi-server browser flows passed.
 
 ## Loop protocol
 

@@ -34,6 +34,13 @@ form. The URL field accepted input, Back restored the entered address, and
 Save & connect reached the loopback OpenCode 2 fixture. The full native
 checkpoint remains.
 
+The simulator also opened and dismissed the project picker inside the new
+terminal sheet, created a PTY, and retained its output and single WebSocket
+across Chat and Terminal tabs. The terminal now guards the native bridge
+method before it is registered. Expo's development runtime still logged
+early `DomWebView` tag lookup errors on mount. The renderer recovered and
+showed output. Recheck with the final native build.
+
 ## Target shape
 
 - One `AppCoreProvider` and one `QueryClientProvider` at the root.
