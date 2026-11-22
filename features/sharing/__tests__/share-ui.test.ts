@@ -33,10 +33,12 @@ async function mount() {
     "@/shared/ui/theme/use-color-scheme": { useColorScheme: () => 'light' },
     "@/shared/ui/theme/use-palette": { usePalette: () => ({ background: '#fff', surface: '#fff', text: '#111', muted: '#666', tint: '#080', warning: '#a60', danger: '#f00' }) },
     "@/shared/contracts/connection-scope": { getConnectionScope: () => 's' },
-    "@/features/onboarding/context": { useOnboarding: () => ({ isHydrated: true, onboardingCompleted: true }) },
     "@/features/connections/context": { useConnection: () => ({ connection: { status: 'connected' }, settings: { serverUrl: 'https://server' } }) },
     "@/features/projects/context": { useProjects: () => ({ activeProject: { path: '/repo', label: 'repo' }, projects: [], addProject() {}, selectProject() {} }) },
-    "@/features/chat/context": { useChat: () => ({ sharedInput: shared }) }
+    "@/runtime/workspace": {
+      useSharedInput: () => shared,
+      useBootState: () => ({ isHydrated: true, onboardingCompleted: true }),
+    }
   }, runtime.globals);
   runtime.mount(Screen, {}); await runtime.settle();
 }

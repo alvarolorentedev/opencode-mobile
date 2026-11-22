@@ -16,15 +16,23 @@ Start only after Phase D is complete and green.
 
 ## What remains today
 
-- `runtime/workspace/workspace-context.tsx` owns `WorkspaceContext` and
-  `WorkspaceActionsContext` for registry access and commands.
-- `runtime/workspace/workspace-provider.tsx` still owns the snapshot registry,
-  `retainedFocus`, `publish`, `forget`, `valuesFor` and per-workspace
-  `WorkspaceRuntime` mounts.
+- `runtime/workspace/workspace-context.tsx` owns `WorkspaceContext` for
+  registry access and the app-level share view. Workspace actions bind directly
+  to the core.
+- The root still mounts `runtime/workspace/retained-project.tsx` for each
+  project. The registry retains project projections and `retainedFocus`.
+  The focused selector reads the same project projection as an explicit
+  target.
 - `runtime/core/workspace-selectors.ts` selects the retained project projection.
 - [ADR 0052](../../adr/0052-explicit-overlay-dependencies.md) records explicit
   portal targets and update blocker callbacks. Shared controls use shared imports.
 - `shared/contracts/domain.ts` is still a type hub.
+
+The development app launched on an iPhone 17 Pro simulator running iOS 26.5.
+The independent Settings pane opened the connection sheet and a nested native
+form. The URL field accepted input, Back restored the entered address, and
+Save & connect reached the loopback OpenCode 2 fixture. The full native
+checkpoint remains.
 
 ## Target shape
 

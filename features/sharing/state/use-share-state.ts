@@ -26,12 +26,6 @@ export type SharedInput = {
   consumeShared: (target: ShareTarget) => SharedPayload | null;
   clearShared: () => void;
 };
-// Headless workspace snapshots do not own device share receipts; the app scope supplies them.
-export const emptySharedInput: SharedInput = {
-  pending: null, targets: [], targetsLoading: false, resolving: false, busy: false, selectTarget: () => {},
-  refreshShared: async () => {}, refreshTargets: async () => {}, addToChat: async () => false,
-  consumeShared: () => null, clearShared: () => {},
-};
 type Input = {
   hydrated: boolean;
   connectionScope: string;

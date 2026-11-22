@@ -8,8 +8,6 @@ import type { SessionMessageRecord, TranscriptEntry } from '@/shared/presentatio
 
 import type { SessionUsage } from '@/shared/presentation/usage';
 
-import type { SharedInput } from '@/features/sharing/index';
-
 import type { DiffScope , DiffTurn } from '@/shared/contracts/domain';
 
 import type { SendPrompt , SendingState } from '@/shared/contracts/prompt-actions';
@@ -64,6 +62,5 @@ export type ChatContextValue = {
   clearPromptError: () => void;
   // Content shared into the app from the OS share sheet, grouped so the context
   // surface does not grow one member per share concern.
-  sharedInput: SharedInput;
 };
 

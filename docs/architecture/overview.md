@@ -120,15 +120,14 @@ only re-renders when the domain it reads changes and each screen declares its
 real dependencies instead of pulling from one combined surface. There is no
 combined runtime context value.
 
-`WorkspaceActionsContext` exposes the app-level actions and focus separately
-from the changing workspace snapshot registry. The stable presentation map
-(composer/editor drafts, transcript positions) lives in
-`WorkspacePresentationContext`; `useRetainedState` reads it directly, so a
-background workspace publish cannot invalidate a draft consumer. Chat reads
-actions and focus from the actions context. The connection, project, session
-and voice hooks bind their app commands where the screen uses them. The root
-provides the incoming share view to Chat. The retained project adapter uses
-`React.memo` so an unchanged project can skip parent-driven renders.
+App-level actions come from the core, and the focus selector reads the app
+store. The store also owns the stable presentation map for drafts and
+transcript positions. `useRetainedState` reads it by key. The connection,
+project, session and voice hooks bind their app commands at the screen.
+The root supplies the incoming share view to the share screen and to a chat
+draft adapter that subscribes independently of the transcript. The retained
+project adapter uses `React.memo` so an unchanged project can skip
+parent-driven renders.
 
 Connectivity is owned once by `WorkspaceProvider`. `NetInfo.configure()` is
 process-global and resets previously registered listeners, so mounting

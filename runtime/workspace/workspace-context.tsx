@@ -1,20 +1,18 @@
 import type { Session } from '@/shared/protocol/opencode/types';
 import type { useWorkspaceConnections } from '@/runtime/workspace/use-workspace-connections';
 import type { NewWorktreeChatResult, NewWorktreeChatTarget, WorkspaceCatalog, WorkspaceTarget } from '@/shared/contracts/workspace';
-import type { WorkspaceValues } from '@/runtime/workspace/workspace-types';
+import type { SharedInput } from '@/features/sharing/index';
 import { createContext, useContext, useEffect, useMemo, useState } from 'react';
 import type { MissionOverview } from '@/features/sessions/runtime';
-import { useAppStore } from '@/runtime/core/context';
+import { useAppCore, useAppStore } from '@/runtime/core/context';
 import { useWorkspaceDomainValue } from '@/runtime/core/workspace-selectors';
 
 export type WorkspaceRegistry = ReturnType<typeof useWorkspaceConnections> & {
-  createChat: (target: WorkspaceTarget) => Promise<Session>;
-  createChatInWorktree: (target: NewWorktreeChatTarget) => Promise<NewWorktreeChatResult>;
   terminalTarget?: WorkspaceTarget;
   selectTerminalTarget: (target: WorkspaceTarget) => Promise<void>;
   inspectionTarget?: WorkspaceTarget;
   inspect: (target: WorkspaceTarget) => Promise<void>;
-  valuesFor: (target?: WorkspaceTarget) => WorkspaceValues | undefined;
+  sharedInput: SharedInput;
   catalogs: Record<string, WorkspaceCatalog>;
   mission: MissionOverview;
 };
@@ -24,16 +22,18 @@ export type WorkspaceActions = {
   focus?: WorkspaceTarget;
 };
 export const WorkspaceContext = createContext<WorkspaceRegistry | null>(null);
-export const WorkspaceActionsContext = createContext<WorkspaceActions | null>(null);
 export function useWorkspaces() {
   const value = useContext(WorkspaceContext);
   if (!value) throw new Error('useWorkspaces must be used inside OpencodeProvider.');
   return value;
 }
-export function useWorkspaceActions() {
-  const value = useContext(WorkspaceActionsContext);
-  if (!value) throw new Error('useWorkspaceActions must be used inside OpencodeProvider.');
-  return value;
+export function useWorkspaceActions(): WorkspaceActions {
+  const { createChat, createChatInWorktree } = useAppCore().commands.workspace;
+  const focus = useAppStore((state) => state.registry.focus);
+  return useMemo(() => ({ createChat, createChatInWorktree, focus }), [createChat, createChatInWorktree, focus]);
+}
+export function useSharedInput() {
+  return useWorkspaces().sharedInput;
 }
 // Presentation state is stable and independent of the changing snapshot
 // registry. It lives in the app store so drafts and scroll positions never

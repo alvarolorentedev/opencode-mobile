@@ -205,11 +205,16 @@ npm run validate:commit
   workspace scope contexts are deleted. The commit gate passed with 1,280 tests
   and one existing skip. Storybook, web export and all 101 multi-server,
   Settings, Connect, extensions, onboarding and interactions browser flows passed.
-- E1c. The Updates feature supplies interaction registration through control
+- E1c, `29908afb`. The Updates feature supplies interaction registration through control
   props. Shared UI imports only shared dependencies. ADR 0052 replaces the
   previous exception. The commit gate passed with 1,280 tests and one existing
   skip. The 59 focused Vitest cases, Storybook, web export and all 49 update,
   chat, Settings and multi-server browser flows passed.
+- E2a. Focused and explicitly targeted views now use one project projection.
+  Workspace actions read the app core, and a separate chat draft adapter
+  consumes app-wide share receipts. The commit gate passed with 1,280 tests
+  and one existing skip. The 60 focused Vitest cases, web export, and all 55
+  share, chat, multi-server, project, session and terminal browser flows passed.
 
 ## Loop protocol
 

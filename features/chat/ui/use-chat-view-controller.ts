@@ -1,5 +1,4 @@
 import * as Clipboard from '@/shared/platform/clipboard';
-import { usePathname } from 'expo-router';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Keyboard } from 'react-native';
@@ -53,7 +52,7 @@ export function useChatViewController() {
     diffTurns, isBootstrappingChat, isRefreshingDiffs, isRefreshingMessages,
     latestAssistantTurnUsage, promptError, refreshDiffs, rejectQuestion,
     replyToPermission, replyToQuestion, retryTranscript, selectDiffMessage, selectedDiffMessageId, sendPrompt, switchSessionModel,
-    sendingState, setAutoApprove, setDiffScope, transcriptPaging, transcriptReadError, sharedInput,
+    sendingState, setAutoApprove, setDiffScope, transcriptPaging, transcriptReadError,
     availableSkills, availableReferences, searchProjectFiles,
   } = useChat();
   const commands = commandActions.available;
@@ -225,22 +224,11 @@ export function useChatViewController() {
     ].join('\n');
   }, [currentSessionId, promptError?.occurredAt, selectedModelId, sendErrorMessage, settings.serverUrl, t]);
 
-  const pathname = usePathname();
-  const sharedPending = sharedInput.pending;
-  const consumeShared = sharedInput.consumeShared;
-  // Shared content lands in the composer as a reviewable draft; it is never
-  // submitted here. Only the chat route consumes it, so the share preview's
-  // Discard still clears a staged payload.
-  useEffect(() => {
-    if (!sharedPending || pathname !== '/' || !currentSessionId || !activeProject?.path) {
-      return;
-    }
-    const payload = consumeShared({ connectionScope, projectPath: activeProject.path, sessionId: currentSessionId });
-    if (!payload) return;
+  const applySharedDraft = useCallback((payload: Parameters<typeof mergeSharedDraft>[2]) => {
     const next = mergeSharedDraft(inputRef.current.draft, inputRef.current.attachments, payload);
     setDraft(next.draft);
     setAttachments(next.attachments);
-  }, [activeProject?.path, connectionScope, consumeShared, currentSessionId, pathname, sharedPending, sharedInput.busy, inputRef, setAttachments, setDraft]);
+  }, [inputRef, setAttachments, setDraft]);
 
   const latestAssistantEntry = useMemo(
     () => [...displayTranscript].reverse().find((entry) => entry.role === 'assistant' && !entry.notice && entry.text.trim()),
@@ -420,6 +408,7 @@ export function useChatViewController() {
   }, [currentSessionId, openSession, t]);
 
   return {
+    sharedDraft: { connectionScope, projectPath: activeProject?.path, sessionId: currentSessionId, apply: applySharedDraft },
     header: {
       activeProject, connection, contextModel, contextTokens, conversation,
       currentUsage, latestAssistantTurnUsage, selectedSession, slim,

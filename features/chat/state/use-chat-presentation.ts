@@ -109,7 +109,6 @@ export function useChatPresentation({
   sendingState,
   promptError,
   clearPromptError,
-  sharedInput,
 }: ChatPresentationInput) {
   const currentMessages = useMemo(() => {
     if (!currentSessionId) return [];
@@ -225,14 +224,14 @@ export function useChatPresentation({
       transcriptReadError, retryTranscript, isRefreshingDiffs, isBootstrappingChat, replyToPermission, replyToQuestion,
       rejectQuestion, commands: { available: commands, execute: executeCommand, executeShell }, availableSkills,
       availableReferences, searchProjectFiles, switchSessionModel, sendPrompt, abortSession, setAutoApprove, sendingState,
-      promptError: visiblePromptError, clearPromptError, transcriptPaging, sharedInput,
+      promptError: visiblePromptError, clearPromptError, transcriptPaging,
     }),
     [pendingPrompts, cancelPrompt, currentMessages, currentTranscript, currentUsage, latestAssistantTurnUsage,
       currentDiffs, currentDiffScope, setDiffScope, diffTurns, selectedDiffMessageId, selectDiffMessage, refreshDiffs,
       currentTodos, currentPendingPermissions, currentPendingQuestions, chatRefreshingMessages, transcriptReadError,
       retryTranscript, isRefreshingDiffs, isBootstrappingChat, replyToPermission, replyToQuestion, rejectQuestion, commands,
       availableSkills, availableReferences, searchProjectFiles, executeCommand, executeShell, switchSessionModel, sendPrompt,
-      abortSession, setAutoApprove, sendingState, visiblePromptError, clearPromptError, transcriptPaging, sharedInput],
+      abortSession, setAutoApprove, sendingState, visiblePromptError, clearPromptError, transcriptPaging],
   );
 
 }

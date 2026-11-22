@@ -162,8 +162,6 @@ export type AppState = {
   fileClipboard: FileClipboardState;
   presentation: Map<string, unknown>;
   mcpAuthPrompt?: { mcpName: string; url: string };
-  focusedValues?: import('@/runtime/workspace/workspace-types').WorkspaceValues;
-  setFocusedValues: (values: import('@/runtime/workspace/workspace-types').WorkspaceValues | undefined) => void;
   setMcpAuthPrompt: (value: { mcpName: string; url: string } | undefined | ((current: { mcpName: string; url: string } | undefined) => { mcpName: string; url: string } | undefined)) => void;
   setShellValue: <K extends keyof ShellState>(
     key: K,
@@ -213,7 +211,6 @@ export function createAppStore(defaults: AppStoreDefaults): AppStore {
     mcpAuthPrompt: undefined,
     // Mutated in place; the hook only needs the stable map identity.
     presentation: new Map<string, unknown>(),
-    focusedValues: undefined,
     setShellValue: (key, value) => set((state) => ({
       shell: {
         ...state.shell,
@@ -234,7 +231,6 @@ export function createAppStore(defaults: AppStoreDefaults): AppStore {
         },
       };
     }),
-    setFocusedValues: (values) => set({ focusedValues: values }),
     setMcpAuthPrompt: (value) => set((state) => ({
       mcpAuthPrompt: typeof value === 'function' ? value(state.mcpAuthPrompt) : value,
     })),

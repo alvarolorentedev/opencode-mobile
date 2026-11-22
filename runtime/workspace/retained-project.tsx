@@ -1,5 +1,4 @@
 // Observe the retained project and publish its scoped presentation to the app shell.
-import { emptySharedInput } from '@/features/sharing/runtime';
 import { memo, useCallback, useEffect, useLayoutEffect, useMemo, type Dispatch, type SetStateAction } from 'react';
 
 import { buildClient, getRequestHeaders, withOidcAuthorizationObject, type OpencodeConnectionSettings } from '@/shared/protocol/opencode/client';
@@ -374,7 +373,7 @@ export const RetainedProject = memo(function RetainedProject({ defaults, updateS
     activeSession: currentSessionValue.activeSession,
     transcriptReadError: state.currentSessionId ? transcriptRead.errors[state.currentSessionId] : undefined,
     retryTranscript, pendingPromptsBySession: inbox.pendingPromptsBySession, pendingNoticesBySession: inbox.pendingNoticesBySession,
-    cancelPrompt: inbox.cancelPrompt, sharedInput: emptySharedInput,
+    cancelPrompt: inbox.cancelPrompt,
   });
 
   const onboardingValue = useMemo<WorkspaceValues['onboardingValue']>(() => ({

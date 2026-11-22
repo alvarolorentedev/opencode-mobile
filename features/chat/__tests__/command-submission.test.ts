@@ -24,7 +24,7 @@ async function controller(contract = 'v2') {
     '@/features/chat/context': { useChat: () => ({
       sendPrompt, commands: { available: [], execute: executeCommand, executeShell }, pendingPrompts: [], currentDiffs: [], currentMessages: [],
       currentPendingPermissions: [], currentPendingQuestions: [], currentTodos: [], currentTranscript: [],
-      sendingState: {}, sharedInput: {}, availableSkills: [], availableReferences: [],
+      sendingState: {}, availableSkills: [], availableReferences: [],
     }) },
     '@/features/connections/context': { useConnection: () => ({ connection: { status: 'connected' },
       settings: { serverUrl: 'http://test', username: '', password: '' }, serverCapabilities: { contract, shellCommand: true } }) },
