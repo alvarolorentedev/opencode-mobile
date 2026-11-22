@@ -16,7 +16,9 @@ supplies command bindings. Connection commands own connect, disconnect, saved
 profile activation, credential changes, registry restoration and failover.
 Core event dispatch reads the workspace selection and sending state directly
 from the store. Project refresh timers are plain commands and are cleared at
-the project lifecycle boundary. Removal of the retained composition remains.
+the project lifecycle boundary. Saved links and cross-server favorites resolve
+through the connection core. Feature hooks bind the app commands without a
+root action override layer. Removal of the retained composition remains.
 
 Explicit session opening and automatic bootstrap share the app-core selection
 command. It reads the project session catalog and supersedes pending bootstrap

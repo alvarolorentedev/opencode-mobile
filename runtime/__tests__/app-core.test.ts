@@ -3,7 +3,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { createAppCore } from '@/runtime/core/create-app-core';
 import type { WorkspaceSnapshot } from '@/runtime/workspace/workspace-types';
 import type { ChatPreferences } from '@/shared/preferences/opencode-preferences';
-import { getConnectionUiScope } from '@/shared/contracts/connection-scope';
+import { getConnectionScope, getConnectionUiScope } from '@/shared/contracts/connection-scope';
 import { workspaceKey, type WorkspaceTarget } from '@/shared/contracts/workspace';
 import { connectionQueryKey, projectQueryKey } from '@/shared/server-data/keys';
 import type { ScopedOpencodeClient } from '@/shared/protocol/opencode/client';
@@ -154,6 +154,20 @@ describe('app core', () => {
     expect(scheduleSessionsRefresh).toHaveBeenCalledOnce();
     expect(core.store.getState().selection[workspaceKey].explicitSessionId).toBeUndefined();
     expect(core.store.getState().selection[otherKey].explicitSessionId).toBe('chat');
+    core.commands.workspace.dispose();
+  });
+
+  it('resolves a scoped link and a rendered library row through plain commands', async () => {
+    const core = newCore();
+    const connection = core.commands.connection;
+    const project = connectedProject(core, 'saved', '/repo');
+    const connectionScope = getConnectionScope(settings);
+    await expect(connection.openSession({ connectionScope, projectPath: '/repo', sessionId: 'linked' })).resolves.toEqual({ ok: true });
+    expect(project.openDeepLinkSession).toHaveBeenCalledExactlyOnceWith({ projectPath: '/repo', sessionId: 'linked' }, expect.any(AbortSignal));
+
+    await connection.openSessionInProject('/repo', 'rendered', connectionScope);
+    expect(project.openSession).toHaveBeenCalledExactlyOnceWith('rendered');
+    expect(core.store.getState().registry.focus).toEqual(project.target);
     core.commands.workspace.dispose();
   });
 

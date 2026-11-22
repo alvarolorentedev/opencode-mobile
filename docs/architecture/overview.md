@@ -123,10 +123,10 @@ from the changing workspace snapshot registry. The stable presentation map
 (composer/editor drafts, transcript positions) lives in
 `WorkspacePresentationContext`; `useRetainedState` reads it directly, so a
 background workspace publish cannot invalidate a draft consumer. Chat reads
-actions/focus from the actions context. The focused workspace values are built
-by `useWorkspaceValues`, which memoizes each overridden domain independently;
-`WorkspaceRuntime` is wrapped in `React.memo` so unchanged runtimes skip
-parent-driven renders.
+actions and focus from the actions context. The connection, project, session
+and voice hooks bind their app commands where the screen uses them. The root
+provides the incoming share view to Chat. `WorkspaceRuntime` is wrapped in
+`React.memo` so unchanged runtimes skip parent-driven renders.
 
 Connectivity is owned once by `WorkspaceProvider`. `NetInfo.configure()` is
 process-global and resets previously registered listeners, so mounting
@@ -266,10 +266,6 @@ The completion version, preference schema and first-run migration are unchanged.
 - `shared/server-data/` and `runtime/composition/use-workspace-server-data.ts`
   TanStack Query owns routine server responses; domain hooks expose derived views.
   See [server read ownership](state-and-data.md#routine-server-reads).
-- `runtime/workspace/use-workspace-values.ts`
-  Layers app-scope overrides over a runtime's memoized domain values. Each
-  domain is memoized separately, so transcript updates do not invalidate
-  connection, project, or onboarding contexts.
 - `runtime/realtime/project-refresh-queue.ts`
   Coalesces catalog, transcript and inbox refreshes and clears pending work
   when the project is suspended or reset.

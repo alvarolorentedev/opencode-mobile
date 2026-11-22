@@ -164,11 +164,16 @@ npm run validate:commit
   with 1,271 tests and one existing skip. The 207 focused tests, docs, web
   export and 97 browser tests passed across Cloud Link, manual connections,
   multi-server, network, onboarding and Settings.
-- C5. Core event dispatch reads the current app store and the realtime owner
+- C5, `51c5ff3e`. Core event dispatch reads the current app store and the realtime owner
   coalesces project refreshes. The commit gate passed with 1,274 tests, one
   existing skip and no lint warnings. The 82 focused tests, both fake-server
   self-tests, docs, web export and all 56 chat, diffs, interactions, multi-server,
   network, realtime and terminal browser tests passed.
+- C6a. Saved links and cross-server favorites run through the connection core.
+  Feature hooks bind commands directly and the root action overrides are gone.
+  The commit gate passed with 1,275 tests and one existing skip. The 43 focused
+  tests, docs, web export and all 88 chat, sessions, projects, multi-server,
+  interactions, onboarding and Settings browser tests passed.
 
 ## Loop protocol
 

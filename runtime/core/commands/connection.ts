@@ -6,9 +6,9 @@ import { connectionOrigin, releaseHostTrust } from '@/shared/platform/tls-trust'
 import type { ConnectionCertificate } from '@/shared/contracts/connection-certificate';
 import type { ConnectionHeaders } from '@/shared/contracts/connection-headers';
 import { createProfileId, deleteProfilePassword, getProfilePassword, loadConnectionProfiles, mutateConnectionProfiles, readProfileConnection, saveProfilePassword } from '@/shared/storage/connection-profiles';
-import { findMatchingProfile, pickModelPreferences, type ConnectionProfile } from '@/shared/contracts/connection-profiles';
+import { findMatchingProfile, findProfileByConnectionScope, pickModelPreferences, type ConnectionProfile } from '@/shared/contracts/connection-profiles';
 import { getConnectionScope, getConnectionUiScope } from '@/shared/contracts/connection-scope';
-import { HIDDEN_PROJECTS_MAX, type ConnectionState } from '@/shared/contracts/domain';
+import { HIDDEN_PROJECTS_MAX, type ConnectionState, type SessionDeepLinkTarget } from '@/shared/contracts/domain';
 import { defaultConnectionSettings, type OpencodeConnectionSettings } from '@/shared/protocol/opencode/client/types';
 import { getServerHostname } from '@/shared/contracts/server-url';
 import { clearCapabilitiesSnapshots } from '@/features/ai/runtime';
@@ -31,7 +31,7 @@ export function createConnectionCommands(
   { store, connections }: Pick<CommandContext, 'store'> & { connections: Pick<CommandContext['connections'], 'get'> },
   commands: ReturnType<typeof createWorkspaceCommands>,
 ) {
-  const { change, select, ensure, forget, resolveKey, pauseConversation, retry } = commands;
+  const { change, select, ensure, forget, resolveKey, pauseConversation, retry, navigate, openExternalSession } = commands;
   const registry = () => store.getState().registry;
   const { setRegistry, setShellValue } = store.getState();
   const write = createPersistenceWriter();
@@ -272,8 +272,42 @@ export function createConnectionCommands(
     for (const key of Object.keys(registry().snapshots)) if ((JSON.parse(key) as string[])[0] === id) forget(key);
   }
 
+  async function openSession(target: SessionDeepLinkTarget, signal?: AbortSignal) {
+    const { connections: records, focus } = registry();
+    try {
+      let entry: Pick<ConnectionRecord, 'id' | 'projects' | 'enabled'> | undefined = target.connectionScope ? records.find((value) => getConnectionScope(value.settings) === target.connectionScope) : records.find((value) => value.id === focus?.connectionId);
+      if (!entry && target.connectionScope) {
+        const profile = findProfileByConnectionScope(await loadConnectionProfiles(), target.connectionScope);
+        if (!profile) throw new Error('The saved connection for this session is not available.');
+        await connectSavedProfile(profile, signal);
+        entry = { id: getConnectionUiScope(profile), projects: [''], enabled: true };
+      }
+      if (!entry) throw new Error('The saved connection for this session is not available.');
+      if (!entry.enabled) await retry(entry.id);
+      await openExternalSession({ connectionId: entry.id, projectPath: target.projectPath ?? entry.projects[0] ?? '', sessionId: target.sessionId }, signal);
+      return { ok: true };
+    } catch (reason) { return { ok: false, error: reason instanceof Error ? reason.message : 'Could not open this chat.' }; }
+  }
+
+  // In-app library navigation. The session id came from rendered data, so this
+  // resolves the owning connection locally and never validates against a
+  // server list. Cross-server favorites still switch and connect the target.
+  async function openSessionInProject(projectPath: string, sessionId: string, targetConnectionScope: string) {
+    const entry = registry().connections.find((item) => getConnectionScope(item.settings) === targetConnectionScope);
+    if (!entry) {
+      // A favorite can outlive its workspace registration. That is an external
+      // target rather than a rendered row, so resolve it through the saved
+      // profile path instead of failing locally.
+      const opened = await openSession({ projectPath, sessionId, connectionScope: targetConnectionScope });
+      if (!opened.ok) throw new Error(opened.error);
+      return;
+    }
+    if (!entry.enabled) await retry(entry.id);
+    await navigate({ connectionId: entry.id, projectPath, sessionId });
+  }
+
   return {
     hydrate, persist, reconcileFocus, connect, switchConnection, connectSavedProfile, disconnect,
-    retry, removeConnection, updateSettings, updatePreferences, hideProject, restoreProject,
+    retry, removeConnection, updateSettings, updatePreferences, hideProject, restoreProject, openSession, openSessionInProject,
   };
 }

@@ -67,10 +67,23 @@ describe('multi-server contracts', () => {
   });
   it('keeps unrelated workspace domains stable when only chat data changes', async () => {
     const driver = hookRuntime();
-    const { useWorkspaceValues } = await loadTs('runtime/workspace/use-workspace-values.ts', {
-    react: driver.react,
-    '@/shared/contracts/connection-scope': identity,
-  });
+    let current: Record<string, unknown>;
+    const commands = {
+      connection: { retry: vi.fn(), openSession: vi.fn(), openSessionInProject: vi.fn() },
+      workspace: { activate: vi.fn() },
+    };
+    const { useConnection, useProjects, useCurrentSession, useSessionLibrary, useOnboarding, useChat } = await loadTs([
+      'features/connections/context.ts', 'features/projects/context.ts', 'features/sessions/context.ts',
+      'features/onboarding/context.ts', 'features/chat/context.ts',
+    ], {
+      react: driver.react,
+      '@/runtime/core': {
+        useWorkspaceDomainValue: (select: (values: Record<string, unknown>) => unknown) => select(current),
+        useAppCore: () => ({ commands }),
+        useActiveWorkspaceTarget: () => ({ connectionId: 'http://a:', projectPath: '/repo' }),
+      },
+      '@/shared/contracts/connection-scope': identity,
+    });
     const settings = { serverUrl: 'http://a', username: '' };
     const base = {
       onboardingValue: { isHydrated: true, onboardingCompleted: true, onboardingActive: false },
@@ -80,25 +93,16 @@ describe('multi-server contracts', () => {
       sessionLibraryValue: { openSessionInProject: async () => {} },
       chatValue: { currentMessages: [] },
     };
-    const overrides = {
-      isHydrated: true,
-      onboardingCompleted: true,
-      onboardingActive: false,
-      connectionProfiles: [],
-      connectSetup: {},
-      servicesValue: {},
-      sharedInput: {},
-      projectPathsByConnection: { 'http://a:': ['/repo'] },
-      retry: async () => ({}),
-      activate: async () => {},
-      switchConnection: async () => ({}),
-      openSession: async () => ({ ok: true }),
-      openSessionInProject: async () => {},
-    };
-    driver.mount((props: any) => useWorkspaceValues(props.values, props.overrides), { values: base, overrides });
+    driver.mount(({ values }: { values: Record<string, unknown> }) => {
+      current = values;
+      return {
+        connectionValue: useConnection(), projectsValue: useProjects(), currentSessionValue: useCurrentSession(),
+        sessionLibraryValue: useSessionLibrary(), onboardingValue: useOnboarding(), chatValue: useChat(),
+      };
+    }, { values: base });
     const first = driver.value;
 
-    driver.update({ values: { ...base, chatValue: { currentMessages: ['new'] } }, overrides });
+    driver.update({ values: { ...base, chatValue: { currentMessages: ['new'] } } });
     const next = driver.value;
     expect(next.chatValue).not.toBe(first.chatValue);
     expect(next.onboardingValue).toBe(first.onboardingValue);
@@ -107,7 +111,7 @@ describe('multi-server contracts', () => {
     expect(next.currentSessionValue).toBe(first.currentSessionValue);
     expect(next.sessionLibraryValue).toBe(first.sessionLibraryValue);
 
-    driver.update({ values: { ...base, chatValue: { currentMessages: ['new'] } }, overrides: { ...overrides, onboardingActive: true } });
+    driver.update({ values: { ...base, onboardingValue: { ...base.onboardingValue, onboardingActive: true } } });
     expect(driver.value.onboardingValue).not.toBe(first.onboardingValue);
     expect(driver.value.connectionValue).toBe(first.connectionValue);
     driver.unmount();
