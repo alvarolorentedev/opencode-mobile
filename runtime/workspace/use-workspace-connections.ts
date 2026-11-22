@@ -20,7 +20,7 @@ export function useWorkspaceConnections(hydrated: boolean, { registry, commands,
     return () => controller.abort();
   }, [connection, hydrated]);
   useEffect(() => { void connection.persist(); }, [connection, connections, focus, ready]);
-  useEffect(() => connection.reconcileFocus(), [connection, connections, focus, ready, snapshots]);
+  useEffect(() => connection.observeFocus(), [connection]);
 
   const { isEnabled, connectedWorkspace, change, select, publish, forget, ensure, resolveKey, activate, navigate, openExternalSession } = workspace;
   const { hideProject, restoreProject, removeConnection, switchConnection, connectSavedProfile, disconnect, retry, updateSettings, updatePreferences } = connection;

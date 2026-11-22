@@ -10,15 +10,18 @@ import { workspaceKey } from '@/shared/contracts/workspace';
 import { defaultChatPreferences } from '@/shared/preferences/opencode-preferences';
 import type { ScopedOpencodeClient } from '@/shared/protocol/opencode/client';
 import { projectQueryKey, type QueryIdentity } from '@/shared/server-data/keys';
+import type { ConnectionState } from '@/features/connections/index';
 
 const identity = { getConnectionScope: (value: any) => `${value.serverUrl}:${value.username}`, getConnectionUiScope: (value: any) => `${value.serverUrl}:${value.username}` };
 const keys = { sessionKey: (value: any) => JSON.stringify([value.connectionId, value.projectPath, value.sessionId]) };
 
-function mountWorkspaceConnections(driver: ReturnType<typeof hookRuntime>, useWorkspaceConnections: any, createWorkspaceCommands: typeof WorkspaceCommands, createConnectionCommands: typeof ConnectionCommands, shell: any) {
+type TestConnections = Parameters<typeof WorkspaceCommands>[0]['connections'];
+function mountWorkspaceConnections(driver: ReturnType<typeof hookRuntime>, useWorkspaceConnections: any, createWorkspaceCommands: typeof WorkspaceCommands, createConnectionCommands: typeof ConnectionCommands, shell: any,
+  connections: TestConnections = { get: () => undefined, subscribeState: () => () => {} },
+) {
   const store = createAppStore({ settings: shell.settings, chatPreferences: shell.chatPreferences, controlPlaneUrl: '' });
   store.getState().setShellValue('onboardingVersion', shell.onboardingVersion);
-  const workspace = createWorkspaceCommands({ store });
-  const connections = { get: () => undefined };
+  const workspace = createWorkspaceCommands({ store, connections });
   const commands = { workspace, connection: createConnectionCommands({ store, connections, queryClient: new QueryClient() }, workspace) };
   const getRegistry = () => store.getState().registry;
   driver.mount(() => {
@@ -311,7 +314,10 @@ it('keeps lifecycle decisions current without resetting retained runtimes', asyn
     "@/shared/storage/workspace-storage": { WORKSPACES_STORAGE_KEY: 'workspaces', parseWorkspaces: () => ({ connections: entries, focus: { connectionId: 'a', projectPath: '/repo' } }), serializeWorkspaces: () => 'stored' },
     "@/shared/contracts/workspace": { workspaceKey: ({ connectionId, projectPath }: any) => JSON.stringify([connectionId, projectPath]) }
   }, driver.globals);
-  mountWorkspaceConnections(driver, useWorkspaceConnections, createWorkspaceCommands, createConnectionCommands, shell);
+  const connected = { status: 'connected', message: 'Connected' };
+  const manager = { getState: () => ({ connection: connected }), connect: async () => connected } as unknown as NonNullable<ReturnType<TestConnections['get']>>;
+  mountWorkspaceConnections(driver, useWorkspaceConnections, createWorkspaceCommands, createConnectionCommands, shell,
+    { get: () => manager, subscribeState: () => () => {} });
   const isEnabled = driver.value.isEnabled;
   await driver.settle();
   expect(isEnabled('a')).toBe(true);
@@ -412,23 +418,16 @@ it('persists the focused auto-model choice and ignores background workspace copi
 
 it('selects a connected fallback for failover and prefers the last healthy server', async () => {
   const { connectedWorkspaceTarget } = await loadTs('runtime/workspace/workspace-focus.ts');
-  const connection = (id: string, enabled = true) => ({ id, enabled });
-  const snapshot = (id: string, status: string, path = '/repo', activeProjectPath = path) => ({ values: {
-    connectionValue: { connection: { status } }, projectsValue: { activeProjectPath },
-  }, native: { settings: { serverUrl: `http://${id}`, username: '' } } });
-  const snapshots = {
-    '["a","/repo"]': snapshot('a', 'connected'),
-    '["b","/repo"]': snapshot('b', 'connecting'),
-    '["c","/repo"]': snapshot('c', 'connected', '/c', '/c'),
-    '["d","/repo"]': snapshot('d', 'connected'),
-  };
-  expect(connectedWorkspaceTarget([connection('a', false), connection('b'), connection('c'), connection('d')], snapshots))
+  const connection = (id: string, enabled = true) => ({ id, enabled, projects: ['/repo'] });
+  const readConnection = (id: string) => ({ status: id === 'b' ? 'connecting' : 'connected' });
+  const selection = { '["c","/repo"]': { activeProjectPath: '/c' } };
+  expect(connectedWorkspaceTarget([connection('a', false), connection('b'), connection('c'), connection('d')], selection, readConnection))
     .toEqual({ connectionId: 'c', projectPath: '/c' });
-  expect(connectedWorkspaceTarget([connection('a'), connection('b'), connection('c'), connection('d')], snapshots, { preferredConnectionId: 'd' }))
+  expect(connectedWorkspaceTarget([connection('a'), connection('b'), connection('c'), connection('d')], selection, readConnection, { preferredConnectionId: 'd' }))
     .toEqual({ connectionId: 'd', projectPath: '/repo' });
-  expect(connectedWorkspaceTarget([connection('a', false), connection('b'), connection('c'), connection('d')], snapshots, { excludedConnectionId: 'c' }))
+  expect(connectedWorkspaceTarget([connection('a', false), connection('b'), connection('c'), connection('d')], selection, readConnection, { excludedConnectionId: 'c' }))
     .toEqual({ connectionId: 'd', projectPath: '/repo' });
-  expect(connectedWorkspaceTarget([connection('b')], snapshots)).toBeUndefined();
+  expect(connectedWorkspaceTarget([connection('b')], selection, readConnection)).toBeUndefined();
 });
 
 it('moves chat focus to a connected server when the focused server fails', async () => {
@@ -454,18 +453,29 @@ it('moves chat focus to a connected server when the focused server fails', async
     "@/shared/storage/workspace-storage": { WORKSPACES_STORAGE_KEY: 'workspaces', parseWorkspaces: () => ({ connections: entries, focus: { connectionId: 'b', projectPath: '/repo' } }), serializeWorkspaces: () => 'stored' },
     "@/shared/contracts/workspace": { workspaceKey: ({ connectionId, projectPath }: any) => JSON.stringify([connectionId, projectPath]) }
   }, driver.globals);
-  mountWorkspaceConnections(driver, useWorkspaceConnections, createWorkspaceCommands, createConnectionCommands, shell);
+  const statuses = new Map<string, ConnectionState['status']>([['a', 'connected'], ['b', 'connected']]);
+  const listeners = new Set<() => void>();
+  const connections: TestConnections = {
+    get: (id) => ({ getState: () => ({ connection: { status: statuses.get(id) } }) }) as unknown as NonNullable<ReturnType<TestConnections['get']>>,
+    subscribeState(listener) { listeners.add(listener); return () => { listeners.delete(listener); }; },
+  };
+  function setStatus(id: string, status: ConnectionState['status']) {
+    statuses.set(id, status);
+    for (const listener of listeners) listener();
+  }
+  const store = mountWorkspaceConnections(driver, useWorkspaceConnections, createWorkspaceCommands, createConnectionCommands, shell, connections);
   await driver.settle();
+  store.getState().setSelection('["a",""]', { activeProjectPath: '/repo' });
   const snapshot = (id: string, status: string) => ({ enabled: true, native: { settings: entries.find((entry) => entry.id === id)!.settings }, suspend: vi.fn(),
     values: { projectsValue: { activeProjectPath: '/repo' }, conversationValue: { conversation: { active: false }, toggleConversationMode: vi.fn(async () => {}) }, connectionValue: { connection: { status } } } });
   driver.value.publish('["a","/repo"]', snapshot('a', 'connected'));
   driver.value.publish('["b",""]', snapshot('b', 'connected'));
   await driver.settle();
   expect(driver.value.focus).toEqual({ connectionId: 'b', projectPath: '' });
-  driver.value.publish('["b",""]', snapshot('b', 'error'));
+  setStatus('b', 'error');
   await driver.settle();
   expect(driver.value.focus).toEqual({ connectionId: 'a', projectPath: '/repo' });
-  driver.value.publish('["b",""]', snapshot('b', 'connected'));
+  setStatus('b', 'connected');
   driver.value.select({ connectionId: 'b', projectPath: '/repo' });
   await driver.settle();
   expect(driver.value.focus).toEqual({ connectionId: 'b', projectPath: '/repo' });

@@ -190,6 +190,10 @@ demanded connection while the app is foregrounded and online:
   reconnect state;
 - a manual Connect or a successful connection resets the budget.
 
+Workspace navigation waits for the current connection manager and a ready
+project. The core observes connection transitions for failover and resolves the
+fallback project from retained device selection.
+
 ## Offline prompt queue
 
 `features/chat/services/prompt-inbox-commands.ts` admits and retries prompts

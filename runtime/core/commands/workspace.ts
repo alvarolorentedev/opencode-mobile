@@ -7,9 +7,12 @@ import { findSessionForNavigation } from '@/shared/protocol/services/session-ser
 
 type ReadinessOptions = { signal?: AbortSignal; waitForProject?: boolean };
 
-export function createWorkspaceCommands({ store }: Pick<CommandContext, 'store'>) {
+export function createWorkspaceCommands({ store, connections }: Pick<CommandContext, 'store'> & {
+  connections: Pick<CommandContext['connections'], 'get' | 'subscribeState'>;
+}) {
   const waiters = createWorkspaceWaiters();
   let unsubscribe: (() => void) | undefined;
+  let stopConnectionStatus: (() => void) | undefined;
   let navigation: AbortController | undefined;
   let focusRequest: { target: WorkspaceTarget; forgottenKey?: string } | undefined;
   let canPersist = true;
@@ -21,6 +24,7 @@ export function createWorkspaceCommands({ store }: Pick<CommandContext, 'store'>
     unsubscribe ??= store.subscribe(({ registry: current }, { registry: previous }) => {
       if (current.connections !== previous.connections || current.snapshots !== previous.snapshots) waiters.notify();
     });
+    stopConnectionStatus ??= connections.subscribeState(waiters.notify);
   }
   function cancelNavigation() { navigation?.abort(); }
   function beginNavigation(externalSignal?: AbortSignal) {
@@ -133,33 +137,41 @@ export function createWorkspaceCommands({ store }: Pick<CommandContext, 'store'>
   }
   async function retry(id: string) {
     canPersist = true;
-    const { connections, snapshots } = registry();
-    const entry = connections.find((record) => record.id === id);
+    const { connections: records, snapshots } = registry();
+    const entry = records.find((record) => record.id === id);
     if (!entry) throw new Error('Server not found.');
     for (const [key, runtime] of Object.entries(snapshots)) {
       if ((JSON.parse(key) as [string, string])[0] === id) runtime.suspend();
     }
     // The placeholder's catalog read restores the server's default project.
     change((current) => current.map((item) => item.id === id ? { ...entry, enabled: true, settings: { ...item.settings } } : item));
-    const runtime = await ensure({ connectionId: id, projectPath: '' });
-    return runtime.values.connectionValue.connect();
+    await ensure({ connectionId: id, projectPath: '' });
+    return (await waitForManager(id)).connect();
+  }
+  function waitForManager(id: string, signal?: AbortSignal) {
+    return waiters.wait(() => {
+      if (!registry().connections.find((record) => record.id === id)?.enabled) throw new Error('Server disconnected.');
+      return connections.get(id);
+    }, signal);
   }
   async function connectedWorkspace(target: WorkspaceTarget, options?: ReadinessOptions) {
     if (!registry().connections.find((record) => record.id === target.connectionId)?.enabled) {
       throw new Error('Connect this server before opening its workspace.');
     }
-    const snapshot = await ensure(target, options);
+    await ensure(target, options);
+    const manager = await waitForManager(target.connectionId, options?.signal);
     let failure: unknown;
-    if (snapshot.values.connectionValue.connection.status !== 'connected') {
+    const status = manager.getState().connection.status;
+    if (status !== 'connected') {
       if (options?.signal?.aborted) throw new Error('This navigation was cancelled.');
-      const attempt = snapshot.values.connectionValue.connection.status === 'error' ? retry(target.connectionId) : snapshot.values.connectionValue.connect();
+      const attempt = status === 'error' ? retry(target.connectionId) : manager.connect();
       void attempt.catch((error) => { failure = error; waiters.notify(); });
     }
     return waiters.wait(() => {
       if (failure) throw failure;
       if (!registry().connections.find((record) => record.id === target.connectionId)?.enabled) throw new Error('Server disconnected.');
       const current = readWorkspace(target);
-      const connection = current?.values.connectionValue.connection;
+      const connection = connections.get(target.connectionId)?.getState().connection;
       if (connection?.status === 'error') throw new Error(connection.message);
       if (connection?.status === 'connected' && (!options?.waitForProject || current?.values.projectsValue.activeProjectPath)) return current;
     }, options?.signal);
@@ -260,7 +272,12 @@ export function createWorkspaceCommands({ store }: Pick<CommandContext, 'store'>
   resume();
   return {
     resume,
-    dispose() { cancelNavigation(); unsubscribe?.(); unsubscribe = undefined; focusRequest = undefined; waiters.dispose(); },
+    dispose() {
+      cancelNavigation();
+      unsubscribe?.(); unsubscribe = undefined;
+      stopConnectionStatus?.(); stopConnectionStatus = undefined;
+      focusRequest = undefined; waiters.dispose();
+    },
     cancelNavigation, pauseConversation,
     isPersistenceAllowed: () => canPersist,
     setPersistenceAllowed: (allowed: boolean) => { canPersist = allowed; },

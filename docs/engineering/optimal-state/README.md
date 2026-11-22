@@ -271,10 +271,14 @@ npm run validate:commit
   1,283 tests and one existing skip. All 143 focused tests and 45 extension,
   Settings, Chat and multi-server browser flows passed. The final scope guard
   passed all 13 extension and multi-server flows on a fresh build.
-- E10. MCP controls and saved rules read Query directly. MCP prompt dismissal
+- E10, `6b472566`. MCP controls and saved rules read Query directly. MCP prompt dismissal
   uses the exact originating credential partition. The commit gate passed with
   1,283 tests and one existing skip. All 122 focused tests and 62 interaction,
   extension, Settings, multi-server, Chat and realtime browser flows passed.
+- E11. Navigation and automatic failover observe the connection manager directly.
+  The commit gate passed with 1,283 tests and one existing skip. All 42 focused
+  tests and 110 Connect, manual connection, multi-server, Sessions, Projects,
+  Settings and realtime browser flows passed.
 
 ## Loop protocol
 

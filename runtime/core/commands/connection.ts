@@ -37,7 +37,7 @@ export function workspaceChatPreferences(device: ChatPreferences, server?: Parti
 }
 
 export function createConnectionCommands(
-  { store, queryClient, connections }: Pick<CommandContext, 'store' | 'queryClient'> & { connections: Pick<CommandContext['connections'], 'get'> },
+  { store, queryClient, connections }: Pick<CommandContext, 'store' | 'queryClient'> & { connections: Pick<CommandContext['connections'], 'get' | 'subscribeState'> },
   commands: ReturnType<typeof createWorkspaceCommands>,
 ) {
   const { change, select, ensure, forget, resolveKey, pauseConversation, retry, navigate, openExternalSession } = commands;
@@ -143,20 +143,40 @@ export function createConnectionCommands(
   }
 
   function reconcileFocus() {
-    const { connections: records, focus, snapshots, ready, lastHealthyConnectionId, previousHealthyConnectionId } = registry();
+    const { connections: records, focus, ready, lastHealthyConnectionId, previousHealthyConnectionId } = registry();
     if (!focus) return;
     const entry = records.find((item) => item.id === focus.connectionId);
-    const status = snapshots[resolveKey(focus)]?.values.connectionValue.connection.status;
+    const readConnection = (id: string) => connections.get(id)?.getState().connection;
+    const status = readConnection(focus.connectionId)?.status;
     if (entry?.enabled && status === 'connected' && lastHealthyConnectionId !== focus.connectionId) {
       // Keep the last two healthy owners so failover returns to the prior server.
       setRegistry({ lastHealthyConnectionId: focus.connectionId, previousHealthyConnectionId: lastHealthyConnectionId });
     }
     if (!ready || (entry?.enabled && status !== 'error')) return;
-    const target = connectedWorkspaceTarget(records, snapshots, {
+    const target = connectedWorkspaceTarget(records, store.getState().selection, readConnection, {
       excludedConnectionId: focus.connectionId,
       preferredConnectionId: lastHealthyConnectionId === focus.connectionId ? previousHealthyConnectionId : lastHealthyConnectionId,
     });
     if (target) select(target, commands.isPersistenceAllowed());
+  }
+
+  function observeFocus() {
+    let active = true;
+    let pending = false;
+    function schedule() {
+      if (pending) return;
+      pending = true;
+      void Promise.resolve().then(() => {
+        pending = false;
+        if (active) reconcileFocus();
+      });
+    }
+    const stopStore = store.subscribe(({ registry: current }, { registry: previous }) => {
+      if (current.connections !== previous.connections || current.focus !== previous.focus || current.ready !== previous.ready) schedule();
+    });
+    const stopConnections = connections.subscribeState(schedule);
+    schedule();
+    return () => { active = false; stopStore(); stopConnections(); };
   }
 
   function connect(id: string): Promise<ConnectionState> {
@@ -335,7 +355,7 @@ export function createConnectionCommands(
   }
 
   return {
-    hydrate, persist, reconcileFocus, connect, switchConnection, connectSavedProfile, disconnect,
+    hydrate, persist, observeFocus, connect, switchConnection, connectSavedProfile, disconnect,
     retry, removeConnection, updateSettings, updatePreferences, patchPreferences, hideProject, restoreProject, openSession, openSessionInProject,
   };
 }

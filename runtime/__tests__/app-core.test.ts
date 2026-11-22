@@ -63,6 +63,11 @@ const newCore = () => createAppCore({ settings, chatPreferences: {} as ChatPrefe
 
 function connectedProject(core: ReturnType<typeof newCore>, connectionId: string, projectPath: string) {
   const target: WorkspaceTarget = { connectionId, projectPath };
+  const state = { status: 'connected', message: 'Connected' };
+  const manager = { getState: () => ({ connection: state }), connect: async () => state } as unknown as NonNullable<ReturnType<typeof core.connections.get>>;
+  const previous = core.connections.get;
+  core.connections.get = (id) => id === connectionId && core.store.getState().registry.connections.find((entry) => entry.id === id)?.enabled
+    ? manager : previous(id);
   const openSession = vi.fn(async (_id: string) => {});
   const created = { id: 'new-session' };
   const createSession = vi.fn(async () => created);

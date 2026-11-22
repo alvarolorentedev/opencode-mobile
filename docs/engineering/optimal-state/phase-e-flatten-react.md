@@ -38,6 +38,8 @@ Start only after Phase D is complete and green.
   core selector. Extension mutations check the exact client before a write.
 - MCP controls and saved permission rules select the owning Query entries.
   The core clears a connection's MCP authorization prompt from scoped status.
+- Core navigation and failover wait on the connection manager. The project
+  projection still signals project readiness during a focus change.
 - `runtime/core/workspace-selectors.ts` selects the retained project projection.
 - [ADR 0052](../../adr/0052-explicit-overlay-dependencies.md) records explicit
   portal targets and update blocker callbacks. Shared controls use shared imports.

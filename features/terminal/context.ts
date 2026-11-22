@@ -10,15 +10,14 @@ import { EMPTY_TERMINALS, EMPTY_TERMINAL_INSTANCES } from './services/project-te
 
 const noop = () => {};
 const emptyScopes: [] = [];
-const disconnected = async () => { throw new Error('Connect this server before using its terminal.'); };
 const idleActions = {
   registerRenderer: () => noop,
   resize: noop,
   refreshTerminals: async () => {},
-  createTerminal: disconnected,
-  openTerminal: disconnected,
+  createTerminal: async () => { throw new Error('Connect this server before creating a terminal.'); },
+  openTerminal: async () => {},
   sendTerminalInput: () => { throw new Error('Terminal is not open.'); },
-  closeTerminal: disconnected,
+  closeTerminal: async () => { throw new Error('Connect this server before terminating its terminal.'); },
 };
 
 export function useTerminal(explicit?: WorkspaceTarget): TerminalContextValue {
