@@ -29,6 +29,9 @@ Start only after Phase D is complete and green.
   Preference updates reconcile model choices against the scoped Query catalog.
 - Terminal lifecycle commands run in a scoped controller. Its React adapter
   binds inputs and selects opened PTYs from the app store and the list from Query.
+- The app core runs automatic approval from Query and the per-connection
+  policy. Settings reads pending permissions and questions from their owning
+  partitions.
 - `runtime/core/workspace-selectors.ts` selects the retained project projection.
 - [ADR 0052](../../adr/0052-explicit-overlay-dependencies.md) records explicit
   portal targets and update blocker callbacks. Shared controls use shared imports.

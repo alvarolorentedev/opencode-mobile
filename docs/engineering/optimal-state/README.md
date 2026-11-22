@@ -246,10 +246,15 @@ npm run validate:commit
   auto-model, Settings, multi-server, onboarding and Chat browser flows passed.
   Android API 36 smoke verified hardware Back through connection setup and
   the onboarding provider setup and selector screens.
-- E5. PTY lifecycle commands moved to a plain scoped controller. The commit
+- E5, `ce934e2b`. PTY lifecycle commands moved to a plain scoped controller. The commit
   gate passed with 1,282 tests and one existing skip. All 43 focused tests and
   12 Terminal and multi-server browser flows passed. The Android emulator
   retained its PTY output and WebSocket across tabs after loading the new bundle.
+- E6. The core observes scoped pending approvals and applies each connection's
+  V2 policy. Settings replies in the request's own project without reading
+  workspace projections for pending items. The commit gate passed with 1,282
+  tests and one existing skip. All 74 focused tests and 106 Connect, interaction,
+  multi-server, onboarding, realtime and Settings browser flows passed.
 
 ## Loop protocol
 

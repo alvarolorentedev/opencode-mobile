@@ -17,7 +17,6 @@ import { useOpencodePersistence } from '@/runtime/persistence/use-opencode-persi
 import { useAppCore, useAppStore } from '@/runtime/core/context';
 import { useShareState } from '@/features/sharing/runtime';
 import { useVoiceSetupTest, VoiceSetupTestContext } from '@/features/voice/runtime';
-import { useWorkspaceAutoApprove } from '@/runtime/composition/use-workspace-auto-approve';
 import { useWorkspaceConnections } from '@/runtime/workspace/use-workspace-connections';
 import { serverPreferences, workspaceChatPreferences } from '@/runtime/core/commands/connection';
 import { useWorkspaceShellState } from '@/runtime/workspace/use-workspace-shell-state';
@@ -60,7 +59,7 @@ export function WorkspaceProvider({ children }: PropsWithChildren) {
     commands: core.commands,
     hiddenProjects: shell.hiddenProjects,
   });
-  useWorkspaceAutoApprove(manager);
+  useEffect(() => core.autoApproval.start(), [core]);
   const { updateSettings: updateWorkspaceSettings, change, removeConnection: removeWorkspaceConnection, connectedWorkspace, isEnabled } = manager;
   const { setFavoriteSessions, setSettings, setChatPreferences, setHiddenProjects } = shell;
   const { connections, focus, snapshots, resolveKey, switchConnection, disconnect } = manager;

@@ -14,6 +14,7 @@ type Configuration = Pick<ConnectionInput, 'setup' | 'hydrated' | 'translate' | 
 type Slot = {
   manager: Manager;
   input?: ConnectionInput;
+  stopState: () => void;
   stopConnection?: () => void;
   stopRenewal?: () => void;
 };
@@ -29,6 +30,7 @@ function paused(input: ConnectionInput) {
 export function createConnectionRegistry({ store, queryClient }: { store: AppStore; queryClient: QueryClient }) {
   const slots = new Map<string, Slot>();
   const listeners = new Set<() => void>();
+  const stateListeners = new Set<() => void>();
   const foregroundListeners = new Set<(active: boolean) => void>();
   let foregroundActive = true;
   let activeId: string | undefined;
@@ -44,9 +46,11 @@ export function createConnectionRegistry({ store, queryClient }: { store: AppSto
     },
   };
   function notify() { for (const listener of listeners) listener(); }
+  function notifyState() { for (const listener of stateListeners) listener(); }
 
   function drop(id: string, slot: Slot) {
     slots.delete(id);
+    slot.stopState();
     slot.stopRenewal?.();
     if (slot.input) slot.manager.setInput({ ...slot.input, entry: { ...slot.input.entry, enabled: false } });
     slot.stopConnection?.();
@@ -68,7 +72,8 @@ export function createConnectionRegistry({ store, queryClient }: { store: AppSto
     for (const entry of active) {
       let slot = slots.get(entry.id);
       if (!slot) {
-        slot = { manager: createManager({ queryClient, foreground }) };
+        const manager = createManager({ queryClient, foreground });
+        slot = { manager, stopState: manager.subscribe(notifyState) };
         slots.set(entry.id, slot);
         changed = true;
       }
@@ -94,7 +99,7 @@ export function createConnectionRegistry({ store, queryClient }: { store: AppSto
       }
       slot.manager.setDemand(queryForeground && activeId === entry.id, online);
     }
-    if (changed) notify();
+    if (changed) { notify(); notifyState(); }
   }
 
   return {
@@ -102,6 +107,10 @@ export function createConnectionRegistry({ store, queryClient }: { store: AppSto
     subscribe(listener: () => void) {
       listeners.add(listener);
       return () => { listeners.delete(listener); };
+    },
+    subscribeState(listener: () => void) {
+      stateListeners.add(listener);
+      return () => { stateListeners.delete(listener); };
     },
     configure(next: Configuration) {
       configuration = next;
@@ -127,6 +136,7 @@ export function createConnectionRegistry({ store, queryClient }: { store: AppSto
       configuration = undefined;
       for (const [id, slot] of slots) drop(id, slot);
       notify();
+      notifyState();
     },
   };
 }

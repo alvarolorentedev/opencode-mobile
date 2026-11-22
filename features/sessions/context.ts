@@ -21,3 +21,4 @@ export function useSessionLibrary() {
 }
 
 export const useApprovals = (target?: WorkspaceTarget) => useWorkspaceDomainValue((values) => values.approvalsValue, 'useApprovals', target);
+export { useServerPendingInteractions } from './state/use-server-pending-interactions';

@@ -81,6 +81,7 @@ responses into React state or add another cache in a service:
 | Files and VCS | `directory(path)`, `search(query)`, `preview(path)`, `file-status`, `vcs`, `worktrees` |
 | Diagnostics and MCP | `diagnostics` health plus shared `mcp` status |
 | Saved permission grants | Connection-wide `saved-permissions` |
+| Pending permission and question requests | Project-scoped `pending-interactions`, with server-wide Settings selections |
 | Cloud Link HTTP catalogs | Trusted environment/store catalog and authenticated machine list |
 | Connector services | Target scope/auth revision plus `list` and `version` |
 
@@ -94,6 +95,10 @@ probes are specific to the credential generation and run again after renewal.
 Preference controls read device settings and the selected connection's model
 preferences from the app store. The preference command applies model selection
 rules using the current project's exact credential-partitioned Query data.
+Automatic approval observes pending-interaction writes and connection state in
+the app core. It checks the enabled connection's V2 policy and current credential
+partition before submitting a reply. Settings reads the same Query entries and
+binds replies to the project that owns the request.
 
 The default freshness is 60 seconds and unused data is collected after five
 minutes; previews use zero retention. Commands use zero freshness so every

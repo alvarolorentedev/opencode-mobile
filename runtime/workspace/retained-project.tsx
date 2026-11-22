@@ -409,13 +409,12 @@ export const RetainedProject = memo(function RetainedProject({ defaults, updateS
     pendingSessionIds.length > 0 || terminal.terminalRuntime.instances.length > 0;
   const snapshot = useMemo<WorkspaceSnapshot>(() => ({ libraryVisible: state.activeSessionsVisible, revision: input.connection.revision, enabled: input.connection.enabled, values, busy, suspend, catalogClient, catalogSessions: catalog.sessions, catalogStatuses: catalog.statuses,
     loadProjectCatalog: project.loadProjectCatalog,
-    pendingPermissions: approvalsCatalog.pendingPermissionsBySession, pendingQuestions: approvalsCatalog.pendingQuestionsBySession,
     native: { settings: state.settings, catalogClient, contract: state.serverContract, isCurrentCatalogClient,
       connectionScope: state.connectionScope, currentSessionId: state.currentSessionId, sessions: sessionCatalog.sessions,
       activeSessions, todoRecordsBySession: transcript.todoRecordsBySession,
       todosBySession: diffCatalog.todosBySession, isStreamConnected },
-  }), [state.activeSessionsVisible, input.connection.revision, input.connection.enabled, values, busy, suspend, catalogClient, catalog.sessions, catalog.statuses, project.loadProjectCatalog, approvalsCatalog.pendingPermissionsBySession,
-    approvalsCatalog.pendingQuestionsBySession, state.settings, state.serverContract, isCurrentCatalogClient, state.connectionScope,
+  }), [state.activeSessionsVisible, input.connection.revision, input.connection.enabled, values, busy, suspend, catalogClient, catalog.sessions, catalog.statuses, project.loadProjectCatalog,
+    state.settings, state.serverContract, isCurrentCatalogClient, state.connectionScope,
     state.currentSessionId, sessionCatalog.sessions, activeSessions, transcript.todoRecordsBySession, diffCatalog.todosBySession, isStreamConnected]);
   useLayoutEffect(() => { publish(key, snapshot); }, [key, publish, snapshot]);
   useLayoutEffect(() => () => forget(key), [forget, key]);

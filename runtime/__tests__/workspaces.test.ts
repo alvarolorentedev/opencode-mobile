@@ -6,6 +6,10 @@ import { createAppStore, type AppState } from '@/runtime/core/store';
 import { CURRENT_ONBOARDING_VERSION } from '@/features/onboarding/runtime';
 import type { createWorkspaceCommands as WorkspaceCommands } from '@/runtime/core/commands/workspace';
 import type { createConnectionCommands as ConnectionCommands } from '@/runtime/core/commands/connection';
+import { workspaceKey } from '@/shared/contracts/workspace';
+import { defaultChatPreferences } from '@/shared/preferences/opencode-preferences';
+import type { ScopedOpencodeClient } from '@/shared/protocol/opencode/client';
+import { projectQueryKey, type QueryIdentity } from '@/shared/server-data/keys';
 
 const identity = { getConnectionScope: (value: any) => `${value.serverUrl}:${value.username}`, getConnectionUiScope: (value: any) => `${value.serverUrl}:${value.username}` };
 const keys = { sessionKey: (value: any) => JSON.stringify([value.connectionId, value.projectPath, value.sessionId]) };
@@ -91,6 +95,7 @@ describe('multi-server contracts', () => {
         useActiveWorkspaceTarget: () => ({ connectionId: 'http://a:', projectPath: '/repo' }),
       },
       '@/shared/contracts/connection-scope': identity,
+      './state/use-server-pending-interactions': {},
     });
     const base = {
       connectionValue: { settings, connect: async () => ({}), switchConnection: async () => ({}), connectionProfiles: [], connectSetup: {}, services: {} },
@@ -211,20 +216,51 @@ it('tracks unsaved drafts across hidden servers without counting clean editors o
 });
 
 it('auto-approves colliding requests only on the owning server with the policy enabled', async () => {
-  const driver = hookRuntime();
-  const { useWorkspaceAutoApprove } = await loadTs('runtime/composition/use-workspace-auto-approve.ts', { react: driver.react }, driver.globals);
+  const client = { __opencode: { contract: 'v2', directory: '/repo' } } as ScopedOpencodeClient;
+  const pendingInteractionsKey = (identity: QueryIdentity, client: ScopedOpencodeClient) =>
+    projectQueryKey(identity, client, 'pending-interactions');
+  const approvals = await loadTs('features/sessions/services/approvals.ts', { './queries': { pendingInteractionsKey } });
+  const { createAutoApproval } = await loadTs('runtime/core/commands/auto-approval.ts', {
+    '@/features/sessions/runtime': approvals, '@/shared/contracts/workspace': { workspaceKey },
+  }, { queueMicrotask });
   const a = vi.fn(async () => {}), b = vi.fn(async () => {});
-  const snapshot = (replyToPermission: typeof a) => ({ values: { connectionValue: { connection: { status: 'connected' } }, chatValue: { replyToPermission } }, pendingPermissions: { session: [{ id: 'same-request' }] } });
-  const connections = [{ id: 'a', enabled: true, preferences: { autoApprove: true } }, { id: 'b', enabled: true, preferences: { autoApprove: false } }];
-  const snapshots = { '["a","/repo"]': snapshot(a), '["b","/repo"]': snapshot(b) };
-  driver.mount(useWorkspaceAutoApprove, { connections, snapshots });
-  await driver.settle();
-  expect(a).toHaveBeenCalledWith('same-request', 'once'); expect(b).not.toHaveBeenCalled();
-  driver.update({ connections: connections.map((entry) => ({ ...entry, preferences: { autoApprove: true } })) });
-  await driver.settle();
-  expect(a).toHaveBeenCalledOnce(); expect(b).toHaveBeenCalledWith('same-request', 'once');
-  driver.update({ snapshots: { ...snapshots } }); await driver.settle();
-  expect(b).toHaveBeenCalledOnce(); driver.unmount();
+  const settings = { serverUrl: 'https://example.test', username: '', password: '', directory: '' };
+  const store = createAppStore({ settings, chatPreferences: defaultChatPreferences, controlPlaneUrl: '' });
+  const connections = [
+    { id: 'a', name: 'A', enabled: true, preferences: { autoApprove: true }, settings, projects: ['/repo'] },
+    { id: 'b', name: 'B', enabled: true, preferences: { autoApprove: false }, settings, projects: ['/repo'] },
+  ];
+  const identityFor = (id: string, authRevision = 0) => ({ connectionId: id, connectionScope: id, authRevision });
+  const queryClient = new QueryClient();
+  const write = (id: string, requestId: string, authRevision = 0) => queryClient.setQueryData(
+    pendingInteractionsKey(identityFor(id, authRevision), client),
+    { permissions: { session: [{ id: requestId }] }, questions: {} },
+  );
+  const stop = createAutoApproval({
+    store, queryClient, connections: {
+      get: (id: string) => ({
+        getProjectAccess: () => ({ identity: identityFor(id), client, isCurrent: () => true }),
+      }),
+      subscribeState: () => () => {},
+    },
+  }, ({ connectionId }: { connectionId: string }) => ({ replyToPermission: connectionId === 'a' ? a : b })).start();
+  try {
+    store.getState().setRegistry({ connections });
+    write('a', 'same-request');
+    write('b', 'same-request');
+    write('a', 'wrong-generation', 1);
+    await Promise.resolve();
+    expect(a).toHaveBeenCalledWith('same-request', 'once'); expect(b).not.toHaveBeenCalled();
+    store.getState().setRegistry({ connections: connections.map((entry) => ({ ...entry, preferences: { autoApprove: true } })) });
+    await Promise.resolve();
+    expect(a).toHaveBeenCalledOnce(); expect(b).toHaveBeenCalledWith('same-request', 'once');
+    write('b', 'same-request');
+    await Promise.resolve();
+    expect(b).toHaveBeenCalledOnce();
+  } finally {
+    stop();
+    queryClient.clear();
+  }
 });
 
 it('restarts a silent shared stream even when a widget consumer stays attached', async () => {

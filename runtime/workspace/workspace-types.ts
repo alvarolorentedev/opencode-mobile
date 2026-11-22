@@ -1,6 +1,6 @@
 import type { NetworkStatus } from '@/shared/network/network-status';
 
-import type { OpencodeConnectionSettings, PendingPermissionRequest, PendingQuestionRequest, ScopedOpencodeClient } from '@/shared/protocol/opencode/client';
+import type { OpencodeConnectionSettings, ScopedOpencodeClient } from '@/shared/protocol/opencode/client';
 
 import type { ChatPreferences } from '@/shared/preferences/opencode-preferences';
 
@@ -56,8 +56,6 @@ export type WorkspaceSnapshot = {
   catalogSessions: Session[];
   catalogStatuses: Record<string, SessionStatus>;
   loadProjectCatalog: ReturnType<typeof useProjectCatalogActions>['loadProjectCatalog'];
-  pendingPermissions: Record<string, PendingPermissionRequest[]>;
-  pendingQuestions: Record<string, PendingQuestionRequest[]>;
   native: Omit<Parameters<typeof useWidgetState>[0], 'hydrated' | 'connected' | 'showPreviews' | 'language'> & {
     activeSessions: ActiveSessionItem[];
   };
