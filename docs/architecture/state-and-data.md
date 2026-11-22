@@ -1180,7 +1180,7 @@ Project browser state and request-scope guards remain provider-owned. `FilesPane
 Session lists exclude records with a truthy `time.archived`. V1 archive/restore is not supported because it has no V2 equivalent. Explicit open targets absent from cached lists trigger a fresh list read rather than creation of a replacement session. Session idle events only refresh domain state.
 
 
-Transcript, diff, and todo cache pruning is paused while session bootstrap is loading. A pending deep-link target is also retained until selection completes, so early transcript reads survive slower capability/configuration requests when reopening a favorite from another project.
+Transcript, diff, and todo cache pruning is paused while session bootstrap is loading. Only the visible workspace prunes the connection-scoped maps; a hidden workspace does not hold every mounted project's selection, so its keep-set is incomplete. A pending deep-link target is also retained until selection completes, so early transcript reads survive slower capability/configuration requests when reopening a favorite from another project.
 
 ## Project file browser
 
