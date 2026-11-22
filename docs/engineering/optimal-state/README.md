@@ -339,6 +339,10 @@ npm run validate:commit
   Settings share a revision-guarded approval preference command. The commit
   gate passed with 1,285 tests and one existing skip. All 300 focused tests
   and 61 affected browser flows passed.
+- E25. Widgets, quick actions and Mission Control consume scoped Query and
+  connection data. The workspace snapshot no longer supplies native state.
+  The commit gate passed with 1,285 tests and one existing skip, as did 135
+  focused tests and 80 affected browser flows.
 
 ## Loop protocol
 

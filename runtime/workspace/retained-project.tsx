@@ -2,7 +2,7 @@
 import { memo, useCallback, useEffect, useLayoutEffect, useMemo, type Dispatch, type SetStateAction } from 'react';
 
 import { buildClient, type OpencodeConnectionSettings } from '@/shared/protocol/opencode/client';
-import { getActiveSessions, MAX_ACTIVE_SESSIONS, useApprovalsCatalog, useSessionCatalog, useSessionExecutionActions, useSessionPreviews } from '@/features/sessions/runtime';
+import { useApprovalsCatalog, useSessionCatalog, useSessionExecutionActions, useSessionPreviews } from '@/features/sessions/runtime';
 import { useConnectionRuntime } from '@/runtime/connections/connection-runtime';
 import { useActivityNotifications } from '@/features/notifications/runtime';
 import { useCapabilitiesActions, useCapabilitiesPresentation } from '@/features/ai/runtime';
@@ -135,14 +135,6 @@ export const RetainedProject = memo(function RetainedProject({ defaults, updateS
     if (!sessionId) return;
     await refreshInboxMessages(sessionId, false).catch(() => undefined);
   }, [refreshInboxMessages, state.currentSessionId]);
-  const activeSessions = useMemo(() => getActiveSessions({
-    sessions: catalog.sessions,
-    statuses: catalog.statuses,
-    currentSessionId: state.currentSessionId,
-    hideSubagentChats: state.chatPreferences.hideSubagentChats === true,
-    maxTotal: MAX_ACTIVE_SESSIONS,
-  }), [catalog.sessions, catalog.statuses, state.currentSessionId, state.chatPreferences.hideSubagentChats]);
-
   const { manager } = connectionRuntime;
   const isStreamConnected = useCallback(() => manager?.realtime.getStatus() === 'connected', [manager]);
   const { reset: resetTranscript } = transcript;
@@ -317,13 +309,7 @@ export const RetainedProject = memo(function RetainedProject({ defaults, updateS
   const boundDirectory = state.activeProjectPath;
   const snapshot = useMemo<WorkspaceSnapshot>(() => ({ boundDirectory, revision: input.connection.revision, enabled: input.connection.enabled, values, busy, suspend, sessionPreviews,
     loadProjectCatalog: project.loadProjectCatalog,
-    native: { settings: state.settings, catalogClient, contract: state.serverContract, isCurrentCatalogClient,
-      connectionScope: state.connectionScope, sessions: sessionCatalog.sessions,
-      activeSessions, todoRecordsBySession: transcript.todoRecordsBySession,
-      todosBySession: diffCatalog.todosBySession, isStreamConnected },
-  }), [boundDirectory, input.connection.revision, input.connection.enabled, values, busy, suspend, sessionPreviews, catalogClient, project.loadProjectCatalog,
-    state.settings, state.serverContract, isCurrentCatalogClient, state.connectionScope,
-    sessionCatalog.sessions, activeSessions, transcript.todoRecordsBySession, diffCatalog.todosBySession, isStreamConnected]);
+  }), [boundDirectory, input.connection.revision, input.connection.enabled, values, busy, suspend, sessionPreviews, project.loadProjectCatalog]);
   useLayoutEffect(() => { publish(key, snapshot); }, [key, publish, snapshot]);
   useLayoutEffect(() => () => forget(key), [forget, key]);
   return null;

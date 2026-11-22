@@ -972,7 +972,7 @@ recent tasks without opening the app.
 Quick actions:
 
 - dynamic-only items, capped at four: `New chat` plus up to three running/recent
-  sessions from the connection-wide active-session selection (`features/sessions/model/active-sessions.ts`)
+  sessions selected from the connected servers' catalogs (`features/sessions/model/active-sessions.ts`)
 - session labels fall back to the untitled chat copy; labels follow the app
   language and refresh when sessions or the language change
 - publishing is debounced and only happens while the app is foregrounded;
@@ -993,7 +993,8 @@ Android home widgets:
   short request excerpts and overflow count. Descendants group under parents;
   global requests appear once. Responses happen in the app after tapping.
 - Plan progress: current chat's real todo steps, completed/total count, current
-  step and upcoming steps, plus complete/empty states. No inferred plan text.
+  step and upcoming steps, plus complete/empty states. The widget reads the
+  current chat's scoped plan data, which also drives Mission Control progress.
 - Resizable light/dark layouts with accessible names and bounded rows. Existing
   SessionWidget placements become Latest replies; two new widgets are available.
 - Reads use global SSE and existing polling even with the chat library closed or

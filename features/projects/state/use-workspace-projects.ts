@@ -16,7 +16,7 @@ import { vcsInfoOptions } from '../services/queries/status';
 // closed list: every server project is selectable, and closing is a no-op
 // because there is no local entry to remove.
 export function useWorkspaceProjects() {
-  const { connections: managers, commands: { workspace: { ensure }, connection: { restoreProject } } } = useAppCore();
+  const { connections: managers, store, commands: { workspace: { ensure }, connection: { restoreProject } } } = useAppCore();
   const { connections, lifecycles, servers } = useConnectedProjectScopes();
   const sources = useMemo(() => servers.flatMap(({ projects }, catalogIndex) => projects.map((project) => ({ ...project, catalogIndex }))), [servers]);
   const catalogs = useQueries({ queries: servers.map(({ identity, client }) => ({ ...projectsOptions(identity, client), enabled: false })) });
@@ -51,12 +51,19 @@ export function useWorkspaceProjects() {
     });
     if (!project.worktree) throw new Error('OpenCode did not return a project path.');
     const target = { connectionId, projectPath: project.directory || path };
-    const runtime = await ensure(target);
-    if (runtime.native.settings !== entry.settings || !runtime.enabled) throw new Error('The connection changed while adding the project.');
+    const requireConnection = () => {
+      const current = store.getState().registry.connections.find(({ id }) => id === connectionId);
+      if (!current?.enabled || current.settings !== entry.settings || current.revision !== entry.revision) {
+        throw new Error('The connection changed while adding the project.');
+      }
+    };
+    requireConnection();
+    await ensure(target);
+    requireConnection();
     // Re-adding a path is an explicit restore for a project hidden on this device.
     restoreProject({ connectionId, projectPath: project.worktree });
     return target;
-  }, [connections, ensure, managers, restoreProject]);
+  }, [connections, ensure, managers, restoreProject, store]);
   const listDirectories = useCallback(async (connectionId: string, basePath: string, path: string, signal?: AbortSignal) => {
     const entry = connections.find((item) => item.id === connectionId);
     if (!entry?.enabled) throw new Error('Connect this server first.');

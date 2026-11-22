@@ -83,9 +83,10 @@ export function WorkspaceProvider({ children }: PropsWithChildren) {
   const focusedKey = focus && resolveKey(focus);
   const current = focusedKey ? snapshots[focusedKey] : undefined;
   const selection = useAppStore((state) => focusedKey ? state.selection[focusedKey] : undefined);
-  const focusedSettings = current?.native.settings;
+  const focusedEntry = connections.find(({ id }) => id === focus?.connectionId);
+  const focusedSettings = current && focusedEntry?.settings;
   const settings = focusedSettings ?? shell.settings;
-  const focusedPreferences = connections.find(({ id }) => id === focus?.connectionId)?.preferences;
+  const focusedPreferences = focusedEntry?.preferences;
   const settingsConnectionId = focus?.connectionId;
   const updateSettings = useCallback<ConnectionContextValue['updateSettings']>((patch) => {
     if (settingsConnectionId) updateWorkspaceSettings(settingsConnectionId, { ...settings, ...patch });
@@ -154,7 +155,8 @@ export function WorkspaceProvider({ children }: PropsWithChildren) {
     },
     sessions: (focus && catalogs[focus.connectionId]?.sessions) || [], hideSubagentChats: shell.chatPreferences.hideSubagentChats, refreshTargets,
     createSession: async () => { if (!focus) throw new Error('Choose a workspace.'); return createSession(focus); }, openSession });
-  const voiceSetupTest = useVoiceSetupTest(shell.chatPreferences, Object.values(snapshots).some((snapshot) => snapshot.values.conversationValue.conversation.phase !== 'off'));
+  const conversationActive = useAppStore((state) => Object.values(state.conversation).some((voice) => voice && (voice.phase !== 'off' || voice.readbackPhase !== 'idle')));
+  const voiceSetupTest = useVoiceSetupTest(shell.chatPreferences, conversationActive);
   const registry = useMemo<WorkspaceRegistry>(() => ({ ...manager, removeConnection,
     terminalTarget: connections.some((entry) => entry.id === terminalTarget?.connectionId) ? terminalTarget : undefined, selectTerminalTarget,
     inspectionTarget: connections.some((entry) => entry.id === inspectionTarget?.connectionId) ? inspectionTarget : undefined, inspect, sharedInput, connectionControls, catalogs, mission }), [manager, removeConnection, connections, terminalTarget, selectTerminalTarget, inspectionTarget, inspect, sharedInput, connectionControls, catalogs, mission]);
@@ -184,7 +186,7 @@ export function WorkspaceProvider({ children }: PropsWithChildren) {
           updateSettings={updateWorkspaceSettings} updatePreferences={manager.updatePreferences} publish={manager.publish} forget={manager.forget} />;
     }))}
     {current ? <UpdatesContext.Provider value={updates}>
-      <WorkspaceNative runtime={current} currentSessionId={selection?.currentSessionId} preferences={shell.chatPreferences} ready={isHydrated} active={Boolean(focus)} busy={Object.values(snapshots).some((runtime) => runtime.busy)} />
+      <WorkspaceNative catalogs={catalogs} preferences={shell.chatPreferences} ready={isHydrated} busy={Object.values(snapshots).some((runtime) => runtime.busy)} />
       {children}
     </UpdatesContext.Provider> : <View style={{ flex: 1, backgroundColor: '#101212', alignItems: 'center', justifyContent: 'center' }}><ActivityIndicator color="#C3CECB" /></View>}
     </WorkspaceContext.Provider>

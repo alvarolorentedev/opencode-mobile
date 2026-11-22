@@ -377,10 +377,10 @@ it('keeps lifecycle decisions current without resetting retained runtimes', asyn
   const isEnabled = driver.value.isEnabled;
   await driver.settle();
   expect(isEnabled('a')).toBe(true);
-  const snapshot = (id: string, directory: string) => ({ enabled: true, boundDirectory: directory || undefined, native: { settings: driver.value.connections.find((entry: any) => entry.id === id).settings },
+  const snapshot = (directory: string) => ({ enabled: true, boundDirectory: directory || undefined,
     loadProjectCatalog: vi.fn(async () => ({ currentProjectPath: '/repo', serverProjects: [] })),
     suspend: vi.fn(), values: { conversationValue: { conversation: { active: true }, toggleConversationMode: vi.fn(async () => {}) } } });
-  const original = snapshot('a', '/repo'), other = snapshot('a', '/other'), b = snapshot('b', '/repo');
+  const original = snapshot('/repo'), other = snapshot('/other'), b = snapshot('/repo');
   driver.value.publish('["a","/repo"]', original); driver.value.publish('["a","/other"]', other); driver.value.publish('["b","/repo"]', b); driver.flush();
   queryClient.setQueryData(catalogKey('a'), { sessions: [{ id: 'collision', directory: '/repo' }] });
   await expect(driver.value.navigate({ connectionId: 'b', projectPath: '/repo', sessionId: 'collision' })).rejects.toThrow('was not found');
@@ -395,7 +395,7 @@ it('keeps lifecycle decisions current without resetting retained runtimes', asyn
   await driver.value.openExternalSession({ connectionId: 'b', projectPath: '/repo', sessionId: 'collision' });
   expect(bNavigation.openDeepLinkSession).toHaveBeenCalledWith({ sessionId: 'collision', projectPath: '/repo' }, expect.any(AbortSignal));
   expect(originalNavigation.openDeepLinkSession).not.toHaveBeenCalled();
-  const unscoped = snapshot('b', '');
+  const unscoped = snapshot('');
   driver.value.forget('["b","/repo"]');
   driver.value.publish('["b",""]', unscoped); driver.flush();
   const opening = driver.value.openExternalSession({ connectionId: 'b', projectPath: '', sessionId: 'default-project' });
@@ -416,10 +416,10 @@ it('keeps lifecycle decisions current without resetting retained runtimes', asyn
   const profile = { id: 'saved', name: 'Saved', serverUrl: 'http://c', username: 'carol' };
   const activating = driver.value.connectSavedProfile(profile);
   await driver.settle();
-  const c = snapshot('c', '');
+  const c = snapshot('');
   driver.value.publish('["c",""]', c);
   await activating;
-  expect(c.native.settings).toMatchObject({ certificate, oidc, password: 'saved-password' });
+  expect(store.getState().registry.connections.find(({ id }) => id === 'c')?.settings).toMatchObject({ certificate, oidc, password: 'saved-password' });
   expect(mutateConnectionProfiles).not.toHaveBeenCalled();
   driver.unmount();
   queryClient.clear();
@@ -551,10 +551,10 @@ it('moves chat focus to a connected server when the focused server fails', async
   await driver.settle();
   store.getState().setSelection('["a",""]', { activeProjectPath: '/repo' });
   store.getState().setSelection('["b",""]', { activeProjectPath: '/repo' });
-  const snapshot = (id: string) => ({ enabled: true, boundDirectory: '/repo', native: { settings: entries.find((entry) => entry.id === id)!.settings }, suspend: vi.fn(),
+  const snapshot = () => ({ enabled: true, boundDirectory: '/repo', suspend: vi.fn(),
     values: { conversationValue: { conversation: { active: false }, toggleConversationMode: vi.fn(async () => {}) } } });
-  driver.value.publish('["a","/repo"]', snapshot('a'));
-  driver.value.publish('["b",""]', snapshot('b'));
+  driver.value.publish('["a","/repo"]', snapshot());
+  driver.value.publish('["b",""]', snapshot());
   await driver.settle();
   expect(driver.value.focus).toEqual({ connectionId: 'b', projectPath: '' });
   setStatus('b', 'error');

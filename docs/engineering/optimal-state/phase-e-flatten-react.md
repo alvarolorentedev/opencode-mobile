@@ -67,6 +67,9 @@ Start only after Phase D is complete and green.
 - Chat observes its bootstrap flag in the app store and searches files through
   the scoped Projects API. Chat and Settings bind the same connection command
   for auto-approval.
+- Native quick actions read the connection catalogs once per server. Widgets
+  and Mission Control read plan records from their Query partitions, and
+  working sounds read the app-store voice phase.
 - `runtime/core/workspace-selectors.ts` selects the retained project projection.
 - [ADR 0052](../../adr/0052-explicit-overlay-dependencies.md) records explicit
   portal targets and update blocker callbacks. Shared controls use shared imports.

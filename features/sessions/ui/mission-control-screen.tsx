@@ -1,12 +1,11 @@
 import { UpdateBlockingSheet as OverlaySheet, UpdateBlockingWorkspaceSelect as WorkspaceSelect } from '@/features/updates/index';
 import { useFocusEffect, useIsFocused, useLocalSearchParams, useRouter } from 'expo-router';
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useMemo, useState, type ComponentProps } from 'react';
 import { FlatList, ScrollView, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
 import { MISSION_JOB_STATUSES, type MissionJobStatus } from '@/shared/contracts/mission-control';
-import { sessionKey, workspaceKey, type SessionTarget } from '@/shared/contracts/workspace';
-import { deriveTodosFromMessages } from '@/shared/presentation/format';
+import { sessionKey, type SessionTarget } from '@/shared/contracts/workspace';
 import { Button } from '@/shared/ui/button';
 import { Icon } from '@/shared/ui/icon';
 import { ListRow } from '@/shared/ui/list-row';
@@ -20,14 +19,21 @@ import { MissionActivityChart } from '@/features/sessions/ui/mission-activity-ch
 import { MissionSessionRow, MissionSummary } from '@/features/sessions/ui/mission-cards';
 import { MissionContributionChart } from '@/features/sessions/ui/mission-contribution-chart';
 import { useMissionContributions } from '@/features/sessions/state/use-mission-contributions';
+import { useMissionPlanProgress } from '@/features/sessions/state/use-mission-plan-progress';
 
 const ALL = '';
+
+function MissionPlanRow({ row, ...props }: Omit<ComponentProps<typeof MissionSessionRow>, 'progress'>) {
+  const progress = useMissionPlanProgress(row.target, row.stale === true);
+  return <MissionSessionRow {...props} row={row} progress={progress} />;
+}
+
 export function MissionControlScreen() {
   const { t } = useTranslation('chat');
   const router = useRouter();
   const visible = useIsFocused();
   const { filter: linkedFilter } = useLocalSearchParams<{ filter?: string }>();
-  const { mission, navigate, snapshots } = useWorkspaces();
+  const { mission, navigate } = useWorkspaces();
   const [server, setServer] = useState(ALL);
   const [project, setProject] = useState(ALL);
   const [status, setStatus] = useState<MissionJobStatus>();
@@ -112,13 +118,7 @@ export function MissionControlScreen() {
         ListEmptyComponent={serverRequests.length ? undefined : <Text variant="description" className="py-5 text-muted-foreground">
           {t(!servers.length ? 'mission.noServers' : checking ? 'mission.checking' : 'mission.empty')}
         </Text>}
-        renderItem={({ item }) => {
-          const native = snapshots[workspaceKey(item.target)]?.native;
-          const records = native?.todoRecordsBySession[item.target.sessionId];
-          const todos = records && !item.stale ? deriveTodosFromMessages(records) : [];
-          const progress = todos.length ? { completed: todos.filter((todo) => todo.status === 'completed').length, total: todos.length } : undefined;
-          return <MissionSessionRow row={item} error={error === item.key} busy={opening === item.key} progress={progress} onOpen={() => { void open(item.target); }} />;
-        }} />
+        renderItem={({ item }) => <MissionPlanRow row={item} error={error === item.key} busy={opening === item.key} onOpen={() => { void open(item.target); }} />} />
     </OverlaySheet>
   </View>;
 }

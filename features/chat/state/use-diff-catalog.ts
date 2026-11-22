@@ -4,8 +4,9 @@ import { skipToken, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import type { ScopedOpencodeClient } from '@/shared/protocol/opencode/client';
 import type { FileDiff, Todo } from '@/shared/protocol/opencode/types';
+import { todosKey } from '@/shared/server-data/session-plans';
 
-import { diffsKey, todosKey, vcsDiffsKey } from '../services/queries';
+import { diffsKey, vcsDiffsKey } from '../services/queries';
 
 const EMPTY_DIFFS: Record<string, FileDiff[]> = {};
 const EMPTY_TODOS: Record<string, Todo[]> = {};

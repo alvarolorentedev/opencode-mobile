@@ -8,9 +8,7 @@ import type { CapabilitiesContextValue } from '@/features/ai/index';
 import type { ChatContextValue } from '@/features/chat/index';
 import type { ProjectsContextValue } from '@/features/projects/index';
 import type { useProjectCatalogActions } from '@/features/projects/runtime';
-import type { ActiveSessionItem } from '@/features/sessions/index';
 import type { ConversationContextValue } from '@/features/voice/index';
-import type { useWidgetState } from '@/features/widgets/runtime';
 
 import type { Dispatch, SetStateAction } from 'react';
 
@@ -39,9 +37,6 @@ export type WorkspaceSnapshot = {
   suspend: () => void;
   sessionPreviews: Record<string, string>;
   loadProjectCatalog: ReturnType<typeof useProjectCatalogActions>['loadProjectCatalog'];
-  native: Omit<Parameters<typeof useWidgetState>[0], 'hydrated' | 'connected' | 'showPreviews' | 'language' | 'currentSessionId'> & {
-    activeSessions: ActiveSessionItem[];
-  };
 };
 
 export type WorkspaceValues = {

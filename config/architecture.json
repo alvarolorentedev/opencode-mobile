@@ -370,6 +370,7 @@
       "serializeOnboardingVersion"
     ],
     "features/voice/runtime.ts": [
+      "getConversationPhase",
       "PendingConfirmation",
       "useConversationState",
       "useVoiceSetupTest",
