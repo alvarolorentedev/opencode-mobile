@@ -26,11 +26,12 @@ import { useLibrarySessions, useMissionOverview } from '@/features/sessions/runt
 import { MISSION_PATH } from '@/shared/contracts/mission-control';
 import { WorkspaceNative } from '@/runtime/composition/workspace-native';
 import { WorkspaceConversation } from '@/runtime/composition/workspace-conversation';
+import { WorkspaceCatalogReads } from '@/runtime/composition/workspace-catalog-reads';
 import { useMissionWidget } from '@/features/widgets/runtime';
 import { clearWorkspacePresentation, hasWorkspaceDrafts } from '@/runtime/presentation/workspace-presentation';
-import { RetainedProject } from '@/runtime/workspace/retained-project';
-import { workspaceKey, type ConnectionRecord, type WorkspaceCatalog } from '@/shared/contracts/workspace';
-import { useCallback, useEffect, useMemo, useState, useSyncExternalStore, type PropsWithChildren, type SetStateAction } from 'react';
+import type { ConnectionRecord, WorkspaceCatalog } from '@/shared/contracts/workspace';
+import { useQueryForeground } from '@/shared/server-data/client';
+import { useCallback, useEffect, useLayoutEffect, useMemo, useState, useSyncExternalStore, type PropsWithChildren, type SetStateAction } from 'react';
 import { usePathname } from 'expo-router';
 import { ActivityIndicator, View } from 'react-native';
 
@@ -64,6 +65,7 @@ export function WorkspaceProvider({ children }: PropsWithChildren) {
   useEffect(() => core.autoApproval.start(), [core]);
   useEffect(() => core.terminal.start(), [core]);
   useEffect(() => core.clipboard.start(), [core]);
+  useEffect(() => core.projects.start(), [core]);
   useEffect(() => core.events.observeMcpStatus(), [core]);
   const { updateSettings: updateWorkspaceSettings, change, removeConnection: removeWorkspaceConnection, connectedWorkspace, isEnabled } = manager;
   const { setFavoriteSessions, setSettings, setChatPreferences, setHiddenProjects } = shell;
@@ -173,20 +175,13 @@ export function WorkspaceProvider({ children }: PropsWithChildren) {
     });
   }, [focusedSettings, focusedPreferences, setSettings, setChatPreferences]);
   const readTarget = workspaceReadTarget(pathname, registryState);
-  const demandedKey = readTarget && resolveKey(readTarget);
+  const foreground = useQueryForeground();
+  useLayoutEffect(() => { core.projects.setDemand(readTarget, foreground, isHydrated); }, [core, foreground, isHydrated, readTarget]);
   useConnectionDemand(readTarget?.connectionId);
   return <VoiceSetupTestContext.Provider value={voiceSetupTest}>
     <WorkspaceContext.Provider value={registry}>
     {connections.map((entry) => <ConnectionCatalog key={entry.id} entry={entry} demanded={readTarget?.connectionId === entry.id} online={network.online} libraryVisible={pathname === '/' && focus?.connectionId === entry.id && Boolean(selection?.activeSessionsVisible)} missionVisible={pathname === MISSION_PATH} onCatalog={publishCatalog} />)}
-    {connections.flatMap((entry) => entry.projects.map((path, index) => {
-        const key = workspaceKey({ connectionId: entry.id, projectPath: path });
-        const visible = key === focusedKey;
-        const demanded = key === demandedKey;
-        return <RetainedProject key={key} demanded={demanded}
-          connection={entry} catalog={catalogs[entry.id]} projectPath={path || undefined} network={network} defaults={shell.chatPreferences} isHydrated={isHydrated}
-          visible={visible} isConnectionOwner={index === 0}
-          updateSettings={updateWorkspaceSettings} updatePreferences={manager.updatePreferences} />;
-    }))}
+    <WorkspaceCatalogReads target={readTarget} hydrated={isHydrated} />
     {manager.ready && focus ? <UpdatesContext.Provider value={updates}>
       <WorkspaceConversation />
       <WorkspaceNative catalogs={catalogs} preferences={shell.chatPreferences} ready={isHydrated} busy={busy} />

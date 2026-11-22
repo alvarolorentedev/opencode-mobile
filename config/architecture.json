@@ -200,6 +200,7 @@
     "features/projects/runtime.ts": [
       "HIDDEN_PROJECTS_MAX",
       "createWorktreeCommands",
+      "createProjectCatalogActions",
       "fetchProjectCatalog",
       "fileStatusOptions",
       "getVcsDiff",
@@ -210,8 +211,6 @@
       "createFileClipboard",
       "invalidateProjectFileReads",
       "FileClipboardEntry",
-      "useProjectCatalogActions",
-      "useProjectRuntimeState",
       "vcsInfoOptions"
     ],
     "features/notifications/runtime.ts": [
@@ -295,6 +294,8 @@
       "clearMissionStatsCaches",
       "collectDescendantSessionIds",
       "createInteractionCommands",
+      "createSessionExecutionActions",
+      "sessionCatalogAccess",
       "forgetSessionCreation",
       "getActiveSessions",
       "getCurrentPendingRequests",
@@ -319,7 +320,6 @@
       "useMissionOverview",
       "useLibrarySessions",
       "useNativeSurfaces",
-      "useSessionExecutionActions",
       "useApprovalsCatalog",
       "useSessionCatalog",
       "useSessionState"
@@ -329,6 +329,10 @@
       "useChatCommands",
       "useChatTranscript",
       "cachedTranscriptView",
+      "createProjectTranscript",
+      "createChatRefresh",
+      "createDiffCatalog",
+      "readPendingPromptSessionIds",
       "createPromptInboxCommands",
       "reconcilePromptSettlement",
       "createPromptSubmissionActions",
@@ -337,17 +341,10 @@
       "isPromptErrorVisible",
       "migrateTranscriptCaches",
       "pruneProviderTranscripts",
-      "useChatRefresh",
-      "useDiffCatalog",
-      "DiffCatalog",
       "getLiveTranscriptBuffer",
       "LiveTranscriptBuffer",
       "PromptCommandInput",
-      "PromptSubmission",
-      "usePromptInbox",
-      "usePromptLifecycle",
-      "useTranscriptReadErrors",
-      "useTranscriptState"
+      "PromptSubmission"
     ],
     "features/notifications/index.ts": [
       "NotificationsSection",

@@ -89,7 +89,7 @@ During the migration the provider composition below remains the current owner of
 domain state; it may read the core as an adapter and must not gain new state.
 
 The dominant design decision is central orchestration through the provider layer:
-`runtime/composition/opencode-provider.tsx` mounts `WorkspaceProvider`, which coordinates the app-store connection registry and the app-wide coordinators. Each retained project subscribes to its scoped data through `runtime/workspace/retained-project.tsx`. App-core commands run cross-domain actions. Domain hooks select the focused or scoped values from the app core; there is no per-domain context provider tree.
+`runtime/composition/opencode-provider.tsx` mounts `WorkspaceProvider`, which coordinates the app-store connection registry and the app-wide coordinators. The app core reconciles retained project keys and registers their commands with each connection’s realtime manager. Domain hooks select the focused or scoped values from the app core; there is no per-domain context provider tree.
 
 This composition unit is the application's effective domain layer. It owns:
 
@@ -230,10 +230,9 @@ The completion version, preference schema and first-run migration are unchanged.
 
 - `runtime/composition/opencode-provider.tsx`
   Thin entrypoint: creates the app core and mounts the workspace registry.
-- `runtime/workspace/retained-project.tsx`
-  Attaches the project subscriptions and commands to the connection's
-  realtime lifecycle. The app core owns navigation, submission, connection
-  and event commands.
+- `runtime/core/project-runtimes.ts` and `runtime/core/project-binding.ts`
+  Attach project commands and reconciliation to the connection lifecycle.
+  The app core owns navigation, submission, connection and event commands.
 - `runtime/core/workspace-selectors.ts`
   Connection and workspace selectors read the app store and manager.
 - `features/*/model/types.ts`
@@ -262,16 +261,16 @@ The completion version, preference schema and first-run migration are unchanged.
   Small provider-agnostic helpers (project labels, pending-request grouping).
 - `features/sessions/model/selectors.ts`
   Derived selectors extracted from the provider body.
-- `runtime/workspace/use-workspace-shell-state.ts` and `runtime/workspace/use-session-runtime-state.ts`
-  App preferences/persisted metadata and per-project workflow state, respectively.
+- `runtime/core/store.ts`
+  App preferences, persisted metadata and per-project device state.
 - `shared/server-data/` and `runtime/composition/use-workspace-server-data.ts`
   TanStack Query owns routine server responses; domain hooks expose derived views.
   See [server read ownership](state-and-data.md#routine-server-reads).
 - `runtime/realtime/project-refresh-queue.ts`
   Coalesces catalog, transcript and inbox refreshes and clears pending work
   when the project is suspended or reset.
-- `runtime/composition/use-opencode-provider-effects.ts`
-  Project lifecycle effects: session bootstrap, transcript pruning, and working sound.
+- `runtime/core/project-binding.ts`
+  Owns session bootstrap, transcript pruning and reconciliation for a project key.
 - `runtime/core/events.ts` and `shared/protocol/opencode/event-dispatch.ts`
   Event commands read device state from the store and apply protocol events
   through scoped transcript, catalog and interaction operations.
@@ -279,9 +278,8 @@ The completion version, preference schema and first-run migration are unchanged.
   `runtime/core/cached-project-transcripts.ts`
   Memoized transcript presentation and previews for the session library.
   Session selection and actions bind directly through `features/sessions/context.ts`.
-- `runtime/composition/use-project-actions.ts`
-  Project catalog, project selection, session/file
-  refresh, file search/open/save/download, and diagnostics actions.
+- `features/projects/services/project-catalog-actions.ts` and `runtime/core/commands/workspace.ts`
+  Project catalog refresh and scoped project navigation.
 - `features/projects/state/use-project-browser.ts`
   Directory/search query selection and project-scope guards, composed by the
   project file actions and exposed as one files-context member.
@@ -302,7 +300,7 @@ The completion version, preference schema and first-run migration are unchanged.
 - `runtime/connections/create-connection.ts`
   Connection lifecycle, retry, renewal, the shared event stream and routine
   invalidation. `connection-runtime.tsx` provides React bindings and the
-  catalog projection alongside the retained project adapters.
+  catalog view and connection-level activity and Mission Control observers.
 - `runtime/workspace/workspace-lifecycle.ts`
   Cancellable readiness promises resolved by committed runtime publications.
 - `features/cloud-link/state/connect/`
@@ -1106,9 +1104,9 @@ The highest-coupling areas are:
 
 ### Project retention
 
-The retained project adapter pairs its feature subscriptions with the
-connection's data partition. Changes to that binding can affect the Chat,
-Project, Terminal and Settings panes.
+The core binds project commands and transcript reconciliation to the connection's
+credential revision and directory. The Chat, Project, Terminal and Settings panes
+select their own targets and read the same partitions.
 
 ### Prompt lifecycle
 

@@ -27,7 +27,7 @@ transport, persistence, or the client protocol. Read
 | App-wide connection registry, focus, and persistence | `runtime/core/commands/connection.ts`, `runtime/core/commands/workspace.ts`, `runtime/persistence/use-opencode-persistence.ts` |
 | Provider-specific agent guidance | `runtime/AGENTS.md` (loaded when working in `runtime/`) |
 | Routine server reads and connection lifecycle | `shared/server-data/`, `runtime/connections/connection-runtime.tsx` ([ADR 0014](../adr/0014-server-data-and-explicit-lifecycles.md)) |
-| Scoped project subscriptions and presentation | `runtime/workspace/retained-project.tsx` and feature presentation hooks |
+| Scoped project commands and presentation | `runtime/core/project-runtimes.ts`, `runtime/core/project-binding.ts` and feature presentation hooks |
 | Public domain hooks and scope selectors | `features/*/context.ts`, `runtime/core/workspace-selectors.ts` |
 | Provider-facing API aggregation | `shared/protocol/services/` |
 | Client construction, endpoint wrappers, protocol types | `shared/protocol/opencode/` |

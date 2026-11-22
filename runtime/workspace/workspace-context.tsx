@@ -38,9 +38,8 @@ export function useWorkspaceActions(): WorkspaceActions {
 export function useSharedInput() {
   return useWorkspaces().sharedInput;
 }
-// Presentation state is stable and independent of the changing snapshot
-// registry. It lives in the app store so drafts and scroll positions never
-// re-render on a background workspace publish.
+// Drafts and scroll positions live in the app store. Subscribing here avoids
+// rerenders when the application shell receives a connection catalog update.
 export function useWorkspacePresentation() {
   return useAppStore((state) => state.presentation);
 }

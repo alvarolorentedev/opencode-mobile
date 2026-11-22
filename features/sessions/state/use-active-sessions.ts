@@ -5,7 +5,8 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import type { ScopedOpencodeClient } from '@/shared/protocol/opencode/client';
 import type { Session, SessionStatus } from '@/shared/protocol/opencode/types';
 import { getActiveSessions } from '@/features/sessions/model/active-sessions';
-import { sessionCatalogOptions, type SessionCatalogData } from '@/features/sessions/services/queries';
+import { sessionCatalogOptions } from '@/features/sessions/services/queries';
+import { removeCatalogSession } from '@/features/sessions/services/session-catalog-access';
 
 // The snapshot also refreshes on connect and whenever the Chat Library opens,
 // so a slow poll is enough to keep the cross-project running list fresh
@@ -52,12 +53,7 @@ export function useActiveSessions({
   }, [connected, options, queryClient]);
 
   const removeSession = useCallback((sessionId: string) => {
-    queryClient.setQueryData<SessionCatalogData>(options.queryKey, (current) => {
-      if (!current?.sessions.some((session) => session.id === sessionId)) return current;
-      const nextStatuses = { ...current.statuses };
-      delete nextStatuses[sessionId];
-      return { ...current, sessions: current.sessions.filter((session) => session.id !== sessionId), statuses: nextStatuses };
-    });
+    removeCatalogSession(queryClient, options.queryKey, sessionId);
   }, [options.queryKey, queryClient]);
 
   const activeSessions = useMemo(() => selectActive(sessions, statuses), [selectActive, sessions, statuses]);

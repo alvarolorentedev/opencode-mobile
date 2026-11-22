@@ -1,5 +1,3 @@
-import { useCallback } from 'react';
-
 import { resolveDiffTurn } from '@/shared/presentation/transcript';
 
 import type { DiffScope } from '@/features/projects/index';
@@ -19,10 +17,9 @@ async function withDiffLoading<T>(silent: boolean, setLoading: (value: boolean) 
     if (!silent) setLoading(false);
   }
 }
-export function useChatRefresh({ client, isCurrentClient, setIsRefreshingDiffs, setDiffsBySession, setVcsDiffsByScope, setTodosBySession, setDiffScopeBySession, setSelectedDiffMessageBySession, readPinnedDiffMessage, readDiffScope, currentSessionIdRef, readDisplayedSession }: ChatRefreshInput) {
+export function createChatRefresh({ client, isCurrentClient, setIsRefreshingDiffs, setDiffsBySession, setVcsDiffsByScope, setTodosBySession, setDiffScopeBySession, setSelectedDiffMessageBySession, readPinnedDiffMessage, readDiffScope, currentSessionIdRef, readDisplayedSession }: ChatRefreshInput) {
 
-  const refreshSessionDiff = useCallback(
-    async (sessionId: string, silent = false, messageId?: string, records?: SessionMessageRecord[]) => withDiffLoading(silent, setIsRefreshingDiffs, async () => {
+  const refreshSessionDiff = async (sessionId: string, silent = false, messageId?: string, records?: SessionMessageRecord[]) => withDiffLoading(silent, setIsRefreshingDiffs, async () => {
       const messages = records ?? readDisplayedSession(sessionId);
       const pinned = readPinnedDiffMessage(sessionId);
       // Resolve through the same selector the diff surface displays with so a
@@ -46,12 +43,9 @@ export function useChatRefresh({ client, isCurrentClient, setIsRefreshingDiffs, 
       }));
 
       return data;
-    }),
-    [client, isCurrentClient, readDisplayedSession, readPinnedDiffMessage, setDiffsBySession, setIsRefreshingDiffs],
-  );
+    });
 
-  const refreshVcsDiff = useCallback(
-    async (scope: 'uncommitted' | 'branch', silent = false) => withDiffLoading(silent, setIsRefreshingDiffs, async () => {
+  const refreshVcsDiff = async (scope: 'uncommitted' | 'branch', silent = false) => withDiffLoading(silent, setIsRefreshingDiffs, async () => {
       const data = await svcGetVcsDiff(client, scope === 'branch' ? 'branch' : 'git');
       if (!isCurrentClient(client)) {
         return data;
@@ -62,12 +56,9 @@ export function useChatRefresh({ client, isCurrentClient, setIsRefreshingDiffs, 
       }));
 
       return data;
-    }),
-    [client, isCurrentClient, setIsRefreshingDiffs, setVcsDiffsByScope],
-  );
+    });
 
-  const setDiffScope = useCallback(
-    (scope: DiffScope) => {
+  const setDiffScope = (scope: DiffScope) => {
       const sessionId = currentSessionIdRef.current;
       if (!sessionId) {
         return;
@@ -76,24 +67,18 @@ export function useChatRefresh({ client, isCurrentClient, setIsRefreshingDiffs, 
       if (scope !== 'turn') {
         void refreshVcsDiff(scope, true);
       }
-    },
-    [currentSessionIdRef, refreshVcsDiff, setDiffScopeBySession],
-  );
+    };
 
-  const selectDiffMessage = useCallback(
-    (messageId: string) => {
+  const selectDiffMessage = (messageId: string) => {
       const sessionId = currentSessionIdRef.current;
       if (!sessionId) {
         return;
       }
       setSelectedDiffMessageBySession((current) => ({ ...current, [sessionId]: messageId }));
       void refreshSessionDiff(sessionId, true, messageId);
-    },
-    [currentSessionIdRef, refreshSessionDiff, setSelectedDiffMessageBySession],
-  );
+    };
 
-  const refreshDiffs = useCallback(
-    async (silent = false) => {
+  const refreshDiffs = async (silent = false) => {
       const sessionId = currentSessionIdRef.current;
       if (!sessionId) {
         return;
@@ -104,12 +89,9 @@ export function useChatRefresh({ client, isCurrentClient, setIsRefreshingDiffs, 
       } else {
         await refreshVcsDiff(scope, silent);
       }
-    },
-    [currentSessionIdRef, readDiffScope, refreshSessionDiff, refreshVcsDiff],
-  );
+    };
 
-  const refreshSessionTodos = useCallback(
-    async (sessionId: string) => {
+  const refreshSessionTodos = async (sessionId: string) => {
       const data = await svcGetSessionTodos(client, sessionId);
       if (!isCurrentClient(client)) {
         return data;
@@ -121,8 +103,6 @@ export function useChatRefresh({ client, isCurrentClient, setIsRefreshingDiffs, 
       }));
 
       return data;
-    },
-    [client, isCurrentClient, setTodosBySession],
-  );
+    };
   return { refreshSessionDiff, refreshVcsDiff, setDiffScope, selectDiffMessage, refreshDiffs, refreshSessionTodos };
 }

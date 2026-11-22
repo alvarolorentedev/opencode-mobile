@@ -27,7 +27,7 @@ phase you are executing. Do not preload every phase unless you are planning.
 | B | [Connection manager](phase-b-connection-manager.md) | Complete | Core-owned connection managers run probe, renewal, SSE and polling |
 | C | [Command core](phase-c-commands.md) | Complete | Cross-domain commands run in the app core and the legacy composition is deleted |
 | D | [Transcript](phase-d-transcript.md) | Complete | Per-session infinite messages, bounded Query persistence and store live overlay |
-| E | [Flatten React](phase-e-flatten-react.md) | In progress | No scope/provider tree or shared-UI runtime exception |
+| E | [Flatten React](phase-e-flatten-react.md) | Complete | No scope/provider tree or shared-UI runtime exception |
 | F | [Persistence and tests](phase-f-persistence-and-tests.md) | Partially done | Query persistence done; Zustand persist, `loadTs`, `fast-check`, `knip` remain |
 | G | [Harness and guardrails](phase-g-harness-and-guardrails.md) | Not started | Full composition harness, fact rules, docs, release validation |
 
@@ -353,12 +353,21 @@ npm run validate:commit
   directly. A single native conversation controller transfers ownership when
   focus changes. The commit gate passed with 1,287 tests and one existing skip.
   All 262 focused tests and the full 185-flow browser suite passed.
-- E28. The app store no longer contains workspace snapshots. Connection managers
+- E28, `c45d8f07`. The app store no longer contains workspace snapshots. Connection managers
   publish readiness for their own realtime bindings. Classifier state and
   library previews are read from their owners. After fixing the catalog reader
   and a file-action dismissal race, all 185 browser flows passed. The commit
   gate passed with 1,288 tests and one existing skip. All 332 focused tests
   and the Storybook build passed.
+- E29. The app core binds retained project keys to connection realtime scopes.
+  React mounts one catalog reader for the demanded target and one activity
+  observer per connection. The commit gate passed with 1,288 tests and one
+  existing skip. All 424 focused tests, Storybook, docs, the development web
+  build and all 185 browser flows passed. iOS checked nested terminal project
+  selection and retained the console across tabs. Android checked Back through
+  both levels of Settings overlays. The paired streaming benchmark preserved
+  the request counts and measured a median p95 delta-to-paint lag of 15 ms
+  against 19 ms for the Phase C baseline.
 
 ## Loop protocol
 

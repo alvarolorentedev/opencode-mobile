@@ -56,8 +56,7 @@ describe('multi-server contracts', () => {
   it('keeps colliding session identities separate and interleaves by current/running/recency', async () => {
     const { librarySessions } = await loadTs('features/sessions/model/workspace-library.ts', {
     '@/shared/contracts/connection-scope': identity,
-    "@/shared/contracts/workspace": keys,
-    "@/runtime/workspace/workspace-types": keys
+    "@/shared/contracts/workspace": keys
   });
     const connection = (id: string) => ({ id, name: id, enabled: true, settings: { serverUrl: `http://${id}`, username: '' } });
     const session = (id: string, updated: number) => ({ id, directory: '/same', title: id, time: { updated } });
@@ -74,8 +73,7 @@ describe('multi-server contracts', () => {
   it('omits connections that are not connected, including their favorites', async () => {
     const { connectedConnections, librarySessions } = await loadTs('features/sessions/model/workspace-library.ts', {
     '@/shared/contracts/connection-scope': identity,
-    "@/shared/contracts/workspace": keys,
-    "@/runtime/workspace/workspace-types": keys
+    "@/shared/contracts/workspace": keys
   });
     const connection = (id: string, enabled = true) => ({ id, name: id, enabled, settings: { serverUrl: `http://${id}`, username: '' } });
     const session = (id: string) => ({ id, directory: '/same', title: id, time: { updated: 1 } });

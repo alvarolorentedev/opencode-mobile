@@ -15,8 +15,8 @@ that must survive a workspace or tab switch.
 - Prompt sending state and prompt error are in the store (`runtime/core/store.ts`,
   prompt slice).
 - Transcript read errors are in the store (`chat.readErrors`).
-- `runtime/workspace/use-session-runtime-state.ts` exposes the workspace
-  `scopeKey` for store-keyed hooks.
+- Store-keyed hooks receive the workspace `scopeKey`. The original React
+  adapter was removed during Phase E.
 - The legacy `loadTs` helper has a default app-core stand-in so existing suites
   can exercise store-backed hooks until Phase F migrates them.
 

@@ -19,6 +19,12 @@ export type PromptSnapshot = { prompts: Record<string, PendingPrompt[]>; notices
 export const EMPTY_SNAPSHOT: PromptSnapshot = { prompts: EMPTY_PROMPTS, notices: EMPTY_NOTICES };
 export const EMPTY_OUTBOX: PromptOutbox = { sequence: 0, bySession: {} };
 
+export function readPendingPromptSessionIds(cache: QueryClient, identity: QueryIdentity, client: ScopedOpencodeClient, outbox?: PromptOutbox) {
+  const { prompts } = cache.getQueryData<PromptSnapshot>(promptInboxKey(identity, client)) ?? EMPTY_SNAPSHOT;
+  return [...new Set([...Object.keys(prompts).filter((id) => prompts[id].length),
+    ...Object.keys(outbox?.bySession ?? {}).filter((id) => outbox?.bySession[id].length)])];
+}
+
 export function mergePrompts(server: PendingPrompt[], local: PromptOutbox['bySession'][string]) {
   return [...local.map(({ prompt }) => prompt), ...server].sort((a, b) => a.createdAt - b.createdAt);
 }

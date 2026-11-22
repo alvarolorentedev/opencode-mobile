@@ -7,7 +7,6 @@ export { locationOptions } from './services/queries/catalog';
 export { projectsOptions } from './services/queries/catalog';
 export { createFileClipboard, type FileClipboardEntry } from './services/file-clipboard';
 export { invalidateProjectFileReads } from './services/queries/files';
-export { useProjectCatalogActions } from './state/use-project-catalog-actions';
-export { useProjectRuntimeState } from './state/use-project-runtime-state';
+export { createProjectCatalogActions } from './services/project-catalog-actions';
 export { vcsInfoOptions } from './services/queries/status';
 export { HIDDEN_PROJECTS_MAX } from './model/types';

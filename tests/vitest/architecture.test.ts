@@ -85,7 +85,7 @@ describe('architecture ratchets', () => {
       'WorkspaceProvider must own the single connectivity monitor.',
     );
     assert.doesNotMatch(
-      await read('runtime/workspace/retained-project.tsx'),
+      (await Promise.all(['project-binding', 'project-runtimes'].map((name) => read(`runtime/core/${name}.ts`)))).join('\n'),
       /useNetworkStatus|use-network-status/,
       'Each workspace runtime must consume the shared network snapshot, not configure NetInfo itself.',
     );

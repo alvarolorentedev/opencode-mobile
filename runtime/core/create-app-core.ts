@@ -13,6 +13,7 @@ import { createAutoApproval } from './commands/auto-approval';
 import { createTerminalRuntime } from './commands/terminal';
 import { createCoreEvents } from './events';
 import { createVoiceControls } from './voice-controls';
+import { createProjectRuntimes } from './project-runtimes';
 
 import { createAppStore, type AppStoreDefaults } from './store';
 
@@ -22,6 +23,7 @@ export type AppCore = CommandContext & {
   terminal: ReturnType<typeof createTerminalRuntime>;
   clipboard: ReturnType<typeof createFileClipboard>;
   voice: ReturnType<typeof createVoiceControls>;
+  projects: ReturnType<typeof createProjectRuntimes>;
   transcripts: (identity: QueryIdentity, client: ScopedOpencodeClient) => ReturnType<typeof cachedTranscriptView>;
   commands: {
     workspace: ReturnType<typeof createWorkspaceCommands>;
@@ -44,15 +46,19 @@ export function createAppCore(defaults: AppStoreDefaults): AppCore {
     clock: () => Date.now(),
   };
   const session = createSessionCommands(context);
+  const prompt = createPromptCommands(context);
+  const events = createCoreEvents(context);
+  const terminal = createTerminalRuntime(context);
   const voice = createVoiceControls();
   const workspace = createWorkspaceCommands(context, session, voice.pause);
   const clipboard = createFileClipboard(store, async (id, root) => {
     const access = context.connections.get(id)?.getProjectAccess(root);
     if (access?.isCurrent()) await invalidateProjectFileReads(queryClient, access.identity, access.client);
   });
-  return { ...context, events: createCoreEvents(context), autoApproval: createAutoApproval(context, session.interactions), terminal: createTerminalRuntime(context),
-    clipboard, voice, transcripts: (identity, client) => cachedTranscriptView(queryClient, identity, client), commands: {
-    workspace, session, prompt: createPromptCommands(context),
+  const projects = createProjectRuntimes({ ...context, events, terminal, session, prompt });
+  return { ...context, events, autoApproval: createAutoApproval(context, session.interactions), terminal,
+    clipboard, voice, projects, transcripts: (identity, client) => cachedTranscriptView(queryClient, identity, client), commands: {
+    workspace, session, prompt,
     connection: createConnectionCommands(context, workspace),
   } };
 }

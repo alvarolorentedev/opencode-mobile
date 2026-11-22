@@ -1,10 +1,10 @@
 # Phase E — Flatten React
 
-Status: **in progress**. Retained Terminal and Settings panes pass explicit
+Status: **complete**. Retained Terminal and Settings panes pass explicit
 workspace targets through their screens and dialogs. Shared portal components
 keep named modal hosts and receive interaction registration through props.
-The snapshot registry has been removed. React still mounts the project
-adapters that bind commands and realtime reconciliation.
+The app core binds project commands and realtime reconciliation by workspace
+key. The local Phase E checkpoint passed.
 
 Goal: remove the remaining scope/provider carriers from React. The app mounts
 one core provider and one Query provider; workspaces are keys, not mounted
@@ -15,16 +15,16 @@ and [ADR 0013](../../adr/0013-source-owned-ui-and-complex-forms.md) first.
 
 Start only after Phase D is complete and green.
 
-## What remains today
+## Implemented
 
 - `runtime/workspace/workspace-context.tsx` owns `WorkspaceContext` for
   registry access and the app-level share view. Workspace actions bind directly
   to the core.
-- The root still mounts `runtime/workspace/retained-project.tsx` for each
-  project. Focus changes when the connection exposes a current binding for
-  the requested directory. A server URL edit selects its new disabled target.
-- Connection and project adapters pass Query identity and demand explicitly.
-  Query has one app-level provider.
+- The app core reconciles retained project keys and registers scoped commands.
+  Focus changes when the connection exposes a current binding for the requested
+  directory. A server URL edit selects its new disabled target.
+- Feature selectors and the app-wide catalog reader pass Query identity and
+  demand explicitly. Query has one app-level provider.
 - Onboarding and preferences read device facts directly from the app store.
   Preference updates reconcile model choices against the scoped Query catalog.
 - The core retains terminal controllers by workspace key. Terminal views read
@@ -88,15 +88,14 @@ Start only after Phase D is complete and green.
 The development app launched on an iPhone 17 Pro simulator running iOS 26.5.
 The independent Settings pane opened the connection sheet and a nested native
 form. The URL field accepted input, Back restored the entered address, and
-Save & connect reached the loopback OpenCode 2 fixture. The full native
-checkpoint remains.
+Save & connect reached the loopback OpenCode 2 fixture.
 
 The simulator also opened and dismissed the project picker inside the new
 terminal sheet, created a PTY, and retained its output and single WebSocket
 across Chat and Terminal tabs. The terminal now guards the native bridge
 method before it is registered. Expo's development runtime still logged
 early `DomWebView` tag lookup errors on mount. The renderer recovered and
-showed output. Recheck with the final native build.
+showed output.
 
 The ARM64 Android development build launched on an API 36 emulator. Hardware
 Back dismissed the keyboard, returned from connection details with the typed
@@ -105,6 +104,22 @@ without exiting onboarding. Save & connect reached the loopback V2 fixture.
 In Settings, Back closed the theme selector first and then closed the Appearance
 sheet. After the terminal controller refactor, the emulator created a PTY and
 preserved its output and one WebSocket across Terminal, Chat and Terminal.
+
+At the final checkpoint, the iOS 26.5 simulator opened and dismissed the
+project picker over the new-terminal sheet, created a connected console, and
+retained it across tabs. Android API 36 loaded the existing transcript and
+closed the nested theme picker, then the Appearance sheet, with Back. Both
+development builds displayed the known Expo DOM early-view warning while the
+console mounted and recovered. Signed builds and physical-device validation
+remain open.
+
+All 185 browser flows, the Storybook build and the commit gate passed.
+Five alternating pairs against the Phase C baseline each rendered all 160
+deltas with an 8 MiB inline attachment. Median first visible delay was 46 ms
+against 48 ms with the project bindings in core. Median p95 visible-delta
+lag improved from 19 to 15 ms, and the cold transcript appeared in 180 ms
+against 168 ms before the held newest-page response. Each run made two page
+reads and one assistant message detail read.
 
 ## Target shape
 

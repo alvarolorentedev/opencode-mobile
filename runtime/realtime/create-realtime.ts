@@ -1,6 +1,6 @@
 import type { ScopedOpencodeClient } from '@/shared/protocol/opencode/client';
 import type { ChatCommands } from '@/features/chat/runtime';
-import type { useProjectCatalogActions } from '@/features/projects/runtime';
+import type { createProjectCatalogActions } from '@/features/projects/runtime';
 import type { OpencodeEvent, subscribeEvents } from '@/shared/protocol/opencode/events';
 import { nextPollDelay, shouldPoll } from '@/runtime/realtime/polling';
 import { createReconciler, type ReconcileSources } from '@/runtime/realtime/reconcile';
@@ -22,7 +22,7 @@ export type RealtimeScopeInput = Omit<ReconcileSources, 'pendingSessionIds' | 's
   catalog?: {
     revision?: number;
     isCurrent: () => boolean;
-    actions: ReturnType<typeof useProjectCatalogActions>;
+    actions: ReturnType<typeof createProjectCatalogActions>;
   };
   binding?: { revision?: number; client: ScopedOpencodeClient; suspend: () => void; busyForUpdates: boolean };
 };

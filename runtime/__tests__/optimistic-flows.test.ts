@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import { QueryClient } from '@tanstack/react-query';
 
+import { reconcileProjectSessionSelection } from '@/runtime/core/project-session-selection';
 import { createSessionNavigationCommands } from '@/runtime/core/commands/session-navigation';
 import { getLiveTranscriptBuffer } from '@/features/chat/model/live-transcript';
 import { forgetSessionCreation, recentlyCreatedSessionIds, sessionCreationCommands } from '@/features/sessions/services/session-creation';
@@ -112,17 +113,16 @@ function deferredGate<T = void>() {
   return { promise, resolve, reject };
 }
 
-async function loadSessionExecution(runtime: ReturnType<typeof hookRuntime>) {
+async function loadSessionExecution() {
   const services = {
     compactSession: vi.fn(async () => undefined),
     executeCommand: vi.fn(async () => undefined),
     generateSessionText: vi.fn(async () => 'answer'),
   };
-  const { useSessionExecutionActions } = await loadTs('features/sessions/state/use-session-execution-actions.ts', {
-    react: runtime.react,
+  const { createSessionExecutionActions } = await loadTs('features/sessions/services/session-execution.ts', {
     '@/shared/protocol/services/session-service': services,
   });
-  return { useSessionExecutionActions, services };
+  return { createSessionExecutionActions, services };
 }
 
 function sessionExecutionInput() {
@@ -139,42 +139,31 @@ function sessionExecutionInput() {
 
 describe('local-first session selection', () => {
   it('keeps an explicit selection while the project catalog is stale, then reconciles later removal', async () => {
-    const runtime = hookRuntime();
-    const { useOpencodeProviderEffects } = await loadTs('runtime/composition/use-opencode-provider-effects.ts', {
-    react: runtime.react,
-    "@/features/chat/model/transcript-pruning": { pruneProviderTranscripts: vi.fn() }
-  });
     const previous = [{ id: 'old' }];
-    const sessionsRef = { current: previous };
-    const explicitSessionSelectionRef = { current: 'target' as string | undefined };
-    const currentSessionIdRef = { current: 'target' as string | undefined };
-    const setCurrentSessionId = vi.fn((id?: string) => { currentSessionIdRef.current = id; });
-    runtime.mount(useOpencodeProviderEffects, {
-      connection: { status: 'idle' }, isHydrated: false, active: false,
-      activeProjectPath: '/repo', connectionScope: 'scope',
-      currentSessionId: 'target', currentSessionIdRef, explicitSessionSelectionRef,
-      sessions: previous, sessionsRef,
-      setCurrentSessionId,
+    let explicitSessionId: string | undefined = 'target';
+    let currentSessionId: string | undefined = 'target';
+    const setCurrentSessionId = vi.fn((id?: string) => { currentSessionId = id; });
+    const reconcile = (sessions: { id: string }[]) => reconcileProjectSessionSelection({
+      sessions, currentSessionId, explicitSessionId, setCurrentSessionId,
+      clearExplicitSessionId: () => { explicitSessionId = undefined; },
     });
+
+    reconcile(previous);
     expect(setCurrentSessionId).not.toHaveBeenCalled();
-    expect(currentSessionIdRef.current).toBe('target');
-    expect(explicitSessionSelectionRef.current).toBe('target');
+    expect(currentSessionId).toBe('target');
+    expect(explicitSessionId).toBe('target');
 
     // Another stale list must not override the tap while the target is loading.
-    sessionsRef.current = [...previous];
-    runtime.update({ sessions: sessionsRef.current });
+    reconcile([...previous]);
     expect(setCurrentSessionId).not.toHaveBeenCalled();
 
-    sessionsRef.current = [...previous, { id: 'target' }];
-    runtime.update({ sessions: sessionsRef.current });
-    expect(explicitSessionSelectionRef.current).toBeUndefined();
+    reconcile([...previous, { id: 'target' }]);
+    expect(explicitSessionId).toBeUndefined();
     expect(setCurrentSessionId).not.toHaveBeenCalled();
 
-    sessionsRef.current = previous;
-    runtime.update({ sessions: previous });
+    reconcile(previous);
     expect(setCurrentSessionId).toHaveBeenCalledWith('old');
-    expect(currentSessionIdRef.current).toBe('old');
-    runtime.unmount();
+    expect(currentSessionId).toBe('old');
   });
 
   it('selects the active session before transcript hydration finishes', async () => {
@@ -559,36 +548,33 @@ describe('optimistic interaction replies', () => {
 
 describe('command agent eligibility', () => {
   it('repairs stale selections at execution and refuses an unverifiable agent', async () => {
-    const runtime = hookRuntime();
-    const { useSessionExecutionActions, services } = await loadSessionExecution(runtime);
+    const { createSessionExecutionActions, services } = await loadSessionExecution();
     const input = sessionExecutionInput();
-    runtime.mount(useSessionExecutionActions, { ...input, chatPreferences: { ...input.chatPreferences, mode: 'summary' },
-      availableAgents: [{ id: 'build', label: 'Build', mode: 'primary' }, { id: 'plan', label: 'Plan', mode: 'all' }], currentConfig: { default_agent: 'plan' } });
-    await runtime.value.executeCommand('s', 'review', '');
+    const selected = { ...input, chatPreferences: { ...input.chatPreferences, mode: 'summary' },
+      availableAgents: [{ id: 'build', label: 'Build', mode: 'primary' }, { id: 'plan', label: 'Plan', mode: 'all' }], currentConfig: { default_agent: 'plan' } };
+    const actions = createSessionExecutionActions(selected);
+    await actions.executeCommand('s', 'review', '');
     expect(services.executeCommand).toHaveBeenCalledWith(input.client, 's', 'review', '', expect.objectContaining({ agent: 'plan' }));
-    runtime.update({ availableAgents: [{ id: 'general', label: 'General', mode: 'subagent' }] });
-    await expect(runtime.value.executeCommand('s', 'review', '')).rejects.toThrow('chat:composer.noEligibleAgent');
+    const unavailable = createSessionExecutionActions({ ...selected, availableAgents: [{ id: 'general', label: 'General', mode: 'subagent' }] });
+    await expect(unavailable.executeCommand('s', 'review', '')).rejects.toThrow('chat:composer.noEligibleAgent');
     expect(services.executeCommand).toHaveBeenCalledOnce();
-    runtime.unmount();
   });
 
   it('routes built-in compact and btw before the server command', async () => {
-    const runtime = hookRuntime();
-    const { useSessionExecutionActions, services } = await loadSessionExecution(runtime);
+    const { createSessionExecutionActions, services } = await loadSessionExecution();
     const input = sessionExecutionInput();
-    runtime.mount(useSessionExecutionActions, input);
+    const actions = createSessionExecutionActions(input);
 
-    await runtime.value.executeCommand('s', 'compact', '');
+    await actions.executeCommand('s', 'compact', '');
     expect(services.compactSession).toHaveBeenCalledWith(input.client, 's');
     expect(services.executeCommand).not.toHaveBeenCalled();
 
-    await expect(runtime.value.executeCommand('s', 'btw', 'why?')).resolves.toEqual({ question: 'why?', answer: 'answer' });
+    await expect(actions.executeCommand('s', 'btw', 'why?')).resolves.toEqual({ question: 'why?', answer: 'answer' });
     expect(services.generateSessionText).toHaveBeenCalledWith(input.client, 's', expect.stringContaining('why?'));
     expect(services.executeCommand).not.toHaveBeenCalled();
 
-    await expect(runtime.value.executeCommand('s', 'btw', '')).rejects.toThrow('chat:composer.sideQuestionEmpty');
-    await expect(runtime.value.executeCommand('s', 'btw', 'why?', { attachments: [{ uri: 'file:///a' }] })).rejects.toThrow('chat:composer.builtinAttachmentsUnsupported');
+    await expect(actions.executeCommand('s', 'btw', '')).rejects.toThrow('chat:composer.sideQuestionEmpty');
+    await expect(actions.executeCommand('s', 'btw', 'why?', { attachments: [{ uri: 'file:///a' }] })).rejects.toThrow('chat:composer.builtinAttachmentsUnsupported');
 
-    runtime.unmount();
   });
 });

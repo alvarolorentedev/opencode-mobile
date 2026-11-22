@@ -1,11 +1,13 @@
 import { buildClient, type OpencodeConnectionSettings } from '@/shared/protocol/opencode/client';
 import { useQuery } from '@tanstack/react-query';
-import { useCallback, useLayoutEffect, useMemo, useSyncExternalStore } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useMemo, useSyncExternalStore } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { TFunction } from 'i18next';
 import { AppState } from 'react-native';
 import { createConnection } from '@/runtime/connections/create-connection';
-import { useAppCore } from '@/runtime/core';
+import { useAppCore, useAppStore } from '@/runtime/core';
+import { useActivityNotifications } from '@/features/notifications/runtime';
+import type { SendingState } from '@/shared/contracts/prompt-actions';
 import { idleConnection } from './idle-connection';
 import { projectsOptions } from '@/features/projects/runtime';
 import { useConnectionQueryIdentity, useQueryForeground } from '@/shared/server-data/client';
@@ -13,7 +15,7 @@ import { readSessionStats } from '@/shared/protocol/services/session-stats';
 import type { SessionStatsSource } from '@/shared/server-data/session-stats';
 import { useActiveSessions, useMissionActivity } from '@/features/sessions/runtime';
 import type { ConnectSetup } from '@/shared/contracts/cloud-link-setup';
-import type { ConnectionRecord, WorkspaceCatalog } from '@/shared/contracts/workspace';
+import { workspaceKey, type ConnectionRecord, type WorkspaceCatalog } from '@/shared/contracts/workspace';
 import type { Project } from '@/shared/protocol/opencode/types';
 
 const EMPTY_PROJECTS: Project[] = [];
@@ -28,7 +30,7 @@ function connectionTranslator(t: TFunction) {
 
 const readIdle = () => idleConnection;
 const noSubscription = () => () => {};
-const emptyCatalog: WorkspaceCatalog = { sessions: [], statuses: {}, refresh: async () => {}, removeSession: () => {} };
+const IDLE: SendingState = { active: false };
 
 export function useConnectionRegistryBinding(setup: ConnectSetup, updateSettings: (id: string, settings: OpencodeConnectionSettings) => void, hydrated: boolean) {
   const { connections } = useAppCore();
@@ -60,18 +62,8 @@ function useManagedConnection(entry: ConnectionRecord) {
     connection: entry.enabled ? state.connection : idleConnection.connection,
     serverContract: state.contract,
     connect,
-    onInvalidated: manager?.onInvalidated ?? noSubscription,
     manager,
   }), [connect, entry.enabled, manager, state.connection, state.contract]);
-}
-
-export function useConnectionRuntime(entry: ConnectionRecord, catalog = emptyCatalog) {
-  const { connections } = useAppCore();
-  const lifecycle = useManagedConnection(entry);
-  const catalogClient = useMemo(() => lifecycle.manager?.getCatalogClient() ?? buildClient({ ...entry.settings, directory: '' }, lifecycle.serverContract),
-    [entry.settings, lifecycle.manager, lifecycle.serverContract]);
-  const isCurrentCatalogClient = useCallback((client: object) => client === connections.get(entry.id)?.getCatalogClient(), [connections, entry.id]);
-  return { ...lifecycle, catalogClient, catalog, isCurrentCatalogClient };
 }
 
 export function ConnectionCatalog({ entry, online, onCatalog, libraryVisible, missionVisible, demanded }: {
@@ -82,8 +74,9 @@ export function ConnectionCatalog({ entry, online, onCatalog, libraryVisible, mi
   demanded: boolean;
   onCatalog: (entry: ConnectionRecord, catalog: WorkspaceCatalog) => void;
 }) {
-  const lifecycle = useConnectionRuntime(entry);
-  const { catalogClient } = lifecycle;
+  const lifecycle = useManagedConnection(entry);
+  const catalogClient = useMemo(() => lifecycle.manager?.getCatalogClient() ?? buildClient({ ...entry.settings, directory: '' }, lifecycle.serverContract),
+    [entry.settings, lifecycle.manager, lifecycle.serverContract]);
   const identity = useConnectionQueryIdentity(entry);
   const foreground = useQueryForeground();
   const sessions = useActiveSessions({ identity, catalogClient, connected: entry.enabled && lifecycle.connection.status === 'connected', currentSessionId: undefined, hideSubagentChats: false, visible: demanded && entry.enabled && foreground && libraryVisible });
@@ -92,6 +85,20 @@ export function ConnectionCatalog({ entry, online, onCatalog, libraryVisible, mi
     enabled: entry.enabled && online && foreground && lifecycle.connection.status === 'connected' && lifecycle.serverContract === 'v2' }).data ?? EMPTY_PROJECTS;
   const knownDirectories = useMemo(() => projects.flatMap(({ worktree, sandboxes }) => [worktree, ...(sandboxes ?? [])]).filter(Boolean), [projects]);
   const connected = lifecycle.connection.status === 'connected';
+  const { commands: { workspace } } = useAppCore();
+  const focusedKey = useAppStore(({ registry: { focus } }) => focus?.connectionId === entry.id ? workspace.resolveKey(focus) : undefined);
+  const defaultKey = workspaceKey({ connectionId: entry.id, projectPath: entry.projects[0] ?? '' });
+  const currentSessionId = useAppStore(({ selection }) => focusedKey ? selection[focusedKey]?.currentSessionId : undefined);
+  const prompt = useAppStore((state) => state.prompt[focusedKey ?? defaultKey]);
+  const manager = lifecycle.manager;
+  const isStreamConnected = useCallback(() => manager?.realtime.getStatus() === 'connected', [manager]);
+  const handleActivity = useActivityNotifications({
+    catalogClient, settings: entry.settings, contract: lifecycle.serverContract, connectionScope: identity.connectionScope,
+    connected: entry.enabled && connected, currentSessionId, sessions: sessions.catalogSessions,
+    sendingState: prompt?.sending ?? IDLE, promptError: prompt?.error, autoApprove: entry.preferences.autoApprove,
+    isStreamConnected,
+  });
+  useEffect(() => connected ? manager?.events.observe(handleActivity) : undefined, [connected, handleActivity, manager]);
   const authorized = lifecycle.connection.kind !== 'auth' && lifecycle.connection.kind !== 'entitlement';
   const statsAvailable = entry.enabled && online && connected && authorized && lifecycle.serverContract === 'v2';
   const stats = useMemo<SessionStatsSource | undefined>(() => statsAvailable ? {

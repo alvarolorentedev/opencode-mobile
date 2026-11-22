@@ -79,6 +79,7 @@ async function mountTranscript(
     "@/features/chat/services/transcript-cache": { hydrateTranscriptCache: async () => {} }
   });
   const access = transcriptAccess(query.useQueryClient(), identity, client);
+  const isCurrentClient = () => true;
   for (const [id, records] of Object.entries(initial)) access.restore(id, records);
   function useHarness() {
     const [, setIsRefreshingMessages] = runtime.react.useState(false);
@@ -86,7 +87,7 @@ async function mountTranscript(
       identity,
       scopeKey: 'transcript-test-workspace',
       client,
-      isCurrentClient: () => true,
+      isCurrentClient,
       currentSessionId: 's',
       connectionScope: 'scope',
       activeProjectPath: '/repo',

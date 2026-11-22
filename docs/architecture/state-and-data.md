@@ -25,11 +25,11 @@ renewal and the shared event stream. Connection presentation reads settings
 from the app store and lifecycle state from the manager. The app shell supplies
 the shared profile, setup and service controls once. Query owns the shared
 session catalog and routine server responses. Feature hooks select scoped
-facts from Query and the app store. Retained project adapters bind commands
-and reconciliation to the connection manager's realtime scopes.
+facts from Query and the app store. The core binds commands and reconciliation
+for each retained project key to the connection manager's realtime scopes.
 
 The workspace commands in `runtime/core/commands/workspace.ts` register project
-demand and wait for a matching retained publication before opening a chat. They
+demand and wait for a matching realtime binding before opening a chat. They
 own navigation cancellation, chat and worktree creation, and independent
 terminal and inspection targets. A newer navigation cancels an older external
 link before it can change focus.
@@ -151,8 +151,8 @@ entitlement recovery remain transactional Cloud Link state, outside Query.
 
 Only the currently visible Chat/Project, Settings inspection or Terminal target
 provides query demand; remembering a target does not keep it subscribed.
-Connection and project adapters pass the credential revision, identity and
-query demand into the owning hooks. Foreground subscribers read the Query focus
+Project selectors pass the credential revision and identity to the owning hooks.
+The app shell sets route demand for the connection and project lifecycle. Foreground subscribers read the Query focus
 manager directly. The app uses one Query provider for all scopes.
 Retained/background workspaces give `useQueries` an empty query list. This
 destroys observers and releases their held results; disabling a retained observer
