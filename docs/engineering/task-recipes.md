@@ -143,7 +143,8 @@ endpoint consumed by the app.
 
 **Edit in this order:**
 
-1. Public type: `shared/contracts/domain.ts`.
+1. Put the type in the owning feature. Export it through the feature's public
+   entrypoint if another feature uses it.
 2. State ownership: TanStack Query for server data and `runtime/core/store.ts`
    for device data.
 3. Behavior: update the owning feature or the cross-domain command in

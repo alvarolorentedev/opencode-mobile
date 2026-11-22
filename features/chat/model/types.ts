@@ -8,10 +8,16 @@ import type { SessionMessageRecord, TranscriptEntry } from '@/shared/presentatio
 
 import type { SessionUsage } from '@/shared/presentation/usage';
 
-import type { DiffScope , DiffTurn } from '@/shared/contracts/domain';
+import type { DiffScope } from '@/features/projects/index';
 
 import type { SendPrompt , SendingState } from '@/shared/contracts/prompt-actions';
 import type { SideQuestionAnswer } from '@/shared/contracts/session-commands';
+
+// A selectable user turn that has a recorded snapshot diff.
+export type DiffTurn = {
+  id: string;
+  number: number;
+};
 
 export type ChatContextValue = {
   pendingPrompts: PendingPrompt[];

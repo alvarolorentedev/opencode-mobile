@@ -2,7 +2,7 @@ import type { QueryClient } from '@tanstack/react-query';
 
 import type { ScopedOpencodeClient } from '@/shared/protocol/opencode/client';
 import type { QueryIdentity } from '@/shared/server-data/keys';
-import type { TranscriptReadOptions } from '@/shared/contracts/domain';
+import type { TranscriptReadOptions } from '@/shared/contracts/transcript-read';
 import {
   deleteSession as deleteRemoteSession,
   interruptSession,

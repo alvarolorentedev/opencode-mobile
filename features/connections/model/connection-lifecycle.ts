@@ -1,5 +1,5 @@
 import type { ServerContract } from '@/shared/protocol/opencode/client';
-import type { ConnectionState } from '@/shared/contracts/domain';
+import type { ConnectionState } from '@/features/connections/model/types';
 export type ConnectionLifecycle = { phase: 'disabled' | 'idle' | 'preparing' | 'probing' | 'connected' | 'failed'; operation: number; connection: ConnectionState; contract: ServerContract };
 export type ConnectionTransition =
   | { type: 'start'; operation: number; message: string }

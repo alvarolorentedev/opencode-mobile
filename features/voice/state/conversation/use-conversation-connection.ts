@@ -1,7 +1,7 @@
 import { useEffect, type Dispatch, type SetStateAction } from 'react';
 
 import type { VoiceRecoveryAction } from '@/shared/platform/voice/speech-errors';
-import type { ConnectionState } from '@/shared/contracts/domain';
+import type { ConnectionState } from '@/features/connections/index';
 import type { ConversationInputPhase } from '@/features/voice/model/types';
 import { applyConversationFeedback } from '@/features/voice/state/conversation/feedback';
 

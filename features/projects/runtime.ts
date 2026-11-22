@@ -14,3 +14,4 @@ export { useProjectRuntimeState } from './state/use-project-runtime-state';
 export { useWorktreeState } from './state/use-worktree-state';
 export { vcsInfoOptions } from './services/queries/status';
 export { useProjectPresentation } from './state/use-project-presentation';
+export { HIDDEN_PROJECTS_MAX } from './model/types';

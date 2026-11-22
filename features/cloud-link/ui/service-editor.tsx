@@ -24,7 +24,7 @@ import {
   type ServiceDraftErrors,
   type ServiceDraftContext,
   type ServicePortOption,
-} from '@/shared/contracts/service-management';
+ ServiceManagementApi } from '@/shared/contracts/service-management';
 import {
   SERVICE_ACCESS_CONNECTOR_VERSION,
   getServiceServerNow,
@@ -34,7 +34,6 @@ import {
   type ServiceExpirationChoice,
   type ServiceExpirationUnit,
 } from '@/shared/contracts/service-access';
-import type { ServiceManagementApi } from '@/shared/contracts/domain';
 
 // Full-screen add/edit form for one connector service. Presentation and local
 // form state only: validation mirrors the connector through

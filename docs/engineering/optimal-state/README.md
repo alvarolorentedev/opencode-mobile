@@ -230,10 +230,15 @@ npm run validate:commit
   and subscribes to foreground changes through the focus manager. The commit
   gate passed with 1,281 tests and one existing skip. The 86 focused Vitest
   cases, web export and all 72 affected browser flows passed.
-- E4a. Onboarding reads registry hydration and review state from the app store.
+- E4a, `5b8abdcb`. Onboarding reads registry hydration and review state from the app store.
   The commit gate passed with 1,281 tests and one existing skip. All 35 focused
   tests, the web export and all 33 onboarding, Settings and manual connection
   browser flows passed.
+- E4b. The combined domain type file is gone. Feature contracts live with their
+  owners, and shared transcript reads and service management use dedicated
+  contracts. The commit gate passed with 1,281 tests and one existing skip.
+  Focused Vitest passed 470 tests with one existing skip. Web export and 89
+  Connect, project, session, multi-server and diff browser flows passed.
 
 ## Loop protocol
 

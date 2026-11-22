@@ -3,7 +3,7 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
 import { Pressable, Text as NativeText, View } from 'react-native';
 
-import type { OpencodeProject } from '@/shared/contracts/domain';
+import type { OpencodeProject } from '@/features/projects/model/types';
 import { usePalette } from '@/shared/ui/theme/use-palette';
 
 /**

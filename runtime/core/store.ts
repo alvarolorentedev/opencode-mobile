@@ -3,7 +3,8 @@ import { createStore, type StoreApi } from 'zustand/vanilla';
 import type { OpencodeConnectionSettings } from '@/shared/protocol/opencode/client/types';
 import type { PendingPrompt, PromptInput } from '@/shared/protocol/opencode/prompt-inbox';
 import type { ChatPreferences } from '@/shared/preferences/opencode-preferences';
-import type { FavoriteSession, HiddenProjectsByConnection, SessionDeepLinkTarget } from '@/shared/contracts/domain';
+import type { FavoriteSession, SessionDeepLinkTarget } from '@/features/sessions/index';
+import type { DiffScope, HiddenProjectsByConnection } from '@/features/projects/index';
 import type { ConnectionRecord, WorkspaceTarget } from '@/shared/contracts/workspace';
 import type { WorkspaceSnapshot } from '@/runtime/workspace/workspace-types';
 import type { ConversationInputPhase, ConversationReadbackPhase } from '@/features/voice/index';
@@ -48,7 +49,7 @@ export type SelectionState = {
 };
 
 export type ChatUiState = {
-  diffScopeBySession: Record<string, import('@/shared/contracts/domain').DiffScope>;
+  diffScopeBySession: Record<string, DiffScope>;
   selectedDiffMessageBySession: Record<string, string | undefined>;
   isRefreshingMessages: boolean;
   isRefreshingDiffs: boolean;

@@ -47,6 +47,9 @@ vi.mock('@/features/ai/runtime', () => ({
   agentsOptions: () => ({ queryKey: ['agents'] }),
   capabilitiesOptions: () => ({ queryKey: ['capabilities'] }),
 }));
+vi.mock('@/features/projects/runtime', async () => ({
+  HIDDEN_PROJECTS_MAX: (await import('@/features/projects/model/types')).HIDDEN_PROJECTS_MAX,
+}));
 vi.mock('@/shared/server-data/catalogs', () => ({ configurationOptions: () => ({ queryKey: ['configuration'] }) }));
 vi.mock('@react-native-async-storage/async-storage', () => ({ default: {} }));
 vi.mock('expo-constants', () => ({ default: { expoConfig: { extra: {} } } }));

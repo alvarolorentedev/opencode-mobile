@@ -1,4 +1,4 @@
-import type { TranscriptReadOptions } from '@/shared/contracts/domain';
+import type { TranscriptReadOptions } from '@/shared/contracts/transcript-read';
 
 export type ReconcileSources = {
   pendingSessionIds: string[];

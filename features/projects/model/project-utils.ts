@@ -4,7 +4,7 @@
 
 import type { Project } from '@/shared/protocol/opencode/types';
 
-import type { OpencodeProject } from '@/shared/contracts/domain';
+import type { OpencodeProject } from '@/features/projects/model/types';
 
 import type { WorktreeCatalog } from '@/features/projects/state/use-worktree-state';
 

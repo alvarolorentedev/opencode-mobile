@@ -10,11 +10,10 @@ import type { ConnectionContextValue, DiagnosticsContextValue } from '@/features
 import type { ExtensionsContextValue, McpContextValue } from '@/features/extensions/index';
 import type { ProjectFilesContextValue, ProjectsContextValue } from '@/features/projects/index';
 import type { useProjectCatalogActions } from '@/features/projects/runtime';
-import type { ApprovalsContextValue, CurrentSessionContextValue, SessionLibraryContextValue } from '@/features/sessions/index';
+import type { ApprovalsContextValue, CurrentSessionContextValue, SessionLibraryContextValue , ActiveSessionItem } from '@/features/sessions/index';
 import type { TerminalContextValue } from '@/features/terminal/index';
 import type { ConversationContextValue } from '@/features/voice/index';
 import type { useWidgetState } from '@/features/widgets/runtime';
-import type { ActiveSessionItem } from '@/shared/contracts/domain';
 import type { PreferencesContextValue } from '@/shared/preferences/types';
 import type { Session, SessionStatus } from '@/shared/protocol/opencode/types';
 

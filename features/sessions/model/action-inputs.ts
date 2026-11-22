@@ -1,7 +1,8 @@
 import type { Dispatch, SetStateAction } from 'react';
 
 import type { AgentOption } from '@/shared/contracts/model-options';
-import type { FavoriteSession, TranscriptReadOptions } from '@/shared/contracts/domain';
+import type { FavoriteSession } from '@/features/sessions/model/types';
+import type { TranscriptReadOptions } from '@/shared/contracts/transcript-read';
 import type { ChatPreferences } from '@/shared/preferences/opencode-preferences';
 import type { ScopedOpencodeClient } from '@/shared/protocol/opencode/client';
 import type { Command, Config, Session } from '@/shared/protocol/opencode/types';

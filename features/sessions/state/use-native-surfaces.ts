@@ -3,7 +3,7 @@ import { AppState } from 'react-native';
 
 import { i18n } from '@/shared/i18n/index';
 import { quickActionsSupported, setQuickActions, type QuickActionItem } from '@/shared/platform/quick-actions';
-import type { ActiveSessionItem } from '@/shared/contracts/domain';
+import type { ActiveSessionItem } from '@/features/sessions/model/types';
 import { getSessionQuickActions } from '@/features/sessions/model/quick-action-items';
 
 // Launcher shortcuts publish only in foreground; widget state is independently

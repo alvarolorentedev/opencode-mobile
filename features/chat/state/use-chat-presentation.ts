@@ -2,7 +2,8 @@ import { useMemo } from 'react';
 
 import { collectDescendantSessionIds, getCurrentPendingRequests } from '@/features/sessions/runtime';
 import type { ModelOption } from '@/shared/contracts/model-options';
-import type { DiffScope, DiffTurn } from '@/shared/contracts/domain';
+import type { DiffScope } from '@/features/projects/index';
+import type { DiffTurn , ChatContextValue } from '@/features/chat/model/types';
 import { deriveTodosFromMessages, type SessionMessageRecord } from '@/shared/presentation/format';
 import { getTranscript } from '@/shared/presentation/selectors';
 import { getDiffTurnMessages, resolveDiffTurn } from '@/shared/presentation/transcript';
@@ -13,7 +14,6 @@ import type { Command, FileDiff, Session, Todo } from '@/shared/protocol/opencod
 import { TRANSCRIPT_PAGE_LIMIT } from '@/shared/protocol/services/session-service';
 
 import { isPromptErrorVisible } from '../model/selectors';
-import type { ChatContextValue } from '../model/types';
 
 type ChatPresentationInput = Omit<ChatContextValue,
   'pendingPrompts' | 'currentMessages' | 'currentTranscript' | 'currentUsage' | 'latestAssistantTurnUsage' |

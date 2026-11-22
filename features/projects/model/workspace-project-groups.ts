@@ -1,6 +1,6 @@
 import { compareLabels } from '@/shared/utilities/compare-labels';
 import { projectCheckouts, type ProjectCheckout, type ProjectWorktree } from '@/shared/protocol/opencode/project';
-import type { OpencodeProject } from '@/shared/contracts/domain';
+import type { OpencodeProject } from '@/features/projects/model/types';
 import { getProjectLabel } from '@/features/projects/model/project-utils';
 import type { ConnectionRecord } from '@/shared/contracts/workspace';
 import type { WorkspaceSnapshot } from '@/runtime/workspace';

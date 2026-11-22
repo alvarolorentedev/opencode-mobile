@@ -5,7 +5,7 @@ import { sessionCatalogOptions } from '@/features/sessions/runtime';
 import type { ConnectSetup } from '@/shared/contracts/cloud-link-setup';
 import { getConnectCredentialError } from '@/shared/contracts/cloud-link';
 import { getConnectionScope } from '@/shared/contracts/connection-scope';
-import type { ConnectionState } from '@/shared/contracts/domain';
+import type { ConnectionState } from '@/features/connections/index';
 import { getNormalizedServerUrl, isValidServerUrl } from '@/shared/contracts/server-url';
 import type { ConnectionRecord } from '@/shared/contracts/workspace';
 import { telemetry } from '@/shared/observability/client';

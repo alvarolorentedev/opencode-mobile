@@ -7,7 +7,7 @@ import type { V2Form, V2Permission } from '@/shared/protocol/opencode/v2/shared'
 
 import type { PendingPermissionRequest, PendingQuestionRequest } from '@/shared/protocol/opencode/client';
 import type { FileDiff, Session, SessionStatus, Todo } from '@/shared/protocol/opencode/types';
-import type { TranscriptRefreshMode } from '@/shared/contracts/domain';
+import type { TranscriptRefreshMode } from '@/shared/contracts/transcript-read';
 
 export type SessionRefreshOptions = {
   messages?: boolean;

@@ -235,8 +235,8 @@ The completion version, preference schema and first-run migration are unchanged.
   core owns navigation, submission, connection and event commands.
 - `runtime/core/workspace-selectors.ts`
   Focused and explicitly targeted selectors read each project projection.
-- `shared/contracts/domain.ts`
-  Shared public types and the domain value union.
+- `features/*/model/types.ts`
+  Feature-owned domain types, exposed to callers through named entrypoints.
 - `features/chat/context.ts`
   The domain `use*` hooks, implemented as core selectors.
 - `shared/preferences/opencode-preferences.ts`

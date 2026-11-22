@@ -1,7 +1,7 @@
 import { projectSessionsKey } from '@/features/sessions/runtime';
 import type { CommandContext } from '@/runtime/core/commands/context';
 import type { RealtimeScopeInput } from '@/runtime/realtime/create-realtime';
-import type { SessionDeepLinkTarget } from '@/shared/contracts/domain';
+import type { SessionDeepLinkTarget } from '@/features/sessions/index';
 import type { WorkspaceTarget } from '@/shared/contracts/workspace';
 import { withReadSignal } from '@/shared/protocol/opencode/client';
 import type { Session } from '@/shared/protocol/opencode/types';

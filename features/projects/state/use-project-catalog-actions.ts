@@ -2,7 +2,7 @@ import { useCallback, useEffect } from 'react';
 
 import { buildClient, type ScopedOpencodeClient } from '@/shared/protocol/opencode/client';
 import type { ProjectCatalogInput } from '@/features/projects/model/action-inputs';
-import type { ProjectCatalog } from '@/shared/contracts/domain';
+import type { ProjectCatalog } from '@/features/projects/model/types';
 import { fetchProjectCatalog } from '@/features/projects/services/queries/catalog';
 import { telemetry } from '@/shared/observability/client';
 import { isKnownProjectLocation as svcIsKnownProjectLocation, resolveProjectLocation as svcResolveProjectLocation } from '@/shared/protocol/services/session-service';

@@ -28,7 +28,8 @@ Start only after Phase D is complete and green.
 - `runtime/core/workspace-selectors.ts` selects the retained project projection.
 - [ADR 0052](../../adr/0052-explicit-overlay-dependencies.md) records explicit
   portal targets and update blocker callbacks. Shared controls use shared imports.
-- `shared/contracts/domain.ts` is still a type hub.
+- Projects, Sessions, Connections and Chat own their presentation and device
+  types. Transcript reads and connector management have dedicated shared contracts.
 
 The development app launched on an iPhone 17 Pro simulator running iOS 26.5.
 The independent Settings pane opened the connection sheet and a nested native
@@ -51,8 +52,8 @@ showed output. Recheck with the final native build.
 - No `WorkspaceScope`, `WorkspaceValuesContext`, `valuesFor`, snapshots or
   retained-focus registry.
 - No shared UI import from runtime.
-- Domain types live with their owner; `shared/contracts/domain.ts` is removed or
-  reduced to generics only.
+- Domain types live with their owner. Shared contracts are specific to an
+  interface such as transcript reads or connector management.
 
 ## Portal and blocker strategy
 
@@ -77,7 +78,7 @@ allowlisted exception must disappear from the architecture tests.
    selectors read store/Query directly.
 4. Update shared controls and their feature wrappers so no shared file imports
    runtime. Delete the shared UI blocker bridge and its architecture exception.
-5. Distribute the `shared/contracts/domain.ts` types to their owners.
+5. Distribute the former shared domain types to their owners.
 6. Verify portals, sheets, dialogs, selects, confirmations and update blockers
    on native and web.
 

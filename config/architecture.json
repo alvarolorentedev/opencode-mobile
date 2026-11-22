@@ -8,6 +8,7 @@
       "updates"
     ],
     "voice": [
+      "connections",
       "updates"
     ],
     "updates": [],
@@ -124,7 +125,9 @@
       "usePromptLifecycle"
     ],
     "features/projects/index.ts": [
+      "DiffScope",
       "FileClipboard",
+      "HiddenProjectsByConnection",
       "ProjectActionsInput",
       "ProjectDirectoryPicker",
       "ProjectFilesContextValue",
@@ -171,17 +174,20 @@
       "ServiceScreen"
     ],
     "features/sessions/index.ts": [
+      "ActiveSessionItem",
       "ApprovalsContextValue",
       "ChatLibrary",
       "MissionControlScreen",
       "OpeningScreenField",
       "CurrentSessionContextValue",
+      "FavoriteSession",
       "NewChatSheet",
       "PermissionActions",
       "PermissionRequestCard",
       "PermissionRequestDetails",
       "PermissionsSection",
       "QuestionFlow",
+      "SessionDeepLinkTarget",
       "SessionDeepLinkScreen",
       "SessionLibraryContextValue",
       "missionBadge",
@@ -189,6 +195,7 @@
       "useSessionActions"
     ],
     "features/projects/runtime.ts": [
+      "HIDDEN_PROJECTS_MAX",
       "useProjectPresentation",
       "buildOpencodeProjects",
       "fetchProjectCatalog",
@@ -268,6 +275,7 @@
       "WORKING_SOUND_OPTIONS"
     ],
     "features/connections/index.ts": [
+      "ConnectionState",
       "ConnectionContextValue",
       "ConnectionLifecycle",
       "ConnectionSection",

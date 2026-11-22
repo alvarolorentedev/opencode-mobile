@@ -4,7 +4,7 @@ import { getConnectionScope } from '@/shared/contracts/connection-scope';
 import { workspaceKey } from '@/shared/contracts/workspace';
 import type { ServerContract } from '@/shared/protocol/opencode/client';
 
-import type { ConnectionState } from '@/shared/contracts/domain';
+import type { ConnectionState } from '@/features/connections/index';
 
 import type { ProjectBindingInput } from '@/runtime/workspace/workspace-types';
 

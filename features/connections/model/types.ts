@@ -1,4 +1,4 @@
-import type { OpencodeConnectionSettings } from '@/shared/protocol/opencode/client';
+import type { ConnectionFailureKind, OpencodeConnectionSettings } from '@/shared/protocol/opencode/client';
 
 import type { Diagnostics } from '@/shared/protocol/services/diagnostics-service';
 
@@ -8,7 +8,15 @@ import type { ChatPreferences } from '@/shared/preferences/opencode-preferences'
 
 import type { ServerCapabilities } from '@/shared/protocol/opencode/capabilities';
 
-import type { ConnectionState , ServiceManagementApi } from '@/shared/contracts/domain';
+import type { ServiceManagementApi } from '@/shared/contracts/service-management';
+
+export type ConnectionState = {
+  status: 'idle' | 'connecting' | 'connected' | 'error';
+  message: string;
+  checkedAt?: number;
+  retryableStartup?: boolean;
+  kind?: ConnectionFailureKind;
+};
 
 export type ConnectionContextValue = {
   connectionProfiles: import('@/features/connections/state/use-connection-profiles').ConnectionProfilesState;

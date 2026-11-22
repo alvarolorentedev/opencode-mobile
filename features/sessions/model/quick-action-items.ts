@@ -1,4 +1,4 @@
-import type { ActiveSessionItem } from '@/shared/contracts/domain';
+import type { ActiveSessionItem } from '@/features/sessions/model/types';
 
 // Pure selection of the session quick actions published to the launcher. Kept
 // dependency-free so node tests can exercise it without the provider or RN

@@ -13,8 +13,7 @@ import { Linking, Platform, StyleSheet, View } from 'react-native';
 import { ConnectSubscription } from '@/features/cloud-link/ui/connect-subscription';
 import { ServicesSection } from '@/features/cloud-link/ui/settings/services-section';
 import { CONNECT_LEARN_MORE_URL } from '@/shared/contracts/cloud-link';
-import type { ManagedService } from '@/shared/contracts/service-management';
-import type { ServiceManagementApi } from '@/shared/contracts/domain';
+import type { ManagedService , ServiceManagementApi } from '@/shared/contracts/service-management';
 import type { ConnectSetup } from '@/shared/contracts/cloud-link-setup';
 import { Palette } from '@/shared/ui/settings/setting-rows';
 

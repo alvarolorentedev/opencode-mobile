@@ -1,6 +1,6 @@
 import { useCallback } from 'react';
 
-import { FAVORITE_SESSIONS_MAX } from '@/shared/contracts/domain';
+import { FAVORITE_SESSIONS_MAX } from '@/features/sessions/model/types';
 import type { SessionFavoriteInput } from '@/features/sessions/model/action-inputs';
 
 export function useSessionFavoriteActions({

@@ -1,10 +1,9 @@
 import { useMemo } from 'react';
 
-import type { ActiveSessionItem } from '@/shared/contracts/domain';
+import type { ActiveSessionItem , CurrentSessionContextValue, SessionLibraryContextValue } from '@/features/sessions/model/types';
 import type { SessionMessageRecord } from '@/shared/presentation/format';
 
 import { getSessionPreviewById } from '../model/selectors';
-import type { CurrentSessionContextValue, SessionLibraryContextValue } from '../model/types';
 
 type SessionPresentationInput = Omit<CurrentSessionContextValue, 'activeSessions' | 'activeSession'>
   & Omit<SessionLibraryContextValue, 'sessionPreviewById'>

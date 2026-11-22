@@ -3,7 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { activateConnectProfile, type ActivationAuthenticate, type ConnectActivationHint } from '@/features/cloud-link/state/connect/activation';
 import type { AccessDeps } from '@/features/cloud-link/state/connect/access';
 import type { ConnectionProfile } from '@/shared/contracts/connection-profiles';
-import type { ConnectionState } from '@/shared/contracts/domain';
+import type { ConnectionState } from '@/features/connections/index';
 import { ConnectApiError } from '@/shared/protocol/cloud-link/connect';
 import { isRetryableCloudLinkStartupError } from '@/shared/protocol/opencode/client/errors';
 

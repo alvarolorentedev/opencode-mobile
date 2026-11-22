@@ -93,6 +93,12 @@ The exact export lists and allowed feature edges live in `config/architecture.js
 and are checked by `tests/vitest/feature-boundaries.test.ts`. Feature dependencies,
 including type imports, must be acyclic.
 
+Projects owns project records, archive markers and diff source selection. Sessions
+owns favorites, deep link targets and active library entries. Voice uses the public
+Connections `ConnectionState` type for conversation readiness. Transcript read
+options and connector service management remain in their specific shared contracts
+for callers spanning features and the protocol boundary.
+
 Use the existing `@/*` alias. There are no aliases or forwarding modules for retired
 technical directories. Tests may import the internals they exercise without widening
 the production API.

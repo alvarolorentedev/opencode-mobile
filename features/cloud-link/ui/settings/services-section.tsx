@@ -18,7 +18,7 @@ import {
   buildServiceShareUrl,
   formatServiceAddress,
   type ManagedService,
-} from '@/shared/contracts/service-management';
+ ServiceManagementApi } from '@/shared/contracts/service-management';
 import {
   SERVICE_ACCESS_CONNECTOR_VERSION,
   formatServiceRemaining,
@@ -27,7 +27,6 @@ import {
   getServiceServerNow,
   supportsServiceAccess,
 } from '@/shared/contracts/service-access';
-import type { ServiceManagementApi } from '@/shared/contracts/domain';
 
 // Presentational surface for the connector's remote service management API.
 // Services belong to one Cloud Link machine; the provider resolves that target

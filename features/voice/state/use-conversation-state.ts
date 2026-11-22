@@ -12,7 +12,7 @@ import { recordWakeDiagnostic } from '@/shared/platform/voice/voice-diagnostics'
 import { playWakePhraseCue } from '@/shared/platform/voice/wake-feedback';
 import { CONVERSATION_KEEP_AWAKE_TAG } from '@/features/voice/model/types';
 import type { ChatPreferences } from '@/shared/preferences/opencode-preferences';
-import type { ConnectionState } from '@/shared/contracts/domain';
+import type { ConnectionState } from '@/features/connections/index';
 import { useConversationKeepAwake } from '@/features/voice/state/use-conversation-keep-awake';
 import { applyConversationFeedback } from '@/features/voice/state/conversation/feedback';
 import { useConversationArming } from '@/features/voice/state/conversation/use-conversation-arming';

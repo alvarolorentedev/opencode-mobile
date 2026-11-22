@@ -593,7 +593,7 @@ media or are regenerated. Entries older than 24 hours are discarded.
 ### Favorites DTO
 
 Favorites use the explicit `FavoriteSession` model
-(`shared/contracts/domain.ts`): `sessionId`, `connectionScope`,
+(`features/sessions/model/types.ts`): `sessionId`, `connectionScope`,
 `projectPath`, optional `title`, and `favoritedAt`. The connection scope makes
 identical session IDs or project paths on two servers independent, and opening
 a favorite switches to the connection that owns it before running the

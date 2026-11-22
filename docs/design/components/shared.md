@@ -113,11 +113,11 @@ App commands live in `runtime/core/commands/`. The scope selectors live in
 
 The public UI contract is exposed through domain hooks from `features/chat/context.ts` (`useOnboarding`, `useConnection`, `useDiagnostics`, `useCapabilities`, `usePreferences`, `useProjects`, `useProjectFiles`, `useCurrentSession`, `useSessionLibrary`, `useChat`, `useApprovals`, `useConversation`, `useTerminal`, `useMcp`), each typed by its matching `*ContextValue`. There is no combined runtime context value.
 
-### `shared/contracts/domain.ts`
+### Feature domain types
 
 #### Responsibility
 
-- define public provider-facing types used across UI
+- define each UI contract in its owning feature's model
 
 Most important exported contracts:
 

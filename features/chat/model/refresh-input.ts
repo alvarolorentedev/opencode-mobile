@@ -6,7 +6,7 @@ import type { SessionMessageRecord } from '@/shared/presentation/format';
 
 import type { FileDiff, Todo } from '@/shared/protocol/opencode/types';
 
-import type { DiffScope } from '@/shared/contracts/domain';
+import type { DiffScope } from '@/features/projects/index';
 export type ChatRefreshInput = {
 
   client: ScopedOpencodeClient;

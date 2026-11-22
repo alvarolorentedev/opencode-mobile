@@ -2,7 +2,7 @@ import { useCallback } from 'react';
 
 import { resolveDiffTurn } from '@/shared/presentation/transcript';
 
-import type { DiffScope } from '@/shared/contracts/domain';
+import type { DiffScope } from '@/features/projects/index';
 import type { SessionMessageRecord } from '@/shared/presentation/format';
 
 import { getSessionDiff as svcGetSessionDiff, getSessionTodos as svcGetSessionTodos } from '@/shared/protocol/services/session-service';

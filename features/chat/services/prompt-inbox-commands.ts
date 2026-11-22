@@ -1,7 +1,7 @@
 import type { QueryClient } from '@tanstack/react-query';
 
 import type { PromptOutbox } from '@/runtime/core';
-import type { TranscriptReadOptions } from '@/shared/contracts/domain';
+import type { TranscriptReadOptions } from '@/shared/contracts/transcript-read';
 import type { SessionMessageRecord } from '@/shared/presentation/format';
 import { classifyConnectionFailure } from '@/shared/protocol/opencode/client/errors';
 import type { ScopedOpencodeClient } from '@/shared/protocol/opencode/client';

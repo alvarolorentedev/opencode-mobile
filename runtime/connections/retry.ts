@@ -1,4 +1,4 @@
-import type { ConnectionState } from '@/shared/contracts/domain';
+import type { ConnectionState } from '@/features/connections/index';
 import { isRetryableConnectionFailure } from '@/shared/protocol/opencode/client/errors';
 
 const DELAYS_MS = [1000, 2000, 5000, 10_000, 20_000] as const;

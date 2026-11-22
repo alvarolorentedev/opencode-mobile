@@ -12,3 +12,4 @@ export { default as SessionDeepLinkScreen } from './ui/session-link-screen';
 export type { SessionLibraryContextValue } from './model/types';
 export { useQuickActionRoute } from './state/use-quick-action-route';
 export type { useSessionActions } from './state/use-session-actions';
+export type { ActiveSessionItem, FavoriteSession, SessionDeepLinkTarget } from './model/types';

@@ -3,7 +3,7 @@ import { useCallback, useEffect, useRef } from 'react';
 import { useAppCore, useAppStore } from '@/runtime/core';
 import { getErrorMessage } from '@/shared/utilities/error-message';
 import type { SessionMessageRecord } from '@/shared/presentation/format';
-import type { TranscriptReadOptions } from '@/shared/contracts/domain';
+import type { TranscriptReadOptions } from '@/shared/contracts/transcript-read';
 
 type RefreshMessages = (
   sessionId: string,

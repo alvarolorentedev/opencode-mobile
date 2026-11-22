@@ -6,10 +6,8 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 import ts from 'typescript';
 import { describe, it } from 'vitest';
 
-// Same transport as the session-cache suite: transpile TS and import via data
-// URIs, rewriting the `@/` alias. favorites-storage.ts only value-imports
-// FAVORITE_SESSIONS_MAX from the (type-only) provider-types module; the scope
-// values come from the production connection-scope helper.
+// Transpile TS and import via data URIs, rewriting the `@/` alias. The limit
+// comes from the session model and scopes come from the connection helper.
 //
 // Migrated from the standalone tests/favorites.test.mjs Node script.
 describe('favorite session storage', () => {
@@ -35,20 +33,19 @@ describe('favorite session storage', () => {
     const scopeA = getConnectionScope({ serverUrl: 'https://a.example', username: 'alice' });
     const scopeB = getConnectionScope({ serverUrl: 'https://b.example', username: 'alice' });
 
-    const providerTypesUri = await transpileToDataUri('shared/contracts/domain.ts');
+    const sessionTypesUri = await transpileToDataUri('features/sessions/model/types.ts');
     const favoritesSource = await readFile(path.join(root, 'features/sessions/services/favorites-storage.ts'), 'utf8');
     const favoritesTranspiled = ts.transpileModule(favoritesSource, {
       compilerOptions: { module: ts.ModuleKind.ESNext, target: ts.ScriptTarget.ES2020 },
     }).outputText;
     const favoritesUri = `data:text/javascript,${encodeURIComponent(
       favoritesTranspiled
-        .replace(/from '@\/shared\/contracts\/domain'/g, `from "${providerTypesUri}"`)
+        .replace(/from '@\/features\/sessions\/model\/types'/g, `from "${sessionTypesUri}"`)
         .replace(/from 'zod'/g, `from "${zodUri}"`),
     )}`;
 
     const { parseFavoriteSessions, serializeFavoriteSessions } = await import(favoritesUri);
-    const providerTypes = await import(providerTypesUri);
-    const MAX = providerTypes.FAVORITE_SESSIONS_MAX;
+    const { FAVORITE_SESSIONS_MAX: MAX } = await import(sessionTypesUri);
 
     // 1. Valid hydration maps to the explicit model and strips unknown/legacy
     // fields such as `projectLabel`.

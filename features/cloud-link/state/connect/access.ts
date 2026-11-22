@@ -9,7 +9,7 @@ import { getProfilePassword, loadConnectionProfiles, saveConnectProfile } from '
 import type { ConnectionProfile } from '@/shared/contracts/connection-profiles';
 import type { OpencodeConnectionSettings } from '@/shared/protocol/opencode/client';
 import type { ChatPreferences } from '@/shared/preferences/opencode-preferences';
-import type { ConnectionState } from '@/shared/contracts/domain';
+import type { ConnectionState } from '@/features/connections/index';
 import { ConnectPurchaseEnvironmentChange, type PendingConnectPurchase } from '@/features/cloud-link/services/connect-subscription-service';
 import type { ConnectPhase } from '@/features/cloud-link/state/connect/catalog';
 import { activateConnectProfile, type ActivationAuthenticate, type ConnectActivationAttempt, type ConnectActivationHint } from '@/features/cloud-link/state/connect/activation';

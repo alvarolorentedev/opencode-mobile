@@ -4,7 +4,7 @@ import type { TranscriptEntry } from '@/shared/presentation/format';
 import type { PendingPermissionRequest, PendingQuestionRequest } from '@/shared/protocol/opencode/client';
 import { stopWorkingSoundAsync } from '@/shared/platform/voice/working-sound';
 import type { VoiceRecoveryAction } from '@/shared/platform/voice/speech-errors';
-import type { ConnectionState } from '@/shared/contracts/domain';
+import type { ConnectionState } from '@/features/connections/index';
 import type { ConversationInputPhase, ConversationReadbackPhase } from '@/features/voice/model/types';
 import { applyConversationFeedback } from '@/features/voice/state/conversation/feedback';
 

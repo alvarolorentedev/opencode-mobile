@@ -14,7 +14,8 @@ import { styles, stylesClasses } from '@/features/chat/ui/chat-view-styles';
 import { Colors } from '@/shared/ui/theme/theme';
 import type { TranscriptEntry } from '@/shared/presentation/format';
 import type { FileDiff } from '@/shared/protocol/opencode/types';
-import type { DiffScope, DiffTurn } from '@/shared/contracts/domain';
+import type { DiffScope } from '@/features/projects/index';
+import type { DiffTurn } from '@/features/chat/model/types';
 
 type Palette = typeof Colors.light;
 type Connection = { status: 'idle' | 'connecting' | 'connected' | 'error'; message: string };

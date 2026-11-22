@@ -7,7 +7,8 @@ import type { SessionMessageRecord } from '@/shared/presentation/format';
 
 import type { FileDiff, Todo } from '@/shared/protocol/opencode/types';
 
-import type { DiffScope, TranscriptReadOptions } from '@/shared/contracts/domain';
+import type { DiffScope } from '@/features/projects/model/types';
+import type { TranscriptReadOptions } from '@/shared/contracts/transcript-read';
 
 export type ProjectActionsInput = {
   identity: QueryIdentity;

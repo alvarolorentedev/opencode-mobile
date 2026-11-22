@@ -1,4 +1,4 @@
-import type { TranscriptReadOptions } from '@/shared/contracts/domain';
+import type { TranscriptReadOptions } from '@/shared/contracts/transcript-read';
 import type { SessionMessageRecord } from '@/shared/presentation/format';
 import type { SessionRefreshOptions } from '@/shared/protocol/opencode/event-dispatch';
 

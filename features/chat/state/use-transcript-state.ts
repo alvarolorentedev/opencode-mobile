@@ -3,7 +3,7 @@ import { useCallback, useEffect, useRef, type Dispatch, type SetStateAction } fr
 import { useAppCore, useAppStore } from '@/runtime/core';
 import { mergeSessionMessageWindow, type SessionMessageRecord } from '@/shared/presentation/format';
 import type { ScopedOpencodeClient } from '@/shared/protocol/opencode/client';
-import type { TranscriptReadOptions, TranscriptRefreshMode } from '@/shared/contracts/domain';
+import type { TranscriptReadOptions, TranscriptRefreshMode } from '@/shared/contracts/transcript-read';
 import { pruneByKeepIds } from '@/shared/utilities/prune';
 import { hydrateTranscriptCache } from '@/features/chat/services/transcript-cache';
 import { recordSessionUsageAndTodos } from '@/features/chat/model/session-ledger';

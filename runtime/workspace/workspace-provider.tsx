@@ -2,7 +2,6 @@
 // See docs/architecture/state-and-data.md#state-ownership-overview.
 import type { ConnectionProfile } from '@/shared/contracts/connection-profiles';
 import { getConnectionScope, getConnectionUiScope } from '@/shared/contracts/connection-scope';
-import { HIDDEN_PROJECTS_MAX } from '@/shared/contracts/domain';
 import { defaultConnectionSettings } from '@/shared/protocol/opencode/client';
 import { ConnectionCatalog, useConnectionDemand, useConnectionRegistryBinding } from '@/runtime/connections/connection-runtime';
 import { CURRENT_ONBOARDING_VERSION } from '@/features/onboarding/runtime';
@@ -13,7 +12,7 @@ import { UpdatesContext } from '@/features/updates/context';
 import { PreferencesContext } from '@/shared/preferences/context';
 import { useConnectState , useServicesState } from '@/features/cloud-link/runtime';
 import { useConnectionProfiles } from '@/features/connections/runtime';
-import { useFileClipboard } from '@/features/projects/runtime';
+import { HIDDEN_PROJECTS_MAX, useFileClipboard } from '@/features/projects/runtime';
 import { useNetworkStatus } from '@/shared/network/use-network-status';
 import { useOpencodePersistence } from '@/runtime/persistence/use-opencode-persistence';
 import { useAppCore, useAppStore } from '@/runtime/core/context';

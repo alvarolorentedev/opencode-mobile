@@ -5,7 +5,7 @@ import { AppState, Platform } from 'react-native';
 import { i18n } from '@/shared/i18n/index';
 import type { Session } from '@/shared/protocol/opencode/types';
 import { parseIncomingShare, type SharedPayload } from '@/features/sharing/model/parse';
-import type { SessionDeepLinkTarget } from '@/shared/contracts/domain';
+import type { SessionDeepLinkTarget } from '@/features/sessions/index';
 
 export const SHARE_TTL_MS = 10 * 60 * 1000;
 export type ShareTarget = { connectionScope: string; projectPath: string; sessionId?: string; title?: string };
