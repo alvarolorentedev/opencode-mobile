@@ -26,7 +26,7 @@ phase you are executing. Do not preload every phase unless you are planning.
 | A | [State evacuation](phase-a-state-evacuation.md) | Complete | No domain data in per-workspace React state |
 | B | [Connection manager](phase-b-connection-manager.md) | Complete | Core-owned connection managers run probe, renewal, SSE and polling |
 | C | [Command core](phase-c-commands.md) | Complete | Cross-domain commands run in the app core and the legacy composition is deleted |
-| D | [Transcript](phase-d-transcript.md) | In progress | Per-session infinite messages + store live overlay |
+| D | [Transcript](phase-d-transcript.md) | Complete | Per-session infinite messages, bounded Query persistence and store live overlay |
 | E | [Flatten React](phase-e-flatten-react.md) | Not started | No scope/provider tree or shared-UI runtime exception |
 | F | [Persistence and tests](phase-f-persistence-and-tests.md) | Partially done | Query persistence done; Zustand persist, `loadTs`, `fast-check`, `knip` remain |
 | G | [Harness and guardrails](phase-g-harness-and-guardrails.md) | Not started | Full composition harness, fact rules, docs, release validation |
@@ -182,12 +182,18 @@ npm run validate:commit
   with 1,276 tests, one existing skip and no lint warnings. The 143 focused
   tests, docs, both fake-server self-tests, web export and all 185 browser
   tests passed after the fix.
-- D1. Canonical transcript windows now use scoped per-session infinite
+- D1, `e2d4c9c5`. Canonical transcript windows now use scoped per-session infinite
   queries. Existing page-read and live-overlay policies stayed in place.
   The 58 focused tests, docs, web export, 67 browser tests and the local commit
   gate passed with 1,279 tests and one existing skip. The 8 MiB attachment
   comparison reached every delta with the same first visible update and
-  comparable commit lag. Phase D still needs the cold Query persistence proof.
+  comparable commit lag.
+- D2. Query persistence restores scoped, media-free transcript tails without
+  reusing a server paging cursor. Only the legacy upgrade reader remains for
+  old disk entries. The full browser suite passed all 185 flows. The local
+  commit gate passed with 1,280 tests and one existing skip. In the paired
+  8 MiB attachment benchmark, both builds had a 20–22 ms p95 visible delta lag.
+  The median cold transcript render was 174 ms versus 168 ms on Phase C.
 
 ## Loop protocol
 

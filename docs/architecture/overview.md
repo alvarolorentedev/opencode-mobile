@@ -342,8 +342,8 @@ The completion version, preference schema and first-run migration are unchanged.
   Bounded, foreground-only retry for retryable connect failures (1/2/5/10/20s),
   with immediate recovery after an offline→online transition.
 - `features/chat/services/transcript-cache.ts`
-  Bounded, connection/project/session-scoped transcript tail used to paint a
-  cold chat before the network answers.
+  Reads pre-upgrade transcript snapshots and carries them across a verified
+  same-machine Cloud Link scope change.
 - `features/ai/services/capabilities-snapshot.ts`
   Bounded, credential-free cold-start DTOs seed empty Query entries with their
   original timestamps; fresh network results win over late disk reads.
@@ -351,8 +351,9 @@ The completion version, preference schema and first-run migration are unchanged.
   Per-class deadlines (read/write/stream), idempotent-read retry eligibility,
   and retryable gateway-status policy.
 - `shared/server-data/persistence.ts`
-  Query cache persistence policy: only session and project catalogs, 24-hour
-  max age, messages and transient server data excluded.
+  Persists session and project catalogs for 24 hours and bounded, media-free
+  transcript tails for seven days. Live overlays and transient resources stay
+  in memory.
 - `features/sessions/services/favorites-storage.ts`
   Favorites DTO validation, bounded serialization, and legacy-entry migration.
 - `features/voice/state/use-conversation-keep-awake.ts`

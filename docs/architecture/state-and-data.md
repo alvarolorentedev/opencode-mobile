@@ -178,7 +178,7 @@ Meaning:
 
 Primary fields:
 
-- `messagesBySession`
+- canonical transcript pages per session and their derived `messagesBySession` view
 - `diffsBySession`
 - `todosBySession`
 - `pendingPermissionsBySession`
@@ -199,8 +199,8 @@ change.
 
 Each session owns one infinite transcript query in its connection, credential
 and project partition. The pages hold canonical records and their server
-cursors. A bounded tail or an assistant detail updates the held pages in
-place. Loaded session queries have a 45-minute retention window and the
+cursors. A bounded tail or an assistant detail updates the held pages while
+preserving their boundaries. Loaded session queries have a 45-minute retention window and the
 project's keep set bounds recent inactive histories. Diffs, todos and VCS diffs
 remain Query data. The `transcript-metadata` project entry holds the usage and
 plan ledgers. The app store holds transcript request flags, the streamed
@@ -911,7 +911,7 @@ union-merges it, so reconcile is bounded and older loaded records are never
 re-downloaded or trimmed. When a burst is larger than one page and the newest
 page no longer overlaps the held window, the fetched page is adopted and history
 paging restarts from its oldest record instead of downloading bridging pages.
-Held records can exist without a stored cursor when the transcript cache hydrates
+Held records can exist without a stored cursor when Query restores a transcript tail
 before the first network read, or when a window reset leaves a retained transcript
 in place. A tail refresh then keeps those records and stores the newest page's
 cursor; if scroll-up runs first, it repairs the newest window once and returns,
@@ -919,10 +919,16 @@ and the next scroll pages back. This keeps older history reachable instead of
 leaving `hasOlder` false. Only server-side history rewrites rebuild the window
 instead of merging: compaction, revert/unrevert, and (on V1) explicit message
 removal. A rebuild is one newest-window read of up to 200 records, never a scan.
-Reconnects and foreground returns tail-merge. The persisted transcript cache stays
-tail-bounded, while retention keeps the current session plus up to three recently
-viewed sessions in memory so switching back paints before the background read
-settles.
+Reconnects and foreground returns tail-merge. Canonical records live in an
+infinite query for each connection, credential revision, contract, project and
+session. Scoped selectors keep the current and conversation sessions plus up to
+three recent sessions ready to paint. Query persistence keeps up to 64 recent
+session tails for seven days within a shared 400,000 UTF-16 code unit record
+budget. Each tail holds up to 24 records within 200,000 code units. It skips
+inline and transient media and restores no cursor. Legacy on-device snapshots
+can seed an empty query during an upgrade. Remove the legacy reader after one
+snapshot lifetime has elapsed from the release that introduces Query transcript
+persistence.
 
 Merge preserves durable server order, never `time.created` order. A response
 that arrives after a newer window has been applied can still contain a record
@@ -1151,7 +1157,7 @@ Current implementation assumes these invariants:
   V1 submissions retain their existing behavior.
 - File transcript details preserve URI, MIME type and filename, including V2
   returned file bytes. File-only assistant messages remain displayable.
-- `SessionMessageRecord` objects stored in `messagesBySession` are never mutated in place; `mergeSessionMessageRecords` in `shared/presentation/format.ts` adopts a new record object when content changes and preserves record and array references when nothing changed, keeping the WeakMap caches in `toTranscriptEntry` and `getSessionPreviewById` correct
+- Canonical `SessionMessageRecord` objects are immutable. The merge helpers in `shared/presentation/format` preserve record and array references when content stays the same, keeping the WeakMap caches in `toTranscriptEntry` and `getSessionPreviewById` correct.
 
 ## Non-Persisted But Behavioral State
 
@@ -1232,7 +1238,7 @@ Project browser state and request-scope guards remain provider-owned. `FilesPane
 Session lists exclude records with a truthy `time.archived`. V1 archive/restore is not supported because it has no V2 equivalent. Explicit open targets absent from cached lists trigger a fresh list read rather than creation of a replacement session. Session idle events only refresh domain state.
 
 
-Transcript, diff, and todo cache pruning is paused while session bootstrap is loading. Only the visible workspace prunes the connection-scoped maps; a hidden workspace does not hold every mounted project's selection, so its keep-set is incomplete. A pending deep-link target is also retained until selection completes, so early transcript reads survive slower capability/configuration requests when reopening a favorite from another project.
+Transcript, diff, and todo cache pruning pauses during session bootstrap. The visible workspace prunes its project transcript queries and the connection-scoped diff and todo resources. Its keep set retains a pending deep-link target until selection completes, so early transcript reads survive slower capability and configuration requests when reopening a favorite from another project.
 
 ## Project file browser
 

@@ -42,8 +42,7 @@ export const LAST_JS_ERROR_INGESTED_STORAGE_KEY = 'opencode-mobile.last-js-error
 // shared/contracts/connection-scope.ts; project paths are server-local, so two servers
 // exposing the same path must never share cache entries.
 //
-// Bounded transcript tail used to paint a chat during a cold start on a slow
-// link. It is server-derived, connection- and project-scoped.
+// Legacy transcript tail key read when upgrading to per-session Query persistence.
 export function transcriptCacheKey(connectionScope: string, projectPath: string, sessionId: string) {
   return `opencode-mobile.transcript.${connectionScope}.${projectPath}.${sessionId}`;
 }

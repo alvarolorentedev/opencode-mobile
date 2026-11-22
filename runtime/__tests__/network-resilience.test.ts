@@ -1,5 +1,5 @@
-import { z } from 'zod';
-import { describe, expect, it } from 'vitest';
+import { dehydrate, hydrate, QueryClient } from '@tanstack/react-query';
+import { describe, expect, it, vi } from 'vitest';
 
 import { normalizeNetworkState, networkStatusKey } from '@/shared/network/network-status';
 import {
@@ -9,8 +9,13 @@ import {
   READ_TIMEOUT_MS,
   WRITE_TIMEOUT_MS,
 } from '@/shared/protocol/opencode/client/request-policy';
-import { loadTs } from '../../tests/helpers/runtime.mjs';
-import { loadPersistedValue } from '@/shared/storage/persistence-hydration';
+import { hydrateTranscriptCache } from '@/features/chat/services/transcript-cache';
+import type { SessionMessageRecord } from '@/shared/presentation/format';
+import { projectQueryKey } from '@/shared/server-data/keys';
+import { createServerQueryPersister, shouldPersistQuery } from '@/shared/server-data/persistence';
+import { transcriptCacheKey } from '@/shared/storage/keys';
+
+vi.mock('@react-native-async-storage/async-storage', () => ({ default: {} }));
 
 describe('network status normalization', () => {
   it('treats unknown reachability as online and keeps cellular metered', () => {
@@ -56,45 +61,51 @@ describe('request policy', () => {
 
 describe('transcript cache', () => {
   it('round-trips a bounded tail and rejects malformed entries', async () => {
-    const values = new Map();
+    const values = new Map<string, string>([['settings', 'keep']]);
     const storage = {
-      getAllKeys: async () => [...values.keys()],
       getItem: async (key: string) => values.get(key) ?? null,
       setItem: async (key: string, value: string) => { values.set(key, value); },
       removeItem: async (key: string) => { values.delete(key); },
     };
-    const cache = await loadTs('features/chat/services/transcript-cache.ts', {
-    '@react-native-async-storage/async-storage': { __esModule: true, default: storage },
-    zod: { z },
-    "@/shared/storage/keys": { transcriptCacheKey: (scope: string, project: string, session: string) => `opencode-mobile.transcript.${scope}:${project}:${session}` },
-    "@/shared/storage/persistence-hydration": { loadPersistedValue }
-  });
-    const record = {
-      info: { id: 'm1', role: 'assistant', time: { created: 1, completed: 2 }, sessionID: 's' },
+    const persister = createServerQueryPersister(storage);
+    const cache = new QueryClient({ defaultOptions: { queries: { gcTime: Infinity } } });
+    const restored = new QueryClient({ defaultOptions: { queries: { gcTime: Infinity } } });
+    const record: SessionMessageRecord = {
+      info: { id: 'm1', role: 'assistant', providerID: 'test', modelID: 'test', time: { created: 1, completed: 2 }, sessionID: 's' },
       parts: [{ id: 'p1', sessionID: 's', messageID: 'm1', type: 'text', text: 'hello' }],
     };
-    const existingPrefix = 'opencode-mobile.transcript.previous.';
+    const identity = { connectionId: 'machine', connectionScope: 'scope', authRevision: 1 };
+    const client = { __opencode: { contract: 'v2' as const, directory: '/repo' } };
+    const queryKey = (sessionId: string) => projectQueryKey(identity, client, 'transcript', sessionId);
+    const put = (sessionId: string, updatedAt: number) => cache.setQueryData(queryKey(sessionId), {
+      pages: [{ records: [{ ...record, info: { ...record.info, sessionID: sessionId } }], hasMore: true, nextBefore: 'old' }],
+      pageParams: [null],
+    }, { updatedAt });
     const now = Date.now();
-    values.set('settings', 'keep');
-    values.set(`${existingPrefix}expired`, JSON.stringify({ cachedAt: now - 8 * 24 * 60 * 60_000, records: [record] }));
-    for (let index = 0; index < 64; index += 1) {
-      values.set(`${existingPrefix}${index}`, JSON.stringify({ cachedAt: now - 100 + index, records: [record] }));
-    }
-    await cache.persistTranscriptCache('scope', '/repo', 's', [record], storage);
-    let loaded;
-    await cache.hydrateTranscriptCache('scope', '/repo', 's', (records: unknown[]) => { loaded = records; }, () => true, storage);
-    expect(loaded).toEqual([record]);
-
-    expect(values.size).toBe(65);
+    put('expired', now - 8 * 24 * 60 * 60_000);
+    for (let index = 0; index < 64; index += 1) put(String(index), now - 100 + index);
+    put('s', now);
+    await persister.persistClient({ timestamp: now, buster: 'v1', clientState: dehydrate(cache, { shouldDehydrateQuery: shouldPersistQuery }) });
+    const saved = await persister.restoreClient();
+    expect(saved).toBeDefined();
+    hydrate(restored, saved!.clientState);
+    expect(restored.getQueryData(queryKey('s'))).toEqual({ pages: [{ records: [record], hasMore: false, restored: true }], pageParams: [null] });
+    expect(restored.getQueryCache().getAll()).toHaveLength(64);
     expect(values.get('settings')).toBe('keep');
-    expect(values.has(`${existingPrefix}expired`)).toBe(false);
-    expect(values.has(`${existingPrefix}0`)).toBe(false);
-    expect(values.has(`${existingPrefix}1`)).toBe(true);
-    const key = 'opencode-mobile.transcript.scope:/repo:s';
-    values.set(key, JSON.stringify({ cachedAt: Date.now(), records: [{ bad: true }] }));
-    let rejected = false;
-    await cache.hydrateTranscriptCache('scope', '/repo', 's', () => { rejected = true; }, () => true, storage);
-    expect(rejected).toBe(false);
+    expect(restored.getQueryData(queryKey('expired'))).toBeUndefined();
+    expect(restored.getQueryData(queryKey('0'))).toBeUndefined();
+    expect(restored.getQueryData(queryKey('1'))).toBeDefined();
+
+    const key = transcriptCacheKey('scope', '/repo', 's');
+    const apply = vi.fn();
+    values.set(key, JSON.stringify({ cachedAt: now, records: [record] }));
+    await hydrateTranscriptCache('scope', '/repo', 's', apply, () => true, storage);
+    expect(apply).toHaveBeenCalledWith([record]);
+
+    values.set(key, JSON.stringify({ cachedAt: now, records: [{ bad: true }] }));
+    apply.mockClear();
+    await hydrateTranscriptCache('scope', '/repo', 's', apply, () => true, storage);
+    expect(apply).not.toHaveBeenCalled();
     expect(values.has(key)).toBe(false);
   });
 });

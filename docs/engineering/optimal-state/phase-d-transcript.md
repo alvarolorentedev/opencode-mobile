@@ -1,14 +1,34 @@
 # Phase D — Transcript
 
-Status: **in progress**. The browser baseline uses 160 deltas at 10 ms intervals
-and an 8 MiB inline attachment. Five Phase C runs reached the final delta in
-30–31 visible updates, with median intervals of 59–61 ms. Cached text painted
-in 149–171 ms before the delayed network response. The per-session query spike
-reached the final delta in 30 updates, with a 61 ms median interval and 19–23 ms
-baseline versus 20–22 ms candidate p95 delay from the newest delta to its
-visible update. First paint was 57 ms at baseline and 56–57 ms in the spike.
-The existing disk cache painted in 144–173 ms with the spike. The Query
-persistence comparison remains.
+Status: **complete**. Scoped infinite queries and persistence passed
+`validate:commit` with 1,280 tests and one existing skip, the web export, and
+all 185 browser flows. Focused persistence and resilience tests passed.
+
+## Browser performance
+
+Five alternating pairs compared Phase C (`8d8186bd`) with per-session queries
+and Query persistence. Each stream delivered 160 deltas at 10 ms intervals
+after sending an 8 MiB inline attachment. The cold sample measured the first
+visible transcript record after reload with the newest-page response held for
+1.6 seconds. It selected the chat row directly because the app bar can show the
+same text as the session title.
+
+| Measurement | Phase C | Phase D |
+|---|---:|---:|
+| First visible delta | 55–58 ms | 57–58 ms |
+| Visible updates to final delta | 30–31 | 31 |
+| Median interval between updates | 60 ms | 59–61 ms |
+| Per-run p95 lag from newest delta to its visible update | 20–22 ms | 20–22 ms |
+| Cold transcript median | 168 ms | 174 ms |
+| Cold transcript range | 165–201 ms | 167–219 ms |
+
+All ten reloads painted before the held response. The five Phase D runs each
+persisted one 6,465-byte Query envelope, one transcript tail page, no paging
+cursor, no inline payload and no legacy transcript key. Every run captured two
+newest-page reads during connection and turn reconciliation and one assistant
+detail attempt. The fake server's detail endpoint returned 404, exercising
+the existing fallback. Both builds transferred the same message-read bytes.
+Device profiling remains separate.
 
 Goal: canonical messages become per-session infinite queries. The live stream
 overlay lives in Zustand. The connection-scoped message map is deleted.

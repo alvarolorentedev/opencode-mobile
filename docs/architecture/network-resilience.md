@@ -275,8 +275,8 @@ requires the server's experimental media-blob mode.
 local images larger than 1 MB to a 2048 px-wide JPEG before Base64 encoding.
 Compression is best-effort; the original bytes remain valid if the native
 manipulator is unavailable. This avoids turning a 10 MB camera image into a
-13 MB JSON body on a cellular uplink. The transcript cache measures inline media
-before serializing and drops an over-budget record instead of stringifying it.
+13 MB JSON body on a cellular uplink. Query persistence bounds transcript data before serialization, strips inline
+and transient media, and keeps safe text from mixed prompts.
 
 ## Terminal
 

@@ -5,7 +5,7 @@ import { mergeSessionMessageWindow, type SessionMessageRecord } from '@/shared/p
 import type { ScopedOpencodeClient } from '@/shared/protocol/opencode/client';
 import type { TranscriptReadOptions, TranscriptRefreshMode } from '@/shared/contracts/domain';
 import { pruneByKeepIds } from '@/shared/utilities/prune';
-import { hydrateTranscriptCache, persistTranscriptCache } from '@/features/chat/services/transcript-cache';
+import { hydrateTranscriptCache } from '@/features/chat/services/transcript-cache';
 import { recordSessionUsageAndTodos } from '@/features/chat/model/session-ledger';
 import { useLiveTranscript } from '@/features/chat/state/use-live-transcript';
 import { useTranscriptMetadata } from '@/features/chat/state/use-transcript-metadata';
@@ -79,27 +79,13 @@ export function useTranscriptState({
     return state;
   }, []);
 
-  const persistTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
-  const persist = useCallback((sessionId: string, records: SessionMessageRecord[]) => {
-    if (!activeProjectPath) return;
-    const existing = persistTimers.current[sessionId];
-    if (existing) clearTimeout(existing);
-    persistTimers.current[sessionId] = setTimeout(() => {
-      delete persistTimers.current[sessionId];
-      void persistTranscriptCache(connectionScope, activeProjectPath, sessionId, records);
-    }, 1200);
-  }, [activeProjectPath, connectionScope]);
   useEffect(() => () => {
-    for (const timer of Object.values(persistTimers.current)) clearTimeout(timer);
-    persistTimers.current = {};
     olderRequestRef.current = {};
     hydrationRequestRef.current = {};
     readStateRef.current = {};
     const view = store.getState().transcriptUi[scopeKey];
     if (view) store.getState().setTranscriptUi(scopeKey, { loadingOlderBySession: EMPTY_FLAGS, hydratingSessionIds: EMPTY_FLAGS });
   }, [scopeKey, store]);
-
-  const hydratedCacheRef = useRef<Set<string>>(new Set());
 
   const recordUsageAndTodos = useCallback((sessionId: string, records: SessionMessageRecord[]) => {
     recordSessionUsageAndTodos(sessionId, records, setUsageStepsBySession, setTodoRecordsBySession);
@@ -115,21 +101,24 @@ export function useTranscriptState({
   });
 
   useEffect(() => {
-    if (!currentSessionId || !activeProjectPath || readCanonicalSession(currentSessionId).length > 0) {
+    if (!currentSessionId || !activeProjectPath) return;
+    const held = readCanonicalSession(currentSessionId);
+    if (held.length > 0) {
+      // A disk-restored tail has records but no server paging cursor.
+      if (!readMessageWindow(currentSessionId)) recordUsageAndTodos(currentSessionId, held);
       return;
     }
-    const key = `${connectionScope}\u0000${activeProjectPath}\u0000${currentSessionId}`;
-    if (hydratedCacheRef.current.has(key)) return;
-    hydratedCacheRef.current.add(key);
+    let left = false;
     const requestedSession = currentSessionId;
     void hydrateTranscriptCache(connectionScope, activeProjectPath, requestedSession, (records) => {
       // A live refresh may have painted first; never let the cache overwrite a
       // fresher window or a session the user has already left.
-      if (currentSessionId !== requestedSession || readCanonicalSession(requestedSession).length > 0) return;
+      if (readCanonicalSession(requestedSession).length > 0) return;
       access.restore(requestedSession, records);
       recordUsageAndTodos(requestedSession, records);
-    }, () => isCurrentClient(client) && currentSessionId === requestedSession);
-  }, [activeProjectPath, client, connectionScope, currentSessionId, isCurrentClient, access, readCanonicalSession, recordUsageAndTodos]);
+    }, () => !left && isCurrentClient(client));
+    return () => { left = true; };
+  }, [activeProjectPath, client, connectionScope, currentSessionId, isCurrentClient, access, readCanonicalSession, readMessageWindow, recordUsageAndTodos]);
 
   const beginHydration = useCallback((sessionId: string) => {
     const request = Symbol();
@@ -183,7 +172,6 @@ export function useTranscriptState({
           if (canonical !== previous) access.update(sessionId, () => canonical);
           live.clearMessage(sessionId, messageId);
           recordUsageAndTodos(sessionId, [record]);
-          persist(sessionId, canonical);
           return live.overlay(sessionId, canonical);
         });
       }
@@ -233,7 +221,6 @@ export function useTranscriptState({
           access.replace(sessionId, page);
           live.adopt(sessionId, page.records);
           recordUsageAndTodos(sessionId, page.records);
-          persist(sessionId, page.records);
           return page.records;
         }
 
@@ -281,7 +268,6 @@ export function useTranscriptState({
           access.replace(sessionId, page);
           live.adopt(sessionId, page.records);
           recordUsageAndTodos(sessionId, page.records);
-          persist(sessionId, page.records);
           return page.records;
         }
 
@@ -291,7 +277,6 @@ export function useTranscriptState({
         access.update(sessionId, () => merged, windowMissing ? page : undefined);
         live.adopt(sessionId, page.records);
         recordUsageAndTodos(sessionId, page.records);
-        persist(sessionId, merged);
         return page.records;
       } finally {
         if (!silent) {
@@ -300,7 +285,7 @@ export function useTranscriptState({
         finishHydration?.();
       }
     },
-    [access, beginHydration, client, isCurrentClient, live, persist, readCanonicalSession, readDisplayedSession, readMessageWindow, readStateFor, recordUsageAndTodos, setIsRefreshingMessages],
+    [access, beginHydration, client, isCurrentClient, live, readCanonicalSession, readDisplayedSession, readMessageWindow, readStateFor, recordUsageAndTodos, setIsRefreshingMessages],
   );
 
   const loadOlderMessages = useCallback(

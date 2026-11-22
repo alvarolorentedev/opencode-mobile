@@ -77,7 +77,7 @@ async function mountTranscript(
     }) => ({ actions, displayedMessages: messagesBySession, readDisplayedSession: readCanonicalSession }) },
     "@/shared/protocol/opencode/v2/mappers": { toMessageRecord: (message: { __record?: unknown }) => message.__record },
     "@/shared/protocol/opencode/in-flight": { coalesceRead: (_client: unknown, _key: string, read: () => unknown) => read() },
-    "@/features/chat/services/transcript-cache": { hydrateTranscriptCache: async () => {}, persistTranscriptCache: async () => {} }
+    "@/features/chat/services/transcript-cache": { hydrateTranscriptCache: async () => {} }
   });
   const access = transcriptAccess(query.useQueryClient(), identity, client);
   for (const [id, records] of Object.entries(initial)) access.restore(id, records);
