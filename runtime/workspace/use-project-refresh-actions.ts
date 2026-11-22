@@ -5,7 +5,7 @@ import type { SessionMessageRecord } from '@/shared/presentation/format';
 
 import type { ProjectRefreshInput } from '@/runtime/composition/refresh-input';
 
-import { useSessionRefresh } from '@/features/sessions/runtime';
+import type { SessionRefreshCommands } from '@/runtime/core/commands/session';
 import { useChatRefresh } from '@/features/chat/runtime';
 
 // Coalesce a burst of streaming part events into a single transcript read.
@@ -13,9 +13,9 @@ import { useChatRefresh } from '@/features/chat/runtime';
 // download per event.
 const MESSAGE_REFRESH_COALESCE_MS = 400;
 
-export function useProjectRefreshActions(input: ProjectRefreshInput) {
+export function useProjectRefreshActions(input: ProjectRefreshInput, session: SessionRefreshCommands) {
   const { sessionRefreshTimeoutsRef, sessionRefreshOptionsRef, refreshMessages } = input;
-  const { refreshSessions, refreshSessionStatuses, refreshPendingInteractions } = useSessionRefresh(input);
+  const { refreshSessions, refreshSessionStatuses, refreshPendingInteractions } = session;
   const { refreshSessionDiff, refreshVcsDiff, setDiffScope, selectDiffMessage, refreshDiffs, refreshSessionTodos } = useChatRefresh(input);
 
   const scheduleSessionRefresh = useCallback(

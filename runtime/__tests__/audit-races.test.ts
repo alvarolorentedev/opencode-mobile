@@ -1,7 +1,15 @@
 import { base64 } from '@scure/base';
 import { describe, expect, it, vi } from 'vitest';
+import { QueryClient } from '@tanstack/react-query';
+import { sessionRefreshCommands } from '@/features/sessions/services/session-refresh';
+import type { ScopedOpencodeClient } from '@/shared/protocol/opencode/client';
+import { projectQueryKey } from '@/shared/server-data/keys';
 import { deferred, hookRuntime, loadTs } from '../../tests/helpers/runtime.mjs';
 import { listPendingInteractions } from '@/shared/protocol/opencode/client/interactions';
+
+vi.mock('@/shared/protocol/opencode/client', () => ({
+  withReadSignal: (client: ScopedOpencodeClient) => client,
+}));
 
 async function mountDraft(sessionId = 's') {
   const runtime = hookRuntime();
@@ -84,26 +92,32 @@ describe('composer admission races', () => {
 
 describe('partial interaction reads', () => {
   it('updates only successful provider surfaces and preserves both maps on total failure', async () => {
-    const runtime = hookRuntime();
-    const utilities = await loadTs(["features/projects/model/project-utils.ts","features/sessions/model/session-utils.ts","shared/utilities/prune.ts"]);
-    let result: any = { permissions: undefined, questions: [] };
-    const { useProjectRefreshActions } = await loadTs('runtime/workspace/use-project-refresh-actions.ts', {
-    react: runtime.react,
-    "@/features/projects/model/project-utils": utilities,
-    "@/features/sessions/model/session-utils": utilities,
-    "@/shared/utilities/prune": utilities,
-    "@/features/sessions/services/session-cache": { persistSessionCache: async () => {} },
-    "@/shared/protocol/opencode/contracts/interactions": { listPendingInteractions: async () => { if (result instanceof Error) throw result; return result; } },
-    "@/shared/presentation/transcript": { resolveDiffTurn: () => undefined }
-  });
-    const permissions = vi.fn(), questions = vi.fn();
-    runtime.mount(useProjectRefreshActions, { client: {}, isCurrentClient: () => true, setPendingPermissionsBySession: permissions, setPendingQuestionsBySession: questions });
-    await runtime.value.refreshPendingInteractions();
-    expect(permissions).not.toHaveBeenCalled(); expect(questions).toHaveBeenCalledWith({});
-    result = { permissions: [], questions: undefined }; await runtime.value.refreshPendingInteractions();
-    expect(permissions).toHaveBeenCalledWith({}); expect(questions).toHaveBeenCalledTimes(1);
-    result = new Error('both unavailable'); await expect(runtime.value.refreshPendingInteractions()).rejects.toThrow();
-    expect(permissions).toHaveBeenCalledTimes(1); expect(questions).toHaveBeenCalledTimes(1); runtime.unmount();
+    const cache = new QueryClient({ defaultOptions: { queries: { gcTime: Infinity } } });
+    const identity = { connectionId: 'direct', connectionScope: 'scope', authRevision: 0 };
+    const permissions = vi.fn(async () => ({ data: [] }));
+    const questions = vi.fn(async () => ({ data: [] }));
+    const client = { __opencode: { contract: 'v1', directory: '/repo' },
+      compatibility: { permission: { list: permissions }, question: { list: questions } } } as unknown as ScopedOpencodeClient;
+    const key = projectQueryKey(identity, client, 'pending-interactions');
+    const initial = { permissions: { s: [{ id: 'p' }] }, questions: { s: [{ id: 'q' }] } };
+    cache.setQueryData(key, initial);
+    const commands = sessionRefreshCommands({ cache, identity, client, isCurrent: () => true, clock: Date.now, isPermissionReplyPending: () => false });
+
+    permissions.mockRejectedValueOnce(new Error('permissions unavailable'));
+    await commands.refreshPendingInteractions();
+    expect(cache.getQueryData(key)).toEqual({ permissions: initial.permissions, questions: {} });
+    expect(cache.getQueryState(key)?.dataUpdateCount).toBe(2);
+
+    questions.mockRejectedValueOnce(new Error('questions unavailable'));
+    await commands.refreshPendingInteractions();
+    expect(cache.getQueryData(key)).toEqual({ permissions: {}, questions: {} });
+    expect(cache.getQueryState(key)?.dataUpdateCount).toBe(3);
+
+    permissions.mockRejectedValueOnce(new Error('both unavailable'));
+    questions.mockRejectedValueOnce(new Error('both unavailable'));
+    await expect(commands.refreshPendingInteractions()).rejects.toThrow('both unavailable');
+    expect(cache.getQueryState(key)?.dataUpdateCount).toBe(3);
+    cache.clear();
   });
   it.each(['permissions', 'questions'])('leaves unavailable %s undefined while accepting authoritative empty success', async (surface) => {
     const client: any = { compatibility: { permission: { list: async () => ({ data: [] }) }, question: { list: async () => ({ data: [] }) } } };

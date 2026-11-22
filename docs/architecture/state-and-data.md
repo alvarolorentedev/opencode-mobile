@@ -184,7 +184,7 @@ Primary fields:
 - `pendingPermissionsBySession`
 - `pendingQuestionsBySession`
 
-Approvals are project-scoped Query data now: the refresh path writes one
+Approvals are project-scoped Query data. The session refresh command writes one
 `pending-interactions` entry per project and the runtime selects it. They are
 listed here because the action layer still calls the grouped maps "session
 caches"; there is no second React copy.
@@ -193,7 +193,9 @@ The app core's session commands reply to permissions and questions through
 the owning connection and project. A pending permission mutation suppresses
 that request during reconciliation. An ambiguous response triggers a fresh
 read before restoring the card, and an old credential generation cannot
-write back into the approvals cache.
+write back into the approvals cache. The connection manager reuses each
+project client for these reads until settings, credentials or the contract
+change.
 
 Canonical message windows, diffs, todos and VCS diffs are Query data: one
 connection-scoped entry per resource holds the per-session maps, and the action

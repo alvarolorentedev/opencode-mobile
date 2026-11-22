@@ -281,12 +281,12 @@
       "parseFavoriteSessions",
       "pendingInteractionsKey",
       "projectSessionsKey",
-      "recentlyCreatedSessionIds",
       "savedPermissionOptions",
       "serializeFavoriteSessions",
       "sessionCatalogOptions",
       "sessionCreationCommands",
       "sessionEditCommands",
+      "sessionRefreshCommands",
       "useActiveSessions",
       "ApprovalsCatalog",
       "MissionOverview",
@@ -299,7 +299,6 @@
       "useSessionActions",
       "useApprovalsCatalog",
       "useSessionCatalog",
-      "useSessionRefresh",
       "useSessionState"
     ],
     "features/chat/runtime.ts": [

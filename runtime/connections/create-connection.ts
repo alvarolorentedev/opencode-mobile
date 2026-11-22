@@ -62,6 +62,7 @@ export function createConnection({ queryClient, foreground, clock = systemClock 
   let online = true;
   let refreshingStale = false;
   let catalog: { settings: OpencodeConnectionSettings; contract: ServerContract; client: ScopedOpencodeClient } | undefined;
+  const projectClients = new Map<string, { contract: ServerContract; client: ScopedOpencodeClient }>();
 
   const connectionState = () => lifecycle.getState().connection;
   const retry = createConnectionRetry(connect, clock);
@@ -79,11 +80,21 @@ export function createConnection({ queryClient, foreground, clock = systemClock 
     }
     return catalog.client;
   }
+  function getProjectClient(projectPath: string) {
+    if (!input?.entry.enabled) return undefined;
+    const { contract } = lifecycle.getState();
+    const cached = projectClients.get(projectPath);
+    if (cached?.contract === contract) return cached.client;
+    const client = buildClient({ ...input.entry.settings, directory: projectPath }, contract);
+    projectClients.set(projectPath, { contract, client });
+    return client;
+  }
   function getProjectAccess(projectPath: string) {
-    if (!input?.entry.enabled || connectionState().status !== 'connected') return undefined;
+    if (!input || connectionState().status !== 'connected') return undefined;
     const { entry, identity } = input;
     const { contract } = lifecycle.getState();
-    const client = buildClient({ ...entry.settings, directory: projectPath }, contract);
+    const client = getProjectClient(projectPath);
+    if (!client) return undefined;
     return {
       identity, client, revision: entry.revision,
       isCurrent: () => input?.entry.enabled === true && input.entry.revision === entry.revision
@@ -284,7 +295,10 @@ export function createConnection({ queryClient, foreground, clock = systemClock 
     subscribe: lifecycle.subscribe,
     setInput(next: ConnectionInput) {
       if (input?.entry.settings !== next.entry.settings || input?.identity.authRevision !== next.identity.authRevision
-        || input?.identity.connectionScope !== next.identity.connectionScope) eventInvalidation.reset();
+        || input?.identity.connectionScope !== next.identity.connectionScope) {
+        projectClients.clear();
+        eventInvalidation.reset();
+      }
       input = next;
     },
     setDemand(nextActive: boolean, nextOnline: boolean) {
@@ -298,7 +312,7 @@ export function createConnection({ queryClient, foreground, clock = systemClock 
     getCatalogClient,
     getProjectAccess,
     isDemanded: () => active && online,
-    dispose() { stopActivity(); retry.dispose(); realtime.dispose(); eventInvalidation.reset(); },
+    dispose() { stopActivity(); retry.dispose(); realtime.dispose(); eventInvalidation.reset(); projectClients.clear(); },
     onInvalidated: (listener: () => void) => { invalidations.add(listener); return () => { invalidations.delete(listener); }; },
     connect,
     syncConnection,

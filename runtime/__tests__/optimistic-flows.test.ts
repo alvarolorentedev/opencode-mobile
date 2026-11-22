@@ -5,12 +5,13 @@ import { createSessionNavigationCommands } from '@/runtime/core/commands/session
 import { forgetSessionCreation, recentlyCreatedSessionIds, sessionCreationCommands } from '@/features/sessions/services/session-creation';
 import { sessionCatalogAccess } from '@/features/sessions/services/session-catalog-access';
 import { sessionEditCommands } from '@/features/sessions/services/session-editing';
+import { sessionRefreshCommands } from '@/features/sessions/services/session-refresh';
 import type { ModelOption } from '@/shared/contracts/model-options';
 import { createAppStore } from '@/runtime/core/store';
 import type { CommandContext } from '@/runtime/core/commands/context';
 import type { RealtimeScopeInput } from '@/runtime/realtime/create-realtime';
 import type { ScopedOpencodeClient } from '@/shared/protocol/opencode/client';
-import { connectionQueryKey } from '@/shared/server-data/keys';
+import { connectionQueryKey, projectQueryKey } from '@/shared/server-data/keys';
 
 import { hookRuntime, loadTs } from '../../tests/helpers/runtime.mjs';
 
@@ -25,6 +26,8 @@ const sessionService = vi.hoisted(() => ({
   switchSessionModel: vi.fn(),
   deleteSession: vi.fn(),
   updateSessionTitle: vi.fn(),
+  listSessions: vi.fn(),
+  getActiveSessionStatuses: vi.fn(),
   interruptSession: vi.fn(),
   waitForSessionIdle: vi.fn(),
   revertSession: vi.fn(),
@@ -32,6 +35,8 @@ const sessionService = vi.hoisted(() => ({
 }));
 vi.mock('@/shared/protocol/services/session-service', () => sessionService);
 vi.mock('@/shared/protocol/opencode/client', () => ({ withReadSignal: (client: ScopedOpencodeClient) => client }));
+const listPendingInteractions = vi.hoisted(() => vi.fn());
+vi.mock('@/shared/protocol/opencode/client/interactions', () => ({ listPendingInteractions }));
 
 function sessionCreationFixture({ api = false, preferred = false }: { api?: boolean; preferred?: boolean } = {}) {
   sessionService.createSession.mockReset().mockResolvedValue({ id: 'new', title: '' });
@@ -237,19 +242,23 @@ describe('local-first session selection', () => {
   it('createSession shows the returned session before the list refresh resolves', async () => {
     const fixture = sessionCreationFixture();
     const { cache, catalog, client, identity } = fixture;
-    const refresh = deferredGate<{ id: string; title: string }[]>();
-    const list = cache.fetchQuery({ queryKey: catalog.projectKey, queryFn: () => refresh.promise });
+    const created = { id: 'new', title: '', time: { created: 1000, updated: 1000 } };
+    sessionService.createSession.mockResolvedValueOnce(created);
+    const reply = deferredGate<{ sessions: { id: string; title: string }[]; statuses: Record<string, unknown> }>();
+    sessionService.listSessions.mockReset().mockReturnValueOnce(reply.promise);
+    const commands = sessionRefreshCommands({ cache, identity, client, isCurrent: () => true, clock: () => 1_001, isPermissionReplyPending: () => false });
+    const list = commands.refreshSessions();
 
-    await expect(fixture.createSession()).resolves.toEqual({ id: 'new', title: '' });
+    await expect(fixture.createSession()).resolves.toEqual(created);
+    expect(sessionService.listSessions).toHaveBeenCalledExactlyOnceWith(client);
     expect(sessionService.createSession).toHaveBeenCalledOnce();
     expect(sessionService.switchSessionModel).not.toHaveBeenCalled();
-    expect(catalog.readSessions()).toEqual([{ id: 'new', title: '' }]);
-    expect(cache.getQueryState(catalog.projectKey)?.fetchStatus).toBe('fetching');
+    expect(catalog.readSessions()).toEqual([created]);
     expect(cache.getQueryData(catalog.catalogKey)).toEqual({ sessions: [], statuses: { new: { type: 'idle' } } });
     expect(recentlyCreatedSessionIds(cache, identity, client, new Set(), 1001)).toEqual(new Set(['new']));
 
-    refresh.resolve([{ id: 'new', title: '' }]);
-    await list;
+    reply.resolve({ sessions: [], statuses: {} });
+    await expect(list).resolves.toEqual([created]);
     expect(recentlyCreatedSessionIds(cache, identity, client, new Set(['new']), 1002)).toEqual(new Set());
     expect(recentlyCreatedSessionIds(cache, identity, client, new Set(), 1003)).toEqual(new Set());
     cache.clear();
@@ -420,38 +429,47 @@ describe('non-blocking prompt reconciliation', () => {
 
 describe('interaction refresh suppression', () => {
   it('does not re-add a request whose reply is in flight', async () => {
-    const runtime = hookRuntime();
-    const utilities = await loadTs(["features/projects/model/project-utils.ts","features/sessions/model/session-utils.ts","shared/utilities/prune.ts"]);
+    const { cache, client, identity } = sessionCreationFixture();
     const request = { id: 'p1', sessionID: 's' };
-    const { useProjectRefreshActions } = await loadTs('runtime/workspace/use-project-refresh-actions.ts', {
-    react: runtime.react,
-    "@/features/projects/model/project-utils": utilities,
-    "@/features/sessions/model/session-utils": utilities,
-    "@/shared/utilities/prune": utilities,
-    "@/features/sessions/services/session-cache": { persistSessionCache: async () => {} },
-    "@/shared/protocol/opencode/contracts/interactions": { listPendingInteractions: async () => ({ permissions: [request], questions: undefined }) },
-    "@/shared/presentation/transcript": { resolveDiffTurn: () => undefined }
+    listPendingInteractions.mockResolvedValue({ permissions: [request], questions: undefined });
+    let suppressed = true;
+    const key = projectQueryKey(identity, client, 'pending-interactions');
+    const cachedQuestions = { s: [{ id: 'q' }] };
+    cache.setQueryData(key, { permissions: {}, questions: cachedQuestions });
+    const commands = sessionRefreshCommands({ cache, identity, client, isCurrent: () => true, clock: () => 1_001,
+      isPermissionReplyPending: (id) => suppressed && id === request.id });
+    await commands.refreshPendingInteractions();
+    expect(cache.getQueryData(key)).toEqual({ permissions: {}, questions: cachedQuestions });
+
+    suppressed = false;
+    await commands.refreshPendingInteractions();
+    expect(cache.getQueryData(key)).toEqual({ permissions: { s: [request] }, questions: cachedQuestions });
+    cache.clear();
   });
-    const suppressed = { current: new Set(['p1']) };
-    const setPermissions = vi.fn();
-    const setQuestions = vi.fn();
-    runtime.mount(useProjectRefreshActions, {
-      client: {},
-      isCurrentClient: () => true,
-      isPermissionReplyPending: (id: string) => suppressed.current.has(id),
-      setPendingPermissionsBySession: setPermissions,
-      setPendingQuestionsBySession: setQuestions,
-    });
+});
 
-    await runtime.value.refreshPendingInteractions();
-    expect(setPermissions).toHaveBeenCalledWith({});
-    expect(setQuestions).not.toHaveBeenCalled();
+describe('session status reconciliation', () => {
+  it('refreshes busy statuses without a catalog read and falls back when status reads fail', async () => {
+    const { cache, catalog, client, identity } = sessionCreationFixture();
+    const commands = sessionRefreshCommands({ cache, identity, client, isCurrent: () => true, clock: () => 1_001,
+      isPermissionReplyPending: () => false });
+    catalog.setSessionStatuses({ previous: { type: 'busy' } });
+    sessionService.listSessions.mockReset();
+    sessionService.getActiveSessionStatuses.mockReset().mockResolvedValueOnce({ running: {} });
+    await commands.refreshSessionStatuses();
+    expect(cache.getQueryData(catalog.catalogKey)).toEqual({ sessions: [], statuses: {
+      previous: { type: 'idle' }, running: { type: 'busy' },
+    } });
+    expect(sessionService.listSessions).not.toHaveBeenCalled();
 
-    suppressed.current.clear();
-    await runtime.value.refreshPendingInteractions();
-    expect(setPermissions).toHaveBeenLastCalledWith({ s: [request] });
-
-    runtime.unmount();
+    const sessions = [{ id: 'recovered', title: '', time: { created: 1000, updated: 1000 } }];
+    sessionService.getActiveSessionStatuses.mockRejectedValueOnce(new Error('status unavailable'));
+    sessionService.listSessions.mockResolvedValueOnce({ sessions, statuses: { recovered: { type: 'idle' } } });
+    await commands.refreshSessionStatuses();
+    expect(sessionService.listSessions).toHaveBeenCalledExactlyOnceWith(client);
+    expect(catalog.readSessions()).toEqual(sessions);
+    expect(cache.getQueryData(catalog.catalogKey)).toEqual({ sessions: [], statuses: { recovered: { type: 'idle' } } });
+    cache.clear();
   });
 });
 

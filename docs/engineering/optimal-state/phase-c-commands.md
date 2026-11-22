@@ -7,8 +7,9 @@ migrated.
 
 Permission and question replies now run as plain session commands. Permission
 reconciliation reads pending mutations in the same Query partition as the
-project's approvals. The remaining session lifecycle and refresh actions,
-prompt and connection commands, and event dispatch still need extraction.
+project's approvals. Session list, status and approval refreshes also run
+through these commands. Prompt and connection commands and event dispatch
+still need extraction.
 
 Explicit session opening and automatic bootstrap share the app-core selection
 command. It reads the project session catalog and supersedes pending bootstrap

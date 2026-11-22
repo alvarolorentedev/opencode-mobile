@@ -191,9 +191,12 @@ export function useOpencodeProviderComposition(input: WorkspaceRuntimeInput) {
     forgetSessionCreation,
   });
 
-  const isPermissionReplyPending = useCallback((id: string) => sessionCommands.isPermissionReplyPending(identity, client, id), [client, identity, sessionCommands]);
-  const recentlyCreatedSessionIds = useCallback((seen: ReadonlySet<string>) => sessionCommands.recentlyCreatedSessionIds(identity, client, seen), [client, identity, sessionCommands]);
-  const project = useProjectActions({ ...domain, connectionId: inputConnection.id, connected: state.connection.status === 'connected', client, catalogClient, isCurrentClient, isCurrentCatalogClient, clearProjectState, isHydrated, refreshMessages: inbox.refreshMessages, isPermissionReplyPending, recentlyCreatedSessionIds });
+  const sessionTarget = useMemo(() => ({
+    connectionId: inputConnection.id, projectPath: state.activeProjectPath ?? '',
+  }), [inputConnection.id, state.activeProjectPath]);
+  const sessionRefresh = useMemo(() => sessionCommands.refresh(sessionTarget, state.scopeKey, inputConnection.revision),
+    [inputConnection.revision, sessionCommands, sessionTarget, state.scopeKey]);
+  const project = useProjectActions({ ...domain, connectionId: inputConnection.id, connected: state.connection.status === 'connected', client, catalogClient, isCurrentClient, isCurrentCatalogClient, clearProjectState, isHydrated, refreshMessages: inbox.refreshMessages }, sessionRefresh);
 
   const capabilities = useCapabilitiesActions({ ...domain, client, isCurrentClient, isHydrated });
   // Event bursts (rename + update, config fan-out, file-save VCS events) share
@@ -206,9 +209,6 @@ export function useOpencodeProviderComposition(input: WorkspaceRuntimeInput) {
     settings: state.settings,
   });
 
-  const sessionTarget = useMemo(() => ({
-    connectionId: inputConnection.id, projectPath: state.activeProjectPath ?? '',
-  }), [inputConnection.id, state.activeProjectPath]);
   const sessionNavigation = useMemo(() => sessionCommands.navigation(sessionTarget, state.scopeKey, inputConnection.revision),
     [inputConnection.revision, sessionCommands, sessionTarget, state.scopeKey]);
   const sessionCreation = useMemo(() => sessionCommands.creation(sessionTarget, state.scopeKey, inputConnection.revision),

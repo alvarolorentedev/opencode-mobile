@@ -1,7 +1,7 @@
 import type { CommandContext } from '@/runtime/core/commands/context';
 import { agentsOptions, capabilitiesOptions } from '@/features/ai/runtime';
 import { forgetSessionContent } from '@/features/chat/runtime';
-import { approvalsAccess, createInteractionCommands, forgetSessionCreation, pendingInteractionsKey, recentlyCreatedSessionIds, savedPermissionOptions, sessionCatalogOptions, sessionCreationCommands, sessionEditCommands } from '@/features/sessions/runtime';
+import { approvalsAccess, createInteractionCommands, forgetSessionCreation, pendingInteractionsKey, savedPermissionOptions, sessionCatalogOptions, sessionCreationCommands, sessionEditCommands, sessionRefreshCommands } from '@/features/sessions/runtime';
 import type { PendingQuestionAnswer, ScopedOpencodeClient } from '@/shared/protocol/opencode/client';
 import type { WorkspaceTarget } from '@/shared/contracts/workspace';
 import type { QueryIdentity } from '@/shared/server-data/keys';
@@ -10,9 +10,33 @@ import { createSessionNavigationCommands } from './session-navigation';
 
 const permissionReplyKey = (queryKey: readonly unknown[], id: string) => [...queryKey, 'permission-reply', id];
 
+export type SessionRefreshCommands = ReturnType<typeof sessionRefreshCommands>;
+
 export function createSessionCommands(context: CommandContext) {
   const { connections, queryClient, store, clock } = context;
   const pendingRenames = new Map<string, Promise<void>>();
+  const isPermissionReplyPending = (identity: QueryIdentity, client: ScopedOpencodeClient, id: string) =>
+    queryClient.isMutating({ mutationKey: permissionReplyKey(pendingInteractionsKey(identity, client), id), exact: true }) > 0;
+
+  function refresh(target: WorkspaceTarget, scopeKey: string, revision?: number): SessionRefreshCommands {
+    function getCommands() {
+      const manager = connections.get(target.connectionId);
+      const access = manager?.getProjectAccess(target.projectPath);
+      if (!manager || !access || (access.revision ?? 0) !== (revision ?? 0)) return undefined;
+      const { identity, client } = access;
+      const isCurrent = () => access.isCurrent() && Boolean(manager.realtime.getProjectSources(target.projectPath, scopeKey));
+      if (!isCurrent()) return undefined;
+      return sessionRefreshCommands({
+        cache: queryClient, identity, client, isCurrent, clock,
+        isPermissionReplyPending: (id) => isPermissionReplyPending(identity, client, id),
+      });
+    }
+    return {
+      async refreshSessions() { return getCommands()?.refreshSessions() ?? []; },
+      async refreshSessionStatuses() { await getCommands()?.refreshSessionStatuses(); },
+      async refreshPendingInteractions() { await getCommands()?.refreshPendingInteractions(); },
+    };
+  }
 
   function runRename(key: string, rename: () => Promise<void>) {
     const previous = pendingRenames.get(key);
@@ -124,14 +148,10 @@ export function createSessionCommands(context: CommandContext) {
 
   return {
     navigation, cancelBootstrap,
-    creation, editing,
-    recentlyCreatedSessionIds: (identity: QueryIdentity, client: ScopedOpencodeClient, seen: ReadonlySet<string>) =>
-      recentlyCreatedSessionIds(queryClient, identity, client, seen, clock()),
+    creation, editing, refresh,
     forgetSessionCreation: (identity: QueryIdentity, client: ScopedOpencodeClient, sessionId?: string) =>
       forgetSessionCreation(queryClient, identity, client, sessionId),
     interactions,
-    isPermissionReplyPending(identity: QueryIdentity, client: ScopedOpencodeClient, id: string) {
-      return queryClient.isMutating({ mutationKey: permissionReplyKey(pendingInteractionsKey(identity, client), id), exact: true }) > 0;
-    },
+    isPermissionReplyPending,
   };
 }

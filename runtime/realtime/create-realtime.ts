@@ -141,7 +141,7 @@ export function createRealtime(foreground: Foreground, onFatalError: Parameters<
     getProjectSources(projectPath: string, workspaceKey?: string) {
       for (const scope of scopes) {
         const sources = scope.getSources();
-        if (sources?.projectPath === projectPath && (workspaceKey === undefined || workspaceKey === sources.workspaceKey)) return sources;
+        if (sources && (sources.projectPath ?? '') === projectPath && (workspaceKey === undefined || workspaceKey === sources.workspaceKey)) return sources;
       }
     },
     dispose() {

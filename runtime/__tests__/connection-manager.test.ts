@@ -123,6 +123,8 @@ describe('connection manager', () => {
     expect(ports.probe).toHaveBeenCalledTimes(1);
     expect(ports.stream).toHaveBeenCalledTimes(1);
     const initialStream = ports.stream.mock.calls[0][1] as AbortSignal;
+    const initialProject = first.getProjectAccess('/repo');
+    expect(initialProject?.client).toBe(first.getProjectAccess('/repo')?.client);
 
     const oldKey = ['opencode', a.id, getConnectionScope(settings), 0, 'v2', 'server', 'projects'];
     queryClient.setQueryData(oldKey, ['old']);
@@ -134,6 +136,8 @@ describe('connection manager', () => {
     expect(await first.connect()).toMatchObject({ status: 'connected' });
     expect(createManager).toHaveBeenCalledTimes(2);
     expect(initialStream.aborted).toBe(true);
+    expect(initialProject?.isCurrent()).toBe(false);
+    expect(first.getProjectAccess('/repo')?.client).not.toBe(initialProject?.client);
     expect(ports.stream.mock.calls.filter(([client]) => client.username === 'rotated')).toHaveLength(1);
 
     const second = registry.get('b')!;

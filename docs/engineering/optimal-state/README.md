@@ -136,10 +136,15 @@ npm run validate:commit
   Query catalog writer. The commit gate passed with 1,264 tests and one
   existing skip. The 29 focused tests, docs, web export and all 67 owning
   browser tests passed, including server defaults and model selection.
-- C2d. Rename, delete, revert and unrevert use scoped app-core commands.
+- C2d, `1cfc35c0`. Rename, delete, revert and unrevert use scoped app-core commands.
   Static checks passed with 1,266 tests and one existing skip. The focused
   tests, docs, web export and all 53 chat, sessions, diffs, interactions
   and multi-server browser tests passed.
+- C2e. Session list, status and approval refreshes run as scoped commands
+  against manager-owned clients. Static checks passed with 1,267 tests and
+  one existing skip. The 46 focused tests, docs, web export and all 90
+  Cloud Link, realtime, network, interactions, sessions and multi-server
+  browser tests passed.
 
 ## Loop protocol
 

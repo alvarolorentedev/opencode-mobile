@@ -1,10 +1,10 @@
 import type { Dispatch, SetStateAction } from 'react';
 
-import type { OpencodeConnectionSettings, PendingPermissionRequest, PendingQuestionRequest, ScopedOpencodeClient, ServerContract } from '@/shared/protocol/opencode/client';
+import type { OpencodeConnectionSettings, ScopedOpencodeClient, ServerContract } from '@/shared/protocol/opencode/client';
 
 import type { SessionMessageRecord } from '@/shared/presentation/format';
 
-import type { FileDiff, Session, SessionStatus, Todo } from '@/shared/protocol/opencode/types';
+import type { FileDiff, Todo } from '@/shared/protocol/opencode/types';
 
 import type { SessionRefreshOptions } from '@/shared/protocol/opencode/event-dispatch';
 
@@ -27,17 +27,10 @@ export type ProjectActionsInput = {
   connectionScope: string;
   connectionScopeRef: { current: string };
   isHydrated: boolean;
-  setSessions: Dispatch<SetStateAction<Session[]>>;
-  sessionsRef: { current: Session[] };
-  setSessionStatuses: Dispatch<SetStateAction<Record<string, SessionStatus>>>;
-  recentlyCreatedSessionIds?: (seen: ReadonlySet<string>) => ReadonlySet<string>;
   setIsRefreshingDiffs: Dispatch<SetStateAction<boolean>>;
   setDiffsBySession: Dispatch<SetStateAction<Record<string, FileDiff[]>>>;
   setVcsDiffsByScope: Dispatch<SetStateAction<Record<'uncommitted' | 'branch', FileDiff[]>>>;
   setTodosBySession: Dispatch<SetStateAction<Record<string, Todo[]>>>;
-  setPendingPermissionsBySession: Dispatch<SetStateAction<Record<string, PendingPermissionRequest[]>>>;
-  setPendingQuestionsBySession: Dispatch<SetStateAction<Record<string, PendingQuestionRequest[]>>>;
-  isPermissionReplyPending?: (id: string) => boolean;
   setDiffScopeBySession: Dispatch<SetStateAction<Record<string, DiffScope>>>;
   setSelectedDiffMessageBySession: Dispatch<SetStateAction<Record<string, string | undefined>>>;
   readPinnedDiffMessage: (sessionId: string) => string | undefined;
@@ -59,8 +52,7 @@ export type ProjectActionsInput = {
 export type ProjectCatalogInput = Pick<ProjectActionsInput,
   'connected' | 'client' | 'catalogClient' | 'isCurrentClient' | 'isCurrentCatalogClient' | 'activeProjectPath' |
   'setActiveProjectPath' | 'activeProjectPathRef' | 'clearProjectState' |
-  'connectionScope' | 'connectionScopeRef' | 'isHydrated' | 'setSessions' |
-  'setSessionStatuses' | 'scopeGenerationRef' | 'serverContract' | 'settingsRef'>;
+  'connectionScope' | 'connectionScopeRef' | 'isHydrated' | 'scopeGenerationRef' | 'serverContract' | 'settingsRef'>;
 
 export type ProjectFileInput = Pick<ProjectActionsInput,
   'scopeKey' | 'fileClipboard' | 'connectionId' | 'connected' | 'client' | 'isCurrentClient' | 'activeProjectPath' |
