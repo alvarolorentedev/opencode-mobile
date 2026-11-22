@@ -1,10 +1,14 @@
-import { describe, expect, it } from 'vitest';
+// @vitest-environment happy-dom
+
+import { act } from 'react';
+import { describe, expect, it, onTestFinished, vi } from 'vitest';
 
 import { getPrimaryAgents, type AgentOption } from '@/shared/contracts/model-options';
 import { agentDescriptionKey, orderAgentsForPicker } from '@/features/chat/ui/agent-picker-utils';
 import { getInitialMode } from '@/features/ai/model/opencode-model-selection';
 import { toAgentOption } from '@/shared/protocol/opencode/agent-option';
-import { hookRuntime, loadTs } from '../../../tests/helpers/runtime.mjs';
+import { useComposerSuggestions } from '@/features/chat/ui/use-composer-suggestions';
+import { renderHook } from '../../../tests/helpers/render-hook';
 
 function agent(id: string, metadata: Partial<AgentOption> = {}): AgentOption {
   return { id, label: id.charAt(0).toUpperCase() + id.slice(1), mode: 'primary', ...metadata };
@@ -60,15 +64,31 @@ describe('agent picker ordering and descriptions', () => {
 
 describe('agent mention discovery', () => {
   it('keeps visible subagents and plugin agents, excludes hidden agents, and preserves mention payloads', async () => {
-    const runtime = hookRuntime();
-    const { useComposerSuggestions } = await loadTs('features/chat/ui/use-composer-suggestions.ts', { react: runtime.react });
-    runtime.mount(useComposerSuggestions, {
+    const runtime = renderHook(useComposerSuggestions, {
       draft: '@', selection: { start: 1, end: 1 }, enabled: true, commands: [],
       agents: [agent('custom-task', { mode: 'subagent' }), agent('plugin-task', { mode: 'subagent' }), agent('secret', { mode: 'subagent', hidden: true }), agent('summary', { hidden: true })],
       skills: [], references: [], searchFiles: async () => [],
     });
-    expect(runtime.value.groups[0].items.map((item: { label: string }) => item.label)).toEqual(['@custom-task', '@plugin-task']);
-    expect(runtime.value.groups[0].items[0].context).toEqual({ kind: 'agent', name: 'custom-task', token: '@custom-task' });
+    expect(runtime.result.current.groups[0].items.map((item: { label: string }) => item.label)).toEqual(['@custom-task', '@plugin-task']);
+    expect(runtime.result.current.groups[0].items[0].context).toEqual({ kind: 'agent', name: 'custom-task', token: '@custom-task' });
+    runtime.unmount();
+  });
+
+  it('drops file suggestions immediately when the same query changes project', async () => {
+    vi.useFakeTimers();
+    onTestFinished(() => { vi.useRealTimers(); });
+    const props = {
+      draft: '@src', selection: { start: 4, end: 4 }, enabled: true, commands: [],
+      agents: [], skills: [], references: [], searchFiles: async () => ['src/previous.ts'],
+    };
+    const runtime = renderHook(useComposerSuggestions, props);
+    await act(() => vi.advanceTimersByTimeAsync(200));
+    expect(runtime.result.current.groups[0].items[0].label).toBe('@src/previous.ts');
+
+    runtime.rerender({ ...props, searchFiles: async () => ['src/current.ts'] });
+    expect(runtime.result.current.groups).toEqual([]);
+    await act(() => vi.advanceTimersByTimeAsync(200));
+    expect(runtime.result.current.groups[0].items[0].label).toBe('@src/current.ts');
     runtime.unmount();
   });
 });

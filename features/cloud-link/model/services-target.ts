@@ -1,5 +1,5 @@
 import type { ConnectionProfile } from '@/shared/contracts/connection-profiles';
-import type { ServiceManagementMachine } from '@/shared/contracts/domain';
+import type { ServiceManagementMachine } from '@/shared/contracts/service-management';
 
 // Pure target resolution for the Cloud Link services surface. Services belong
 // to one Cloud Link machine; managing them never requires that machine to be

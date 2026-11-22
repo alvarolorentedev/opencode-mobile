@@ -1,5 +1,5 @@
+import { UpdateBlockingSheet as OverlaySheet } from '@/features/updates/index';
 import { MarkdownText } from '@/features/chat/ui/chat-markdown';
-import { OverlaySheet } from '@/shared/ui/overlay-sheet';
 import { Text } from '@/shared/ui/text';
 import { usePalette } from '@/shared/ui/theme/use-palette';
 import type { SideQuestionAnswer } from '@/shared/contracts/session-commands';

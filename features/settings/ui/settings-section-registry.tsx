@@ -1,3 +1,4 @@
+import type { WorkspaceTarget } from '@/shared/contracts/workspace';
 import { cn } from '@/shared/ui/cn';
 import { Button } from '@/shared/ui/button';
 import { Text } from '@/shared/ui/text';
@@ -37,7 +38,7 @@ import { useCapabilities } from '@/features/ai/context';
 import { useConnection, useDiagnostics } from '@/features/connections/context';
 import { useMcp } from '@/features/extensions/context';
 import { useOnboarding } from '@/features/onboarding/context';
-import { usePreferences } from '@/shared/preferences/context';
+import { useWorkspacePreferences } from '@/runtime/workspace';
 import { useUpdates } from '@/features/updates/context';
 
 export type SettingsSection = {
@@ -54,6 +55,7 @@ export type SettingsSection = {
 };
 
 type RegistryInput = {
+  workspace: WorkspaceTarget;
   t: TFunction;
   palette: ReturnType<typeof usePalette>;
   connection: ReturnType<typeof useConnection>['connection'];
@@ -65,8 +67,8 @@ type RegistryInput = {
   configuredProviders: ReturnType<typeof useCapabilities>['configuredProviders'];
   currentConfig: ReturnType<typeof useCapabilities>['currentConfig'];
   mcp: ReturnType<typeof useMcp>;
-  chatPreferences: ReturnType<typeof usePreferences>['chatPreferences'];
-  updateChatPreferences: ReturnType<typeof usePreferences>['updateChatPreferences'];
+  chatPreferences: ReturnType<typeof useWorkspacePreferences>['chatPreferences'];
+  updateChatPreferences: ReturnType<typeof useWorkspacePreferences>['updateChatPreferences'];
   serverCapabilities: ReturnType<typeof useConnection>['serverCapabilities'];
   diagnosticsData: ReturnType<typeof useDiagnostics>;
   lastJsError: ReturnType<typeof useLastJsError>['lastJsError'];
@@ -90,6 +92,7 @@ type RegistryInput = {
 };
 
 export function buildSettingsSections({
+  workspace,
   t,
   palette,
   connection,
@@ -152,7 +155,7 @@ export function buildSettingsSections({
       summary: connection.status === 'connected' ? t('common:labels.connected') : connection.message,
       summaryLines: 2,
       onPress: () => setOpenSection('connection'),
-      render: () => <ConnectionSection onReconnect={onReconnect} isReconnecting={isReconnecting} connection={connection} palette={palette} onManageConnect={connectSetup.enabled ? () => { setOpenSection(undefined); router.push('/pair?mode=manage'); } : undefined} onPair={connectSetup.enabled ? () => { setOpenSection(undefined); router.push('/pair'); } : undefined} />,
+      render: () => <ConnectionSection workspace={workspace} onReconnect={onReconnect} isReconnecting={isReconnecting} connection={connection} palette={palette} onManageConnect={connectSetup.enabled ? () => { setOpenSection(undefined); router.push('/pair?mode=manage'); } : undefined} onPair={connectSetup.enabled ? () => { setOpenSection(undefined); router.push('/pair'); } : undefined} />,
     },
     {
       id: 'ai', group: 'server' as const,
@@ -160,7 +163,7 @@ export function buildSettingsSections({
       title: t('settings:screen.categories.ai'),
       summary: t('settings:screen.summaries.configuredCount', { value: configuredProviders.length }),
       onPress: () => setOpenSection('ai'),
-      render: () => <AiSettingsPanel />,
+      render: () => <AiSettingsPanel workspace={workspace} />,
     },
     ...(serverCapabilities.contract === 'v2' ? [{
       id: 'extensions', group: 'server' as const,
@@ -168,7 +171,7 @@ export function buildSettingsSections({
       title: t('settings:screen.categories.extensions'),
       summary: t('settings:screen.summaries.extensions'),
       onPress: () => setOpenSection('extensions'),
-      render: () => <ExtensionsSection />,
+      render: () => <ExtensionsSection workspace={workspace} />,
     }] : []),
     ...(connectSetup.enabled && connectSetup.storeInstall ? [{
       id: 'cloud-link', group: 'connections' as const,
@@ -219,7 +222,7 @@ export function buildSettingsSections({
     },
     {
       id: 'language', group: 'app', icon: 'translate', title: t('settings:language.title'), summary: t('settings:language.description'),
-      onPress: () => setOpenSection('language'), render: () => <LanguageSection chatPreferences={chatPreferences} palette={palette} updateChatPreferences={updateChatPreferences} />,
+      onPress: () => setOpenSection('language'), render: () => <LanguageSection block={updates.block} chatPreferences={chatPreferences} palette={palette} updateChatPreferences={updateChatPreferences} />,
     },
     {
       id: 'advanced', group: 'server' as const,
@@ -235,7 +238,7 @@ export function buildSettingsSections({
           {serverCapabilities.contract !== 'v2' && advancedTab === 'mcp' ? <>
           <McpSection configs={currentConfig?.mcp} mcpStatuses={mcp.mcpStatuses} onAdd={mcp.addMcpServer} onConnect={mcp.connectMcpServer} onDisconnect={mcp.disconnectMcpServer} onRefresh={mcp.refreshMcpServers} mcpOAuth={mcp.mcpOAuth} requiresIntegrationId={serverCapabilities.mcpIntegrationId} oauthAvailable={serverCapabilities.mcpOAuth} palette={palette} />
           </> : <>
-          <DiagnosticsSection diagnostics={diagnosticsData.diagnostics} eventStreamStatus={diagnosticsData.eventStreamStatus} transport={diagnosticsData.transport} lastJsError={lastJsError} onRefresh={() => { void diagnosticsData.refreshDiagnostics(); refreshLastJsError(); }} palette={palette} />
+          <DiagnosticsSection workspace={workspace} diagnostics={diagnosticsData.diagnostics} eventStreamStatus={diagnosticsData.eventStreamStatus} transport={diagnosticsData.transport} lastJsError={lastJsError} onRefresh={() => { void diagnosticsData.refreshDiagnostics(); refreshLastJsError(); }} palette={palette} />
           </>}
         </>
       ),
@@ -249,7 +252,7 @@ export function buildSettingsSections({
         setOpenSection('permissions');
         void approvals.refreshSavedPermissions();
       },
-      render: () => <ServerApprovals />,
+      render: () => <ServerApprovals workspace={workspace} />,
     }] : []),
     {
       id: 'support', group: 'app' as const,

@@ -1,8 +1,6 @@
 import assert from 'node:assert/strict';
 import { describe, it, vi } from 'vitest';
 
-import { loadTs } from '../../../../tests/helpers/runtime.mjs';
-
 async function loadEngine({
   generate = async (index: number) => `/tmp/opencode-tts-${index}.wav`,
   play = async (_file: string, _signal: AbortSignal, onStarted?: () => void) => { onStarted?.(); },
@@ -10,18 +8,18 @@ async function loadEngine({
   generate?: (index: number) => Promise<string>;
   play?: (file: string, signal: AbortSignal, onStarted?: () => void) => Promise<void>;
 } = {}) {
-  const catalog = await loadTs('shared/platform/voice/tts/catalog.ts');
-  const types = await loadTs('shared/platform/voice/tts/types.ts');
   const deleted: string[] = [];
   let nextIndex = 0;
-  const engine = await loadTs('shared/platform/voice/tts/engine.ts', {
-    'react-native': { Platform: { OS: 'android' } },
-    '@/shared/platform/voice/tts/catalog': catalog,
-    '@/shared/platform/voice/tts/types': types,
-    "@/shared/platform/voice/tts/models": { getLocalTtsPackStatus: () => 'ready' },
-    "@/shared/platform/voice/tts/runtime": { ensureLocalTtsRuntime: async () => undefined, generateLocalTtsChunk: async () => generate(nextIndex++), scheduleLocalTtsRelease: () => {} },
-    "@/shared/platform/voice/tts/player": { deleteLocalTtsFile: (file: string) => { deleted.push(file); }, playLocalTtsFile: play }
-  });
+  vi.resetModules();
+  vi.doMock('react-native', () => ({ Platform: { OS: 'android' } }));
+  vi.doMock('@/shared/platform/voice/tts/models', () => ({ getLocalTtsPackStatus: () => 'ready' }));
+  vi.doMock('@/shared/platform/voice/tts/runtime', () => ({
+    ensureLocalTtsRuntime: async () => undefined,
+    generateLocalTtsChunk: async () => generate(nextIndex++),
+    scheduleLocalTtsRelease: () => {},
+  }));
+  vi.doMock('@/shared/platform/voice/tts/player', () => ({ deleteLocalTtsFile: (file: string) => { deleted.push(file); }, playLocalTtsFile: play }));
+  const engine = await import('@/shared/platform/voice/tts/engine');
   return { engine, deleted };
 }
 

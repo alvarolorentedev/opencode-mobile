@@ -1,3 +1,4 @@
+import { UpdateBlockingSheet as OverlaySheet } from '@/features/updates/index';
 import { cn } from '@/shared/ui/cn';
 import { Button } from '@/shared/ui/button';
 import { Icon } from '@/shared/ui/icon';
@@ -18,10 +19,9 @@ import { ConnectionSetupForm } from '@/features/connections/index';
 import { ConnectScanner } from '@/shared/platform/camera/connect-scanner';
 import { ConnectSubscription } from '@/features/cloud-link/ui/connect-subscription';
 import { ConnectOnboarding } from '@/features/cloud-link/ui/connect-onboarding';
-import { OverlaySheet } from '@/shared/ui/overlay-sheet';
 
 import { useDismissOnBack } from '@/shared/ui/hooks/use-dismiss-on-back';
-import { useUpdateBlocker } from '@/runtime/ui';
+import { useUpdateBlocker } from '@/features/updates/context';
 import { usePalette } from '@/shared/ui/theme/use-palette';
 import { CONNECT_LEARN_MORE_URL } from '@/shared/contracts/cloud-link';
 import type { ConnectSetup } from '@/shared/contracts/cloud-link-setup';

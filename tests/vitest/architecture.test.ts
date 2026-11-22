@@ -33,15 +33,12 @@ describe('architecture ratchets', () => {
       return files;
     }
 
-    // 1. The provider orchestrates domains; it should not regrow into a god object.
-    // Composition lives in runtime/composition/use-opencode-provider-composition.ts and the
-    // context wiring in runtime/workspace/domain-provider-tree.tsx; the entrypoint stays
-    // a thin wrapper so it cannot accumulate orchestration again.
+    // The provider mounts the application core and workspace shell.
     const provider = await read('runtime/composition/opencode-provider.tsx');
     const providerLines = provider.split('\n').length;
     assert.ok(
       providerLines <= 60,
-      `runtime/composition/opencode-provider.tsx is ${providerLines} lines. Keep it a thin wrapper over use-opencode-provider-composition.ts / opencode-provider-tree.tsx instead of growing the provider.`,
+      `runtime/composition/opencode-provider.tsx is ${providerLines} lines. Keep the app-core entrypoint at or below 60 lines.`,
     );
 
     // 1b. No source file may exceed the readable-size ceiling. Generated locale
@@ -67,7 +64,7 @@ describe('architecture ratchets', () => {
     // 2. The public context surface stays a deliberate contract, not an accidental
     // dump. Count members across every domain context value.
     const typeFiles = (await collectSourceFiles(path.join(root, 'features'))).filter((file) => file.endsWith('/model/types.ts'));
-    const types = (await Promise.all(typeFiles.map((file) => readFile(file, 'utf8')))).join('\n') + await read('shared/preferences/types.ts');
+    const types = (await Promise.all(typeFiles.map((file) => readFile(file, 'utf8')))).join('\n');
     const domainBlocks = [...types.matchAll(/export type \w+ContextValue = \{([\s\S]*?)\n\};/g)];
     assert.ok(domainBlocks.length >= 2, 'Domain context value types must exist.');
     const contextMembers = domainBlocks.reduce(
@@ -84,11 +81,11 @@ describe('architecture ratchets', () => {
     // project runtime.
     assert.match(
       await read('runtime/workspace/workspace-provider.tsx'),
-      /\buseNetworkStatus\(\)/,
+      /\buseNetworkStatus\(core\.connections\.setNetwork\)/,
       'WorkspaceProvider must own the single connectivity monitor.',
     );
     assert.doesNotMatch(
-      await read('runtime/composition/use-opencode-provider-composition.ts'),
+      (await Promise.all(['project-binding', 'project-runtimes'].map((name) => read(`runtime/core/${name}.ts`)))).join('\n'),
       /useNetworkStatus|use-network-status/,
       'Each workspace runtime must consume the shared network snapshot, not configure NetInfo itself.',
     );

@@ -1,5 +1,6 @@
-import { useEffect, useMemo, useRef, useState, type Dispatch, type SetStateAction } from 'react';
+import { useCallback, useEffect, useMemo, useRef, type Dispatch, type SetStateAction } from 'react';
 
+import { useAppCore, useAppStore } from '@/runtime/core';
 import type { PendingPermissionRequest, PendingQuestionRequest } from '@/shared/protocol/opencode/client';
 import type { SessionStatus } from '@/shared/protocol/opencode/types';
 import type { VoiceRecoveryAction } from '@/shared/platform/voice/speech-errors';
@@ -9,11 +10,13 @@ import { stopWorkingSoundAsync } from '@/shared/platform/voice/working-sound';
 import type { ConversationInputPhase, ConversationReadbackEntry, ConversationReadbackPhase } from '@/features/voice/model/types';
 import type { ChatPreferences } from '@/shared/preferences/opencode-preferences';
 import { applyConversationFeedback } from '@/features/voice/state/conversation/feedback';
+const EMPTY_QUEUE: string[] = [];
 
 // Reads the settled assistant turn aloud. This is deliberately independent of
 // the input phase: after submitting, the microphone re-arms while the assistant
 // works, and readback starts later when the final reply is available.
 export function useConversationPlayback({
+  scopeKey,
   active,
   chatPreferences,
   conversationSessionId,
@@ -36,6 +39,7 @@ export function useConversationPlayback({
   inputBusy,
   wakePhraseRequired,
 }: {
+  scopeKey: string;
   active: boolean;
   chatPreferences: ChatPreferences;
   conversationSessionId?: string;
@@ -58,11 +62,14 @@ export function useConversationPlayback({
   inputBusy: boolean;
   wakePhraseRequired: boolean;
 }) {
-  const [queue, setQueue] = useState<ConversationReadbackEntry[]>([]);
-  const queueRef = useRef<ConversationReadbackEntry[]>([]);
+  const { store } = useAppCore();
+  const queue = useAppStore((state) => state.conversation[scopeKey]?.readbackQueue ?? EMPTY_QUEUE);
+  const readQueue = useCallback(() => store.getState().conversation[scopeKey]?.readbackQueue ?? EMPTY_QUEUE, [scopeKey, store]);
+  const setQueue = useCallback((next: string[]) => store.getState().setConversationValue(scopeKey, 'readbackQueue', next), [scopeKey, store]);
   const startingRef = useRef(false);
   const runIdRef = useRef(0);
   const lastTurnSequenceRef = useRef(turnSequence);
+  useEffect(() => () => { runIdRef.current += 1; }, []);
   const sessionStatus = conversationSessionId ? sessionStatuses[conversationSessionId] : undefined;
   // In no-wake mode `listening` is the idle input phase, not an active turn.
   // Do not start reply readback while a command is already being captured.
@@ -106,12 +113,11 @@ export function useConversationPlayback({
     if (!active || readbackPhase === 'idle') {
       runIdRef.current += 1;
       startingRef.current = false;
-      if (queueRef.current.length) {
-        queueRef.current = [];
-        setQueue([]);
+      if (readQueue().length) {
+        setQueue(EMPTY_QUEUE);
       }
     }
-  }, [active, readbackPhase]);
+  }, [active, readQueue, readbackPhase, setQueue]);
 
   useEffect(() => {
     // A confirmed command increments the turn sequence. Drop queued readback
@@ -122,13 +128,13 @@ export function useConversationPlayback({
     lastTurnSequenceRef.current = turnSequence;
     runIdRef.current += 1;
     startingRef.current = false;
-    queueRef.current = [];
-    setQueue([]);
+
+    setQueue(EMPTY_QUEUE);
     if (readbackPhase === 'speaking') {
       void stopSpeaking().catch(() => undefined);
     }
     setReadbackPhase('waiting');
-  }, [readbackPhase, setReadbackPhase, turnSequence]);
+  }, [readbackPhase, setQueue, setReadbackPhase, turnSequence]);
 
   useEffect(() => {
     // Wake detection and TTS share the audio session. Stop the current
@@ -196,8 +202,7 @@ export function useConversationPlayback({
     }
 
     assistantReplyBaselineIdRef.current = candidates[candidates.length - 1].entry.id;
-    const nextQueue = [...queueRef.current, ...candidates];
-    queueRef.current = nextQueue;
+    const nextQueue = [...readQueue(), ...candidates.map(({ entry }) => entry.text)];
     setQueue(nextQueue);
   }, [
     active,
@@ -209,7 +214,9 @@ export function useConversationPlayback({
     inputPhase,
     inputReady,
     isSessionRunning,
+    readQueue,
     readbackPhase,
+    setQueue,
     wakePhraseRequired,
   ]);
 
@@ -228,7 +235,7 @@ export function useConversationPlayback({
     }
 
     const item = queue[0];
-    if (!item) {
+    if (item === undefined) {
       return;
     }
 
@@ -244,15 +251,13 @@ export function useConversationPlayback({
       startingRef.current = false;
 
       if (failed) {
-        queueRef.current = [];
-        setQueue([]);
+        setQueue(EMPTY_QUEUE);
         setReadbackPhase('idle');
         resumeInput();
         return;
       }
 
-      const remaining = queueRef.current.slice(1);
-      queueRef.current = remaining;
+      const remaining = readQueue().slice(1);
       setQueue(remaining);
 
       if (remaining.length > 0) {
@@ -300,7 +305,7 @@ export function useConversationPlayback({
           },
           playback,
           rate: chatPreferences.speechRate,
-          text: item.entry.text,
+          text: item,
         });
 
         if (!started) {
@@ -327,10 +332,12 @@ export function useConversationPlayback({
     pendingQuestionsBySession,
     playback,
     queue,
+    readQueue,
     readbackPhase,
     resumeInput,
     setConversationFeedback,
     setConversationFeedbackAction,
+    setQueue,
     setReadbackPhase,
     stopConversationMode,
   ]);

@@ -1,3 +1,4 @@
+import { UpdateBlockingSheet as OverlaySheet, UpdateBlockingWorkspaceSelect as WorkspaceSelect } from '@/features/updates/index';
 import { cn } from '@/shared/ui/cn';
 import { Text } from '@/shared/ui/text';
 import { Button } from '@/shared/ui/button';
@@ -6,8 +7,7 @@ import { useState } from 'react';
 import { View } from 'react-native';
 
 import { useTranslation } from 'react-i18next';
-import { OverlaySheet } from '@/shared/ui/overlay-sheet';
-import { WorkspaceSelect } from '@/shared/ui/workspace-select';
+import { useProjects } from '@/features/projects/context';
 import { useWorkspaceProjects } from '@/features/projects/index';
 import { useWorkspaces } from '@/runtime/workspace';
 import type { WorkspaceTarget } from '@/shared/contracts/workspace';
@@ -20,7 +20,7 @@ export function NewTerminalSheet({ target: initial, onClose, onCreate }: { targe
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string>();
   const server = groups.find((entry) => entry.id === target?.connectionId);
-  const chat = registry.focus && registry.valuesFor(registry.focus);
+  const { activeProject } = useProjects();
   const chatServer = groups.find((entry) => entry.id === registry.focus?.connectionId)?.name;
   return <OverlaySheet visible title={t('terminal:console.new')} testID="new-terminal-sheet" fitContent onClose={() => { if (!busy) onClose(); }}>
     <Text>{t('common:servers.newTerminalHint')}</Text>
@@ -31,7 +31,7 @@ export function NewTerminalSheet({ target: initial, onClose, onCreate }: { targe
       options={server?.projects.map((entry) => ({ value: entry.path, label: entry.label, description: entry.path })) ?? []}
       onChange={(projectPath) => { if (target) setTarget({ ...target, projectPath }); }} />
     <Text  variant="label">{t('common:servers.workingDirectory')}</Text><Text style={{ fontFamily: 'monospace' }}>{target?.projectPath || '—'}</Text>
-    <Text  variant="label">{t('common:servers.chatUnchanged', { name: `${multipleServers ? `${chatServer} / ` : ''}${chat?.projectsValue.activeProject?.label ?? ''}` })}</Text>
+    <Text  variant="label">{t('common:servers.chatUnchanged', { name: `${multipleServers ? `${chatServer} / ` : ''}${activeProject?.label ?? ''}` })}</Text>
     {error ? <Text accessibilityRole="alert">{error}</Text> : null}
     <View className={cn("flex-row justify-end gap-2")}><Button disabled={busy} onPress={onClose} variant={"ghost"}><Text>{t('common:actions.cancel')}</Text></Button>
       <Button testID="terminal-create-confirm" disabled={busy || !target?.projectPath || server?.status !== 'connected'} onPress={() => {

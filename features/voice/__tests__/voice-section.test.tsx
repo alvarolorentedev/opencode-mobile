@@ -1,67 +1,71 @@
-import { uiImports } from '../../../tests/helpers/ui.mjs';
-import { hookRuntime, loadTs } from '../../../tests/helpers/runtime.mjs';
+// @vitest-environment happy-dom
+
+import '../../../tests/helpers/native-primitives';
 import { describe, expect, it, vi } from 'vitest';
 
+import { UpdateBlockingSettingSelectField } from '@/features/updates/index';
+import { LocalTtsSection } from '@/features/voice/ui/settings/local-tts-section';
+import { VoiceSection, type VoiceSectionProps } from '@/features/voice/ui/settings/voice-section';
+import { VoiceFlowScreen } from '@/features/voice/ui/voice-flow-screen';
+import { VoiceInputSetup } from '@/features/voice/ui/voice-input-setup';
+import { defaultChatPreferences } from '@/shared/preferences/opencode-preferences';
+import { Colors } from '@/shared/ui/theme/theme';
+import { ToggleGroupItem } from '@/shared/ui/toggle-group';
+import { renderHook } from '../../../tests/helpers/render-hook';
+
+const variant = vi.hoisted(() => ({ foss: false, platform: 'android' }));
+vi.mock('react-native', async () => (await import('../../../tests/helpers/native-view-platform')).nativeViewPlatform(variant));
+vi.mock('expo-constants', () => ({ default: { expoConfig: { extra: { get foss() { return variant.foss; } } } } }));
+vi.mock('expo-router', () => ({ useIsFocused: () => false }));
+vi.mock('expo-localization', () => ({ getLocales: () => [] }));
+vi.mock('expo-crypto', () => ({}));
+vi.mock('expo/fetch', () => ({}));
+vi.mock('expo-file-system', () => ({}));
+vi.mock('expo-secure-store', () => ({}));
+vi.mock('@react-native-async-storage/async-storage', () => ({ default: {} }));
+vi.mock('react-i18next', async (original) => ({
+  ...await original<typeof import('react-i18next')>(),
+  useTranslation: () => ({ t: (key: string) => key }),
+}));
+
 type Element = { type: unknown; props: Record<string, any> };
-function all(root: Element | Element[], type: string): Element[] {
+function all(root: Element | Element[], type: unknown): Element[] {
   if (Array.isArray(root)) return root.flatMap((child) => all(child, type));
   if (!root || typeof root !== 'object') return [];
   return [...(root.type === type ? [root] : []), ...all(root.props?.children, type)];
 }
 
-async function setup(foss: boolean) {
-  const runtime = hookRuntime();
-  const constants = { __esModule: true, default: { expoConfig: { extra: { foss } } } };
-  const { VoiceSection } = await loadTs('features/voice/ui/settings/voice-section.tsx', {
-    ...uiImports,
-    react: runtime.react,
-    'react/jsx-runtime': {
-      jsx: (type: unknown, props: object) => ({ type, props }),
-      jsxs: (type: unknown, props: object) => ({ type, props }),
-    },
-    'expo-constants': constants,
-    'expo-router': { useIsFocused: () => false },
-    'react-native': { Platform: { OS: 'android' }, StyleSheet: { create: (styles: object) => styles, hairlineWidth: 1 }, View: 'View' },
-    '@/shared/platform/voice/speech-output': { stopSpeaking: vi.fn() },
-    '@/features/voice/state/use-voice-setup-test': { useVoiceTest: () => undefined },
-    '@/shared/platform/voice/tts/catalog': { isPackLanguageCompatible: () => true },
-    '@/shared/ui/settings/settings-panel': { SettingTarget: 'SettingTarget', useSettingsTarget: () => undefined },
-    '@/features/voice/ui/voice-input-setup': { VoiceInputSetup: 'VoiceInputSetup' },
-    '@/features/voice/ui/voice-flow-screen': { VoiceFlowScreen: 'VoiceFlowScreen' },
-    '@/features/voice/ui/voice-language': { voiceLanguageOptions: () => [{ value: '', label: 'System' }] },
-    '@/features/voice/ui/settings/local-tts-section': { LocalTtsSection: 'LocalTtsSection' },
-    '@/features/voice/ui/settings/voice-more-settings': { VoiceMoreSettings: 'VoiceMoreSettings' },
-    '@/shared/ui/settings/setting-rows': { SettingSelectField: 'SettingSelectField', SettingSwitchRow: 'SettingSwitchRow' },
-  }, runtime.globals);
-  const props = {
-    availableSpeechVoices: [], chatPreferences: {
-      voiceWakeMode: 'local', ttsEngine: 'local', localSpeakerVerification: false,
-      localTtsSpeakerId: 0, speechLocale: '', wakePhraseRequired: true,
-      confirmVoiceCommands: false, autoPlayAssistantReplies: false,
-    },
-    isRefreshingSpeechVoices: false, isTestingVoice: false,
-    localVoice: { status: 'unsupported', microphone: undefined, enrollment: { cancel: vi.fn(async () => {}) } },
-    onEnableVoiceInput: vi.fn(), onOpenVoiceSettings: vi.fn(), onTestVoicePlayback: vi.fn(),
-    palette: {}, selectedSpeechVoiceLabel: 'System', selectedWorkingSound: { value: 'none' },
-    ttsSetup: { activePack: undefined, statuses: {}, packs: [], error: undefined, isPreviewing: false, setEngine: vi.fn(), sizeLabel: () => '' },
+function setup(foss: boolean) {
+  variant.foss = foss;
+  return renderHook(VoiceSection, {
+    availableSpeechVoices: [],
+    chatPreferences: { ...defaultChatPreferences, voiceWakeMode: 'local', ttsEngine: 'local' },
+    isRefreshingSpeechVoices: false,
+    isTestingVoice: false,
+    localVoice: { status: 'unsupported', enrollment: { cancel: vi.fn(async () => {}) } } as unknown as VoiceSectionProps['localVoice'],
+    onEnableVoiceInput: vi.fn(),
+    onOpenVoiceSettings: vi.fn(),
+    onTestVoicePlayback: vi.fn(),
+    palette: Colors.light,
+    selectedSpeechVoiceLabel: 'System',
+    selectedWorkingSound: { value: 'soft' },
+    ttsSetup: { activePack: undefined, statuses: {}, packs: [], error: undefined, isPreviewing: false, setEngine: vi.fn(), sizeLabel: () => '' } as unknown as VoiceSectionProps['ttsSetup'],
     updateChatPreferences: vi.fn(),
-  } as any;
-  runtime.mount(VoiceSection, props);
-  return runtime;
+  });
 }
 
 describe('voice settings variant visibility', () => {
   it('hides Sherpa input and playback selectors and setup flows in FOSS despite saved local preferences', async () => {
-    const runtime = await setup(true);
-    expect(all(runtime.value, 'ToggleGroupItem')).toHaveLength(0);
-    expect(all(runtime.value, 'VoiceInputSetup')).toHaveLength(0);
-    expect(all(runtime.value, 'VoiceFlowScreen')).toHaveLength(0);
-    expect(all(runtime.value, 'LocalTtsSection')).toHaveLength(0);
-    expect(all(runtime.value, 'SettingSelectField')).toHaveLength(2);
+    const runtime = setup(true);
+    expect(all(runtime.result.current, ToggleGroupItem)).toHaveLength(0);
+    expect(all(runtime.result.current, VoiceInputSetup)).toHaveLength(0);
+    expect(all(runtime.result.current, VoiceFlowScreen)).toHaveLength(0);
+    expect(all(runtime.result.current, LocalTtsSection)).toHaveLength(0);
+    expect(all(runtime.result.current, UpdateBlockingSettingSelectField)).toHaveLength(2);
   });
 
   it('keeps both local mode selectors in non-FOSS builds', async () => {
-    const runtime = await setup(false);
-    expect(all(runtime.value, 'ToggleGroupItem')).toHaveLength(4);
+    const runtime = setup(false);
+    expect(all(runtime.result.current, ToggleGroupItem)).toHaveLength(4);
   });
 });

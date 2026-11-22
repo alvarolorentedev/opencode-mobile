@@ -6,3 +6,4 @@ export { ConnectionStatusBanner } from './ui/connection-status-banner';
 export type { DiagnosticsContextValue } from './model/types';
 export { DiagnosticsSection } from './ui/settings/diagnostics-section';
 export { useLastJsError } from './state/use-last-js-error';
+export type { ConnectionState } from './model/types';

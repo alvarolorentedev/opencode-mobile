@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import type { ActiveSessionItem } from '@/shared/contracts/domain';
+import type { ActiveSessionItem } from '@/features/sessions/model/types';
 import { MAX_SESSION_QUICK_ACTIONS, getSessionQuickActions } from '@/features/sessions/model/quick-action-items';
 
 function session(overrides: Partial<ActiveSessionItem> = {}): ActiveSessionItem {

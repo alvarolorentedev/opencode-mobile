@@ -6,7 +6,7 @@ import type { SessionMessageRecord } from '@/shared/presentation/format';
 
 import type { FileDiff, Todo } from '@/shared/protocol/opencode/types';
 
-import type { DiffScope } from '@/shared/contracts/domain';
+import type { DiffScope } from '@/features/projects/index';
 export type ChatRefreshInput = {
 
   client: ScopedOpencodeClient;
@@ -25,11 +25,11 @@ export type ChatRefreshInput = {
 
   setSelectedDiffMessageBySession: Dispatch<SetStateAction<Record<string, string | undefined>>>;
 
-  selectedDiffMessageBySessionRef: { current: Record<string, string | undefined> };
+  readPinnedDiffMessage: (sessionId: string) => string | undefined;
 
-  diffScopeBySessionRef: { current: Record<string, DiffScope> };
+  readDiffScope: (sessionId: string) => DiffScope | undefined;
 
   currentSessionIdRef: { current: string | undefined };
 
-  messagesBySessionRef: { current: Record<string, SessionMessageRecord[]> };
+  readDisplayedSession: (sessionId: string) => SessionMessageRecord[];
 };

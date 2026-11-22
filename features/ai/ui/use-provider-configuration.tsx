@@ -1,3 +1,4 @@
+import type { WorkspaceTarget } from '@/shared/contracts/workspace';
 import * as Linking from '@/shared/platform/linking';
 import * as WebBrowser from '@/shared/platform/browser';
 import { useCallback, useMemo, useRef, useState } from 'react';
@@ -55,11 +56,11 @@ export function buildEffectiveMethods(
  * The flow is two full-screen steps: pick a login method, then configure it
  * (key form, automatic OAuth wait, or a pairing/authorization-code step).
  */
-export function useProviderConfiguration() {
+export function useProviderConfiguration(workspace?: WorkspaceTarget) {
   const { t } = useTranslation();
   const palette = usePalette();
-  const { availableProviders, providerAuthMethodsById, providerAccounts, setProviderAuth, providerOAuth } = useCapabilities();
-  const { connect, serverCapabilities } = useConnection();
+  const { availableProviders, providerAuthMethodsById, providerAccounts, setProviderAuth, providerOAuth } = useCapabilities(workspace);
+  const { connect, serverCapabilities } = useConnection(workspace);
 
   const [selectedProviderId, setSelectedProviderId] = useState<string>();
   const [step, setStep] = useState<ProviderSetupStep>('method');

@@ -1,6 +1,34 @@
 # Phase D — Transcript
 
-Status: **not started**.
+Status: **complete**. Scoped infinite queries and persistence passed
+`validate:commit` with 1,280 tests and one existing skip, the web export, and
+all 185 browser flows. Focused persistence and resilience tests passed.
+
+## Browser performance
+
+Five alternating pairs compared Phase C (`8d8186bd`) with per-session queries
+and Query persistence. Each stream delivered 160 deltas at 10 ms intervals
+after sending an 8 MiB inline attachment. The cold sample measured the first
+visible transcript record after reload with the newest-page response held for
+1.6 seconds. It selected the chat row directly because the app bar can show the
+same text as the session title.
+
+| Measurement | Phase C | Phase D |
+|---|---:|---:|
+| First visible delta | 55–58 ms | 57–58 ms |
+| Visible updates to final delta | 30–31 | 31 |
+| Median interval between updates | 60 ms | 59–61 ms |
+| Per-run p95 lag from newest delta to its visible update | 20–22 ms | 20–22 ms |
+| Cold transcript median | 168 ms | 174 ms |
+| Cold transcript range | 165–201 ms | 167–219 ms |
+
+All ten reloads painted before the held response. The five Phase D runs each
+persisted one 6,465-byte Query envelope, one transcript tail page, no paging
+cursor, no inline payload and no legacy transcript key. Every run captured two
+newest-page reads during connection and turn reconciliation and one assistant
+detail attempt. The fake server's detail endpoint returned 404, exercising
+the existing fallback. Both builds transferred the same message-read bytes.
+Device profiling remains separate.
 
 Goal: canonical messages become per-session infinite queries. The live stream
 overlay lives in Zustand. The connection-scoped message map is deleted.
@@ -10,13 +38,12 @@ and [chat behavior](../../product/functional-spec.md#chat-screen-detailed-behavi
 
 Start only after Phase C is complete and green.
 
-## Current shape
+## Phase C baseline
 
-- `features/chat/state/use-message-catalog.ts` holds one connection-scoped
-  Query map keyed by session.
-- `features/chat/state/use-transcript-state.ts` owns pagination windows and
-  hydration state.
-- `features/chat/state/use-live-transcript.ts` owns the live overlay in refs.
+- A single connection-scoped Query held every canonical session window.
+- `useTranscriptMetadata` reads Query-owned pagination cursors and ledgers;
+  the app store holds the transcript request flags.
+- `useLiveTranscript` renders the app-store overlay alongside canonical windows.
 - `features/chat/model/live-transcript.ts` is the pure event reducer.
 - `features/chat/services/transcript-cache.ts` is the bounded cold-start cache.
 

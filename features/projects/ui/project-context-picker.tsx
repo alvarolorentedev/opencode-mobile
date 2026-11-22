@@ -1,6 +1,6 @@
+import { UpdateBlockingWorkspaceSelect as WorkspaceSelect } from '@/features/updates/index';
 import { useTranslation } from 'react-i18next';
 
-import { WorkspaceSelect } from '@/shared/ui/workspace-select';
 import { useWorkspaces } from '@/runtime/workspace';
 import { useWorkspaceProjects } from '@/features/projects/state/use-workspace-projects';
 

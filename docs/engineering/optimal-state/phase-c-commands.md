@@ -1,6 +1,33 @@
 # Phase C — Command Core
 
-Status: **not started**.
+Status: **complete**. The app core owns workspace readiness, navigation,
+independent project targets and chat creation. Feature bindings supply scoped
+project operations to the commands.
+
+Permission and question replies now run as plain session commands. Permission
+reconciliation reads pending mutations in the same Query partition as the
+project's approvals. Session list, status and approval refreshes also run
+through these commands. Sending, aborting, inbox admission and reconnect
+recovery use app-core prompt commands. Model routing runs when the command
+submits a prompt. Task settlement uses the same workspace command owner and
+checks the credential after the server read. The retained project still
+supplies command bindings. Connection commands own connect, disconnect, saved
+profile activation, credential changes, registry restoration and failover.
+Core event dispatch reads the workspace selection and sending state directly
+from the store. Project refresh timers are plain commands and are cleared at
+the project lifecycle boundary. Saved links and cross-server favorites resolve
+through the connection core. Feature hooks bind the app commands without a
+root action override layer. The old composition hook and combined view builder
+have been removed. Feature owners compose their own presentation, and the
+retained project adapter binds it to the active data partition.
+
+Explicit session opening and automatic bootstrap share the app-core selection
+command. It reads the project session catalog and supersedes pending bootstrap
+when the user opens a chat. External links validate the session and project with
+the current manager before selecting a chat. Creation and forking share scoped
+Query writes and use the saved model when the demanded project's catalog supports it.
+Rename and delete are scoped commands, and revert settles execution before
+staging the rewind. The retained project still supplies transcript reads.
 
 Goal: cross-domain behavior becomes plain TypeScript commands. Hooks adapt;
 they no longer own command logic. The per-workspace composition and its value
@@ -60,10 +87,10 @@ with a fake context.
 
 Existing files that must be gone or reduced to thin adapters by the end of the
 phase:
-- `runtime/composition/use-opencode-provider-composition.ts`
-- `runtime/composition/opencode-provider-values.ts`
-- `runtime/composition/opencode-provider-values-input.ts`
-- `runtime/workspace/workspace-runtime.tsx`
+- `use-opencode-provider-composition.ts`
+- `opencode-provider-values.ts`
+- `opencode-provider-values-input.ts`
+- `workspace-runtime.tsx`
 - `eventActionsRef` and its latest-ref mirrors in the composition
 - `WorkspaceValues`/`useWorkspaceValues` action overrides
 - read-generation guards that Query keys already protect

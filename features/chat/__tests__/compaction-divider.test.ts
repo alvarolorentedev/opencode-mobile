@@ -1,26 +1,24 @@
-import { textContent, uiImports } from '../../../tests/helpers/ui.mjs';
-import { describe, expect, it } from 'vitest';
-import { hookRuntime, loadTs } from '../../../tests/helpers/runtime.mjs';
+// @vitest-environment happy-dom
 
-async function render(detail: Record<string, unknown>) {
-  const runtime = hookRuntime();
-  const element = (type: unknown, props: unknown) => ({ type, props });
-  const { CompactionDivider } = await loadTs('features/chat/ui/cards/compaction-divider.tsx', {
-    ...uiImports,
-    react: runtime.react,
-    'react/jsx-runtime': { jsx: element, jsxs: element, Fragment: 'Fragment' },
-    'react-i18next': {
-      useTranslation: () => ({
-        t: (key: string, options?: { input?: string; output?: string }) => options ? `${key}:${options.input}/${options.output}` : key,
-      }),
-    },
-    'react-native': { View: 'View' },
-    "@/shared/ui/theme/theme": { Colors: { light: {} } }
-  }, runtime.globals);
-  return textContent(runtime.mount(CompactionDivider, {
-    detail,
-    palette: { border: '#eee', muted: '#888' },
-  }));
+import { describe, expect, it, vi } from 'vitest';
+
+import { CompactionDivider } from '@/features/chat/ui/cards/compaction-divider';
+import { Colors } from '@/shared/ui/theme/theme';
+import { renderHook } from '../../../tests/helpers/render-hook';
+import { textContent } from '../../../tests/helpers/text-content';
+
+vi.mock('react-i18next', () => ({
+  useTranslation: () => ({
+    t: (key: string, options?: { input?: string; output?: string }) => options ? `${key}:${options.input}/${options.output}` : key,
+  }),
+}));
+vi.mock('@/shared/i18n/index', () => ({ getFormatLocale: () => 'en' }));
+vi.mock('react-native', () => ({ Platform: { OS: 'web', select: ({ web }: { web?: unknown }) => web }, Text: 'Text', View: 'View' }));
+vi.mock('@rn-primitives/slot', () => ({ Slot: 'Slot' }));
+
+function render(detail: Parameters<typeof CompactionDivider>[0]['detail']) {
+  const { result } = renderHook(CompactionDivider, { detail, palette: Colors.light });
+  return textContent(result.current);
 }
 
 describe('compaction divider', () => {

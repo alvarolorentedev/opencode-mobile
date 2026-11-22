@@ -12,13 +12,11 @@ requires explicit human validation under `AGENTS.md`.
 Closed on 2026-10-18. The coupling hotspot was split without changing behavior:
 
 - `runtime/composition/opencode-provider.tsx` is now a thin wrapper (~33 lines). The
-  domain hooks and their input spreads moved to
-  `runtime/composition/use-opencode-provider-composition.ts` (~410 lines), and the
-  context-provider tree was later replaced by `runtime/core/workspace-scope.ts`
-  under ADR 0051.
+  first composition split became the app-core commands and retained project
+  adapters under ADR 0051. Scoped selectors live in `runtime/core/workspace-selectors.ts`.
 - The provider line ratchet in `tests/vitest/architecture.test.ts` dropped from
   500 to 60 in the same change, so the entrypoint cannot regrow into a god
-  object. The repo-wide 500-line ceiling still covers both new files.
+  object. The repo-wide 500-line ceiling still covers runtime modules.
 - `features/chat/ui/chat-view.tsx` renders `TranscriptList`, `ChangesOverlay`,
   and `PendingInteractions` directly; the `ChatContent` pass-through
   (`features/chat/ui/chat-view.tsx` and its barrel) is gone.
@@ -27,7 +25,7 @@ Closed on 2026-10-18. The coupling hotspot was split without changing behavior:
   those namespaces directly.
 
 The domain context fan-out is closed under ADR 0051: feature hooks select
-memoized domain values from `runtime/core/workspace-scope.ts`, and the
+memoized domain values from `runtime/core/workspace-selectors.ts`, and the
 per-workspace context provider tree is gone. The remaining orchestration
 coupling is the per-workspace composition itself; commands are still hooks.
 Selector work continues only where profiling shows a real fan-out cost.
@@ -44,10 +42,9 @@ Partially closed on 2026-10-18:
   them. Test titles are unchanged.
 - **The Vitest suites are fully type-checked.** `tsconfig.tests.json`
   type-checks every file under `tests/vitest`; `npm run typecheck:tests` (part of
-  `test:ci:static`) runs it. The dynamic `loadTs` / `hookRuntime` harness is
-  described by `tests/helpers/runtime.d.mts`, so suites can use it without
-  weakening compilation. `tests/vitest/typecheck-ratchet.test.ts` prevents a
-  denylist from returning.
+  `test:ci:static`) runs it. Application imports resolve through Vitest and
+  React hooks use the normal renderer lifecycle in tests.
+  `tests/vitest/typecheck-ratchet.test.ts` limits exclusions.
 - **`tests/foss-prepare.test.mjs`** stays a standalone Node script
   (`npm run test:foss`, run by the `ci.yml` static job). It mutates a temporary
   `node_modules` tree and is build tooling rather than app behavior, so it is

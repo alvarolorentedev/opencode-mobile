@@ -1,9 +1,10 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import type { QueryIdentity } from '@/shared/server-data/keys';
+import { useCallback, useEffect, useMemo } from 'react';
 import type { McpContextValue } from '@/features/extensions/model/types';
 
+import { useAppCore, useAppStore } from '@/runtime/core';
 import type { ScopedOpencodeClient } from '@/shared/protocol/opencode/client';
 import type { McpLocalConfig, McpRemoteConfig } from '@/shared/protocol/opencode/types';
-import { useQueryActivity, useQueryIdentity } from '@/shared/server-data/client';
 import { mcpOptions } from '@/shared/server-data/diagnostics';
 import { completeLegacyMcpOAuth, startLegacyMcpOAuth, addMcpServer as svcAddMcpServer, connectMcpServer as svcConnectMcpServer, disconnectMcpServer as svcDisconnectMcpServer } from '@/shared/protocol/services/mcp-service';
 import { useQueries, useQueryClient } from '@tanstack/react-query';
@@ -11,37 +12,45 @@ import { useQueries, useQueryClient } from '@tanstack/react-query';
 const EMPTY_STATUSES: Record<string, import('@/shared/protocol/opencode/types').McpStatus> = {};
 // Status shares the same query as diagnostics and extension discovery.
 export function useMcpState({
+  identity,
+  queryActive: active,
+  scopeKey,
   client,
   isCurrentClient,
 }: {
+  identity: QueryIdentity;
+  queryActive: boolean;
+  scopeKey: string;
   client: ScopedOpencodeClient;
   isCurrentClient: (candidate: object) => boolean;
 }) {
-  const identity = useQueryIdentity();
   const cache = useQueryClient();
-  const active = useQueryActivity();
-  const [requested, setRequested] = useState(false);
+  const { store } = useAppCore();
+  const requested = useAppStore((state) => state.workspaceUi[scopeKey]?.mcpRequested ?? false);
   const [query] = useQueries({ queries: [{ ...mcpOptions(identity, client), enabled: active && requested, subscribed: active && requested }].filter(() => active && requested) });
   const refreshMcpServers = useCallback(async () => {
-    setRequested(true);
+    store.getState().setWorkspaceUi(scopeKey, { mcpRequested: true });
     await cache.invalidateQueries({ queryKey: mcpOptions(identity, client).queryKey, refetchType: 'none' });
     if (active && isCurrentClient(client)) await cache.fetchQuery(mcpOptions(identity, client));
-  }, [active, cache, client, identity, isCurrentClient]);
+  }, [active, cache, client, identity, isCurrentClient, scopeKey, store]);
   const refreshChatCapabilities = useCallback(() => cache.invalidateQueries({ predicate: (query) => query.queryKey[0] === 'opencode' && query.queryKey[1] === identity.connectionId && ['capabilities', 'configuration', 'skills', 'references', 'extension-inspection'].includes(String(query.queryKey[7])) }), [cache, identity]);
   const addMcpServer = useCallback(async (name: string, config: McpLocalConfig | McpRemoteConfig) => {
+    if (!isCurrentClient(client)) throw new Error('Refresh extensions before making a change.');
     await svcAddMcpServer(client, name.trim(), config);
     await Promise.all([refreshMcpServers(), refreshChatCapabilities()]);
-  }, [client, refreshChatCapabilities, refreshMcpServers]);
+  }, [client, isCurrentClient, refreshChatCapabilities, refreshMcpServers]);
 
   const connectMcpServer = useCallback(async (name: string) => {
+    if (!isCurrentClient(client)) throw new Error('Refresh extensions before making a change.');
     await svcConnectMcpServer(client, name);
     await refreshMcpServers();
-  }, [client, refreshMcpServers]);
+  }, [client, isCurrentClient, refreshMcpServers]);
 
   const disconnectMcpServer = useCallback(async (name: string) => {
+    if (!isCurrentClient(client)) throw new Error('Refresh extensions before making a change.');
     await svcDisconnectMcpServer(client, name);
     await refreshMcpServers();
-  }, [client, refreshMcpServers]);
+  }, [client, isCurrentClient, refreshMcpServers]);
 
   const mcpOAuth = useMemo<McpContextValue['mcpOAuth']>(() => {
     const names = new Set<string>();

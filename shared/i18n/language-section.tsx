@@ -6,13 +6,16 @@ import type { CatalogOption } from '@/shared/ui/catalog-select';
 import { LANGUAGE_OPTIONS } from '@/shared/i18n/settings-options';
 import type { ChatPreferences } from '@/shared/preferences/opencode-preferences';
 import { SettingSelectField, type Palette } from '@/shared/ui/settings/setting-rows';
+import type { InteractionBlock } from '@/shared/ui/hooks/use-interaction-block';
 
 export function LanguageSection({
+  block,
   chatPreferences,
   palette,
   updateChatPreferences,
   showDescription = true,
 }: {
+  block?: InteractionBlock;
   chatPreferences: ChatPreferences;
   palette: Palette;
   updateChatPreferences: (patch: Partial<ChatPreferences>) => void;
@@ -30,6 +33,7 @@ export function LanguageSection({
   return (
     <View style={showDescription ? styles.section : undefined}>
       <SettingSelectField
+        block={block}
         testID="settings-language"
         label={t('settings:language.title')}
         onValueChange={(value) => updateChatPreferences({ language: value === 'system' ? undefined : value })}

@@ -1,3 +1,4 @@
+import { useUpdateBlockingConfirmation as useConfirmation } from '@/features/updates/index';
 import { cn } from '@/shared/ui/cn';
 import { Text } from '@/shared/ui/text';
 import { ListRow } from '@/shared/ui/list-row';
@@ -7,7 +8,6 @@ import { useTranslation } from 'react-i18next';
 import { View } from 'react-native';
 
 import { SettingTarget } from '@/shared/ui/settings/settings-panel';
-import { useConfirmation } from '@/shared/ui/use-confirmation';
 import type { SavedPermissionRule } from '@/shared/protocol/opencode/client';
 import { Palette } from '@/shared/ui/settings/setting-rows';
 

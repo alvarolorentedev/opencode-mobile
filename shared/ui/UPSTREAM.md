@@ -5,7 +5,7 @@ commit `385834c2196f8a303cbc9057d1ac768f3bde0a3b`.
 
 Source-owned adaptations use the existing MaterialCommunityIcons, semantic
 product tokens, minimum targets, wrapping text, explicit reduced-motion
-behavior, and workspace/modal portal contexts. The native slider and terminal
+behavior, and named modal portal hosts. The native slider and terminal
 DOM controls retain their existing specialized interaction behavior.
 
 Use the pinned CLI with explicit component names and `--styling-library uniwind`.
@@ -19,9 +19,9 @@ Web content frames use the same Radix dependencies as RN Primitives. Dialog
 frames keep a layout-neutral DOM wrapper so RN flex sizing and animated style
 arrays remain intact. Select frames style Radix's positioned element directly;
 RN Primitives styles an inner view, leaving the outer popper behind full-screen
-forms. Native frames continue to use RN Primitives. PortalScope restores a
-captured workspace and keeps RN style arrays behind the child-cloning Radix
-portal boundary; isolated previews work without domain providers. Keep these adaptations when
+forms. Native frames continue to use RN Primitives. Fragments shield React
+Native style arrays from Radix portal child cloning. Feature components carry
+workspace targets in props across the portal. Keep these adaptations when
 upgrading until the upstream wrappers support these layouts.
 
 Full-screen forms use nested Radix dialogs on web and native Modal windows on

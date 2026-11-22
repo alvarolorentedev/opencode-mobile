@@ -1,9 +1,10 @@
+import { UpdateBlockingSettingSelectField as SettingSelectField } from '@/features/updates/index';
 import { FieldDescription } from '@/shared/ui/text-field';
 import { useTranslation } from 'react-i18next';
 
 import { TIMELINE_DETAIL_ORDER, type TimelineDetail } from '@/shared/presentation/transcript';
 import type { ChatPreferences } from '@/shared/preferences/opencode-preferences';
-import { SettingSelectField, SettingSlider, type Palette } from '@/shared/ui/settings/setting-rows';
+import { SettingSlider, type Palette } from '@/shared/ui/settings/setting-rows';
 
 type PreferenceFieldProps = {
   chatPreferences: ChatPreferences;

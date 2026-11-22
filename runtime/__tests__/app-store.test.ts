@@ -30,16 +30,17 @@ describe('app store', () => {
     expect(store.getState().shell.settings).toBe(defaults.settings);
   });
 
-  it('merges registry patches without dropping connections or snapshots', () => {
+  it('merges registry patches without dropping connections', () => {
     const store = createAppStore(defaults);
-    store.getState().setRegistry({ ready: true });
+    const connections = [{ id: 'c', name: 'C', enabled: true, settings: defaults.settings, preferences: {}, projects: ['/p'] }];
+    store.getState().setRegistry({ ready: true, connections });
     store.getState().setRegistry((current) => ({
       focus: { connectionId: 'c', projectPath: '/p' },
       ready: current.ready,
     }));
     expect(store.getState().registry.ready).toBe(true);
     expect(store.getState().registry.focus).toEqual({ connectionId: 'c', projectPath: '/p' });
-    expect(store.getState().registry.snapshots).toEqual({});
+    expect(store.getState().registry.connections).toBe(connections);
   });
 
   it('scopes selection by workspace and preserves sibling scopes', () => {
@@ -48,5 +49,29 @@ describe('app store', () => {
     store.getState().setSelection('["a","/two"]', (current) => ({ currentSessionId: 's2', activeSessionsVisible: !current.activeSessionsVisible }));
     expect(store.getState().selection['["a","/one"]']).toMatchObject({ currentSessionId: 's1', isBootstrappingChat: false });
     expect(store.getState().selection['["a","/two"]']).toMatchObject({ currentSessionId: 's2', activeSessionsVisible: true });
+  });
+
+  it('retains independent conversation turns and clears only the disposed workspace', () => {
+    const { getState } = createAppStore(defaults);
+    const actions = getState();
+    actions.setConversationValue('one', 'phase', 'listening');
+    actions.setConversationValue('one', 'turnSequence', (value) => value + 1);
+    actions.setConversationValue('two', 'phase', 'armed');
+    expect(getState().conversation.one).toMatchObject({ phase: 'listening', readbackPhase: 'idle', turnSequence: 1 });
+    actions.clearConversation('one');
+    expect(getState().conversation.one).toBeUndefined();
+    expect(getState().conversation.two).toMatchObject({ phase: 'armed', turnSequence: 0 });
+  });
+
+  it('clears removed connection outboxes while preserving sibling connections and local IDs', () => {
+    const store = createAppStore(defaults);
+    const first = '["a","/one",""]';
+    const other = '["b","/one",""]';
+    const outbox = { sequence: 1, bySession: { session: [] } };
+    store.getState().setPrompt(first, { outbox });
+    store.getState().setPrompt(other, { outbox });
+    store.getState().clearPromptOutboxes('a');
+    expect(store.getState().prompt[first].outbox).toEqual({ sequence: 1, bySession: {} });
+    expect(store.getState().prompt[other].outbox).toBe(outbox);
   });
 });

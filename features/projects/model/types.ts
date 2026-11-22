@@ -1,12 +1,40 @@
 import type { useProjectBrowser } from '@/features/projects/state/use-project-browser';
 
-import type { WorktreeCatalog } from '@/features/projects/state/use-worktree-state';
-
 import type { ProjectFile } from '@/shared/protocol/opencode/project-file';
+import type { ProjectWorktree } from '@/shared/protocol/opencode/project';
 
-import type { File, VcsInfo } from '@/shared/protocol/opencode/types';
+import type { File, Project, VcsInfo } from '@/shared/protocol/opencode/types';
 
-import type { OpencodeProject } from '@/shared/contracts/domain';
+export type OpencodeProject = {
+  id?: string;
+  label: string;
+  path: string;
+};
+
+// Device-local project archive markers per connection scope. They are a
+// preference like favorites, not a catalog: a path only hides a matching
+// server project, and a stale path never creates a row.
+export type HiddenProjectsByConnection = Record<string, string[]>;
+
+export const HIDDEN_PROJECTS_MAX = 50;
+
+// Which diff source the Files Changed surface reads from. `turn` is the
+// per-user-message snapshot diff; the VCS scopes come from the project
+// working tree and are not tied to the current session.
+export type DiffScope = 'turn' | 'uncommitted' | 'branch';
+
+export type ProjectCatalog = {
+  currentProjectPath?: string;
+  serverRootPath?: string;
+  serverProjects: Project[];
+};
+
+export type WorktreeCatalog = {
+  entries: ProjectWorktree[];
+  project?: { id: string; root: string; label: string };
+  loading: boolean;
+  error?: string;
+};
 
 export type ProjectsContextValue = {
   projects: OpencodeProject[];
@@ -32,8 +60,4 @@ export type ProjectFilesContextValue = {
     download: (path: string, signal?: AbortSignal) => Promise<void>;
   };
   vcsInfo?: VcsInfo;
-  worktrees: WorktreeCatalog;
-  refreshWorktrees: () => Promise<void>;
-  createWorktree: (name?: string) => Promise<import('@/shared/protocol/opencode/project').ProjectWorktree>;
-  removeWorktree: (directory: string) => Promise<void>;
 };

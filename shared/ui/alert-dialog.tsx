@@ -1,5 +1,4 @@
-import { PortalScope, useOverlayDismiss, usePortalHost } from '@/shared/ui/portal';
-import { WorkspaceScopeContext } from '@/runtime/ui';
+import { useOverlayDismiss, usePortalHost } from '@/shared/ui/portal';
 // Source: founded-labs/react-native-reusables @ 385834c2196f8a303cbc9057d1ac768f3bde0a3b (Uniwind, MIT).
 import { buttonTextVariants, buttonVariants } from '@/shared/ui/button';
 import { NativeOnlyAnimatedView } from '@/shared/ui/native-only-animated-view';
@@ -59,7 +58,6 @@ function AlertDialogContent({
   const host = usePortalHost();
   const { open, onOpenChange } = AlertDialogPrimitive.useRootContext();
   useOverlayDismiss(open, () => onOpenChange(false));
-  const workspace = React.useContext(WorkspaceScopeContext);
   const content = (
       <AlertDialogOverlay>
         <AlertDialogPrimitive.Content
@@ -76,7 +74,7 @@ function AlertDialogContent({
 
   );
   return (
-    <AlertDialogPortal hostName={portalHost ?? host}><PortalScope target={workspace}>{content}</PortalScope></AlertDialogPortal>
+    <AlertDialogPortal hostName={portalHost ?? host}><>{content}</></AlertDialogPortal>
   );
 }
 

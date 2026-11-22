@@ -1,9 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 
-// The dynamic loadTs/hookRuntime suites cannot be type-checked yet. Keep the
-// denylist shrinking; if a new suite needs the harness, migrate it instead of
-// adding an entry here.
+// Keep every test suite in the TypeScript program.
 const MAX_UNTYPED_SUITES = 21;
 
 describe('test typecheck ratchet', () => {
@@ -14,7 +12,7 @@ describe('test typecheck ratchet', () => {
 
     expect(
       excluded.length,
-      `The untyped test denylist grew. Migrate the suite off loadTs/hookRuntime instead of adding it to tsconfig.tests.json. Excluded: ${excluded.join(', ')}`,
+      `The untyped test denylist grew. Fix the suite types before excluding it. Excluded: ${excluded.join(', ')}`,
     ).toBeLessThanOrEqual(MAX_UNTYPED_SUITES);
   });
 });

@@ -1,3 +1,4 @@
+import { UpdateBlockingSettingSelectField as SettingSelectField } from '@/features/updates/index';
 import { cn } from '@/shared/ui/cn';
 import { SettingField } from '@/shared/ui/settings/setting-rows';
 import { FieldDescription } from '@/shared/ui/text-field';
@@ -10,7 +11,7 @@ import { View } from 'react-native';
 import { WORKING_SOUND_OPTIONS } from '@/features/voice/model/settings-options';
 import { SettingTarget, SettingsDisclosure } from '@/shared/ui/settings/settings-panel';
 import { DEFAULT_WAKE_PHRASE, normalizeWakePhrase } from '@/shared/platform/voice/wake-phrase';
-import { SettingSlider, SettingSwitchRow, SettingSelectField, type Palette } from '@/shared/ui/settings/setting-rows';
+import { SettingSlider, SettingSwitchRow, type Palette } from '@/shared/ui/settings/setting-rows';
 import type { VoiceSectionProps } from '@/features/voice/ui/settings/voice-section';
 
 export function VoiceMoreSettings({ localInput, chatPreferences: prefs, isTestingVoice, onEnableVoiceInput, onOpenVoiceSettings, onTestVoicePlayback, palette, updateChatPreferences, voiceCapabilities }: VoiceSectionProps & { localInput: boolean }) {

@@ -1,3 +1,4 @@
+import type { WorkspaceTarget } from '@/shared/contracts/workspace';
 import { cn } from '@/shared/ui/cn';
 import { useWatch, useForm, useController, useFieldArray } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -17,7 +18,7 @@ import { KeyboardAvoidingView, ScrollView, StyleSheet, View } from 'react-native
 
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { useUpdateBlocker } from '@/runtime/ui';
+import { useUpdateBlocker } from '@/features/updates/context';
 import { usePalette } from '@/shared/ui/theme/use-palette';
 
 import { MAX_CONNECTION_HEADERS, parseConnectionHeaders } from '@/shared/contracts/connection-headers';
@@ -51,7 +52,7 @@ function certificateErrorKey(reason: CertificateFailureReason) {
 // The form owns presentation; probing and profile persistence stay in the
 // provider. Local QR setup lives in its own flow (`connection-scan-flow.tsx`)
 // and never reuses this manual address/details surface.
-export function ConnectionProfileDialog({ title, submitLabel, showName = true, initial, onSubmit, onDismiss, onBusyChange }: {
+export function ConnectionProfileDialog({ workspace, title, submitLabel, showName = true, initial, onSubmit, onDismiss, onBusyChange }: { workspace?: WorkspaceTarget;
   title: string;
   submitLabel: string;
   showName?: boolean;
@@ -63,7 +64,7 @@ export function ConnectionProfileDialog({ title, submitLabel, showName = true, i
   const insets = useSafeAreaInsets();
   useUpdateBlocker(true);
   const { t } = useTranslation();
-  const { connectionProfiles } = useConnection();
+  const { connectionProfiles } = useConnection(workspace);
   const palette = usePalette();
   const form = useForm<ConnectionDraft>({ resolver: zodResolver(connectionSchema), shouldUnregister: false,
     defaultValues: {

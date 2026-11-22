@@ -1,54 +1,60 @@
-import { uiImports } from '../../../tests/helpers/ui.mjs';
+// @vitest-environment happy-dom
+
+import { act } from 'react';
 import { describe, expect, it, vi } from 'vitest';
-import { hookRuntime, loadTs } from '../../../tests/helpers/runtime.mjs';
+
+import '../../../tests/helpers/native-primitives';
+import { ConnectionScanFlow } from '@/features/connections/ui/connection-scan-flow';
+import type { WorkspaceRegistry } from '@/runtime/workspace/workspace-context';
+import { LocalPairingError } from '@/shared/contracts/pairing-error';
+import { Button } from '@/shared/ui/button';
+import { connectionViewProbe } from '../../../tests/helpers/connection-view-probe';
+import { renderHook } from '../../../tests/helpers/render-hook';
+
+const native = vi.hoisted(() => ({ platform: 'android', foss: false }));
+vi.mock('react-native', async () => (await import('../../../tests/helpers/native-view-platform')).nativeViewPlatform(native));
+vi.mock('expo-constants', () => ({ default: { expoConfig: { extra: { get foss() { return native.foss; } } } } }));
+vi.mock('expo-router', () => ({ usePathname: () => '/' }));
+vi.mock('react-i18next', async (original) => ({ ...await original<typeof import('react-i18next')>(), useTranslation: () => ({ t: (key: string) => key, i18n: { language: 'en' } }) }));
+vi.mock('@react-native-async-storage/async-storage', () => ({ default: {} }));
+vi.mock('expo/fetch', () => ({}));
+vi.mock('expo-localization', () => ({ getLocales: () => [] }));
+vi.mock('expo-crypto', () => ({}));
+vi.mock('expo-secure-store', () => ({}));
+vi.mock('expo-file-system', () => ({}));
+vi.mock('@/shared/platform/camera/connect-camera-gate', () => ({ ConnectCameraGate: 'Gate' }));
+vi.mock('@/shared/platform/camera/connect-scanner', () => ({ ConnectScanner: 'Scanner' }));
 
 type Element = { type: unknown; props: Record<string, any> };
-function find(root: Element | Element[] | null, testID: string): Element | undefined {
+function find(root: Element | Element[] | null, testID: string | typeof Button): Element | undefined {
   if (Array.isArray(root)) return root.map((child) => find(child, testID)).find(Boolean);
   if (!root || typeof root !== 'object') return;
   if (root.props?.testID === testID || root.type === testID) return root;
   return find(root.props?.children, testID);
 }
 
-class LocalPairingError extends Error {
-  constructor(public reason: string) { super(reason); }
-}
-
-async function flow(platform = 'android', foss = false, onSubmit = vi.fn()) {
-  const runtime = hookRuntime();
+function flow(platform = 'android', foss = false, onSubmit = vi.fn()) {
+  Object.assign(native, { platform, foss });
   const pair = vi.fn(async () => ({ serverUrl: 'http://192.168.1.10:49374', username: '', password: 'session-token', directory: '' }));
-  const { ConnectionScanFlow } = await loadTs('features/connections/ui/connection-scan-flow.tsx', {
-    ...uiImports,
-    react: runtime.react,
-    'expo-constants': { expoConfig: { extra: { foss } } },
-    'react/jsx-runtime': { jsx: (type: unknown, props: Record<string, unknown>) => ({ type, props }), jsxs: (type: unknown, props: Record<string, unknown>) => ({ type, props }), Fragment: 'Fragment' },
-    'react-i18next': { useTranslation: () => ({ t: (key: string) => key }) },
-    'react-native': { Platform: { OS: platform }, StyleSheet: { create: (styles: unknown) => styles }, View: 'View', Modal: 'Modal', ScrollView: 'ScrollView' },
-    'react-native-safe-area-context': { useSafeAreaInsets: () => ({ top: 0, bottom: 0 }) },
-    "./sections/setting-rows": { Button: 'Button' },
-    "@/shared/platform/camera/connect-camera-gate": { ConnectCameraGate: 'Gate' },
-    "@/shared/platform/camera/connect-scanner": { ConnectScanner: 'Scanner' },
-    "@/shared/ui/theme/theme": { Colors: { light: {} } },
-    "@/runtime/presentation/use-update-blocker": { useUpdateBlocker: () => {} },
-    "@/shared/ui/theme/use-color-scheme": { useColorScheme: () => 'light' },
-    "@/shared/ui/theme/use-palette": { usePalette: () => ({}) },
-    "@/shared/contracts/pairing-error": { LocalPairingError },
-    "@/features/connections/context": { useConnection: () => ({ connectionProfiles: { pair } }) }
-  }, { Error });
   const onDismiss = vi.fn();
   const onBusyChange = vi.fn();
-  runtime.mount(ConnectionScanFlow, { onSubmit, onDismiss, onBusyChange });
-  const element = (id: string) => { const value = find(runtime.value, id); if (!value) throw new Error(`Missing ${id}`); return value; };
-  const press = async (id: string) => { element(id).props.onPress(); await runtime.settle(); };
-  return { runtime, pair, onSubmit, onDismiss, onBusyChange, element, press };
+  const controls = { connectionProfiles: { pair } } as unknown as WorkspaceRegistry['connectionControls'];
+  const runtime = renderHook(ConnectionScanFlow, { onSubmit, onDismiss, onBusyChange }, connectionViewProbe(controls));
+  const element = (id: string | typeof Button) => {
+    const value = find(runtime.result.current, id);
+    if (!value) throw new Error(`Missing ${String(id)}`);
+    return value;
+  };
+  const press = async (id: string | typeof Button) => act(async () => { element(id).props.onPress(); });
+  const scan = async (code: string) => act(async () => { element('Scanner').props.onScan(code); });
+  return { runtime, pair, onSubmit, onDismiss, onBusyChange, element, press, scan };
 }
 
 describe('local QR scan flow', () => {
   it('pairs a scanned code and saves with the redeemed credentials', async () => {
     const view = await flow();
     expect(view.element('Gate')).toBeDefined();
-    view.element('Scanner').props.onScan('one-use-code');
-    await view.runtime.settle();
+    await view.scan('one-use-code');
     expect(view.pair).toHaveBeenCalledOnce();
     expect(view.onSubmit).toHaveBeenCalledWith({ name: '', serverUrl: 'http://192.168.1.10:49374', username: '', password: 'session-token', headers: {} });
   });
@@ -56,8 +62,7 @@ describe('local QR scan flow', () => {
   it('retains the redeemed credential and retries save without pairing again', async () => {
     const onSubmit = vi.fn().mockRejectedValueOnce(new Error('Secure storage unavailable')).mockResolvedValue(undefined);
     const view = await flow('android', false, onSubmit);
-    view.element('Scanner').props.onScan('one-use-code');
-    await view.runtime.settle();
+    await view.scan('one-use-code');
     expect(view.pair).toHaveBeenCalledOnce();
     expect(view.element('connection-scan-error').props.children).toBe('Secure storage unavailable');
     await view.press('connection-scan-retry');
@@ -69,25 +74,24 @@ describe('local QR scan flow', () => {
   it('maps a pairing failure to its message and only offers a rescan', async () => {
     const view = await flow();
     view.pair.mockRejectedValue(new LocalPairingError('expired'));
-    view.element('Scanner').props.onScan('stale-code');
-    await view.runtime.settle();
+    await view.scan('stale-code');
     expect(view.element('connection-scan-error').props.children).toBe('settings:connection.setup.pairingErrors.expired');
-    expect(find(view.runtime.value, 'connection-scan-retry')).toBeUndefined();
+    expect(find(view.runtime.result.current, 'connection-scan-retry')).toBeUndefined();
     expect(view.element('connection-scan-again')).toBeDefined();
   });
 
   it('returns to the chooser on Back without exposing the manual address form', async () => {
     const view = await flow();
-    await view.press('Button');
+    await view.press(Button);
     expect(view.onDismiss).toHaveBeenCalledOnce();
-    expect(find(view.runtime.value, 'connection-profile-url-input')).toBeUndefined();
+    expect(find(view.runtime.result.current, 'connection-profile-url-input')).toBeUndefined();
   });
 
   it('renders nothing on web or FOSS builds without a camera module', async () => {
     const web = await flow('web');
-    expect(find(web.runtime.value, 'Gate')).toBeUndefined();
-    expect(find(web.runtime.value, 'Scanner')).toBeUndefined();
+    expect(find(web.runtime.result.current, 'Gate')).toBeUndefined();
+    expect(find(web.runtime.result.current, 'Scanner')).toBeUndefined();
     const foss = await flow('android', true);
-    expect(find(foss.runtime.value, 'Gate')).toBeUndefined();
+    expect(find(foss.runtime.result.current, 'Gate')).toBeUndefined();
   });
 });

@@ -1,6 +1,6 @@
 import { queryOptions } from '@tanstack/react-query';
 
-import { withReadSignal, type ScopedOpencodeClient } from '@/shared/protocol/opencode/client';
+import { listSavedPermissionRules, withReadSignal, type ScopedOpencodeClient } from '@/shared/protocol/opencode/client';
 import { listSessions } from '@/shared/protocol/services/session-service';
 import { connectionQueryKey, projectQueryKey, type QueryIdentity } from '@/shared/server-data/keys';
 
@@ -46,4 +46,12 @@ export type PendingInteractionsData = {
 // this key; the runtime only selects from it.
 export function pendingInteractionsKey(identity: QueryIdentity, client: ScopedOpencodeClient) {
   return projectQueryKey(identity, client, 'pending-interactions');
+}
+
+export function savedPermissionOptions(identity: QueryIdentity, client: ScopedOpencodeClient) {
+  return queryOptions({
+    queryKey: [...connectionQueryKey(identity, client.__opencode.contract), 'server', 'saved-permissions'],
+    staleTime: 0,
+    queryFn: ({ signal }) => listSavedPermissionRules(withReadSignal(client, signal)),
+  });
 }

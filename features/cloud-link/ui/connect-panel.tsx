@@ -1,5 +1,5 @@
+import { useUpdateBlockingConfirmation as useConfirmation } from '@/features/updates/index';
 import { cn } from '@/shared/ui/cn';
-import { useConfirmation } from '@/shared/ui/use-confirmation';
 import { Text } from '@/shared/ui/text';
 import { Button } from '@/shared/ui/button';
 import { FieldDescription } from '@/shared/ui/text-field';

@@ -71,9 +71,11 @@ Update actions recheck foreground, route and safety after the async native read.
 Active/sending/queued tasks, conversation mode, pending permissions/questions,
 connection work, terminal creation/open/close and Cloud Link purchase/setup suppress
 offers. Components retain their local drafts, attachments and form contents;
-`useUpdateBlocker` only registers that they are busy. Open sheets, pickers, file
-previews, connection/provider forms, voice input/playback and native attachment
-selection also suppress offers.
+`useUpdateBlocker` registers the interaction lifetime. The Updates feature
+provides registration callbacks to sheets, pickers and confirmations through
+its control wrappers. File previews, connection and provider forms, voice
+input and playback, and native attachment selection also suppress offers.
+See [ADR 0052](../adr/0052-explicit-overlay-dependencies.md).
 
 The FOSS preparation script excludes `expo-in-app-updates` from autolinking, removing
 its Play dependency from that build. JS also rejects FOSS, Expo Go, development,

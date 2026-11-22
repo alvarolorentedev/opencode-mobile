@@ -8,9 +8,9 @@ import { ExtensionEditor, type EditorProps } from '@/features/extensions/ui/exte
 import { SettingField } from '@/shared/ui/settings/setting-rows';
 import { FieldDescription } from '@/shared/ui/text-field';
 
-export function PluginEditor({ context, scope, onClose, save }: EditorProps & { context: string }) {
+export function PluginEditor({ workspace, context, scope, onClose, save }: EditorProps & { context: string }) {
   const { t } = useTranslation();
-  const { extensions } = useExtensions();
+  const { extensions } = useExtensions(workspace);
   const form = useForm({ resolver: zodResolver(pluginSchema), defaultValues: { target: '' }, mode: 'onSubmit', reValidateMode: 'onChange' });
   const writable = Boolean(extensions.snapshot?.[scope].safety.writable);
   function submit() { void form.handleSubmit((draft) => save(async () => { await extensions.addPlugin(scope, draft.target.trim()); onClose(); }))(); }

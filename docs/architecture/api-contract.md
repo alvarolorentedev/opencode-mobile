@@ -177,6 +177,10 @@ Every config or Markdown mutation is transactional: schema/frontmatter validatio
 
 Structured extension editors serialize into the existing drafts and mutation interfaces; no endpoint or compatibility path is added. Skill edits use the YAML document codec to preserve unknown frontmatter and comments. Permission rows preserve V2 rule order and serialize to the row’s JSON/YAML format; legacy and custom shapes stay in source mode. Unchanged JSONC object models retain their original object and variant. See [ADR 0023](../adr/0023-focused-extension-editors.md).
 
+Extension readers bind to the focused or explicit workspace through the app
+core. The mutation guard checks the workspace and credential partition again
+after cancelling outstanding reads and before writing extension files.
+
 ## Approvals And Forms
 
 Native permission requests use `permission.request.list`, preserving session ID, action/resources/save, metadata and tool source. Replies use `permission.reply({ sessionID, requestID, decision })`. Saved always-allow rules use `permission.saved.list/remove`.
@@ -204,6 +208,11 @@ limits, including partial new directory copies and concurrent external edits.
 ## MCP Authentication And Runtime Lifecycle
 
 Native MCP list/add/connect/disconnect operations use the selected location. Runtime additions remain runtime-only; the Extensions surface writes durable MCP entries to the selected project or user-global config and keeps connect/disconnect/OAuth as runtime controls. Persistent enable/disable is not exposed in the extension editor yet.
+
+MCP controls and saved permission rules read their scoped Query entries directly.
+The core records an authorization prompt with the originating workspace and its
+credential partition. A connected status for that MCP server in the same
+partition clears the prompt.
 
 OAuth resolves each MCP server's exposed `integrationID`, then reads that integration's methods and invokes native OAuth connect/complete/status/cancel. The relationship is defined by the [upstream MCP implementation](https://github.com/anomalyco/opencode/blob/dev/packages/core/src/mcp/index.ts); it is never inferred from a server name.
 

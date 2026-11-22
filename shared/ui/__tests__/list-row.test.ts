@@ -1,27 +1,23 @@
-import { describe, expect, it } from 'vitest';
+// @vitest-environment happy-dom
 
-import { uiImports } from '../../../tests/helpers/ui.mjs';
-import { loadTs } from '../../../tests/helpers/runtime.mjs';
+import { describe, expect, it, vi } from 'vitest';
 
-type Element = { type: unknown; props: Record<string, any> };
-const element = (type: unknown, props: Element['props']) => ({ type, props });
-const jsx = { jsx: element, jsxs: element };
+import { ListRow } from '@/shared/ui/list-row';
+import { renderHook } from '../../../tests/helpers/render-hook';
 
-const { ListRow } = await loadTs('shared/ui/list-row.tsx', {
-  ...uiImports,
-  'react-native': {
-    Pressable: (props: Element['props']) => element('Pressable', props),
-    View: (props: Element['props']) => element('View', props),
-  },
-  '@/shared/ui/theme/use-palette': { usePalette: () => ({ muted: '#999999' }) },
-  'react/jsx-runtime': jsx,
-});
+vi.mock('react-native', () => ({
+  Platform: { OS: 'web', select: ({ web }: { web?: unknown }) => web },
+  Pressable: 'Pressable', View: 'View', Text: 'Text',
+}));
+vi.mock('@rn-primitives/slot', () => ({ Slot: 'Slot' }));
+vi.mock('uniwind', () => ({ Uniwind: {} }));
 
 describe('list row class composition', () => {
   // Worktree manage rows rely on flex-1 so the trailing remove button stays
   // on-screen. Dropping the caller class puts it past the row on native.
   it('keeps the caller className alongside the row defaults', () => {
-    const rendered = ListRow({ title: 'demo', className: 'flex-1' });
+    const { result } = renderHook(ListRow, { title: 'demo', className: 'flex-1' });
+    const rendered = result.current;
     expect(rendered.props.className).toContain('min-h-target');
     expect(rendered.props.className).toContain('flex-1');
   });

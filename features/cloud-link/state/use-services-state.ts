@@ -5,8 +5,7 @@ import { findMatchingProfile, type ConnectionProfile } from '@/shared/contracts/
 import { getProfilePassword } from '@/shared/storage/connection-profiles';
 import { getConnectionScope, getConnectionUiScope } from '@/shared/contracts/connection-scope';
 import { deleteManagedService, getServiceManagementVersion, listManagedServices, putManagedService, revokeManagedService, ServiceManagementError, type OpencodeConnectionSettings } from '@/shared/protocol/opencode/client';
-import { type ServiceInput } from '@/shared/contracts/service-management';
-import type { ServiceManagementApi, ServiceManagementTarget, ServiceManagementUnavailableReason } from '@/shared/contracts/domain';
+import { type ServiceInput , ServiceManagementApi, ServiceManagementTarget, ServiceManagementUnavailableReason } from '@/shared/contracts/service-management';
 import { useQueryForeground } from '@/shared/server-data/client';
 import { buildServiceMachines, chooseServiceTarget } from '@/features/cloud-link/model/services-target';
 import type { ConnectSetup } from '@/shared/contracts/cloud-link-setup';

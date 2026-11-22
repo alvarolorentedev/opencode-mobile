@@ -1,3 +1,4 @@
+import type { WorkspaceTarget } from '@/shared/contracts/workspace';
 import { View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { useExtensions, useMcp } from '@/features/extensions/context';
@@ -13,14 +14,15 @@ export type ExtensionTab = 'mcp' | 'plugins' | 'agents' | 'skills' | 'commands';
 export type ExtensionSelection = { type: 'agents'; row?: ExtensionAgentRow; readOnly?: boolean } | { type: 'commands'; row?: ExtensionCommandRow } | { type: 'skills'; row?: ExtensionSkillRow } | { type: 'mcp'; row?: ExtensionMcpRow } | { type: 'plugins' };
 const rowID = (value: string) => value.replace(/[^a-z0-9]+/gi, '-');
 
-export function ExtensionInventory({ tab, data, scope, busy, onEdit, onRemove, runMcp, authenticate }: {
+export function ExtensionInventory({ workspace, tab, data, scope, busy, onEdit, onRemove, runMcp, authenticate }: {
+  workspace: WorkspaceTarget;
   tab: ExtensionTab; data: ExtensionSnapshot[ExtensionScope]; scope: ExtensionScope; busy: boolean;
   onEdit: (selection: ExtensionSelection) => void; onRemove: (message: string, action: () => Promise<void>) => void;
   runMcp: (action: () => Promise<void>) => void; authenticate: (name: string) => void;
 }) {
   const { t } = useTranslation();
-  const { extensions } = useExtensions();
-  const mcp = useMcp();
+  const { extensions } = useExtensions(workspace);
+  const mcp = useMcp(workspace);
   const shared = visibleSharedRows<(typeof data.shared)[ExtensionTab][number]>(data.shared[tab]);
   const removeButton = (id: string, name: string, group: ExtensionTab, disabled: boolean, action: () => Promise<void>) => <Button testID={`settings-extension-${id}`} variant="ghost" disabled={busy || disabled} onPress={() => onRemove(t(`settings:extensions.${group}.removeMessage`, { name }), action)}><Text className="text-destructive">{t('common:actions.remove')}</Text></Button>;
   const editButton = (id: string, selection: ExtensionSelection) => <Button testID={`settings-extension-${id}`} variant="ghost" disabled={busy} onPress={() => onEdit(selection)}><Text>{t('common:actions.edit')}</Text></Button>;

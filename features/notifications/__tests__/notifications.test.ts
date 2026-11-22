@@ -1,48 +1,14 @@
-import { moduleSourceUri } from '../../../tests/helpers/module-source.mjs';
 import assert from 'node:assert/strict';
-import path from 'node:path';
-import { fileURLToPath, pathToFileURL } from 'node:url';
-import { describe, it } from 'vitest';
+import { describe, it, vi } from 'vitest';
 
-// Pending completion-notification records are the contract between a prompt and
-// the background monitor. This suite pins down that they are keyed by
-// connection scope + session ID, carry no secrets, migrate safely, and drop
-// malformed entries instead of crashing hydration.
-//
-// Migrated from the standalone tests/notifications.test.mjs Node script.
+import { parsePendingNotificationSessions, pendingNotificationKey, serializePendingNotificationSessions } from '@/features/notifications/model/notification-pending';
+import { getConnectionScope } from '@/shared/contracts/connection-scope';
+
+vi.mock('react-native', () => ({ Platform: { OS: 'web' } }));
+vi.mock('expo-constants', () => ({ default: { expoConfig: { extra: {} } } }));
+
 describe('pending notification storage', () => {
   it('scopes records by connection, migrates legacy entries, and strips secrets', async () => {
-    const here = path.dirname(fileURLToPath(import.meta.url));
-    const root = path.join(here, '..', '..', '..');
-    const zodUri = `data:text/javascript,${encodeURIComponent(
-      `import { z } from ${JSON.stringify(pathToFileURL(path.join(root, 'node_modules/zod/index.cjs')).href)}; export { z };`,
-    )}`;
-
-    async function transpileToDataUri(relativePath: string, replacements: [RegExp, string][] = []) {
-      return moduleSourceUri(root, relativePath, [...replacements, [/from ['"]zod['"]/g, `from "${zodUri}"`]]);
-    }
-
-    const base64Uri = `data:text/javascript,${encodeURIComponent(
-      `import { base64 } from ${JSON.stringify(pathToFileURL(path.join(root, 'node_modules/@scure/base/lib/index.js')).href)}; export { base64 };`,
-    )}`;
-    const connectionScopeUri = await transpileToDataUri('shared/contracts/connection-scope.ts', [
-      [/from '@scure\/base'/g, `from "${base64Uri}"`],
-    ]);
-    const urlUri = await transpileToDataUri('shared/contracts/server-url.ts', [
-      [/from '@\/shared\/protocol\/opencode\/client\/types'/g, `from "data:text/javascript,export const defaultConnectionSettings = {serverUrl:'http://localhost'};"`],
-    ]);
-    const notificationPendingUri = await transpileToDataUri('features/notifications/model/notification-pending.ts', [
-      [/from '@\/shared\/contracts\/server-url'/g, `from "${urlUri}"`],
-      [/from '@\/shared\/contracts\/connection-scope'/g, `from "${connectionScopeUri}"`],
-    ]);
-
-    const { getConnectionScope } = await import(connectionScopeUri);
-    const {
-      parsePendingNotificationSessions,
-      pendingNotificationKey,
-      serializePendingNotificationSessions,
-    } = await import(notificationPendingUri);
-
     const scopeA = getConnectionScope({ serverUrl: 'https://a.example', username: 'alice' });
     const scopeB = getConnectionScope({ serverUrl: 'https://b.example', username: 'alice' });
 

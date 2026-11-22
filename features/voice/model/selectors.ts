@@ -1,4 +1,11 @@
-import type { ConversationPhase } from '@/features/voice/model/types';
+import type { ConversationInputPhase, ConversationPhase, ConversationReadbackPhase } from '@/features/voice/model/types';
+
+export function getConversationPhase(input: ConversationInputPhase, readback: ConversationReadbackPhase, wakePhraseRequired: boolean): ConversationPhase {
+  // Listening without a wake phrase is the idle input state during readback.
+  const phase = !wakePhraseRequired && input === 'listening' && readback !== 'idle' ? 'armed' : input;
+  if (phase === 'listening' || phase === 'submitting' || phase === 'confirming') return phase;
+  return readback === 'idle' ? phase : readback;
+}
 
 export function getConversationStatusLabel(conversationPhase: ConversationPhase, conversationCurrentActivityLabel?: string) {
   switch (conversationPhase) {

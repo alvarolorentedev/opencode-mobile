@@ -2,7 +2,7 @@ import type { Dispatch, SetStateAction } from 'react';
 
 import type { VoiceRecoveryAction } from '@/shared/platform/voice/speech-errors';
 import type { ChatPreferences } from '@/shared/preferences/opencode-preferences';
-import type { ConnectionState } from '@/shared/contracts/domain';
+import type { ConnectionState } from '@/features/connections/index';
 import type { ConversationConfirmationPhase, ConversationInputPhase } from '@/features/voice/model/types';
 
 export const CONFIRMATION_ECHO_GUARD_MS = 300;
@@ -25,9 +25,9 @@ export type PendingConfirmation = {
 };
 
 export type ConfirmationOptions = {
+  scopeKey: string;
   chatPreferences: ChatPreferences;
   connectionStatus: ConnectionState['status'];
-  conversationPhaseRef: { current: ConversationInputPhase };
   conversationSessionId?: string;
   rearmConversation: () => Promise<void>;
   retryCommand: () => Promise<boolean>;

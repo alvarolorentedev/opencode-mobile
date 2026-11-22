@@ -1,6 +1,18 @@
-import { uiImports } from '../../../tests/helpers/ui.mjs';
+// @vitest-environment happy-dom
+
 import { describe, expect, it, vi } from 'vitest';
-import { hookRuntime, loadTs } from '../../../tests/helpers/runtime.mjs';
+
+import { RevertNotice } from '@/features/chat/ui/revert-notice';
+import { renderHook } from '../../../tests/helpers/render-hook';
+
+vi.mock('react-i18next', () => ({ useTranslation: () => ({ t: (key: string) => key }) }));
+vi.mock('react-native', () => ({
+  Platform: { OS: 'web', select: ({ web }: { web?: unknown }) => web },
+  Pressable: 'Pressable', Text: 'Text', View: 'View',
+}));
+vi.mock('@rn-primitives/slot', () => ({ Slot: 'Slot' }));
+vi.mock('uniwind', () => ({ Uniwind: {}, withUniwind: (component: unknown) => component }));
+vi.mock('@expo/vector-icons/MaterialCommunityIcons', () => ({ default: Object.assign(() => null, { glyphMap: {} }) }));
 
 type Element = { type: unknown; props: Record<string, any> };
 
@@ -18,20 +30,8 @@ function findElement(node: unknown, predicate: (element: Element) => boolean): E
   return findElement(element.props?.children, predicate);
 }
 
-async function mountRevertNotice(props: { busy?: boolean; onCancel: () => void }) {
-  const runtime = hookRuntime();
-  const element = (type: unknown, props: unknown) => ({ type, props });
-  const { RevertNotice } = await loadTs('features/chat/ui/revert-notice.tsx', {
-    ...uiImports,
-    react: runtime.react,
-    'react/jsx-runtime': { jsx: element, jsxs: element, Fragment: 'Fragment' },
-    'react-i18next': { useTranslation: () => ({ t: (key: string) => key }) },
-    'react-native': { StyleSheet: { create: (styles: unknown) => styles }, View: 'View' },
-    "@/shared/ui/theme/theme": { Colors: { light: {} } },
-    "@/shared/ui/theme/use-color-scheme": { useColorScheme: () => 'light' },
-    "@/shared/ui/theme/use-palette": { usePalette: () => ({}) }
-  }, runtime.globals);
-  return runtime.mount(RevertNotice, props);
+function mountRevertNotice(props: Parameters<typeof RevertNotice>[0]) {
+  return renderHook(RevertNotice, props).result.current;
 }
 
 describe('revert notice', () => {

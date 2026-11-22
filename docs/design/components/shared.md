@@ -106,19 +106,18 @@ Used primarily by tab icons.
 
 #### Responsibility
 
-- thin entrypoint that mounts the provider tree with the composition unit's values
+- mounts the application core and workspace shell
 
-Orchestration lives in `runtime/composition/use-opencode-provider-composition.ts` and the
-context wiring in `runtime/core/workspace-scope.ts`; the entrypoint is held
-to 60 lines by the architecture ratchet and only re-exports the public types.
+App commands live in `runtime/core/commands/`. The scope selectors live in
+`runtime/core/workspace-selectors.ts`. The entrypoint stays within the 60-line ratchet.
 
 The public UI contract is exposed through domain hooks from `features/chat/context.ts` (`useOnboarding`, `useConnection`, `useDiagnostics`, `useCapabilities`, `usePreferences`, `useProjects`, `useProjectFiles`, `useCurrentSession`, `useSessionLibrary`, `useChat`, `useApprovals`, `useConversation`, `useTerminal`, `useMcp`), each typed by its matching `*ContextValue`. There is no combined runtime context value.
 
-### `shared/contracts/domain.ts`
+### Feature domain types
 
 #### Responsibility
 
-- define public provider-facing types used across UI
+- define each UI contract in its owning feature's model
 
 Most important exported contracts:
 
@@ -215,7 +214,7 @@ The domain values cover session lifecycle, commands, project editing/worktrees, 
 - Starter examples fill the draft; the bug example appends a symptoms prompt. Terminal's empty state calls the existing creation handler and describes line-at-a-time commands.
 - Icon actions and provider-credential removal expose translated action names. All supported locales carry matching keys and plural forms.
 - `features/chat/ui/chat-screen.tsx` branches the pre-chat state instead of showing one passive panel: `connecting` and hydration use a spinner, a disconnected server offers `Reconnect` (error) or `Open settings` (idle) plus `Connection settings`, and a connected server without a project opens the shared `ProjectPicker` directly. The workspace manager fails chat focus over to the last healthy connected server before this panel can mistake one failed server for the whole app.
-- `features/chat/state/use-transcript-read-errors.ts` owns cold transcript read failures independently of the transcript window. Non-silent failures are tagged with the current client, cleared by a successful read, and hidden after a reconnect or server switch. `TranscriptList` renders a retry card for a cold failure with no held records and never falls through to starter prompts. The retry action reuses the inbox-backed transcript read.
+- `features/chat/services/transcript-reader.ts` owns cold transcript read failures independently of the transcript window. Non-silent failures are tagged with the current client, cleared by a successful read, and hidden after a reconnect or server switch. `TranscriptList` renders a retry card for a cold failure with no held records and never falls through to starter prompts. The retry action reuses the inbox-backed transcript read.
 - `TranscriptList` exposes `Jump to latest` whenever the list is detached from the tail. New rows switch the label to `New messages`; tapping restores follow mode and saves the restored position. The control floats above the transcript without adding a list row.
 - Onboarding permission cards show `Checking…` until status resolves. When the OS will no longer prompt, the enable action becomes `Open settings` via the shared notification/voice setting helpers instead of repeatedly requesting a blocked permission.
 - The Connection sheet’s labeled Reconnect action surfaces the returned `ConnectionState` in a snackbar and keeps a two-line connection summary. The reconnect button only indicates an in-flight request while it runs.

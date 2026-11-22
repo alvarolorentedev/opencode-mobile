@@ -74,7 +74,7 @@ type ResolvedOnboardingStatus = {
  * - a fresh installation starts the assistant.
  *
  * The resolved marker is written back once persistence has hydrated (see
- * `use-opencode-persistence.ts`), which makes the decision sticky even after the
+ * `device-preferences.ts`), which makes the decision sticky even after the
  * settings write effect later creates `opencode-mobile.settings`.
  */
 export function resolveOnboardingStatus(

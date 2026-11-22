@@ -1,7 +1,9 @@
 # Phase F — Persistence and Tests
 
-Status: **partially done**. Query persistence and the session-cache removal are
-complete. Zustand persist, `loadTs` removal, `fast-check` and `knip` remain.
+Status: **in progress**. Query persistence, the session-cache removal, and
+Zustand device preference persistence are complete. The first native-import
+batch and four fast-check properties landed. All legacy suites use native imports and the real React renderer where needed.
+Knip cleanup and the full checkpoint are open.
 
 Goal: one retention policy and one test infrastructure. No custom module loader,
 no duplicate storage writer, no hand-written edge matrices where a property test
@@ -17,28 +19,23 @@ Start only after Phase E is complete and green.
 - Query persistence for session and project catalogs
   (`shared/server-data/persistence.ts`).
 - Custom session cache and its hydration/write paths are deleted.
-- Transcript cache remains intentionally: messages can contain inline media and
-  are excluded from the Query cache.
+- Bounded transcript Query persistence omits inline media, and the previous
+  transcript cache remains as a read-only upgrade path.
 - `npm run impact -- <file>` exists.
+
+- Zustand persist owns chat and presentation preferences, favorites, hidden
+  projects, the trusted control-plane URL and the onboarding marker. The
+  existing records migrate independently under one schema version. The app
+  leaves unsupported newer records intact.
+- Connection profiles retain their existing verifiers and secure storage.
+  Query restoration and app-core hydration finish before the workspace shell
+  routes to onboarding or the saved session.
 
 ## Remaining work
 
-### Zustand persistence
-
-- Move non-secret client preferences to a versioned Zustand `persist` store:
-  shell preferences, favorites, hidden projects, onboarding flag, presentation
-  choices that must survive launch.
-- Keep SecureStore for passwords, headers, certificates and OIDC tokens. Keep
-  connection profiles in their existing verified storage.
-- Add `version` and `migrate` for every persisted slice.
-- Delete the duplicated `use-opencode-persistence` write paths once the store
-  owns them. Do not leave two writers for one key.
-- Verify hydration ordering: the app splash waits for both Query restore and
-  store hydration.
-
 ### `loadTs` and `hookRuntime` removal
 
-There are roughly 87 legacy suites using `tests/helpers/runtime.mjs`. Migrate
+The baseline had 87 legacy suites using a custom module loader. Migrate
 them in feature batches:
 1. Add the renderer and platform mocks the suite needs.
 2. Replace `loadTs` with native imports.
@@ -52,8 +49,8 @@ Do not add new `loadTs` usage. Do not weaken a suite to make migration easier.
 
 ### Property tests and dead-code cleanup
 
-- Add `fast-check` for reducers, merge/ordering invariants, transcript overlay
-  ordering and session status merge.
+- `tests/vitest/state-properties.test.ts` covers the connection reducer, retry
+  status merge, anchored transcript page merge and live overlay ordering.
 - Add `knip` with a focused config; remove unused files/exports/dependencies
   reported by a clean run.
 - Keep generated locale resources exempt.
@@ -81,8 +78,8 @@ Full 185-flow suite required at this checkpoint.
 
 ## Pitfalls
 
-- Query persistence must never include message media; the transcript cache is
-  the only media-aware cache.
+- Query persistence must never include inline message media; the legacy
+  transcript reader still handles records created by earlier releases.
 - Zustand `persist` writes on every change unless throttled/partialized; keep the
   existing per-key ordering guarantees.
 - Migration must preserve existing users: schema versions, malformed entries and

@@ -10,7 +10,7 @@ import { applyConversationFeedback } from '@/features/voice/state/conversation/f
 // and keeps the main state machine below the file-size ratchet.
 export function useConversationTimers({
   abortSpeechInputRef,
-  conversationPhaseRef,
+  getConversationPhase,
   flushPendingConversationResultRef,
   localWakeModeActiveRef,
   setConversationFeedback,
@@ -21,7 +21,7 @@ export function useConversationTimers({
   wakePhraseSessionRef,
 }: {
   abortSpeechInputRef: { current: () => void };
-  conversationPhaseRef: { current: ConversationInputPhase };
+  getConversationPhase: () => ConversationInputPhase;
   flushPendingConversationResultRef: { current: () => void };
   localWakeModeActiveRef: { current: boolean };
   setConversationFeedback: Dispatch<SetStateAction<string | undefined>>;
@@ -53,26 +53,25 @@ export function useConversationTimers({
   }, [clearCommandTimeout, clearResultTimeout, wakePhraseSessionRef]);
   const scheduleResult = useCallback(() => {
     clearResultTimeout();
-    if (conversationPhaseRef.current !== 'listening' || !wakePhraseSessionRef.current.command()) {
+    if (getConversationPhase() !== 'listening' || !wakePhraseSessionRef.current.command()) {
       return;
     }
     resultTimeoutRef.current = setTimeout(() => {
       resultTimeoutRef.current = undefined;
       flushPendingConversationResultRef.current();
     }, CONVERSATION_FINAL_RESULT_SETTLE_MS);
-  }, [clearResultTimeout, conversationPhaseRef, flushPendingConversationResultRef, wakePhraseSessionRef]);
+  }, [clearResultTimeout, getConversationPhase, flushPendingConversationResultRef, wakePhraseSessionRef]);
   const startCommandTimeout = useCallback(() => {
     clearCommandTimeout();
-    if (conversationPhaseRef.current !== 'listening') {
+    if (getConversationPhase() !== 'listening') {
       return;
     }
     commandTimeoutRef.current = setTimeout(() => {
       commandTimeoutRef.current = undefined;
-      if (conversationPhaseRef.current !== 'listening' || wakePhraseSessionRef.current.command()) {
+      if (getConversationPhase() !== 'listening' || wakePhraseSessionRef.current.command()) {
         return;
       }
       clearPending();
-      conversationPhaseRef.current = 'armed';
       setConversationPhase('armed');
       setConversationLatestHeardText(undefined);
       if (localWakeModeActiveRef.current) {
@@ -80,7 +79,7 @@ export function useConversationTimers({
         // Let the OS recognizer release the audio session before the local
         // detector re-opens the microphone.
         setTimeout(() => {
-          if (localWakeModeActiveRef.current && conversationPhaseRef.current === 'armed') {
+          if (localWakeModeActiveRef.current && getConversationPhase() === 'armed') {
             void startLocalWakeRef.current();
           }
         }, 250);
@@ -91,7 +90,7 @@ export function useConversationTimers({
         'I did not catch a command. Say the wake phrase and try again.',
       );
     }, CONVERSATION_COMMAND_TIMEOUT_MS);
-  }, [abortSpeechInputRef, clearCommandTimeout, clearPending, conversationPhaseRef, localWakeModeActiveRef, setConversationFeedback, setConversationFeedbackAction, setConversationLatestHeardText, setConversationPhase, startLocalWakeRef, wakePhraseSessionRef]);
+  }, [abortSpeechInputRef, clearCommandTimeout, clearPending, getConversationPhase, localWakeModeActiveRef, setConversationFeedback, setConversationFeedbackAction, setConversationLatestHeardText, setConversationPhase, startLocalWakeRef, wakePhraseSessionRef]);
 
   useEffect(() => () => {
     clearResultTimeout();

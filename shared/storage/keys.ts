@@ -2,6 +2,7 @@ export const SETTINGS_STORAGE_KEY = 'opencode-mobile.settings';
 export const APP_UPDATES_STORAGE_KEY = 'opencode-mobile.app-updates';
 export const CONNECT_CONTROL_PLANE_STORAGE_KEY = 'opencode-mobile.connect-control-plane';
 export const CONNECTION_PROFILES_STORAGE_KEY = 'opencode-mobile.connection-profiles';
+export const DEVICE_PREFERENCES_VERSION_KEY = 'opencode-mobile.preferences-version';
 export const CHAT_PREFERENCES_STORAGE_KEY = 'opencode-mobile.chat-preferences';
 export const ACTIVE_PROJECT_STORAGE_KEY = 'opencode-mobile.active-project';
 // Completion-only first-run setup marker. It never stores connection,
@@ -42,8 +43,7 @@ export const LAST_JS_ERROR_INGESTED_STORAGE_KEY = 'opencode-mobile.last-js-error
 // shared/contracts/connection-scope.ts; project paths are server-local, so two servers
 // exposing the same path must never share cache entries.
 //
-// Bounded transcript tail used to paint a chat during a cold start on a slow
-// link. It is server-derived, connection- and project-scoped.
+// Legacy transcript tail key read when upgrading to per-session Query persistence.
 export function transcriptCacheKey(connectionScope: string, projectPath: string, sessionId: string) {
   return `opencode-mobile.transcript.${connectionScope}.${projectPath}.${sessionId}`;
 }

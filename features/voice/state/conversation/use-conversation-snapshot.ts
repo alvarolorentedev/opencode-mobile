@@ -2,9 +2,9 @@ import { useMemo } from 'react';
 
 import type { SessionMessageRecord } from '@/shared/presentation/format';
 import type { VoiceRecoveryAction } from '@/shared/platform/voice/speech-errors';
-import { getConversationStatusLabel } from '@/features/voice/model/selectors';
+import { getConversationPhase, getConversationStatusLabel } from '@/features/voice/model/selectors';
 import { getTranscript, getTranscriptActivityLabelForEntries } from '@/shared/presentation/selectors';
-import type { ConversationConfirmationState, ConversationInputPhase, ConversationPhase, ConversationReadbackPhase, ConversationState } from '@/features/voice/model/types';
+import type { ConversationConfirmationState, ConversationInputPhase, ConversationReadbackPhase, ConversationState } from '@/features/voice/model/types';
 
 // Derives the memoized conversation snapshot from provider state. Input and
 // readback are independent; `phase` remains the combined label consumed by
@@ -41,20 +41,7 @@ export function useConversationSnapshot({
   const conversationTranscript = useMemo(() => getTranscript(conversationMessages), [conversationMessages]);
   const conversationCurrentActivityLabel = useMemo(() => getTranscriptActivityLabelForEntries(conversationTranscript), [conversationTranscript]);
   const conversationActive = conversationInputPhase !== 'off';
-  // Without a wake phrase, `listening` is the idle input state. Readback must
-  // still surface as waiting/speaking instead of looking like an active turn.
-  const phaseInput = !wakePhraseRequired && conversationInputPhase === 'listening' && conversationReadbackPhase !== 'idle'
-    ? 'armed'
-    : conversationInputPhase;
-  const conversationPhase: ConversationPhase = phaseInput === 'listening'
-    || phaseInput === 'submitting'
-    || phaseInput === 'confirming'
-    ? phaseInput
-    : conversationReadbackPhase === 'speaking'
-      ? 'speaking'
-      : conversationReadbackPhase === 'waiting'
-        ? 'waiting'
-        : phaseInput;
+  const conversationPhase = getConversationPhase(conversationInputPhase, conversationReadbackPhase, wakePhraseRequired);
   const conversationStatusLabel = useMemo(
     () => getConversationStatusLabel(conversationPhase, conversationCurrentActivityLabel),
     [conversationCurrentActivityLabel, conversationPhase],

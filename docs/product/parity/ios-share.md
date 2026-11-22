@@ -68,7 +68,7 @@ docs it references.
 
 - Text, URL, images, and files from the share sheet stage into `features/sharing/ui/share-screen.tsx`.
 - The selected model's attachment capability is still enforced at send
-  (`features/chat/state/use-prompt-lifecycle.ts`).
+  (`features/chat/services/prompt-submission.ts`).
 - The 10 MB per-file limit and URI allow-list still apply (shared via
   `features/sharing/model/parse.ts`).
 - Shares beyond ten items or 100,000 text characters show a truncation warning.

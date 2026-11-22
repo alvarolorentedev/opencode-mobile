@@ -28,7 +28,7 @@ import { isConnectEnabled } from '@/shared/contracts/cloud-link';
 import { MISSION_PATH } from '@/shared/contracts/mission-control';
 import { AppearanceProvider } from '@/shared/ui/theme/appearance-context';
 import { useOnboarding } from '@/features/onboarding/context';
-import { usePreferences } from '@/shared/preferences/context';
+import { useWorkspacePreferences } from '@/runtime/workspace';
 import { useUpdates } from '@/features/updates/context';
 import { UpdateNotice } from '@/features/updates/index';
 import { OpencodeProvider } from '@/runtime/composition/opencode-provider';
@@ -101,7 +101,7 @@ export default function RootLayout() {
 // AppearanceProvider publishes the effective scheme/accent to useColorScheme
 // and usePalette for every screen and component below.
 function AppearanceHost() {
-  const { chatPreferences } = usePreferences();
+  const { chatPreferences } = useWorkspacePreferences();
   const { isHydrated } = useOnboarding();
   const systemScheme = useSystemColorScheme();
   const scheme = chatPreferences.themeMode === 'light' || chatPreferences.themeMode === 'dark'
@@ -183,7 +183,7 @@ function UpdateHost() {
 function RootNavigator() {
   const palette = usePalette();
   const { isHydrated, onboardingCompleted, onboardingActive } = useOnboarding();
-  const { chatPreferences: { openingScreen } } = usePreferences();
+  const { chatPreferences: { openingScreen } } = useWorkspacePreferences();
   const pathname = usePathname();
   const router = useRouter();
   const rootKey = useRootNavigationState()?.key;

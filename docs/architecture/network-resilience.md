@@ -30,8 +30,9 @@ through `shared/network/network-status.ts`:
 
 NetInfo is configured with `reachabilityShouldRun: () => false`: the app never
 makes an external captive-portal probe. A failed OpenCode request remains the
-authority for a server-specific problem. Configuration is never read directly
-by screens; the provider exposes it through diagnostics.
+authority for a server-specific problem. The workspace shell publishes the
+normalized device status into the app store. Diagnostics selects it alongside
+retry and stream status from the owning connection manager.
 
 Offline pauses SSE retries and polling. Online cancels a pending reconnect
 timer, reopens the stream, and runs a critical reconcile. Link-type changes do
@@ -120,8 +121,16 @@ cancel its own wait without cancelling another caller's token rotation.
 
 ## Realtime and polling
 
-`runtime/realtime/use-opencode-realtime.ts` keeps SSE primary and polling as a safety
-net.
+The connection manager starts one SSE reader in `runtime/realtime/transport.ts`
+while the server is connected and the link is online. Retained projects
+register reconciliation and event callbacks with `runtime/realtime/create-realtime.ts`.
+Project events route by directory, and Mission Control and widgets observe
+the same stream. Polling is the safety net.
+
+`runtime/core/events.ts` checks the current project binding and reads local
+chat and sending state from the store before applying an event.
+`runtime/realtime/project-refresh-queue.ts` coalesces the resulting refreshes
+and discards dependent reads when a project binding is cleared.
 
 - A stream attempt has a first-byte/connect timeout (15 s).
 - Reconnect backoff starts at 1 s and caps at 15 s, with jitter above the first
@@ -164,8 +173,15 @@ and foreground gates cancel Mission reads and reject stale responses.
 
 ## Connect recovery
 
-`features/connections/state/use-connection-retry.ts` retries retryable connect failures while
-the workspace is visible and online:
+`runtime/connections/create-connection.ts` runs the connection probe and Cloud
+Link renewal with a clock and foreground port. The app core's connection
+registry starts a manager for each enabled record, updates its settings and
+Query partition on revision changes, and disposes it on disable or removal.
+A prepared rotation rekeys the in-flight attempt so reopening a panel cannot
+launch a second probe.
+
+`runtime/connections/retry.ts` schedules retryable connect failures for the
+demanded connection while the app is foregrounded and online:
 
 - 1/2/5/10/20 s, bounded to five attempts;
 - a 500 ms retry after an offline→online transition;
@@ -174,9 +190,15 @@ the workspace is visible and online:
   reconnect state;
 - a manual Connect or a successful connection resets the budget.
 
+Workspace navigation waits for the current connection manager and a ready
+project. The core observes connection transitions for failover and resolves the
+fallback project from retained device selection.
+
 ## Offline prompt queue
 
-`features/chat/state/use-prompt-inbox.ts` keeps a process-lifetime queue.
+`features/chat/services/prompt-inbox-commands.ts` admits and retries prompts
+from the app store's process-lifetime outbox. Confirmed server inbox and
+notice records live in the connection and project Query partition.
 See [ADR 0045](../adr/0045-queue-only-unsent-prompts.md).
 
 - When the app detects that it is offline, it queues the input before making a
@@ -189,6 +211,8 @@ See [ADR 0045](../adr/0045-queue-only-unsent-prompts.md).
 - A transport failure during prompt admission is marked `Delivery uncertain`.
   It stays visible until dismissed. An older message with the same text is
   insufficient to confirm delivery.
+- A delivery event keeps its prompt ID through refresh coalescing. The app
+  promotes the prompt only after the server inbox no longer contains that ID.
 - The queue is in memory. Prepared attachments can be large or refer to
   temporary files, and the app does not send queued prompts after it relaunches.
 
@@ -217,8 +241,8 @@ Cloud Link credential rotation migrates all three connection-scoped snapshots
 
 ## Mutations
 
-`features/sessions/state/use-session-interaction-actions.ts` treats a lost permission/question
-response as uncertain:
+`features/sessions/services/interaction-commands.ts` treats a lost permission or
+question response as uncertain:
 
 - permission: re-list pending requests; if the request is gone, keep the card
   removed and refresh;
@@ -256,13 +280,16 @@ requires the server's experimental media-blob mode.
 local images larger than 1 MB to a 2048 px-wide JPEG before Base64 encoding.
 Compression is best-effort; the original bytes remain valid if the native
 manipulator is unavailable. This avoids turning a 10 MB camera image into a
-13 MB JSON body on a cellular uplink. The transcript cache measures inline media
-before serializing and drops an over-budget record instead of stringifying it.
+13 MB JSON body on a cellular uplink. Query persistence bounds transcript data before serialization, strips inline
+and transient media, and keeps safe text from mixed prompts.
 
 ## Terminal
 
 Terminal transports reconnect when the radio returns, not only on foreground.
 The existing jittered 1/2/4/8/15 s retry and cursor replay are unchanged.
+Disconnecting a server pauses its sockets and retains opened renderers. The
+core resumes them with the current credentials when the connection is enabled.
+Removing a connection releases its terminal controllers and renderers.
 
 ## Validation
 

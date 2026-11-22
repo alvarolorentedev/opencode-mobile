@@ -1,18 +1,10 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'vitest';
 
-import { loadTs } from '../../../../tests/helpers/runtime.mjs';
-
-async function loadSpeechText() {
-  const lexicon = await loadTs('shared/platform/voice/speech-lexicon.ts');
-  return loadTs('shared/platform/voice/speech-text.ts', {
-    '@/shared/platform/voice/speech-lexicon': lexicon
-  });
-}
+import { normalizeSpeechText, prepareSpeechText, splitSpeechText } from '@/shared/platform/voice/speech-text';
 
 describe('speech text preparation', () => {
   it('turns markdown into prose and keeps code/tables out of the readback', async () => {
-    const { normalizeSpeechText } = await loadSpeechText();
     const text = [
       '# Heading',
       '',
@@ -42,7 +34,6 @@ describe('speech text preparation', () => {
   });
 
   it('expands developer terms and formats identifiers for the speaker', async () => {
-    const { normalizeSpeechText } = await loadSpeechText();
     const result = normalizeSpeechText('Open /src/lib/voice/speech_output.ts and call getSpeechVoiceOptions with JSON.');
     assert.match(result, /Open source lib voice speech output dot T S/);
     assert.match(result, /get speech voice options/);
@@ -50,7 +41,6 @@ describe('speech text preparation', () => {
   });
 
   it('splits long text on paragraph and sentence boundaries', async () => {
-    const { splitSpeechText } = await loadSpeechText();
     const paragraph = 'This is a sentence. '.repeat(60).trim();
     const chunks = splitSpeechText(`${paragraph}\n\nSecond paragraph.`, 200);
     assert.ok(chunks.length > 1);
@@ -60,7 +50,6 @@ describe('speech text preparation', () => {
   });
 
   it('handles CJK punctuation and empty input', async () => {
-    const { splitSpeechText, prepareSpeechText } = await loadSpeechText();
     const chunks = splitSpeechText('这是第一句。这是第二句！'.repeat(20), 80);
     assert.ok(chunks.length > 1);
     assert.ok(chunks.every((chunk: string) => chunk.length <= 80));

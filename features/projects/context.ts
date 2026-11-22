@@ -1,4 +1,75 @@
-import { useWorkspaceDomainValue } from '@/runtime/core';
+import { useCallback, useMemo } from 'react';
+import { useQuery } from '@tanstack/react-query';
 
-export const useProjects = () => useWorkspaceDomainValue((values) => values.projectsValue, 'useProjects');
-export const useProjectFiles = () => useWorkspaceDomainValue((values) => values.projectFilesValue, 'useProjectFiles');
+import { useActiveWorkspaceTarget, useAppCore, useProjectScope } from '@/runtime/core';
+import type { WorkspaceTarget } from '@/shared/contracts/workspace';
+import { useProjectInventory } from './state/use-project-inventory';
+import { useProjectFileActions } from './state/use-project-file-actions';
+import { useFileClipboard } from './state/use-file-clipboard';
+import { fileStatusOptions, vcsInfoOptions } from './services/queries/status';
+import { searchProjectFiles } from './services/queries/files';
+import { refreshProjectFeatures } from './services/project-status-refresh';
+import type { ProjectFilesContextValue } from './model/types';
+
+const EMPTY: ProjectFilesContextValue['projectFileStatuses'] = [];
+
+function useProjectStatusRefresh({ identity, client, isCurrentClient, queryActive }: ReturnType<typeof useProjectScope>) {
+  const { queryClient } = useAppCore();
+  return useCallback(async () => {
+    if (client.__opencode.directory && isCurrentClient(client)) await refreshProjectFeatures(queryClient, identity, client, queryActive);
+  }, [client, identity, isCurrentClient, queryActive, queryClient]);
+}
+
+export function useProjects(target?: WorkspaceTarget) {
+  const scope = useProjectScope(target);
+  const { manager, client, directory, isCurrentClient, revision, scopeKey } = scope;
+  const { project } = useProjectInventory(scope);
+  const refreshProjectStatus = useProjectStatusRefresh(scope);
+  const connectionId = useActiveWorkspaceTarget(target)?.connectionId;
+  const { activate } = useAppCore().commands.workspace;
+  const selectProject = useCallback((projectPath: string) => {
+    if (connectionId) void activate({ connectionId, projectPath });
+  }, [activate, connectionId]);
+  const actions = useMemo(() => {
+    function read() {
+      const binding = manager?.realtime.getProjectSources(directory, scopeKey)?.catalog;
+      return binding?.isCurrent() && binding.revision === revision && isCurrentClient(client) ? binding.actions : undefined;
+    }
+    return {
+      async addProject(path: string) {
+        const catalog = read();
+        if (!catalog) throw new Error('This server is no longer available.');
+        return catalog.addProject(path);
+      },
+      async refreshProjectCatalog(silent?: boolean) { await read()?.refreshProjectCatalog(silent); },
+    };
+  }, [client, directory, isCurrentClient, manager, revision, scopeKey]);
+  return useMemo(() => ({ ...actions, ...project, selectProject, refreshProjectStatus }), [actions, project, refreshProjectStatus, selectProject]);
+}
+
+export function useProjectFileSearch() {
+  const { identity, client, isCurrentClient } = useProjectScope();
+  const { queryClient } = useAppCore();
+  return useCallback(async (query: string) => {
+    if (!isCurrentClient(client)) return [];
+    const files = await searchProjectFiles(queryClient, identity, client, query);
+    return isCurrentClient(client) ? files : [];
+  }, [client, identity, isCurrentClient, queryClient]);
+}
+
+export function useProjectFiles(): ProjectFilesContextValue {
+  const scope = useProjectScope();
+  const { identity, client, directory, manager, scopeKey } = scope;
+  const { data: projectFileStatuses = EMPTY } = useQuery({ ...fileStatusOptions(identity, client), enabled: false });
+  const { data: vcsInfo } = useQuery({ ...vcsInfoOptions(identity, client), enabled: false });
+  const refreshServerFeatures = useProjectStatusRefresh(scope);
+  const fileClipboard = useFileClipboard();
+  const refreshVcsDiff = useCallback((view: 'uncommitted' | 'branch', silent = false) =>
+    manager?.realtime.getProjectSources(directory, scopeKey)?.refreshVcsDiff?.(view, silent) ?? Promise.resolve(), [directory, manager, scopeKey]);
+  const { browser, selectedProjectFile, openProjectFile, saveProjectFile, closeProjectFile, downloadProjectFile } = useProjectFileActions({
+    ...scope, connectionId: identity.connectionId, fileClipboard, refreshServerFeatures, refreshVcsDiff,
+  });
+  const projectFile = useMemo(() => ({ selected: selectedProjectFile, open: openProjectFile, save: saveProjectFile, close: closeProjectFile, download: downloadProjectFile }),
+    [closeProjectFile, downloadProjectFile, openProjectFile, saveProjectFile, selectedProjectFile]);
+  return useMemo(() => ({ browser, projectFile, projectFileStatuses, vcsInfo }), [browser, projectFile, projectFileStatuses, vcsInfo]);
+}

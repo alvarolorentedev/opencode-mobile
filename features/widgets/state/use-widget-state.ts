@@ -20,7 +20,7 @@ type Input = {
   isCurrentCatalogClient: (client: object) => boolean;
   showPreviews: boolean; language?: string; currentSessionId?: string; sessions: Session[];
   todoRecordsBySession: Record<string, SessionMessageRecord[]>; todosBySession: Record<string, Todo[]>;
-  streamConnectedRef?: { current: boolean };
+  isStreamConnected?: () => boolean;
 };
 
 export function useWidgetState(input: Input) {
@@ -85,7 +85,7 @@ export function useWidgetState(input: Input) {
         const watchedDirectories = new Set([...dirtyDirectories.current, ...Object.entries(interactions.current)
           .filter(([, value]) => value.permissions.length || value.questions.length).map(([directory]) => directory)]);
         const data = await readWidgetData(current.catalogClient, current.settings, current.contract, {
-          probeAllDirectories: seed.current || !current.streamConnectedRef?.current,
+          probeAllDirectories: seed.current || !current.isStreamConnected?.(),
           watchedDirectories, previousInteractions: interactions.current,
           watchedSessionIds: new Set(Object.entries(statuses.current).filter(([, status]) => status.type !== 'idle').map(([id]) => id)),
         });

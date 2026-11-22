@@ -9,7 +9,7 @@ import { applyConversationFeedback } from '@/features/voice/state/conversation/f
 // returns to the normal wake state after cancel or timeout.
 export function useConversationConfirmationActions({
   clearPendingConversationResult,
-  conversationPhaseRef,
+  getConversationPhase,
   localWakeModeActiveRef,
   rearmConversationListening,
   setConversationFeedback,
@@ -24,7 +24,7 @@ export function useConversationConfirmationActions({
   wakePhraseSessionRef,
 }: {
   clearPendingConversationResult: () => void;
-  conversationPhaseRef: { current: ConversationInputPhase };
+  getConversationPhase: () => ConversationInputPhase;
   localWakeModeActiveRef: { current: boolean };
   rearmConversationListening: () => Promise<boolean | void>;
   setConversationFeedback: Dispatch<SetStateAction<string | undefined>>;
@@ -39,17 +39,15 @@ export function useConversationConfirmationActions({
   wakePhraseSessionRef: { current: ReturnType<typeof createWakePhraseSession> };
 }) {
   const retryCommandCapture = useCallback(async () => {
-    if (conversationPhaseRef.current === 'off') {
+    if (getConversationPhase() === 'off') {
       return false;
     }
     setConversationLatestHeardText(undefined);
     applyConversationFeedback(setConversationFeedback, setConversationFeedbackAction, undefined);
     if (localWakeModeActiveRef.current) {
-      conversationPhaseRef.current = 'listening';
       setConversationPhase('listening');
       const started = await startLocalCommandRef.current().catch(() => false);
       if (!started) {
-        conversationPhaseRef.current = 'armed';
         setConversationPhase('armed');
         applyConversationFeedback(
           setConversationFeedback,
@@ -66,11 +64,9 @@ export function useConversationConfirmationActions({
     clearPendingConversationResult();
     wakePhraseSessionRef.current.reset();
     wakePhraseSessionRef.current.markMatched();
-    conversationPhaseRef.current = 'listening';
     setConversationPhase('listening');
     const started = await startSpeechInput({ continuous: true }).catch(() => false);
     if (!started) {
-      conversationPhaseRef.current = 'armed';
       setConversationPhase('armed');
       applyConversationFeedback(
         setConversationFeedback,
@@ -86,7 +82,7 @@ export function useConversationConfirmationActions({
     return true;
   }, [
     clearPendingConversationResult,
-    conversationPhaseRef,
+    getConversationPhase,
     localWakeModeActiveRef,
     rearmConversationListening,
     setConversationFeedback,
@@ -102,14 +98,14 @@ export function useConversationConfirmationActions({
   ]);
 
   const rearmConversation = useCallback(async () => {
-    if (conversationPhaseRef.current === 'off') {
+    if (getConversationPhase() === 'off') {
       return;
     }
     setConversationLatestHeardText(undefined);
     applyConversationFeedback(setConversationFeedback, setConversationFeedbackAction, undefined);
     await rearmConversationListening();
   }, [
-    conversationPhaseRef,
+    getConversationPhase,
     rearmConversationListening,
     setConversationFeedback,
     setConversationFeedbackAction,

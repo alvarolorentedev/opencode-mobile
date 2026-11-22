@@ -1,3 +1,4 @@
+import { UpdateBlockingSettingSelectField as SettingSelectField } from '@/features/updates/index';
 import { cn } from '@/shared/ui/cn';
 import { useWatch, useForm, useController } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -7,7 +8,7 @@ import { FieldDescription } from '@/shared/ui/text-field';
 import { Button } from '@/shared/ui/button';
 import { Text } from '@/shared/ui/text';
 import { Spinner } from '@/shared/ui/spinner';
-import { SettingSelectField, SettingSwitchRow, type Palette } from '@/shared/ui/settings/setting-rows';
+import { SettingSwitchRow, type Palette } from '@/shared/ui/settings/setting-rows';
 import { useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { View } from 'react-native';
@@ -23,7 +24,7 @@ import {
   type ServiceDraftErrors,
   type ServiceDraftContext,
   type ServicePortOption,
-} from '@/shared/contracts/service-management';
+ ServiceManagementApi } from '@/shared/contracts/service-management';
 import {
   SERVICE_ACCESS_CONNECTOR_VERSION,
   getServiceServerNow,
@@ -33,7 +34,6 @@ import {
   type ServiceExpirationChoice,
   type ServiceExpirationUnit,
 } from '@/shared/contracts/service-access';
-import type { ServiceManagementApi } from '@/shared/contracts/domain';
 
 // Full-screen add/edit form for one connector service. Presentation and local
 // form state only: validation mirrors the connector through

@@ -14,7 +14,7 @@ export function replaceQueryPartition(cache: QueryClient, previous: QueryIdentit
     && key[1] === previous.connectionId && key[2] === previous.connectionScope && key[3] === previous.authRevision });
   if (preserve) for (const query of old) {
     const key = [...query.queryKey]; key[2] = next.connectionScope; key[3] = next.authRevision;
-    if (query.state.data !== undefined && cache.getQueryData(key) === undefined) {
+    if (query.meta?.retainOnCredentialRenewal !== false && query.state.data !== undefined && cache.getQueryData(key) === undefined) {
       cache.setQueryData(key, query.state.data, { updatedAt: query.state.dataUpdatedAt });
     }
   }

@@ -1,3 +1,4 @@
+import { UpdateBlockingSheet as OverlaySheet, useUpdateBlockingConfirmation as useConfirmation } from '@/features/updates/index';
 import { cn } from '@/shared/ui/cn';
 import { Text } from '@/shared/ui/text';
 import { Button } from '@/shared/ui/button';
@@ -9,10 +10,7 @@ import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { View } from 'react-native';
 
-import { OverlaySheet } from '@/shared/ui/overlay-sheet';
-import { useConfirmation } from '@/shared/ui/use-confirmation';
 import { usePalette } from '@/shared/ui/theme/use-palette';
-import { useProjectFiles } from '@/features/projects/context';
 import { useProjectCheckouts } from '@/features/projects/state/use-project-checkouts';
 import { useWorkspaces } from '@/runtime/workspace';
 
@@ -21,8 +19,7 @@ export function WorktreeSwitcher({ onClose }: { onClose: () => void }) {
   const { t } = useTranslation();
   const palette = usePalette();
   const registry = useWorkspaces();
-  const { activeProject, checkouts, activeCheckout, worktrees } = useProjectCheckouts();
-  const { refreshWorktrees, removeWorktree } = useProjectFiles();
+  const { activeProject, checkouts, activeCheckout, worktrees, refreshWorktrees, removeWorktree } = useProjectCheckouts();
   const [managing, setManaging] = useState(false);
   const [busy, setBusy] = useState<string>();
   const [error, setError] = useState<string>();

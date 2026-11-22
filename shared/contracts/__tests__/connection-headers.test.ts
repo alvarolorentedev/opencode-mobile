@@ -1,23 +1,23 @@
-import { beforeEach, describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { loadTs } from '../../../tests/helpers/runtime.mjs';
+import * as contracts from '@/shared/contracts/connection-headers';
 
 // The header model is a credential boundary: every value stays in SecureStore,
 // AsyncStorage only ever sees connection metadata. These tests drive the real
 // module with stubbed native boundaries.
 async function loadHeadersModule(platform: 'android' | 'ios' | 'web' = 'android') {
   const secure = new Map<string, string>();
-  const connectSecrets = new Map<string, string>();
-  const module = await loadTs(['shared/storage/connection-headers.ts', 'shared/contracts/connection-headers.ts'], {
-    'expo-secure-store': {
-      getItemAsync: async (key: string) => secure.get(key) ?? null,
-      setItemAsync: async (key: string, value: string) => { secure.set(key, value); },
-      deleteItemAsync: async (key: string) => { secure.delete(key); },
-    },
-    'react-native': { Platform: { OS: platform } },
-    "@/shared/storage/cloud-link": { getConnectTestSecret: (key: string) => connectSecrets.get(key) ?? '', setConnectTestSecret: (key: string, value: string) => { if (value) connectSecrets.set(key, value); else connectSecrets.delete(key); } }
-  });
-  return { module, secure, connectSecrets };
+  vi.resetModules();
+  vi.doMock('expo-secure-store', () => ({
+    getItemAsync: async (key: string) => secure.get(key) ?? null,
+    setItemAsync: async (key: string, value: string) => { secure.set(key, value); },
+    deleteItemAsync: async (key: string) => { secure.delete(key); },
+  }));
+  vi.doMock('react-native', () => ({ Platform: { OS: platform } }));
+  vi.doMock('expo-constants', () => ({ default: { expoConfig: { extra: { e2eMode: true, connectPilot: { testing: true } } } } }));
+  const storage = await import('@/shared/storage/connection-headers');
+  const { getConnectTestSecret } = await import('@/shared/storage/cloud-link');
+  return { module: { ...contracts, ...storage }, secure, connectSecrets: { get: getConnectTestSecret } };
 }
 
 describe('connection header validation', () => {

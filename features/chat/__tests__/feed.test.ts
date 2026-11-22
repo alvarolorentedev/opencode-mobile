@@ -1,7 +1,7 @@
 import { base64 } from '@scure/base';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { deferred, hookRuntime, loadTs } from '../../../tests/helpers/runtime.mjs';
+import { createTestInbox } from '../../../tests/helpers/prompt-inbox';
 import { attachmentKind, dataUrlBytes, pickedAttachment, prepareAttachmentFile, openAttachmentExternally, readAttachmentText } from '@/shared/platform/attachments';
 import { defaultChatPreferences } from '@/shared/preferences/opencode-preferences';
 import { parseChatPreferences } from '@/shared/storage/persisted-preferences';
@@ -10,6 +10,8 @@ import { PromptPreparationError } from '@/shared/protocol/opencode/prompt-inbox'
 import { handleProviderEvent } from '@/shared/protocol/opencode/event-dispatch';
 import { toTranscriptEntry } from '@/shared/presentation/format';
 import { isTranscriptDisplayMessage } from '@/shared/presentation/transcript';
+
+const identity = { connectionId: 'test', connectionScope: 'scope', authRevision: 0 };
 
 const native = vi.hoisted(() => ({ OS: 'ios', files: new Map<string, Uint8Array>(), shared: vi.fn(), released: vi.fn() }));
 const decodeSpy = vi.spyOn(base64, 'decode');
@@ -135,73 +137,68 @@ describe('feed attachments', () => {
 
 describe('provider-owned prompt inbox', () => {
   async function mount(client: any, readMessages = vi.fn(async () => [] as any[]), options: { online?: boolean; connected?: boolean } = {}) {
-    const runtime = hookRuntime();
-    const { usePromptInbox } = await loadTs('features/chat/state/use-prompt-inbox.ts', {
-    react: runtime.react,
-    "@/shared/protocol/opencode/prompt-inbox": { PromptPreparationError },
-    "@/shared/protocol/services/session-service": { getSessionInbox: (candidate: any, id: string) => candidate.promptInbox.list(id), getSessionNotices: (candidate: any, id: string) => candidate.promptInbox.listNotices?.(id) ?? Promise.resolve([]), submitLegacyPrompt: (candidate: any, input: unknown) => candidate.compatibility.session.promptAsync(input) },
-    "@/shared/protocol/opencode/client/errors": { classifyConnectionFailure: () => 'unknown' },
-    "@/shared/utilities/error-message": { getErrorMessage: (error: unknown) => error instanceof Error ? error.message : String(error) }
-  });
-    runtime.mount(usePromptInbox, {
-      client,
-      queueScope: 'test-workspace',
-      isCurrentClient: (candidate: any) => candidate === client,
-      refreshMessages: readMessages,
-      connected: options.connected ?? true,
-      online: options.online ?? true,
+    client.__opencode = { contract: client.promptInbox ? 'v2' : 'v1', directory: '/test-workspace' };
+    return createTestInbox().configure({
+      identity, client, scope: 'test-workspace', isCurrentClient: (candidate) => candidate === client,
+      readMessages, connected: options.connected ?? true, online: options.online ?? true,
     });
-    return runtime;
   }
 
   it('pins submissions, keeps confirmed inbox state on failure, and removes delivered duplicates', async () => {
-    const admission = deferred();
+    const admission = Promise.withResolvers<unknown>();
     const client = { promptInbox: { submit: vi.fn(() => admission.promise), list: vi.fn(async () => [pending()]) } };
     const read = vi.fn(async () => [] as any[]);
     const runtime = await mount(client, read);
     const sending = runtime.value.submitPrompt({ sessionID: 's', parts: [{ type: 'text', text: 'change this' }] }, 'queue');
-    runtime.flush();
     expect(runtime.value.pendingPromptsBySession.s[0]).toMatchObject({ state: 'sending', delivery: 'queue' });
-    admission.resolve(pending()); await sending; runtime.flush();
+    admission.resolve(pending()); await sending;
     expect(runtime.value.pendingPromptsBySession.s[0].id).toBe('m1');
     client.promptInbox.list.mockRejectedValueOnce(new Error('offline'));
-    await runtime.value.refreshMessages('s'); runtime.flush();
+    await runtime.value.refreshMessages('s');
     expect(runtime.value.pendingPromptsBySession.s).toHaveLength(1);
     read.mockResolvedValue(records());
-    await runtime.value.refreshMessages('s'); runtime.flush();
+    await runtime.value.refreshMessages('s');
     expect(runtime.value.pendingPromptsBySession.s).toHaveLength(0);
   });
 
   it('prevents a stale refresh from dropping a newly admitted prompt', async () => {
-    const gate = deferred();
+    const gate = Promise.withResolvers<unknown>();
     const client = { promptInbox: { submit: async () => pending(), list: () => gate.promise } };
     const runtime = await mount(client);
     const refresh = runtime.value.refreshMessages('s');
-    await runtime.value.submitPrompt({ sessionID: 's', parts: [] }, 'steer'); runtime.flush();
-    gate.resolve([]); await refresh; runtime.flush();
+    await runtime.value.submitPrompt({ sessionID: 's', parts: [] }, 'steer');
+    gate.resolve([]); await refresh;
     expect(runtime.value.pendingPromptsBySession.s[0].id).toBe('m1');
   });
 
   it('recovers server-side pending prompts, respects cancellation, and isolates clients', async () => {
     const client = { promptInbox: { list: vi.fn(async () => [pending('m2'), pending('m1')]) } };
     const runtime = await mount(client);
-    await runtime.value.refreshMessages('s'); runtime.flush();
+    await runtime.value.refreshMessages('s');
     expect(runtime.value.pendingPromptsBySession.s).toHaveLength(2);
     client.promptInbox.list.mockResolvedValueOnce([]);
-    await runtime.value.refreshMessages('s'); runtime.flush();
+    await runtime.value.refreshMessages('s');
     expect(runtime.value.pendingPromptsBySession.s).toHaveLength(0);
-    const other = { promptInbox: { list: async () => [pending()] } };
-    runtime.update({ client: other, queueScope: 'other-workspace', isCurrentClient: (candidate: any) => candidate === other });
+    const other = { __opencode: { contract: 'v2', directory: '/other-workspace' }, promptInbox: { list: async () => [pending()] } };
+    runtime.update({ client: other as never, scope: 'other-workspace', isCurrentClient: (candidate: any) => candidate === other });
     expect(runtime.value.pendingPromptsBySession).toEqual({});
   });
 
   it('cancels a waiting prompt and removes it from the local stack', async () => {
     const client = { promptInbox: { list: vi.fn(async () => [pending('m1')]), cancel: vi.fn(async () => undefined) } };
     const runtime = await mount(client);
-    await runtime.value.refreshMessages('s'); runtime.flush();
+    await runtime.value.refreshMessages('s');
     expect(runtime.value.pendingPromptsBySession.s).toHaveLength(1);
-    await runtime.value.cancelPrompt('s', 'm1'); runtime.flush();
+    const staleInbox = Promise.withResolvers<unknown>();
+    client.promptInbox.list.mockImplementationOnce(async () => {
+      await staleInbox.promise;
+      return [pending('m1')];
+    });
+    const staleRefresh = runtime.value.refreshMessages('s');
+    await runtime.value.cancelPrompt('s', 'm1');
     expect(client.promptInbox.cancel).toHaveBeenCalledWith('s', 'm1');
+    staleInbox.resolve(undefined);
+    await staleRefresh;
     expect(runtime.value.pendingPromptsBySession.s).toHaveLength(0);
   });
 
@@ -210,21 +207,21 @@ describe('provider-owned prompt inbox', () => {
     const client = { promptInbox: { list: async () => [], listNotices: vi.fn(async () => [notice]) } };
     let messages: any[] = [];
     const runtime = await mount(client, vi.fn(async () => messages));
-    await runtime.value.refreshMessages('s'); runtime.flush();
+    await runtime.value.refreshMessages('s');
     expect(runtime.value.pendingNoticesBySession.s).toEqual([notice]);
 
     messages = [{ info: { id: 'n1', role: 'assistant', sessionID: 's', time: { created: 1 }, providerID: '', modelID: '', synthetic: true }, parts: [] }];
-    await runtime.value.refreshMessages('s'); runtime.flush();
+    await runtime.value.refreshMessages('s');
     expect(runtime.value.pendingNoticesBySession.s).toEqual([]);
   });
 
   it('removes failed submissions and preserves V1 sending behavior', async () => {
     const runtime = await mount({ promptInbox: { submit: async () => { throw new Error('rejected'); } } });
-    await expect(runtime.value.submitPrompt({ sessionID: 's', parts: [] }, 'steer')).rejects.toThrow('rejected'); runtime.flush();
+    await expect(runtime.value.submitPrompt({ sessionID: 's', parts: [] }, 'steer')).rejects.toThrow('rejected');
     expect(runtime.value.pendingPromptsBySession.s).toHaveLength(0);
     const promptAsync = vi.fn();
     const v1 = await mount({ compatibility: { session: { promptAsync } } });
-    await v1.value.submitPrompt({ sessionID: 's', parts: [] }, 'queue'); v1.flush();
+    await v1.value.submitPrompt({ sessionID: 's', parts: [] }, 'queue');
     expect(promptAsync).toHaveBeenCalledWith({ sessionID: 's', parts: [] });
     expect(v1.value.pendingPromptsBySession).toEqual({});
   });
@@ -241,30 +238,29 @@ describe('provider-owned prompt inbox', () => {
     const runtime = await mount(client, vi.fn(async () => old), { online: false });
     await runtime.value.submitPrompt({ sessionID: 's', parts: [{ type: 'text', text: 'queued text' }] }, 'steer');
     expect(client.promptInbox.submit).not.toHaveBeenCalled();
-    runtime.flush();
     expect(runtime.value.pendingPromptsBySession.s[0]).toMatchObject({ state: 'queued', text: 'queued text' });
 
-    runtime.update({ online: true }); runtime.flush();
-    await runtime.settle();
-    runtime.flush();
+    runtime.update({ online: true });
+    await Promise.resolve();
+    await Promise.resolve();
     expect(client.promptInbox.submit).toHaveBeenCalledOnce();
     expect(runtime.value.pendingPromptsBySession.s).toHaveLength(1);
     expect(runtime.value.pendingPromptsBySession.s[0]).toMatchObject({ id: 'm-offline', state: 'waiting' });
   });
 
   it('skips a dismissed queue entry while a previous admission is in progress', async () => {
-    const first = deferred();
+    const first = Promise.withResolvers<unknown>();
     const client = { promptInbox: { submit: vi.fn(() => first.promise) } };
     const runtime = await mount(client, undefined, { online: false });
-    const input = { sessionID: 's', parts: [{ type: 'text', text: 'queued' }] };
+    const input = { sessionID: 's', parts: [{ type: 'text' as const, text: 'queued' }] };
     await runtime.value.submitPrompt(input, 'steer');
     await runtime.value.submitPrompt(input, 'steer');
-    runtime.flush();
     const [, second] = runtime.value.pendingPromptsBySession.s;
     runtime.update({ online: true });
     await runtime.value.cancelPrompt('s', second.id);
     first.resolve(pending('admitted'));
-    await runtime.settle();
+    await Promise.resolve();
+    await Promise.resolve();
     expect(client.promptInbox.submit).toHaveBeenCalledOnce();
     expect(runtime.value.pendingPromptsBySession.s.map((prompt: { id: string }) => prompt.id)).toEqual(['admitted']);
   });
@@ -276,15 +272,14 @@ describe('provider-owned prompt inbox', () => {
       .mockResolvedValueOnce(pending('admitted'));
     const runtime = await mount({ promptInbox: { submit } }, undefined, { connected: false });
     await runtime.value.submitPrompt({ sessionID: 's', parts: [] }, 'steer');
-    runtime.flush();
     expect(runtime.value.pendingPromptsBySession.s[0].state).toBe('queued');
 
     runtime.update({ connected: true });
-    await runtime.settle();
+    await Promise.resolve();
+    await Promise.resolve();
     expect(submit).toHaveBeenCalledTimes(2);
     expect(runtime.value.pendingPromptsBySession.s[0].state).toBe('queued');
     await runtime.value.flushQueuedPrompts();
-    runtime.flush();
     expect(runtime.value.pendingPromptsBySession.s[0].id).toBe('admitted');
   });
 
@@ -295,7 +290,8 @@ describe('provider-owned prompt inbox', () => {
     runtime.update({ online: false });
     runtime.update({ online: true });
     await runtime.value.refreshMessages('s');
-    await runtime.settle();
+    await Promise.resolve();
+    await Promise.resolve();
     expect(client.promptInbox.submit).toHaveBeenCalledOnce();
     expect(runtime.value.pendingPromptsBySession.s[0].state).toBe('uncertain');
   });

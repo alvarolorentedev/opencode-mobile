@@ -1,6 +1,6 @@
+import { UpdateBlockingSheet as OverlaySheet } from '@/features/updates/index';
 import { cn } from '@/shared/ui/cn';
 import { Icon } from '@/shared/ui/icon';
-import { OverlaySheet } from '@/shared/ui/overlay-sheet';
 import { Text } from '@/shared/ui/text';
 import { useMemo } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';

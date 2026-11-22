@@ -1,62 +1,60 @@
-import { describe, expect, it, vi } from 'vitest';
-import { deferred, hookRuntime, loadTs } from '../../../../tests/helpers/runtime.mjs';
+// @vitest-environment happy-dom
+
+import { audioFixture } from '../../../../tests/helpers/local-audio-probe';
+import { act } from 'react';
+import { describe, expect, it } from 'vitest';
+
+import { useLocalVoiceEnrollment } from '@/shared/platform/voice/use-local-voice-enrollment';
+import { deferred, settleReact } from '../../../../tests/helpers/controlled-clock';
+import { i18n } from '@/shared/i18n/index';
+import { renderHook } from '../../../../tests/helpers/render-hook';
 
 async function enrollment(permission = Promise.resolve({ granted: true }), embedding = Promise.resolve([1, 0])) {
-  const runtime = hookRuntime();
-  const stream = { start: vi.fn(async () => undefined), stop: vi.fn() };
-  const deactivate = vi.fn(async () => undefined);
-  const save = vi.fn();
-  const captureError = vi.fn();
-  const info = vi.fn();
-  let onBuffer: (buffer: any) => void = () => {};
-  const { useLocalVoiceEnrollment } = await loadTs('shared/platform/voice/use-local-voice-enrollment.ts', {
-    react: runtime.react,
-    'react-native': { Platform: { OS: 'android' }, AppState: { currentState: 'active' } },
-    'expo-audio': { useAudioStream: (options: any) => { onBuffer = options.onBuffer; return { stream }; } },
-    '@/shared/platform/voice/permissions': { ensureLocalVoicePermissionAsync: () => permission },
-    "@/shared/i18n/index": { i18n: { t: (key: string) => key } },
-    "@/shared/observability/client": { telemetry: { captureError, info } },
-    "@/shared/platform/voice/local-wake-word/audio-session": { activateLocalWakeRecordingAsync: async () => undefined, deactivateLocalWakeRecordingAsync: deactivate },
-    "@/shared/platform/voice/local-wake-word/pcm": { createResampler: () => ({ push: (samples: Float32Array) => samples }), int16ToFloat32: () => new Float32Array(64_000), selectSpeechSegment: (samples: Float32Array) => samples },
-    "@/shared/platform/voice/local-wake-word/runtime": { ensureLocalSpeakerRuntime: async () => undefined, computeLocalSpeakerEmbedding: () => embedding },
-    "@/shared/platform/voice/local-wake-word/similarity": { averageEmbeddings: vi.fn(), cosineSimilarity: () => 1 },
-    "@/shared/platform/voice/local-wake-word/speaker-profile": { loadLocalSpeakerProfile: async () => [1, 0], saveLocalSpeakerProfile: save }
-  }, runtime.globals);
-  runtime.mount(useLocalVoiceEnrollment, {});
-  await runtime.settle();
-  return { runtime, stream, deactivate, save, captureError, info, feed: () => onBuffer({ data: new Int16Array([1]).buffer, sampleRate: 16000, channels: 1 }) };
+  const { clock, feed, native } = audioFixture();
+  native.permission.mockReturnValue(permission);
+  native.embedding.mockReturnValue(embedding);
+  native.profile.mockResolvedValue([1, 0]);
+  const runtime = renderHook(useLocalVoiceEnrollment, undefined);
+  await settleReact();
+  return { runtime, clock, ...native, feed: () => feed(6000, 64_000) };
+}
+
+function startEnrollment(enroll: () => Promise<void>) {
+  let pending!: Promise<void>;
+  act(() => { pending = enroll(); });
+  return pending;
 }
 
 describe('leaving voice setup', () => {
   it('does not start recording after leaving while microphone permission is pending', async () => {
     const permission = deferred<{ granted: boolean }>();
     const view = await enrollment(permission.promise);
-    const pending = view.runtime.value.enroll();
-    await view.runtime.settle();
+    const pending = startEnrollment(view.runtime.result.current.enroll);
+    await settleReact();
     view.runtime.unmount();
     permission.resolve({ granted: true });
     await pending;
     expect(view.stream.start).not.toHaveBeenCalled();
-    expect(view.runtime.countTimers(12_000)).toBe(0);
+    expect(view.clock.countTimers(12_000)).toBe(0);
     expect(view.save).not.toHaveBeenCalled();
   });
 
   it('stops active capture and cancels the enrollment timer on leaving', async () => {
     const view = await enrollment();
-    await view.runtime.value.enroll();
+    await act(() => view.runtime.result.current.enroll());
     expect(view.stream.start).toHaveBeenCalledOnce();
-    await view.runtime.settle();
-    expect(view.runtime.value.status).toBe('starting');
-    expect(view.runtime.countTimers(12_000)).toBe(0);
+    await settleReact();
+    expect(view.runtime.result.current.status).toBe('starting');
+    expect(view.clock.countTimers(12_000)).toBe(0);
     view.feed();
-    await view.runtime.settle();
-    expect(view.runtime.value.status).toBe('recording');
-    expect(view.runtime.countTimers(3000)).toBe(0);
-    expect(view.runtime.countTimers(12_000)).toBe(1);
+    await settleReact();
+    expect(view.runtime.result.current.status).toBe('recording');
+    expect(view.clock.countTimers(3000)).toBe(0);
+    expect(view.clock.countTimers(12_000)).toBe(1);
     view.runtime.unmount();
     expect(view.stream.stop).toHaveBeenCalled();
     expect(view.deactivate).toHaveBeenCalled();
-    expect(view.runtime.countTimers(12_000)).toBe(0);
+    expect(view.clock.countTimers(12_000)).toBe(0);
     expect(view.save).not.toHaveBeenCalled();
   });
 });
@@ -65,41 +63,41 @@ describe('cancel enrollment without unmounting Settings', () => {
   it('invalidates a pending permission request and keeps saved profiles untouched', async () => {
     const permission = deferred<{ granted: boolean }>();
     const view = await enrollment(permission.promise);
-    const pending = view.runtime.value.enroll();
-    await view.runtime.settle();
-    await view.runtime.value.cancel();
+    const pending = startEnrollment(view.runtime.result.current.enroll);
+    await settleReact();
+    await act(() => view.runtime.result.current.cancel());
     permission.resolve({ granted: true });
     await pending;
-    view.runtime.flush();
-    expect(view.runtime.value.status).toBe('idle');
+    await settleReact();
+    expect(view.runtime.result.current.status).toBe('idle');
     expect(view.stream.start).not.toHaveBeenCalled();
     expect(view.save).not.toHaveBeenCalled();
-    expect(view.runtime.countTimers(12_000)).toBe(0);
+    expect(view.clock.countTimers(12_000)).toBe(0);
   });
 });
 
 it('does not save a canceled voice profile after an embedding resolves', async () => {
   const embedding = deferred<number[]>();
   const view = await enrollment(Promise.resolve({ granted: true }), embedding.promise);
-  await view.runtime.value.enroll();
+  await act(() => view.runtime.result.current.enroll());
   view.feed();
-  view.runtime.fire(12_000);
-  await view.runtime.settle();
-  expect(view.runtime.value.status).toBe('saving');
-  await view.runtime.value.cancel();
+  await view.clock.advance(12_000);
+  await settleReact();
+  expect(view.runtime.result.current.status).toBe('saving');
+  await act(() => view.runtime.result.current.cancel());
   embedding.resolve([1, 0]);
-  await view.runtime.settle();
+  await settleReact();
   expect(view.save).not.toHaveBeenCalled();
-  expect(view.runtime.value.status).toBe('idle');
+  expect(view.runtime.result.current.status).toBe('idle');
 });
 
 it('reports a rejected native start without its raw message and preserves the profile', async () => {
   const view = await enrollment();
   view.stream.start.mockRejectedValueOnce(Object.assign(new Error('private native payload'), { code: 'ERR_AUDIO_STREAM_INITIALIZATION' }));
-  await view.runtime.value.enroll();
-  await view.runtime.settle();
-  expect(view.runtime.value.error).toBe('settings:voice.localWake.microphoneStartFailed');
-  expect(view.runtime.value.hasProfile).toBe(true);
+  await act(() => view.runtime.result.current.enroll());
+  await settleReact();
+  expect(view.runtime.result.current.error).toBe(i18n.t('settings:voice.localWake.microphoneStartFailed'));
+  expect(view.runtime.result.current.hasProfile).toBe(true);
   expect(view.deactivate).toHaveBeenCalledOnce();
   expect(view.captureError).toHaveBeenCalledWith(
     { name: 'VoiceCaptureError', message: 'Voice enrollment failed' },
@@ -112,11 +110,11 @@ it('reports a rejected native start without its raw message and preserves the pr
 
 it('reports missing PCM and releases the recorder after three seconds', async () => {
   const view = await enrollment();
-  await view.runtime.value.enroll();
-  view.runtime.fire(3000);
-  await view.runtime.settle();
-  expect(view.runtime.value.status).toBe('error');
-  expect(view.runtime.value.error).toBe('settings:voice.localWake.microphoneStartFailed');
+  await act(() => view.runtime.result.current.enroll());
+  await view.clock.advance(3000);
+  await settleReact();
+  expect(view.runtime.result.current.status).toBe('error');
+  expect(view.runtime.result.current.error).toBe(i18n.t('settings:voice.localWake.microphoneStartFailed'));
   expect(view.stream.stop).toHaveBeenCalledOnce();
   expect(view.deactivate).toHaveBeenCalledOnce();
   expect(view.save).not.toHaveBeenCalled();
@@ -125,13 +123,13 @@ it('reports missing PCM and releases the recorder after three seconds', async ()
 
 it('keeps a background cancellation local and ignores late frames', async () => {
   const view = await enrollment();
-  await view.runtime.value.enroll();
-  await view.runtime.value.cancel('background');
+  await act(() => view.runtime.result.current.enroll());
+  await act(() => view.runtime.result.current.cancel('background'));
   view.feed();
-  await view.runtime.settle();
-  expect(view.runtime.value.status).toBe('idle');
-  expect(view.runtime.countTimers(3000)).toBe(0);
-  expect(view.runtime.countTimers(12_000)).toBe(0);
+  await settleReact();
+  expect(view.runtime.result.current.status).toBe('idle');
+  expect(view.clock.countTimers(3000)).toBe(0);
+  expect(view.clock.countTimers(12_000)).toBe(0);
   expect(view.captureError).not.toHaveBeenCalled();
   expect(view.info).toHaveBeenCalledWith('voice.cancelled', expect.objectContaining({ reason: 'background' }));
 });
@@ -139,8 +137,8 @@ it('keeps a background cancellation local and ignores late frames', async () => 
 it('does not start after the setup closes while the voice test is stopping', async () => {
   const view = await enrollment();
   const stoppingTest = deferred<void>();
-  const starting = view.runtime.value.enroll(() => stoppingTest.promise);
-  await view.runtime.value.cancel('screen-exit');
+  const starting = startEnrollment(() => view.runtime.result.current.enroll(() => stoppingTest.promise));
+  await act(() => view.runtime.result.current.cancel('screen-exit'));
   stoppingTest.resolve(undefined);
   await starting;
   expect(view.stream.start).not.toHaveBeenCalled();

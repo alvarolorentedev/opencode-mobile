@@ -1,3 +1,5 @@
+import { UpdateBlockingSheet as OverlaySheet } from '@/features/updates/index';
+import type { WorkspaceTarget } from '@/shared/contracts/workspace';
 import { cn } from '@/shared/ui/cn';
 import { Text } from '@/shared/ui/text';
 import { ScreenHeader } from '@/shared/ui/screen-header';
@@ -5,11 +7,11 @@ import { Feedback } from '@/shared/ui/feedback';
 import { useCallback, useMemo, useRef, useState } from 'react';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { useTranslation } from 'react-i18next';
-import { Platform, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, Platform, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Fonts } from '@/shared/ui/theme/theme';
-import { WorkspaceScope, useWorkspaces } from '@/runtime/workspace';
+import { useResolvedWorkspaceTarget, useWorkspacePreferences, useWorkspaces } from '@/runtime/workspace';
 import { ServerContextPicker } from '@/features/settings/ui/server-context-picker';
 import { getConnectionUiScope } from '@/shared/contracts/connection-scope';
 import { useNotificationSetup } from '@/features/notifications/index';
@@ -19,7 +21,6 @@ import { SettingsHome } from '@/features/settings/ui/settings-home';
 import { SettingsPanel } from '@/shared/ui/settings/settings-panel';
 import type { SettingsTarget } from '@/shared/ui/settings/target';
 import { getVisibleModels } from '@/features/ai/index';
-import { OverlaySheet } from '@/shared/ui/overlay-sheet';
 import { useLastJsError } from '@/features/connections/index';
 import { usePalette } from '@/shared/ui/theme/use-palette';
 import { getSpeechPlayback } from '@/shared/platform/voice/speech-config';
@@ -28,28 +29,29 @@ import { useCapabilities } from '@/features/ai/context';
 import { useConnection, useDiagnostics } from '@/features/connections/context';
 import { useMcp } from '@/features/extensions/context';
 import { useOnboarding } from '@/features/onboarding/context';
-import { usePreferences } from '@/shared/preferences/context';
 import { useProjects } from '@/features/projects/context';
 import { useUpdates } from '@/features/updates/context';
 import { buildSettingsSections } from '@/features/settings/ui/settings-section-registry';
 
 export default function SettingsScreen() {
-  const registry = useWorkspaces();
-  return <WorkspaceScope target={registry.inspectionTarget ?? registry.focus}><SettingsContent /></WorkspaceScope>;
+  const { inspectionTarget, focus } = useWorkspaces();
+  const target = useResolvedWorkspaceTarget(inspectionTarget ?? focus);
+  return target ? <SettingsContent target={target} />
+    : <View className="flex-1 items-center justify-center"><ActivityIndicator /></View>;
 }
 
-function SettingsContent() {
+function SettingsContent({ target }: { target: WorkspaceTarget }) {
   const insets = useSafeAreaInsets();
   const palette = usePalette();
   const { t } = useTranslation();
-  const { configuredProviders, currentConfig, availableModels, modelRouting } = useCapabilities();
-  const mcp = useMcp();
-  const { chatPreferences, updateChatPreferences } = usePreferences();
-  const { connect, connection, settings, serverCapabilities, connectSetup, services: serviceManagement } = useConnection();
-  const { activeProjectPath } = useProjects();
-  const diagnosticsData = useDiagnostics();
+  const { configuredProviders, currentConfig, availableModels, modelRouting } = useCapabilities(target);
+  const mcp = useMcp(target);
+  const { chatPreferences, updateChatPreferences } = useWorkspacePreferences(target);
+  const { connect, connection, settings, serverCapabilities, connectSetup, services: serviceManagement } = useConnection(target);
+  const { activeProjectPath } = useProjects(target);
+  const diagnosticsData = useDiagnostics(target);
   const { lastJsError, refreshLastJsError } = useLastJsError();
-  const { approvals } = useApprovals();
+  const { approvals } = useApprovals(target);
   const { startOnboardingReview } = useOnboarding();
   const updates = useUpdates();
   const router = useRouter();
@@ -138,6 +140,7 @@ function SettingsContent() {
 
   // eslint-disable-next-line react-hooks/refs -- the builder stores this callback; it never invokes it during render.
   const sections = buildSettingsSections({
+    workspace: target,
     t,
     palette,
     connection,

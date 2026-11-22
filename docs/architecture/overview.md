@@ -68,7 +68,9 @@ The app has one tab group in `app/(tabs)/_layout.tsx`:
 - `settings` -> Settings
 - `terminal` -> Terminal
 
-Navigation complexity is deliberately low. There are no nested feature stacks or deep in-app route hierarchy. Terminal and Settings use provider scope boundaries so inspecting a server or opening a PTY does not move the selected chat.
+Navigation uses independent chat, terminal and inspection selections. Terminal
+passes its resolved workspace target to the screen and retained PTY renderers.
+Settings passes its inspection target to the relevant sections and dialogs.
 
 This matters because state continuity is expected across tabs. Switching tabs does not reset active session context.
 
@@ -87,7 +89,7 @@ During the migration the provider composition below remains the current owner of
 domain state; it may read the core as an adapter and must not gain new state.
 
 The dominant design decision is central orchestration through the provider layer:
-`runtime/composition/opencode-provider.tsx` mounts `WorkspaceProvider`, which coordinates the app-store connection registry and the app-wide coordinators. Each retained connection/project branch mounts a headless `WorkspaceRuntime`, reusing `use-opencode-provider-composition.ts`. Domain hooks select the focused or scoped values from the app core; there is no per-domain context provider tree.
+`runtime/composition/opencode-provider.tsx` mounts `WorkspaceProvider`, which coordinates the app-store connection registry and the app-wide coordinators. The app core reconciles retained project keys and registers their commands with each connection’s realtime manager. Domain hooks select the focused or scoped values from the app core; there is no per-domain context provider tree.
 
 This composition unit is the application's effective domain layer. It owns:
 
@@ -118,14 +120,13 @@ only re-renders when the domain it reads changes and each screen declares its
 real dependencies instead of pulling from one combined surface. There is no
 combined runtime context value.
 
-`WorkspaceActionsContext` exposes the app-level actions and focus separately
-from the changing workspace snapshot registry. The stable presentation map
-(composer/editor drafts, transcript positions) lives in
-`WorkspacePresentationContext`; `useRetainedState` reads it directly, so a
-background workspace publish cannot invalidate a draft consumer. Chat reads
-actions/focus from the actions context. The focused workspace values are built
-by `useWorkspaceValues`, which memoizes each overridden domain independently;
-`WorkspaceRuntime` is wrapped in `React.memo` so unchanged runtimes skip
+App-level actions come from the core, and the focus selector reads the app
+store. The store also owns the stable presentation map for drafts and
+transcript positions. `useRetainedState` reads it by key. The connection,
+project, session and voice hooks bind their app commands at the screen.
+The root supplies the incoming share view to the share screen and to a chat
+draft adapter that subscribes independently of the transcript. The retained
+project adapter uses `React.memo` so an unchanged project can skip
 parent-driven renders.
 
 Connectivity is owned once by `WorkspaceProvider`. `NetInfo.configure()` is
@@ -229,14 +230,13 @@ The completion version, preference schema and first-run migration are unchanged.
 
 - `runtime/composition/opencode-provider.tsx`
   Thin entrypoint: creates the app core and mounts the workspace registry.
-- `runtime/composition/use-opencode-provider-composition.ts`
-  The orchestrator: wires the domain hooks, assembles their inputs, and derives
-  the domain values. This is the application's effective domain layer.
-- `runtime/core/workspace-scope.ts`
-  Focused/scoped value selectors and the scope carriers. There is no domain
-  context provider tree.
-- `shared/contracts/domain.ts`
-  Shared public types and the domain value union.
+- `runtime/core/project-runtimes.ts` and `runtime/core/project-binding.ts`
+  Attach project commands and reconciliation to the connection lifecycle.
+  The app core owns navigation, submission, connection and event commands.
+- `runtime/core/workspace-selectors.ts`
+  Connection and workspace selectors read the app store and manager.
+- `features/*/model/types.ts`
+  Feature-owned domain types, exposed to callers through named entrypoints.
 - `features/chat/context.ts`
   The domain `use*` hooks, implemented as core selectors.
 - `shared/preferences/opencode-preferences.ts`
@@ -248,7 +248,7 @@ The completion version, preference schema and first-run migration are unchanged.
 - `features/ai/model/opencode-auto-model.ts`
   Pure auto-routing rules: tier suggestions, explicit/automatic resolution,
   attachment/context compatibility, and the long-chat cache guard.
-- `features/ai/state/use-prompt-routing.ts`
+- `features/ai/services/prompt-routing.ts`
   Send-time classifier selection and tier resolution. Requires a real
   on-device or OpenCode classifier; it never falls back to heuristics.
 - `features/ai/services/model-routing-service.ts`
@@ -261,56 +261,53 @@ The completion version, preference schema and first-run migration are unchanged.
   Small provider-agnostic helpers (project labels, pending-request grouping).
 - `features/sessions/model/selectors.ts`
   Derived selectors extracted from the provider body.
-- `runtime/workspace/use-workspace-shell-state.ts` and `runtime/workspace/use-session-runtime-state.ts`
-  App preferences/persisted metadata and per-project workflow state, respectively.
+- `runtime/core/store.ts`
+  App preferences, persisted metadata and per-project device state.
 - `shared/server-data/` and `runtime/composition/use-workspace-server-data.ts`
   TanStack Query owns routine server responses; domain hooks expose derived views.
   See [server read ownership](state-and-data.md#routine-server-reads).
-- `runtime/workspace/use-workspace-values.ts`
-  Layers app-scope overrides over a runtime's memoized domain values. Each
-  domain is memoized separately, so transcript updates do not invalidate
-  connection, project, or onboarding contexts.
-- `runtime/realtime/use-coalesced-refresh.ts`
-  Collapses event-driven refresh bursts into one trailing call without
-  resetting the timer when callbacks are recreated.
-- `runtime/composition/use-opencode-provider-effects.ts`
-  Project lifecycle effects: session bootstrap, transcript pruning, and working sound.
-- `shared/protocol/opencode/event-dispatch.ts`
-  Pure global-event dispatch (`handleProviderEvent(event, actions)`), kept
-  testable outside React.
-- `runtime/composition/opencode-provider-values.ts`
-  Derived selectors and the memoized domain context values rendered by
-  `OpencodeProvider`.
-- `runtime/composition/use-project-actions.ts`
-  Project catalog, project selection, session/file
-  refresh, file search/open/save/download, and diagnostics actions.
+- `runtime/realtime/project-refresh-queue.ts`
+  Coalesces catalog, transcript and inbox refreshes and clears pending work
+  when the project is suspended or reset.
+- `runtime/core/project-binding.ts`
+  Owns session bootstrap, transcript pruning and reconciliation for a project key.
+- `runtime/core/events.ts` and `shared/protocol/opencode/event-dispatch.ts`
+  Event commands read device state from the store and apply protocol events
+  through scoped transcript, catalog and interaction operations.
+- `features/chat/state/use-chat-presentation.ts` and
+  `runtime/core/cached-project-transcripts.ts`
+  Memoized transcript presentation and previews for the session library.
+  Session selection and actions bind directly through `features/sessions/context.ts`.
+- `features/projects/services/project-catalog-actions.ts` and `runtime/core/commands/workspace.ts`
+  Project catalog refresh and scoped project navigation.
 - `features/projects/state/use-project-browser.ts`
   Directory/search query selection and project-scope guards, composed by the
   project file actions and exposed as one files-context member.
-- `features/sessions/state/use-session-actions.ts`
-  Session lifecycle, favorites, permissions/questions, and
-  `ensureActiveSession`.
-- `features/chat/state/use-prompt-lifecycle.ts`
-  `sendPrompt`/`abortSession`, the submission guard, task-completion notification
-  tracking, and the initial auto-routing await. Classification starts in
-  parallel with attachment preparation; a missing classifier leaves the send on
-  the normal default model.
-- `features/chat/state/use-prompt-inbox.ts`
-  OpenCode 2 prompt admission and session-scoped pending messages. Wraps the
-  existing transcript refresh to reconcile inbox delivery through SSE and polling.
+- `runtime/core/commands/session.ts`
+  Scoped session actions, approvals, list and status refreshes.
+- `runtime/core/commands/prompt.ts` and `features/chat/services/prompt-submission.ts`
+  Prompt submission, cancellation and session-model switches. Classification
+  starts alongside attachment preparation. The normal default model remains
+  available when the classifier provides no selection.
+- `features/chat/services/prompt-settlement.ts`
+  Confirms completion before clearing a pending task and notifying. The prompt
+  lifecycle hook supplies the active project and aborts superseded reads.
+- `features/chat/services/prompt-inbox-commands.ts`
+  OpenCode 2 prompt admission, outbox retry, cancellation and delivery
+  reconciliation. The inbox hook binds reachability and selects pending rows.
 - `features/ai/state/use-capabilities-actions.ts`
   Provider auth/OAuth, preference reconciliation, and auto-approve; capability responses live in Query.
-- `runtime/connections/connection-runtime.tsx`
-  One connection lifecycle, retry/renewal policy, active-session catalog and routine
-  event invalidation owner shared by all retained project runtimes.
+- `runtime/connections/create-connection.ts`
+  Connection lifecycle, retry, renewal, the shared event stream and routine
+  invalidation. `connection-runtime.tsx` provides React bindings and the
+  catalog view and connection-level activity and Mission Control observers.
 - `runtime/workspace/workspace-lifecycle.ts`
   Cancellable readiness promises resolved by committed runtime publications.
 - `features/cloud-link/state/connect/`
   Cloud Link pairing, subscription, and access state machine
   (`use-connect-machine.ts`), with catalog discovery (`catalog.ts`), purchase
   finalization/recovery (`purchases.ts`), pairing link handling (`pairing.ts`),
-  and access credential preparation (`access.ts`); re-exported through
-  `features/cloud-link/state/use-connect-state.ts`.
+  and access credential preparation (`access.ts`).
   `activation.ts` owns the bounded post-claim desktop-approval/startup wait,
   foreground suspension and delayed saved-profile checkpoint.
 - `features/voice/state/conversation/`
@@ -320,9 +317,10 @@ The completion version, preference schema and first-run migration are unchanged.
   `use-conversation-submit.ts` owns submit-then-rearm; `use-conversation-playback.ts`
   owns the separate settled-reply readback watcher, and
   `use-conversation-readback-input.ts` owns the microphone/TTS handoff.
-- `runtime/persistence/use-opencode-persistence.ts`
-  AsyncStorage hydration and ordered write-back, with field validation in
-  `shared/storage/persisted-preferences.ts`.
+- `runtime/persistence/device-preferences.ts` and `runtime/persistence/connection-settings.ts`
+  Zustand persist owns device preferences. The connection settings adapter
+  retains ordered metadata and secure credential writes. The storage schemas
+  validate each field independently.
 - `features/connections/state/use-connection-profiles.ts`
   Provider-owned saved-profile state, UI sequencing and credential ordering,
   hostname defaults, setup probing, local V2 pairing, and connection actions
@@ -331,8 +329,8 @@ The completion version, preference schema and first-run migration are unchanged.
 - `features/voice/state/use-conversation-state.ts`
   Conversation input/readback orchestration, wake-phrase-gated speech
   submission, immediate input re-arm, timers, and cleanup.
-- `runtime/realtime/use-opencode-realtime.ts`
-  SSE transport/backoff, first-connect and reconnect reconciliation, and the
+- `runtime/realtime/transport.ts` and `runtime/realtime/create-realtime.ts`
+  Connection SSE/backoff, project first-connect and reconnect reconciliation, and the
   safety poll (adaptive while busy; 5s/10s base by stream state, offline pause).
   The stream has a first-byte timeout, jittered backoff, stable-stream reset,
   and a 45s busy / 60s idle keepalive-based staleness window. See
@@ -340,12 +338,12 @@ The completion version, preference schema and first-run migration are unchanged.
 - `shared/network/use-network-status.ts` and `shared/network/network-status.ts`
   Normalized online/offline, link type, metered and constrained state. Offline
   pauses retries; online restarts the stream and runs a critical reconcile.
-- `features/connections/state/use-connection-retry.ts`
+- `runtime/connections/retry.ts`
   Bounded, foreground-only retry for retryable connect failures (1/2/5/10/20s),
   with immediate recovery after an offline→online transition.
 - `features/chat/services/transcript-cache.ts`
-  Bounded, connection/project/session-scoped transcript tail used to paint a
-  cold chat before the network answers.
+  Reads pre-upgrade transcript snapshots and carries them across a verified
+  same-machine Cloud Link scope change.
 - `features/ai/services/capabilities-snapshot.ts`
   Bounded, credential-free cold-start DTOs seed empty Query entries with their
   original timestamps; fresh network results win over late disk reads.
@@ -353,15 +351,17 @@ The completion version, preference schema and first-run migration are unchanged.
   Per-class deadlines (read/write/stream), idempotent-read retry eligibility,
   and retryable gateway-status policy.
 - `shared/server-data/persistence.ts`
-  Query cache persistence policy: only session and project catalogs, 24-hour
-  max age, messages and transient server data excluded.
+  Persists session and project catalogs for 24 hours and bounded, media-free
+  transcript tails for seven days. Live overlays and transient resources stay
+  in memory.
 - `features/sessions/services/favorites-storage.ts`
   Favorites DTO validation, bounded serialization, and legacy-entry migration.
 - `features/voice/state/use-conversation-keep-awake.ts`
   Keeps device awake during conversation mode.
-- `features/terminal/state/use-terminal-state.ts`
-  Project-scoped PTY list and retained per-PTY transports, connect tickets,
-  reconnect, renderer registration, cursor acknowledgements, and resize.
+- `runtime/core/commands/terminal.ts` and `features/terminal/services/project-terminal.ts`
+  Core lifecycle for scoped PTYs and the feature controller for lists,
+  reconnect, renderer registration, and resize. Terminals read the Query list
+  and opened instances from their scoped stores.
   `terminal-connection.ts` owns each connection lifecycle; protocol decoding
   and bounded output delivery live in `shared/protocol/opencode/terminal-stream.ts`.
 - `features/extensions/state/use-mcp-state.ts`
@@ -379,8 +379,9 @@ The completion version, preference schema and first-run migration are unchanged.
 - `features/sessions/state/use-permission-rules-state.ts`
   V2 saved "always allow" rules: list, refresh, and remove, connection-scoped
   like the rest of the provider state.
-- `features/projects/state/use-worktree-state.ts`
-  Project-scoped worktree inventory, owning project identity, and guarded lifecycle actions.
+- `features/projects/state/use-project-inventory.ts` and
+  `features/projects/state/use-worktree-actions.ts`
+  Scoped catalog and worktree reads with guarded checkout actions.
 - `features/sessions/state/use-active-sessions.ts`
   Connection-wide running/recent session snapshot for the Chat Library. One
   runtime per connection owns the read; the shell shares the resulting sessions
@@ -392,7 +393,7 @@ The completion version, preference schema and first-run migration are unchanged.
   Pure selection of the active-session group (running-first ordering, recent tail
   capped at four, subagent filtering). The Chat Library de-duplicates
   these IDs out of the current-project Chat list.
-- `features/chat/state/use-transcript-state.ts`
+- `features/chat/services/transcript-lifecycle.ts`
   Paginated transcript state machine: one newest 200-record window on open,
   scroll-up history paging in 200-record batches without a cap, a single newest
   20-record tail merge with anchor-aware placement, a read generation that
@@ -400,7 +401,7 @@ The completion version, preference schema and first-run migration are unchanged.
   that have no paging window, and accumulation of session usage steps and V2
   `todowrite` records so exact totals survive paging. Only compaction/revert
   rewrites replace the window.
-- `features/chat/state/use-transcript-read-errors.ts`
+- `features/chat/services/transcript-reader.ts`
   Client-tagged, session-scoped record of cold transcript read failures. It
   wraps the transcript read before the prompt inbox, clears on a successful
   read, ignores silent background failures, and hides old-client errors after a
@@ -410,19 +411,15 @@ MCP and worktree callback bridges use stable callbacks backed by the provider's
 latest refs. Conversation submission similarly uses the latest send action
 without restarting a submitted turn when message state changes.
 
-These domain hooks are composed by `use-opencode-provider-composition.ts`, which
-is the single orchestrator. Each hook receives the current client (and, when it
-must call a later-defined provider callback, a latest-ref) and exposes its own
-reset, so the provider's project/connection reset composes them instead of
-inlining state.
+The retained project binds feature subscriptions to the current client.
+Feature hooks publish presentation data and supply cleanup where needed.
+`runtime/core/commands/` and `runtime/core/events.ts` own cross-domain behavior.
 
 `tests/vitest/architecture.test.ts` (run by `npm run test:vitest`) enforces a repo-wide readable-size ratchet: every source
 file under `app/`, `features/`, `runtime/`, `shared/`, and `features/widgets/` must stay at
 or below **500 lines** (200-400 is the target; generated `shared/i18n/resources.ts` is
 exempt), `runtime/composition/opencode-provider.tsx` must stay a thin wrapper at or below
-**60 lines** because composition lives in
-`runtime/composition/use-opencode-provider-composition.ts`, and the public context surface
-cannot grow past 127 members. When a limit is genuinely outgrown, split the file
+**60 lines**. The public context surface cannot grow past 127 members. When a limit is genuinely outgrown, split the file
 into the right layer and, if needed, lower the number in the same change.
 
 ### Services
@@ -483,7 +480,7 @@ fallback. `shared/protocol/opencode/pairing.ts` validates local QR formats and r
 one-use codes, independently of Cloud Link subscriptions. The resulting session
 token uses the existing per-profile password storage and Basic-auth transport.
 
-The optional native Cloud Link method composes `use-connect-state.ts`
+The optional native Cloud Link method composes `use-connect-machine.ts`
 inside the provider, verifies native subscriptions through the Cloud Link service,
 validates catalog/session/pairing protocol in `shared/protocol/cloud-link/connect.ts`, and
 activates Basic-auth profiles through `switchConnection()`. Shared connection
@@ -560,7 +557,7 @@ selection folds descendants into their root tasks. No screen owns this state.
 
 Local completion and needs-input notifications share
 `shared/protocol/services/session-service`'s `readSessionSettlement`, so the
-foreground flush (`use-prompt-lifecycle`) and the background monitor
+foreground prompt settlement and the background monitor
 (`shared/notifications`) clear and label a task identically. An idle session
 without an assistant response for the tracked request stays unknown instead of
 alerting as finished. The same global-event
@@ -745,7 +742,7 @@ are reshaped to carry keys. Notification copy is already translated inside
 The normal startup flow is:
 
 1. Root layout mounts providers and keeps the native splash up.
-2. `useOpencodePersistence()` hydrates settings, chat preferences, favorites, and the onboarding completion marker from AsyncStorage.
+2. Query restores its cache before the workspace shell mounts. The app core hydrates device preferences through Zustand persist and restores connection credentials through their secure storage adapter.
 3. The routing gate resolves: existing configured installs show `(tabs)`; a fresh install shows the onboarding assistant. A fresh install does not auto-connect.
 4. After hydration, once onboarding is completed, `OpencodeProvider` calls `connect()`.
 5. `connect()` loads the project catalog using a catalog-scoped client with no directory and derives the active project from the server (server default location first, then the most recently active server project). Runtime catalog refreshes pass the runtime's directory to `location.get`, so a worktree keeps its own resolved checkout instead of falling back to the server's root project.
@@ -1105,11 +1102,11 @@ This is one of the densest parts of the architecture and would need careful pari
 
 The highest-coupling areas are:
 
-### `runtime/composition/use-opencode-provider-composition.ts`
+### Project retention
 
-This is the main behavioral hotspot. Changes here can affect nearly every screen.
-The wrapper (`opencode-provider.tsx`) and the tree (`opencode-provider-tree.tsx`)
-stay mechanical so orchestration pressure is visible in one file.
+The core binds project commands and transcript reconciliation to the connection's
+credential revision and directory. The Chat, Project, Terminal and Settings panes
+select their own targets and read the same partitions.
 
 ### Prompt lifecycle
 
@@ -1189,13 +1186,23 @@ safety gates and FOSS exclusion.
 
 ## Multi-server V2 ownership
 
-`use-workspace-connections.ts` owns explicit connect/disconnect, restoration, and composite connection/project identity. A runtime stays mounted when another chat or tab is selected. Its clients, generations, transcript windows, prompt inbox, approvals, file browser and PTY connections remain separate. `shared-event-stream.ts` fans one server subscription out to retained projects; events are still filtered by directory and the existing polling/reconciliation paths remain active.
+`runtime/core/commands/connection.ts` owns explicit connection actions, saved
+profile activation and registry restoration. Workspace commands own the
+composite connection and project identity. A runtime stays mounted when
+another chat or tab is selected. Its transcript windows, prompt inbox,
+approvals, file browser and PTY connections remain scoped to the project.
+`shared-event-stream.ts` fans one server subscription out to retained projects.
+Directory filtering and polling cover missed events.
 
 Hydration, compatibility settings writes, device sharing, Cloud Link setup/billing, updates, language, audio and native surfaces have one app-wide owner. Favorites keep their existing connection-scoped persistence; projects and sessions are always derived from the server catalogs. Activity observation has one owner per server, with one app-wide Android notification publisher combining counts and releasing only the disconnected server. Native shortcuts carry each row's connection scope; widget publication remains app-wide.
 
-The chat library combines the unscoped server catalogs with live project state. It keeps current/running/recency order, uses composite keys and labels each row with its server. Project selection changes chat/project focus. Terminal selection and Settings inspection are independent. RN Primitives portals explicitly restore their caller's workspace scope; otherwise their children would inherit the app host's current chat server.
+The chat library combines the unscoped server catalogs with live project state. It keeps current/running/recency order, uses composite keys and labels each row with its server. Project selection changes chat/project focus. Terminal selection and Settings inspection are independent. Settings and Terminal pass their selected target through portal children so actions remain bound to the pane that opened the overlay.
 
-Chat focus fails over automatically. When the focused runtime reports an error, or its connection is disabled or removed, `use-workspace-connections.ts` selects the last healthy connected server, then any other connected server, and persists that focus. The failed server stays registered and enabled so Settings can reconnect it; if no other server is connected, the existing Chat connection panel remains the terminal state.
+Chat focus fails over automatically. When the focused runtime reports an
+error, or its connection is disabled or removed, the connection command
+selects the last healthy connected server, then any other connected server.
+The failed server stays registered and enabled for reconnect in Settings.
+When all servers are disconnected, Chat shows its connection panel.
 
 Terminal renderers remain mounted when hidden. Hidden instances cannot accept input or layout resize; disconnect detaches transports without deleting remote PTYs. Composer and editor drafts and transcript reading positions live in an in-memory presentation map, keyed by owning server/project/session or file. They survive navigation, not process termination. No external store or dependency was introduced.
 

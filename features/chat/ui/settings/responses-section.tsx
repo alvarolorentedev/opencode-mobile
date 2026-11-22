@@ -1,3 +1,4 @@
+import { UpdateBlockingSettingSelectField as SettingSelectField } from '@/features/updates/index';
 import { cn } from '@/shared/ui/cn';
 import { FieldDescription } from '@/shared/ui/text-field';
 import { useTranslation } from 'react-i18next';
@@ -6,7 +7,7 @@ import { View } from 'react-native';
 import type { CatalogOption } from '@/shared/ui/catalog-select';
 import { RESPONSE_SCOPE_OPTIONS } from '@/features/chat/model/settings-options';
 import type { ResponseScope } from '@/shared/preferences/opencode-preferences';
-import { SettingSelectField, SettingSwitchRow, type Palette } from '@/shared/ui/settings/setting-rows';
+import { SettingSwitchRow, type Palette } from '@/shared/ui/settings/setting-rows';
 
 type ResponsesSectionProps = {
   chatPreferences: {

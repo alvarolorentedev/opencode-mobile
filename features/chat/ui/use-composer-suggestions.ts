@@ -44,26 +44,29 @@ export function useComposerSuggestions({
 }: ComposerSuggestionsInput) {
   const cursor = selection.end;
   const trigger = useMemo(() => (enabled ? findComposerTrigger(draft, cursor) : undefined), [cursor, draft, enabled]);
-  const [fileState, setFileState] = useState<{ query: string; files: string[]; searching: boolean; error?: string }>({
-    query: '',
-    files: [],
-    searching: false,
-  });
+  const [fileState, setFileState] = useState<{
+    query: string;
+    search: ComposerSuggestionsInput['searchFiles'];
+    files: string[];
+    searching: boolean;
+    error?: string;
+  }>();
 
   const fileQuery = trigger?.kind === 'context' ? trigger.query.trim() : '';
   useEffect(() => {
     if (!enabled || trigger?.kind !== 'context' || fileQuery.length < 2) return;
     let canceled = false;
     const timeout = setTimeout(() => {
-      setFileState({ query: fileQuery, files: [], searching: true });
+      setFileState({ query: fileQuery, search: searchFiles, files: [], searching: true });
       void searchFiles(fileQuery)
         .then((results) => {
-          if (!canceled) setFileState({ query: fileQuery, files: results.slice(0, 20), searching: false });
+          if (!canceled) setFileState({ query: fileQuery, search: searchFiles, files: results.slice(0, 20), searching: false });
         })
         .catch((reason) => {
           if (!canceled) {
             setFileState({
               query: fileQuery,
+              search: searchFiles,
               files: [],
               searching: false,
               error: reason instanceof Error ? reason.message : 'Could not search project files.',
@@ -77,7 +80,7 @@ export function useComposerSuggestions({
     };
   }, [enabled, fileQuery, searchFiles, trigger?.kind]);
 
-  const activeFileState = fileQuery.length >= 2 && fileState.query === fileQuery
+  const activeFileState = fileQuery.length >= 2 && fileState?.query === fileQuery && fileState.search === searchFiles
     ? fileState
     : { query: fileQuery, files: [], searching: fileQuery.length >= 2, error: undefined };
   const files = activeFileState.files;

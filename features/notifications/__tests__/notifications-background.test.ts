@@ -1,9 +1,12 @@
-import { moduleSourceUri } from '../../../tests/helpers/module-source.mjs';
 import assert from 'node:assert/strict';
-import path from 'node:path';
-import { fileURLToPath, pathToFileURL } from 'node:url';
-import { describe, it } from 'vitest';
-import { deferred } from '../../../tests/helpers/runtime.mjs';
+import { describe, it, vi } from 'vitest';
+
+import { pendingNotificationKey } from '@/features/notifications/model/notification-pending';
+import { getConnectionScope } from '@/shared/contracts/connection-scope';
+import * as storageKeys from '@/shared/storage/keys';
+
+vi.mock('expo-constants', () => ({ default: { appOwnership: 'standalone' } }));
+vi.mock('react-native', () => ({ Platform: { OS: 'android' } }));
 
 // Drives the real background monitor callback from features/notifications/services/notifications.ts with
 // stubbed Expo/AsyncStorage/network modules. The scenario under test:
@@ -16,123 +19,82 @@ import { deferred } from '../../../tests/helpers/runtime.mjs';
 // Migrated from the standalone tests/notifications-background.test.mjs Node script.
 describe('background notification monitor', () => {
   it('keeps records scoped per connection across credential, concurrency, and failure cases', async () => {
-    const here = path.dirname(fileURLToPath(import.meta.url));
-    const root = path.join(here, '..', '..', '..');
-
-    async function transpileToDataUri(relativePath: string, replacements: [RegExp, string][] = []) {
-      return moduleSourceUri(root, relativePath, [...replacements,]);
-    }
-
-    const g = globalThis as any;
-    g.__notificationsTestAsyncStorage = new Map();
-    g.__notificationsTestScheduled = [];
-    g.__notificationsTestDismissed = [];
-    g.__notificationsTestBuilds = [];
-    g.__notificationsTestResolutions = [];
-    g.__notificationsTestResolver = () => undefined;
-    g.__notificationsTestClientFactory = () => ({ session: {} });
-    g.__notificationsTestTask = undefined;
-
-    const asyncStorageStubUri = `data:text/javascript,${encodeURIComponent(`
-      export default {
-        async getItem(key) { if (globalThis.__notificationsFailRead) throw new Error('temporary read failure'); return globalThis.__notificationsTestAsyncStorage.has(key) ? globalThis.__notificationsTestAsyncStorage.get(key) : null; },
-        async setItem(key, value) { if (globalThis.__notificationsFailWrite) { globalThis.__notificationsFailWrite = false; throw new Error('temporary write failure'); } globalThis.__notificationsTestAsyncStorage.set(key, value); },
-        async removeItem(key) { globalThis.__notificationsTestAsyncStorage.delete(key); },
-      };
-    `)}`;
-    const taskManagerStubUri = `data:text/javascript,${encodeURIComponent(`
-      export function isTaskDefined() { return false; }
-      export function defineTask(name, task) { globalThis.__notificationsTestTask = task; }
-      export async function isTaskRegisteredAsync() { return false; }
-    `)}`;
-    const backgroundTaskStubUri = `data:text/javascript,${encodeURIComponent(`
-      export const BackgroundTaskStatus = { Available: 1, Restricted: 2, Denied: 3 };
-      export const BackgroundTaskResult = { Success: 1, Failed: 2 };
-      export async function getStatusAsync() { return 1; }
-      export async function registerTaskAsync() {}
-    `)}`;
-    const notificationsStubUri = `data:text/javascript,${encodeURIComponent(`
-      export const AndroidImportance = { DEFAULT: 3, LOW: 2 };
-      export function setNotificationHandler() {}
-      export async function setNotificationChannelAsync() {}
-      export async function scheduleNotificationAsync(request) { globalThis.__notificationsTestScheduled.push(request); return 'notification-id'; }
-      export async function dismissNotificationAsync(identifier) { globalThis.__notificationsTestDismissed.push(identifier); }
-      export async function getPermissionsAsync() { return { granted: true, status: 'granted', canAskAgain: true }; }
-      export async function requestPermissionsAsync() { return { granted: true, status: 'granted', canAskAgain: true }; }
-    `)}`;
-    const constantsStubUri = `data:text/javascript,${encodeURIComponent(`
-      export default { appOwnership: 'standalone' };
-    `)}`;
-    const reactNativeStubUri = `data:text/javascript,${encodeURIComponent(`
-      export const Platform = { OS: 'android' };
-    `)}`;
-    const clientStubUri = `data:text/javascript,${encodeURIComponent(`
-      export function buildClient(settings, contract) {
-        globalThis.__notificationsTestBuilds.push({ settings, contract });
-        return globalThis.__notificationsTestClientFactory(settings);
-      }
-      export async function detectServerContract() { return { contract: 'v1' }; }
-    `)}`;
-    const connectionProfilesStubUri = `data:text/javascript,${encodeURIComponent(`
-      export async function resolveConnectionCredentials(identity) {
-        globalThis.__notificationsTestResolutions.push(identity);
-        const value = globalThis.__notificationsTestResolver(identity);
+    const g: Record<string, any> = {
+      __notificationsTestAsyncStorage: new Map(),
+      __notificationsTestScheduled: [],
+      __notificationsTestDismissed: [],
+      __notificationsTestBuilds: [],
+      __notificationsTestResolutions: [],
+      __notificationsTestResolver: () => undefined,
+      __notificationsTestClientFactory: () => ({ session: {} }),
+    };
+    vi.doMock('@react-native-async-storage/async-storage', () => ({
+      default: {
+        async getItem(key: string) {
+          if (g.__notificationsFailRead) throw new Error('temporary read failure');
+          return g.__notificationsTestAsyncStorage.get(key) ?? null;
+        },
+        async setItem(key: string, value: string) {
+          if (g.__notificationsFailWrite) {
+            g.__notificationsFailWrite = false;
+            throw new Error('temporary write failure');
+          }
+          g.__notificationsTestAsyncStorage.set(key, value);
+        },
+        async removeItem(key: string) { g.__notificationsTestAsyncStorage.delete(key); },
+      },
+    }));
+    vi.doMock('expo-task-manager', () => ({
+      isTaskDefined: () => false,
+      defineTask: (_name: string, task: unknown) => { g.__notificationsTestTask = task; },
+      isTaskRegisteredAsync: async () => false,
+    }));
+    vi.doMock('expo-background-task', () => ({
+      BackgroundTaskStatus: { Available: 1, Restricted: 2, Denied: 3 },
+      BackgroundTaskResult: { Success: 1, Failed: 2 },
+      getStatusAsync: async () => 1,
+      registerTaskAsync: async () => {},
+    }));
+    vi.doMock('expo-notifications', () => ({
+      AndroidImportance: { DEFAULT: 3, LOW: 2 },
+      setNotificationHandler: () => {},
+      setNotificationChannelAsync: async () => {},
+      async scheduleNotificationAsync(request: unknown) {
+        g.__notificationsTestScheduled.push(request);
+        return 'notification-id';
+      },
+      async dismissNotificationAsync(identifier: string) { g.__notificationsTestDismissed.push(identifier); },
+      getPermissionsAsync: async () => ({ granted: true, status: 'granted', canAskAgain: true }),
+      requestPermissionsAsync: async () => ({ granted: true, status: 'granted', canAskAgain: true }),
+    }));
+    vi.doMock('@/shared/protocol/opencode/client', () => ({
+      buildClient(settings: unknown, contract: unknown) {
+        g.__notificationsTestBuilds.push({ settings, contract });
+        return g.__notificationsTestClientFactory(settings);
+      },
+      detectServerContract: async () => ({ contract: 'v1' }),
+    }));
+    vi.doMock('@/shared/storage/connection-profiles', () => ({
+      async resolveConnectionCredentials(identity: unknown) {
+        g.__notificationsTestResolutions.push(identity);
+        const value = g.__notificationsTestResolver(identity);
         return typeof value === 'string' ? { password: value } : value;
-      }
-    `)}`;
-    const i18nStubUri = `data:text/javascript,${encodeURIComponent(`
-      export const i18n = { t: (key) => key };
-    `)}`;
-
-    const base64Uri = `data:text/javascript,${encodeURIComponent(
-      `import { base64 } from ${JSON.stringify(pathToFileURL(path.join(root, 'node_modules/@scure/base/lib/index.js')).href)}; export { base64 };`,
-    )}`;
-    const zodUri = `data:text/javascript,${encodeURIComponent(
-      `import { z } from ${JSON.stringify(pathToFileURL(path.join(root, 'node_modules/zod/index.cjs')).href)}; export { z };`,
-    )}`;
-    const connectionScopeUri = await transpileToDataUri('shared/contracts/connection-scope.ts', [
-      [/from '@scure\/base'/g, `from "${base64Uri}"`],
-    ]);
-    const storageKeysUri = await transpileToDataUri('shared/storage/keys.ts');
-    const urlUri = await transpileToDataUri('shared/contracts/server-url.ts', [
-      [/from '@\/shared\/protocol\/opencode\/client\/types'/g, `from "data:text/javascript,export const defaultConnectionSettings = {serverUrl:'http://localhost'};"`],
-    ]);
-    const notificationPendingUri = await transpileToDataUri('features/notifications/model/notification-pending.ts', [
-      [/from '@\/shared\/contracts\/server-url'/g, `from "${urlUri}"`],
-      [/from '@\/shared\/contracts\/connection-scope'/g, `from "${connectionScopeUri}"`],
-      [/from 'zod'/g, `from "${zodUri}"`],
-    ]);
-    const sessionServiceStubUri = `data:text/javascript,${encodeURIComponent(`
-      export async function listSessions(client) {
+      },
+    }));
+    vi.doMock('@/shared/i18n/index', () => ({ i18n: { t: (key: string) => key } }));
+    vi.doMock('@/shared/platform/activity-notifications', () => ({ isActivityCompletionManaged: () => false }));
+    vi.doMock('@/shared/protocol/services/session-service', () => ({
+      async listSessions(client: { session: { status: () => Promise<{ data: unknown }>; list: () => Promise<{ data: unknown }> } }) {
         const [statuses, sessions] = await Promise.all([client.session.status(), client.session.list()]);
         return { statuses: statuses.data, sessions: sessions.data };
-      }
-      export async function readSessionSettlement(client, sessionId, knownStatus) {
+      },
+      async readSessionSettlement(_client: unknown, sessionId: string, knownStatus?: { type: string }) {
         if (knownStatus && knownStatus.type !== 'idle') return { state: knownStatus.type === 'retry' ? 'retrying' : 'running' };
-        const override = globalThis.__notificationsTestSettlement ? globalThis.__notificationsTestSettlement(sessionId) : undefined;
-        return override ?? { state: 'finished' };
-      }
-    `)}`;
-    const notificationsUri = await transpileToDataUri('features/notifications/services/notifications.ts', [
-      [/from '@\/shared\/protocol\/services\/session-service'/g, `from "${sessionServiceStubUri}"`],
-      [/from '@\/shared\/platform\/activity-notifications'/g, `from "data:text/javascript,export function isActivityCompletionManaged() { return false; }"`],
-      [/from '@react-native-async-storage\/async-storage'/g, `from "${asyncStorageStubUri}"`],
-      [/from 'expo-background-task'/g, `from "${backgroundTaskStubUri}"`],
-      [/from 'expo-constants'/g, `from "${constantsStubUri}"`],
-      [/from 'expo-notifications'/g, `from "${notificationsStubUri}"`],
-      [/from 'expo-task-manager'/g, `from "${taskManagerStubUri}"`],
-      [/from 'react-native'/g, `from "${reactNativeStubUri}"`],
-      [/from '@\/shared\/storage\/connection-profiles'/g, `from "${connectionProfilesStubUri}"`],
-      [/from '@\/shared\/i18n\/index'/g, `from "${i18nStubUri}"`],
-      [/from '@\/shared\/protocol\/opencode\/client'/g, `from "${clientStubUri}"`],
-      [/from '@\/features\/notifications\/model\/notification-pending'/g, `from "${notificationPendingUri}"`],
-      [/from '@\/shared\/storage\/keys'/g, `from "${storageKeysUri}"`],
-    ]);
-
-    const { trackPendingTaskFinishedNotification, clearPendingTaskFinishedNotification, listPendingTaskFinishedNotifications, raisePendingAttention, clearPendingAttention } = await import(notificationsUri);
-    const storageKeys = await import(storageKeysUri);
-    const { getConnectionScope } = await import(connectionScopeUri);
-    const { pendingNotificationKey } = await import(notificationPendingUri);
+        return g.__notificationsTestSettlement?.(sessionId) ?? { state: 'finished' };
+      },
+    }));
+    const { trackPendingTaskFinishedNotification, clearPendingTaskFinishedNotification, listPendingTaskFinishedNotifications, raisePendingAttention, clearPendingAttention } =
+      await import('@/features/notifications/services/notifications');
 
     const storage = g.__notificationsTestAsyncStorage;
     const runTask = g.__notificationsTestTask;
@@ -312,7 +274,7 @@ describe('background notification monitor', () => {
     // A background network snapshot cannot clear or notify a newly re-sent task.
     storage.clear(); g.__notificationsTestScheduled.length = 0;
     await trackPendingTaskFinishedNotification(record('resend', 100));
-    const gate = deferred<void>(), entered = deferred<void>();
+    const gate = Promise.withResolvers<void>(), entered = Promise.withResolvers<void>();
     g.__notificationsTestResolver = () => 'secret-a';
     g.__notificationsTestClientFactory = () => ({ session: {
       status: async () => { entered.resolve(); await gate.promise; return { data: { resend: { type: 'idle' } } }; },

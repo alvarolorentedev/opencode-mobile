@@ -1,41 +1,35 @@
 // App-wide workspace registry, connection focus, and persistence.
 // See docs/architecture/state-and-data.md#state-ownership-overview.
-import { findProfileByConnectionScope, type ConnectionProfile } from '@/shared/contracts/connection-profiles';
-import { loadConnectionProfiles } from '@/shared/storage/connection-profiles';
+import type { ConnectionProfile } from '@/shared/contracts/connection-profiles';
 import { getConnectionScope, getConnectionUiScope } from '@/shared/contracts/connection-scope';
-import { HIDDEN_PROJECTS_MAX } from '@/shared/contracts/domain';
-import { defaultConnectionSettings } from '@/shared/protocol/opencode/client';
-import { ConnectionRuntime } from '@/runtime/connections/connection-runtime';
-import { CURRENT_ONBOARDING_VERSION, isOnboardingComplete } from '@/features/onboarding/runtime';
-import { defaultChatPreferences } from '@/shared/preferences/opencode-preferences';
+import { ConnectionCatalog, useConnectionDemand, useConnectionRegistryBinding } from '@/runtime/connections/connection-runtime';
+import { CURRENT_ONBOARDING_VERSION } from '@/features/onboarding/runtime';
 import type { ConnectionContextValue } from '@/features/connections/index';
-import type { SessionDeepLinkTarget } from '@/shared/contracts/domain';
-import { ServerDataActivity, ServerDataScope } from '@/shared/server-data/client';
 import { useAppUpdates } from '@/features/updates/runtime';
 import { UpdatesContext } from '@/features/updates/context';
-import { PreferencesContext } from '@/shared/preferences/context';
 import { useConnectState , useServicesState } from '@/features/cloud-link/runtime';
 import { useConnectionProfiles } from '@/features/connections/runtime';
-import { useFileClipboard } from '@/features/projects/runtime';
+import { HIDDEN_PROJECTS_MAX } from '@/features/projects/runtime';
 import { useNetworkStatus } from '@/shared/network/use-network-status';
-import { useOpencodePersistence } from '@/runtime/persistence/use-opencode-persistence';
+import { useAppHydration } from '@/runtime/persistence/use-app-hydration';
 import { useAppCore, useAppStore } from '@/runtime/core/context';
+import { workspaceReadTarget } from '@/runtime/core/project-scope';
 import { useShareState } from '@/features/sharing/runtime';
 import { useVoiceSetupTest, VoiceSetupTestContext } from '@/features/voice/runtime';
-import { useWorkspaceAutoApprove } from '@/runtime/composition/use-workspace-auto-approve';
-import { serverPreferences, useWorkspaceConnections } from '@/runtime/workspace/use-workspace-connections';
+import { useWorkspaceConnections } from '@/runtime/workspace/use-workspace-connections';
+import { serverPreferences, workspaceChatPreferences } from '@/runtime/core/commands/connection';
 import { useWorkspaceShellState } from '@/runtime/workspace/use-workspace-shell-state';
-import { useWorkspaceValues, type WorkspaceValueOverrides } from '@/runtime/workspace/use-workspace-values';
-import { WorkspaceActionsContext, WorkspaceContext, type WorkspaceRegistry } from '@/runtime/workspace/workspace-context';
-import { librarySessions, useMissionOverview } from '@/features/sessions/runtime';
+import { WorkspaceContext, type WorkspaceRegistry } from '@/runtime/workspace/workspace-context';
+import { useLibrarySessions, useMissionOverview } from '@/features/sessions/runtime';
 import { MISSION_PATH } from '@/shared/contracts/mission-control';
 import { WorkspaceNative } from '@/runtime/composition/workspace-native';
+import { WorkspaceConversation } from '@/runtime/composition/workspace-conversation';
+import { WorkspaceCatalogReads } from '@/runtime/composition/workspace-catalog-reads';
 import { useMissionWidget } from '@/features/widgets/runtime';
 import { clearWorkspacePresentation, hasWorkspaceDrafts } from '@/runtime/presentation/workspace-presentation';
-import { WorkspaceRuntime } from '@/runtime/workspace/workspace-runtime';
-import { workspaceKey, type ConnectionRecord, type NewWorktreeChatResult, type NewWorktreeChatTarget, type WorkspaceCatalog, type WorkspaceTarget } from '@/shared/contracts/workspace';
-import type { SharedWorkspaceState, WorkspaceValues } from '@/runtime/workspace/workspace-types';
-import { useCallback, useEffect, useMemo, useState, type PropsWithChildren } from 'react';
+import type { ConnectionRecord, WorkspaceCatalog } from '@/shared/contracts/workspace';
+import { useQueryForeground } from '@/shared/server-data/client';
+import { useCallback, useEffect, useLayoutEffect, useMemo, useState, useSyncExternalStore, type PropsWithChildren, type SetStateAction } from 'react';
 import { usePathname } from 'expo-router';
 import { ActivityIndicator, View } from 'react-native';
 
@@ -43,40 +37,58 @@ import { migrateConnectConnectionScope } from '@/runtime/persistence/connection-
 import { clearCapabilitiesSnapshots } from '@/features/ai/runtime';
 
 export function WorkspaceProvider({ children }: PropsWithChildren) {
+  const core = useAppCore();
   const shell = useWorkspaceShellState();
   const pathname = usePathname();
   // One NetInfo owner for every retained project. See use-network-status.ts:
   // configure() is process-global and resets listeners.
-  const network = useNetworkStatus();
-  const { isHydrated } = useOpencodePersistence({ ...shell, defaultChatPreferences, defaultSettings: defaultConnectionSettings });
+  useNetworkStatus(core.connections.setNetwork);
+  const network = useAppStore((state) => state.network);
+  const isHydrated = useAppHydration(core.persistence);
   const presentation = useAppStore((state) => state.presentation);
-  const [catalogs, setCatalogs] = useState<Record<string, WorkspaceCatalog>>({});
-  const publishCatalog = useCallback((connectionId: string, catalog: WorkspaceCatalog) => {
-    setCatalogs((current) => current[connectionId] === catalog ? current : { ...current, [connectionId]: catalog });
+  // Catalog publications compose Query snapshots and command handles for the root view.
+  const [catalogPublications, setCatalogs] = useState<Record<string, { revision?: number; catalog: WorkspaceCatalog }>>({});
+  const publishCatalog = useCallback(({ id, revision }: ConnectionRecord, catalog: WorkspaceCatalog) => {
+    setCatalogs((current) => current[id]?.catalog === catalog && current[id]?.revision === revision
+      ? current : { ...current, [id]: { revision, catalog } });
   }, []);
-  const [profiles, setProfiles] = useState<ConnectionProfile[]>([]);
-  const onboardingCompleted = isOnboardingComplete(shell.onboardingVersion);
-  const core = useAppCore();
+  const profiles = useAppStore((state) => state.shell.profiles);
+  const setProfiles = useCallback((value: SetStateAction<ConnectionProfile[]>) => core.store.getState().setShellValue('profiles', value), [core]);
   const registryState = useAppStore((state) => state.registry);
-  const manager = useWorkspaceConnections(shell, isHydrated, {
+  const manager = useWorkspaceConnections(isHydrated, {
     registry: registryState,
-    getRegistry: () => core.store.getState().registry,
-    setRegistry: core.store.getState().setRegistry,
+    commands: core.commands,
+    hiddenProjects: shell.hiddenProjects,
   });
-  useWorkspaceAutoApprove(manager);
-  const { updateSettings: updateWorkspaceSettings, retry, change, removeConnection: removeWorkspaceConnection, connectedWorkspace, isEnabled } = manager;
-  const { setFavoriteSessions, setSettings, setChatPreferences, setHiddenProjects } = shell;
-  const { connections, focus, retainedFocus, snapshots, ensure, resolveKey, switchConnection, activate, navigate, openExternalSession, connectSavedProfile, disconnect } = manager;
+  useEffect(() => core.autoApproval.start(), [core]);
+  useEffect(() => core.terminal.start(), [core]);
+  useEffect(() => core.clipboard.start(), [core]);
+  useEffect(() => core.projects.start(), [core]);
+  useEffect(() => core.events.observeMcpStatus(), [core]);
+  const { updateSettings: updateWorkspaceSettings, change, removeConnection: removeWorkspaceConnection, connectedWorkspace, isEnabled } = manager;
+  const { setSettings, setChatPreferences, setHiddenProjects } = shell;
+  const { connections, focus, resolveKey, switchConnection, disconnect } = manager;
+  const busy = useSyncExternalStore(core.connections.subscribeProjects, core.connections.isUpdateBlocked, core.connections.isUpdateBlocked);
+  const catalogs = useMemo(() => {
+    const current: Record<string, WorkspaceCatalog> = {};
+    for (const { id, revision } of connections) {
+      const published = catalogPublications[id];
+      if (published && published.revision === revision) current[id] = published.catalog;
+    }
+    return current;
+  }, [catalogPublications, connections]);
   const mission = useMissionOverview(connections, catalogs);
   const missionWidgetScope = JSON.stringify(connections.filter((entry) => entry.enabled)
     .map(({ id, authRevision }) => [id, authRevision, mission.servers.find((server) => server.id === id)?.authorized === false]));
   useMissionWidget(mission, missionWidgetScope, isHydrated && manager.ready, shell.chatPreferences.language);
-  const fileClipboard = useFileClipboard(connections);
-  const selectedRuntime = focus ? snapshots[resolveKey(focus)] : undefined;
-  const current = selectedRuntime ?? (retainedFocus ? snapshots[resolveKey(retainedFocus)] : undefined);
-  const settings = current?.values.connectionValue.settings ?? shell.settings;
-  const settingsConnectionId = focus?.connectionId
-    ?? (current ? getConnectionUiScope(current.values.connectionValue.settings) : undefined);
+  const fileClipboardBusy = useAppStore((state) => Object.values(state.fileClipboard.busy).some(Boolean));
+  const focusedKey = focus && resolveKey(focus);
+  const selection = useAppStore((state) => focusedKey ? state.selection[focusedKey] : undefined);
+  const focusedEntry = connections.find(({ id }) => id === focus?.connectionId);
+  const focusedSettings = focusedEntry?.settings;
+  const settings = focusedSettings ?? shell.settings;
+  const focusedPreferences = focusedEntry?.preferences;
+  const settingsConnectionId = focus?.connectionId;
   const updateSettings = useCallback<ConnectionContextValue['updateSettings']>((patch) => {
     if (settingsConnectionId) updateWorkspaceSettings(settingsConnectionId, { ...settings, ...patch });
   }, [settingsConnectionId, updateWorkspaceSettings, settings]);
@@ -84,7 +96,6 @@ export function WorkspaceProvider({ children }: PropsWithChildren) {
   const isActiveProfile = useCallback((profile: ConnectionProfile) => isEnabled(getConnectionUiScope(profile)), [isEnabled]);
   const profileRefreshed = useCallback((previous: ConnectionProfile, next: ConnectionProfile) => {
     const oldScope = getConnectionScope(previous), newScope = getConnectionScope(next);
-    setFavoriteSessions((items) => items.map((entry) => entry.connectionScope === oldScope ? { ...entry, connectionScope: newScope } : entry));
     if (oldScope === newScope) return;
     setHiddenProjects((items) => {
       if (!(oldScope in items)) return items;
@@ -93,11 +104,14 @@ export function WorkspaceProvider({ children }: PropsWithChildren) {
       delete nextItems[oldScope];
       return nextItems;
     });
-  }, [setFavoriteSessions, setHiddenProjects]);
+  }, [setHiddenProjects]);
   const beforeProfileRefresh = useCallback(async () => {}, []);
+  const migrateConnectionScope = useCallback((previous: ConnectionProfile, next: ConnectionProfile) =>
+    migrateConnectConnectionScope(previous, next, core), [core]);
   const connectSetup = useConnectState({ controlPlaneUrl: shell.controlPlaneUrl, setControlPlaneUrl: shell.setControlPlaneUrl,
     switchConnection, disconnect: disconnectProfile, isHydrated, activeMachineId: settings.connect?.machineId,
-    beforeProfileRefresh, migrateConnectConnectionScope, profiles, setProfiles, onProfileRefreshed: profileRefreshed, isActiveProfile });
+    beforeProfileRefresh, migrateConnectConnectionScope: migrateConnectionScope, profiles, setProfiles, onProfileRefreshed: profileRefreshed, isActiveProfile });
+  useConnectionRegistryBinding(connectSetup, updateWorkspaceSettings, isHydrated);
   const profileSaved = useCallback((profile: ConnectionProfile, secrets: { password: string; headers: Record<string, string>; certificate?: import('@/shared/contracts/connection-certificate').ConnectionCertificate }, previous?: ConnectionProfile) => {
     const id = getConnectionUiScope(previous ?? profile);
     change((current) => current.map((entry) => entry.id === id ? { ...entry, name: profile.name } : entry));
@@ -105,6 +119,8 @@ export function WorkspaceProvider({ children }: PropsWithChildren) {
   }, [change, updateWorkspaceSettings]);
   const removeConnection = useCallback(async (id: string) => {
     await removeWorkspaceConnection(id);
+    core.store.getState().clearPromptOutboxes(id);
+    core.store.getState().clearWorkspaceUi(id);
     clearWorkspacePresentation(presentation, id);
     setCatalogs((current) => {
       if (!(id in current)) return current;
@@ -112,170 +128,64 @@ export function WorkspaceProvider({ children }: PropsWithChildren) {
       delete next[id];
       return next;
     });
-  }, [removeWorkspaceConnection, presentation]);
+  }, [core, removeWorkspaceConnection, presentation]);
   const profileRemoved = useCallback(async (profile: ConnectionProfile) => removeConnection(getConnectionUiScope(profile)), [removeConnection]);
   const connectionProfiles = useConnectionProfiles({ clearCapabilitiesSnapshots, settings, switchConnection, updateSettings, profiles, setProfiles, onSaved: profileSaved, onRemoved: profileRemoved });
   const { servicesValue } = useServicesState({ settings, connectSetup, connections: manager.connections, visible: pathname === '/settings' || pathname === '/service' });
-  const [terminalTarget, setTerminalTarget] = useState<WorkspaceTarget>();
-  const [inspectionTarget, setInspectionTarget] = useState<WorkspaceTarget>();
-  const selectTerminalTarget = useCallback(async (target: WorkspaceTarget) => { await ensure(target); setTerminalTarget(target); }, [ensure]);
-  const inspect = useCallback(async (target: WorkspaceTarget) => { await ensure(target); setInspectionTarget(target); }, [ensure]);
-  const openSession = useCallback(async (target: SessionDeepLinkTarget, signal?: AbortSignal) => {
-    try {
-      let entry: Pick<ConnectionRecord, 'id' | 'projects' | 'enabled'> | undefined = target.connectionScope ? connections.find((value) => getConnectionScope(value.settings) === target.connectionScope) : connections.find((value) => value.id === focus?.connectionId);
-      if (!entry && target.connectionScope) {
-        const profile = findProfileByConnectionScope(await loadConnectionProfiles(), target.connectionScope);
-        if (!profile) throw new Error('The saved connection for this session is not available.');
-        await connectSavedProfile(profile, signal);
-        entry = { id: getConnectionUiScope(profile), projects: [''], enabled: true };
-      }
-      if (!entry) throw new Error('The saved connection for this session is not available.');
-      if (!entry.enabled) await retry(entry.id);
-      await openExternalSession({ connectionId: entry.id, projectPath: target.projectPath ?? entry.projects[0] ?? '', sessionId: target.sessionId }, signal);
-      return { ok: true };
-    } catch (reason) { return { ok: false, error: reason instanceof Error ? reason.message : 'Could not open this chat.' }; }
-  }, [connections, focus?.connectionId, openExternalSession, retry, connectSavedProfile]);
-  // In-app library navigation. The session id came from rendered data, so this
-  // resolves the owning connection locally and never validates against a
-  // server list. Cross-server favorites still switch and connect the target.
-  const openSessionInProject = useCallback(async (projectPath: string, sessionId: string, targetConnectionScope: string) => {
-    const entry = connections.find((item) => getConnectionScope(item.settings) === targetConnectionScope);
-    if (!entry) {
-      // A favorite can outlive its workspace registration. That is an external
-      // target rather than a rendered row, so resolve it through the saved
-      // profile path instead of failing locally.
-      const opened = await openSession({ projectPath, sessionId, connectionScope: targetConnectionScope });
-      if (!opened.ok) throw new Error(opened.error);
-      return;
-    }
-    if (!entry.enabled) await retry(entry.id);
-    await navigate({ connectionId: entry.id, projectPath, sessionId });
-  }, [connections, navigate, openSession, retry]);
-  const createChat = useCallback(async (target: WorkspaceTarget) => {
-    if (!target.projectPath) throw new Error('Choose a project before creating a chat.');
-    const runtime = await connectedWorkspace(target);
-    const session = await runtime.values.currentSessionValue.createSession();
-    await runtime.values.currentSessionValue.openSession(session.id);
-    await activate(target);
-    return session;
-  }, [activate, connectedWorkspace]);
-  const createChatInWorktree = useCallback(async (target: NewWorktreeChatTarget): Promise<NewWorktreeChatResult> => {
-    let checkout: import('@/shared/protocol/opencode/project').ProjectWorktree | undefined;
-    try {
-      const root = await connectedWorkspace({ connectionId: target.connectionId, projectPath: target.projectRoot });
-      checkout = await root.values.projectFilesValue.createWorktree(target.name);
-      const runtime = await connectedWorkspace({ connectionId: target.connectionId, projectPath: checkout.directory });
-      const session = await runtime.values.currentSessionValue.createSession();
-      await runtime.values.currentSessionValue.openSession(session.id);
-      await activate({ connectionId: target.connectionId, projectPath: checkout.directory });
-      return { session, checkout };
-    } catch (reason) {
-      return { checkout, error: reason instanceof Error ? reason.message : 'Could not create the worktree chat.' };
-    }
-  }, [activate, connectedWorkspace]);
+  const connectionControls = useMemo(() => ({ connectionProfiles, connectSetup, services: servicesValue }), [connectionProfiles, connectSetup, servicesValue]);
+  const { terminalTarget, inspectionTarget } = registryState;
+  const { createSession, selectTerminalTarget, inspect } = core.commands.workspace;
+  const { openSession } = core.commands.connection;
   const refreshTargets = useCallback(async () => {
     await Promise.all(Object.values(catalogs).map((catalog) => catalog.refresh()));
   }, [catalogs]);
-  const shareTargets = useMemo(() => librarySessions(connections, snapshots, focus)
+  const shareSessions = useLibrarySessions(catalogs, { includePreviews: false });
+  const shareTargets = useMemo(() => shareSessions
     .filter((row) => !shell.chatPreferences.hideSubagentChats || !row.session.parentID)
     .map((row) => ({ connectionScope: getConnectionScope(connections.find((entry) => entry.id === row.connectionId)!.settings),
-      projectPath: row.projectPath, sessionId: row.sessionId, title: `${row.serverName} · ${row.session.title}` })), [connections, snapshots, focus, shell.chatPreferences.hideSubagentChats]);
+      projectPath: row.projectPath, sessionId: row.sessionId, title: `${row.serverName} · ${row.session.title}` })), [connections, shareSessions, shell.chatPreferences.hideSubagentChats]);
   const sharedInput = useShareState({ hydrated: isHydrated, connectionScope: getConnectionScope(settings),
-    projectPath: focus ? current?.values.projectsValue.activeProjectPath : undefined,
-    currentSessionId: focus ? current?.values.currentSessionValue.currentSessionId : undefined,
+    projectPath: selection?.activeProjectPath ?? (focus?.projectPath || undefined),
+    currentSessionId: selection?.currentSessionId,
     availableTargets: shareTargets,
     createAt: async (target) => {
       const entry = connections.find((item) => getConnectionScope(item.settings) === target.connectionScope);
       if (!entry) throw new Error('This server is no longer available.');
-      const workspace = await connectedWorkspace({ connectionId: entry.id, projectPath: target.projectPath });
-      return workspace.values.currentSessionValue.createSession();
+      const workspace = { connectionId: entry.id, projectPath: target.projectPath };
+      await connectedWorkspace(workspace);
+      return createSession(workspace);
     },
-    sessions: current?.catalogSessions ?? [], hideSubagentChats: shell.chatPreferences.hideSubagentChats, refreshTargets,
-    createSession: async () => { if (!current) throw new Error('Choose a workspace.'); return current.values.currentSessionValue.createSession(); }, openSession });
-  const shared = useMemo<SharedWorkspaceState>(() => ({
-    fileClipboard,
-    controlPlaneUrl: shell.controlPlaneUrl, setControlPlaneUrl: shell.setControlPlaneUrl,
-    onboardingVersion: shell.onboardingVersion, setOnboardingVersion: shell.setOnboardingVersion,
-    onboardingActive: shell.onboardingActive, setOnboardingActive: shell.setOnboardingActive,
-    favoriteSessions: shell.favoriteSessions, setFavoriteSessions: shell.setFavoriteSessions,
-    hiddenProjects: shell.hiddenProjects, setHiddenProjects: shell.setHiddenProjects,
-  }), [fileClipboard, shell.controlPlaneUrl, shell.setControlPlaneUrl, shell.onboardingVersion, shell.setOnboardingVersion,
-    shell.onboardingActive, shell.setOnboardingActive, shell.favoriteSessions, shell.setFavoriteSessions,
-    shell.hiddenProjects, shell.setHiddenProjects]);
-  const voiceSetupTest = useVoiceSetupTest(shell.chatPreferences, Object.values(snapshots).some((snapshot) => snapshot.values.conversationValue.conversation.phase !== 'off'));
-  const workspaceOverrides = useMemo<WorkspaceValueOverrides>(() => ({
-    voiceSetupTest,
-    isHydrated,
-    onboardingCompleted,
-    onboardingActive: shell.onboardingActive,
-    connectionProfiles,
-    connectSetup,
-    servicesValue,
-    sharedInput,
-    retry,
-    activate,
-    switchConnection,
-    openSession,
-    openSessionInProject,
-  }), [voiceSetupTest, activate, connectionProfiles, connectSetup, isHydrated, onboardingCompleted, openSession, openSessionInProject, retry, servicesValue, sharedInput, shell.onboardingActive, switchConnection]);
-  const focusedValues = useWorkspaceValues(current?.values, workspaceOverrides);
-  const valuesFor = useCallback((target?: WorkspaceTarget): WorkspaceValues | undefined => {
-    const snapshot = target ? snapshots[resolveKey(target)] : current;
-    if (!snapshot) return undefined;
-    const values = snapshot.values;
-    const id = getConnectionUiScope(values.connectionValue.settings);
-    return { ...values,
-      conversationValue: { ...values.conversationValue, toggleConversationMode: () => voiceSetupTest.runConversation(values.conversationValue.toggleConversationMode) },
-      onboardingValue: { ...values.onboardingValue, isHydrated, onboardingCompleted, onboardingActive: shell.onboardingActive },
-      connectionValue: { ...values.connectionValue, connect: () => retry(id), switchConnection, connectionProfiles, connectSetup, services: servicesValue },
-      projectsValue: { ...values.projectsValue, selectProject: (projectPath) => { void activate({ connectionId: id, projectPath }); } },
-      currentSessionValue: { ...values.currentSessionValue, openDeepLinkSession: openSession },
-      sessionLibraryValue: { ...values.sessionLibraryValue, openSessionInProject: (projectPath, sessionId, connectionScope) => openSessionInProject(projectPath, sessionId, connectionScope ?? getConnectionScope(values.connectionValue.settings)) },
-      chatValue: { ...values.chatValue, sharedInput },
-    };
-  }, [voiceSetupTest, activate, retry, connectionProfiles, connectSetup, current, onboardingCompleted, openSession, openSessionInProject, resolveKey, servicesValue, sharedInput, snapshots, switchConnection, isHydrated, shell.onboardingActive]);
-  const registry = useMemo<WorkspaceRegistry>(() => ({ ...manager, createChat, createChatInWorktree, removeConnection,
+    sessions: (focus && catalogs[focus.connectionId]?.sessions) || [], hideSubagentChats: shell.chatPreferences.hideSubagentChats, refreshTargets,
+    createSession: async () => { if (!focus) throw new Error('Choose a workspace.'); return createSession(focus); }, openSession });
+  const conversationActive = useAppStore((state) => Object.values(state.conversation).some((voice) => voice && (voice.phase !== 'off' || voice.readbackPhase !== 'idle')));
+  const voiceSetupTest = useVoiceSetupTest(shell.chatPreferences, conversationActive);
+  const registry = useMemo<WorkspaceRegistry>(() => ({ ...manager, removeConnection,
     terminalTarget: connections.some((entry) => entry.id === terminalTarget?.connectionId) ? terminalTarget : undefined, selectTerminalTarget,
-    inspectionTarget: connections.some((entry) => entry.id === inspectionTarget?.connectionId) ? inspectionTarget : undefined, inspect, valuesFor, catalogs, mission }), [manager, createChat, createChatInWorktree, removeConnection, connections, terminalTarget, selectTerminalTarget, inspectionTarget, inspect, valuesFor, catalogs, mission]);
+    inspectionTarget: connections.some((entry) => entry.id === inspectionTarget?.connectionId) ? inspectionTarget : undefined, inspect, sharedInput, connectionControls, catalogs, mission }), [manager, removeConnection, connections, terminalTarget, selectTerminalTarget, inspectionTarget, inspect, sharedInput, connectionControls, catalogs, mission]);
   const updates = useAppUpdates({ initialized: isHydrated && shell.onboardingVersion >= CURRENT_ONBOARDING_VERSION && !shell.onboardingActive,
-    blocked: Object.values(fileClipboard.busy).some(Boolean) || Object.values(snapshots).some((runtime) => runtime.busy) || connectSetup.busy || hasWorkspaceDrafts(presentation) });
+    blocked: fileClipboardBusy || busy || connectSetup.busy || hasWorkspaceDrafts(presentation) });
   useEffect(() => {
-    if (!current) return;
-    setSettings(current.values.connectionValue.settings);
-    const preferences = serverPreferences(current.values.preferencesValue.chatPreferences);
-    setChatPreferences((previous) => JSON.stringify(serverPreferences(previous)) === JSON.stringify(preferences) ? previous : { ...previous, ...preferences });
-  }, [current, setSettings, setChatPreferences]);
-  const setFocusedValues = core.store.getState().setFocusedValues;
-  useEffect(() => {
-    setFocusedValues(focusedValues);
-    return () => setFocusedValues(undefined);
-  }, [focusedValues, setFocusedValues]);
-  const readTarget = pathname === '/service' ? undefined : pathname === '/settings' ? inspectionTarget ?? focus
-    : pathname === '/terminal' ? terminalTarget ?? focus : focus;
-  const workspaceActions = useMemo(() => ({ createChat, createChatInWorktree, focus }), [createChat, createChatInWorktree, focus]);
+    if (!focusedSettings) return;
+    setSettings(focusedSettings);
+    if (!focusedPreferences) return;
+    setChatPreferences((previous) => {
+      const next = workspaceChatPreferences(previous, focusedPreferences);
+      return JSON.stringify(serverPreferences(previous)) === JSON.stringify(serverPreferences(next)) ? previous : next;
+    });
+  }, [focusedSettings, focusedPreferences, setSettings, setChatPreferences]);
+  const readTarget = workspaceReadTarget(pathname, registryState);
+  const foreground = useQueryForeground();
+  useLayoutEffect(() => { core.projects.setDemand(readTarget, foreground, isHydrated); }, [core, foreground, isHydrated, readTarget]);
+  useConnectionDemand(readTarget?.connectionId);
   return <VoiceSetupTestContext.Provider value={voiceSetupTest}>
-    <WorkspaceActionsContext.Provider value={workspaceActions}>
     <WorkspaceContext.Provider value={registry}>
-    {connections.map((entry) => <ServerDataScope key={entry.id} connection={entry} active={readTarget?.connectionId === entry.id}>
-      <ConnectionRuntime entry={entry} setup={connectSetup} updateSettings={updateWorkspaceSettings} online={network.online} hydrated={isHydrated} libraryVisible={pathname === '/' && focus?.connectionId === entry.id && Boolean(selectedRuntime?.libraryVisible)} missionVisible={pathname === MISSION_PATH} onCatalog={publishCatalog}>
-      {entry.projects.map((path, index) => {
-        const visible = focus?.connectionId === entry.id && (focus.projectPath === path || current === snapshots[workspaceKey({ connectionId: entry.id, projectPath: path })]);
-        const demanded = readTarget?.connectionId === entry.id && (readTarget.projectPath === path || readTarget === focus && visible);
-        return <ServerDataActivity key={workspaceKey({ connectionId: entry.id, projectPath: path })} active={demanded}><WorkspaceRuntime
-          connection={entry} switchConnection={switchConnection} projectPath={path || undefined} shared={shared} network={network} defaults={shell.chatPreferences} isHydrated={isHydrated}
-          visible={visible} isConnectionOwner={index === 0} connectSetup={connectSetup} connectionProfiles={connectionProfiles} servicesValue={servicesValue}
-          updateSettings={updateWorkspaceSettings} updatePreferences={manager.updatePreferences} publish={manager.publish} forget={manager.forget} />
-        </ServerDataActivity>;
-      })}
-      </ConnectionRuntime>
-    </ServerDataScope>)}
-    {focusedValues && current ? <UpdatesContext.Provider value={updates}>
-      <PreferencesContext.Provider value={focusedValues.preferencesValue}>
-        <WorkspaceNative runtime={current} preferences={shell.chatPreferences} ready={isHydrated} active={Boolean(focus)} busy={Object.values(snapshots).some((runtime) => runtime.busy)} />
-        {children}
-      </PreferencesContext.Provider>
+    {connections.map((entry) => <ConnectionCatalog key={entry.id} entry={entry} demanded={readTarget?.connectionId === entry.id} online={network.online} libraryVisible={pathname === '/' && focus?.connectionId === entry.id && Boolean(selection?.activeSessionsVisible)} missionVisible={pathname === MISSION_PATH} onCatalog={publishCatalog} />)}
+    <WorkspaceCatalogReads target={readTarget} hydrated={isHydrated} />
+    {manager.ready && focus ? <UpdatesContext.Provider value={updates}>
+      <WorkspaceConversation />
+      <WorkspaceNative catalogs={catalogs} preferences={shell.chatPreferences} ready={isHydrated} busy={busy} />
+      {children}
     </UpdatesContext.Provider> : <View style={{ flex: 1, backgroundColor: '#101212', alignItems: 'center', justifyContent: 'center' }}><ActivityIndicator color="#C3CECB" /></View>}
     </WorkspaceContext.Provider>
-    </WorkspaceActionsContext.Provider>
   </VoiceSetupTestContext.Provider>;
 }

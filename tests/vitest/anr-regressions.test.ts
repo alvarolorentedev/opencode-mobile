@@ -1,52 +1,24 @@
-import { loadTs } from '../helpers/runtime.mjs';
 import assert from 'node:assert/strict';
-import { readFile } from 'node:fs/promises';
 import { createRequire } from 'node:module';
-import { runInNewContext } from 'node:vm';
-import ts from 'typescript';
-import { describe, it } from 'vitest';
+import { afterEach, describe, it, vi } from 'vitest';
 
-// Migrated from the standalone tests/anr-regressions.test.mjs Node script.
+import type { ScopedOpencodeClient } from '@/shared/protocol/opencode/client';
+
+vi.mock('react-native', () => ({ Platform: { OS: 'web' } }));
+vi.mock('expo-constants', () => ({ default: { expoConfig: { extra: {} } } }));
+vi.mock('expo/fetch', () => ({}));
+vi.mock('expo-secure-store', () => ({}));
+vi.mock('expo-crypto', () => ({}));
+vi.mock('expo-file-system', () => ({}));
+vi.mock('@react-native-async-storage/async-storage', () => ({ default: {} }));
+
+afterEach(() => { vi.restoreAllMocks(); vi.unstubAllEnvs(); vi.unstubAllGlobals(); });
+
 describe('ANR regression checks', () => {
   it('reuses one Intl.Collator and keeps the Android content-capture opt-out idempotent', async () => {
-    const require = createRequire(import.meta.url);
-    async function load(relative: string, imports: Record<string, unknown> = {}, globals: Record<string, unknown> = {}) {
-      const source = await readFile(new URL(`../../${relative}`, import.meta.url), 'utf8');
-      const exports: Record<string, any> = {};
-      const output = ts.transpileModule(source, { compilerOptions: { module: ts.ModuleKind.CommonJS } }).outputText;
-      runInNewContext(`String.prototype.localeCompare = () => { throw new Error('Do not allocate a collator per comparison'); };\n${output}`, {
-        exports,
-        require: (name: string) => imports[name] ?? require(name),
-        ...globals,
-      });
-      return exports;
-    }
-
-    // The complete catalog and voice paths share one collator, including repeated
-    // discovery. Keep locale-aware ordering and server-default model priority.
-    let allocations = 0;
-    const labels = await load('shared/utilities/compare-labels.ts', {}, {
-      Intl: { Collator: class {
-        constructor() {
-          allocations += 1;
-          return new Intl.Collator();
-        }
-      } },
-    });
-    const selection = await load('features/ai/model/opencode-model-selection.ts', {
-      '@/shared/contracts/model-options': await load('shared/contracts/model-options.ts'),
-    });
-    const adapter = await loadTs('shared/protocol/opencode/contracts/server-adapter.ts', {
-    '@/shared/protocol/opencode/client/types': { defaultConnectionSettings: { serverUrl: 'http://test' } },
-    "@/shared/utilities/error-message": { getErrorMessage: (error: unknown) => String(error) },
-    "@/shared/protocol/opencode/extensions/scope": { isInside: () => true, shellQuote: (value: string) => `'${value}'` },
-    "@/shared/protocol/opencode/compat/v1/auth": { setProviderCredentials: async () => {} }
-  });
-    const { discoverProviderCapabilities } = await load('features/ai/services/capabilities-service.ts', {
-    '@/shared/utilities/compare-labels': labels,
-    '@/shared/protocol/opencode/contracts/server-adapter': adapter,
-    "@/features/ai/model/opencode-model-selection": selection
-  });
+    const Collator = Intl.Collator;
+    const allocations = vi.spyOn(Intl, 'Collator').mockImplementation(function () { return new Collator(); });
+    const { discoverProviderCapabilities } = await import('@/features/ai/services/capabilities-service');
     const names = ['Éclair', 'alpha', 'Alpha', ...Array.from({ length: 2000 }, (_, i) => `Model ${2000 - i}`)];
     const models = Object.fromEntries(names.map((name, i) => [String(i), {
       id: String(i), name, capabilities: { input: { text: true } }, limit: { context: 1000, output: 100 },
@@ -60,29 +32,44 @@ describe('ANR regression checks', () => {
       },
       app: { agents: async () => ({ data: [] }) },
     };
-    for (let i = 0; i < 2; i += 1) {
-      const result = await discoverProviderCapabilities({ compatibility: client, __opencode: { directory: '/repo' } });
-      assert.equal(result.models.length, names.length);
-      assert.ok(result.models.every((model: any) => model.variants.length === 0), 'V1 catalog models must not expose server variants');
-      assert.equal(result.models[0].modelID, '1');
-      assert.deepEqual(Array.from(result.models.slice(1), (model: any) => model.label), names.filter((_, i) => i !== 1).sort((a, b) => a.localeCompare(b)));
+    vi.doMock('expo-speech', () => ({
+      getAvailableVoicesAsync: async () => names.slice(0, 3).map((name) => ({ identifier: name, name, language: 'en', quality: 'Default' })),
+    }));
+    const { getSpeechVoiceOptions } = await import('@/shared/platform/voice/system-tts');
+    const sortedModels = names.filter((_, i) => i !== 1).sort((a, b) => a.localeCompare(b));
+    const sortedVoices = names.slice(0, 3).map((name) => `${name} (en)`).sort((a, b) => a.localeCompare(b));
+    const compare = vi.spyOn(String.prototype, 'localeCompare').mockImplementation(() => {
+      throw new Error('Do not allocate a collator per comparison');
+    });
+    try {
+      for (let i = 0; i < 2; i += 1) {
+        const scoped = { compatibility: client, __opencode: { directory: '/repo' } } as unknown as ScopedOpencodeClient;
+        const result = await discoverProviderCapabilities(scoped);
+        assert.equal(result.models.length, names.length);
+        assert.ok(result.models.every((model) => model.variants.length === 0), 'V1 catalog models must not expose server variants');
+        assert.equal(result.models[0].modelID, '1');
+        assert.deepEqual(result.models.slice(1).map((model) => model.label), sortedModels);
+      }
+      assert.deepEqual((await getSpeechVoiceOptions()).map((voice) => voice.label), sortedVoices);
+      assert.equal(allocations.mock.calls.length, 1);
+    } finally {
+      compare.mockRestore();
+      allocations.mockRestore();
     }
-    const { getSpeechVoiceOptions } = await load('shared/platform/voice/system-tts.ts', {
-    '@/shared/utilities/compare-labels': labels,
-    'expo-speech': { getAvailableVoicesAsync: async () => names.slice(0, 3).map((name) => ({ identifier: name, name, language: 'en', quality: 'Default' })) }
-  });
-    assert.deepEqual(Array.from(await getSpeechVoiceOptions(), (voice: any) => voice.label), names.slice(0, 3).map((name) => `${name} (en)`).sort((a, b) => a.localeCompare(b)));
-    assert.equal(allocations, 1);
 
     // Exercise the real Expo mod in both variants; generated native folders are
     // disposable, so the opt-out must survive clean and repeated prebuilds.
     for (const variant of ['production', 'development']) {
-      const { default: appConfig } = await load('app.config.ts', {
-    './config/plugins/android.cjs': require('../../config/plugins/android.cjs'),
-    './config/plugins/ios.cjs': require('../../config/plugins/ios.cjs')
-  }, { process: { env: { EXPO_APP_VARIANT: variant } } });
-      assert.equal(appConfig.android.softwareKeyboardLayoutMode, 'resize');
-      const plugin = appConfig.plugins.find((entry: unknown) => typeof entry === 'function');
+      vi.resetModules();
+      vi.stubEnv('EXPO_APP_VARIANT', variant);
+      vi.stubGlobal('require', createRequire(new URL('../../app.config.ts', import.meta.url)));
+      const { default: appConfig } = await import('@/app.config');
+      assert.equal(appConfig.android?.softwareKeyboardLayoutMode, 'resize');
+      type AndroidMod = (config: Record<string, unknown>) => {
+        mods: { android: { mainActivity: (config: unknown) => Promise<{ modResults: { contents: string } }> } };
+      };
+      const plugin = (appConfig.plugins as unknown[]).find((entry): entry is AndroidMod => typeof entry === 'function');
+      assert.ok(plugin);
       const config = plugin({ name: 'Test', slug: 'test' });
       const apply = (contents: string, language = 'kt') => config.mods.android.mainActivity({
         ...config,

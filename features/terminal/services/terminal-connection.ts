@@ -17,12 +17,12 @@ export type TerminalConnectionContext = {
   rejectRedirects?: boolean;
 };
 
-export function createTerminalConnection({ id, context, publish }: {
+export function createTerminalConnection({ id, context, readState, publish }: {
   id: string;
   context: () => TerminalConnectionContext;
-  publish: () => void;
+  readState: () => TerminalInstance;
+  publish: (state: TerminalInstance) => void;
 }) {
-  let state: TerminalInstance = { id, generation: 0, status: 'connecting' };
   let renderer: TerminalRenderer | undefined;
   let socket: WebSocket | undefined;
   let output: ReturnType<typeof createTerminalOutputQueue> | undefined;
@@ -35,8 +35,7 @@ export function createTerminalConnection({ id, context, publish }: {
   let resizeRunning = false;
 
   function update(status: TerminalInstance['status'], error?: string) {
-    state = { id, generation, status, ...(error ? { error } : {}) };
-    publish();
+    publish({ id, generation, status, ...(error ? { error } : {}) });
   }
   function cancelRetry() {
     if (retryTimer) clearTimeout(retryTimer);
@@ -61,7 +60,7 @@ export function createTerminalConnection({ id, context, publish }: {
     }
   }
   async function sendSize() {
-    if (!size || resizeRunning || stopped || !context().current || state.status !== 'connected') return;
+    if (!size || resizeRunning || stopped || !context().current || readState().status !== 'connected') return;
     const requested = size, key = `${requested.cols}:${requested.rows}`;
     if (key === sentSize) return;
     resizeRunning = true;
@@ -69,7 +68,7 @@ export function createTerminalConnection({ id, context, publish }: {
       await resizeTerminal(context().client, id, requested);
       if (!stopped && context().current) sentSize = key;
     } catch (error) {
-      if (!stopped && context().current) update(state.status, error instanceof Error ? error.message : 'Terminal resize failed.');
+      if (!stopped && context().current) update(readState().status, error instanceof Error ? error.message : 'Terminal resize failed.');
     } finally {
       resizeRunning = false;
       if (size !== requested) void sendSize();
@@ -130,7 +129,7 @@ export function createTerminalConnection({ id, context, publish }: {
     }
   }
   return {
-    get state() { return state; },
+    get state() { return readState(); },
     register(next: TerminalRenderer) {
       disconnect();
       output?.stop();
@@ -144,7 +143,7 @@ export function createTerminalConnection({ id, context, publish }: {
     },
     reconnect() { if (!stopped) { attempt = 0; void connect(); } },
     send(input: string, expectedGeneration = generation) {
-      if (expectedGeneration !== generation || stopped || !context().current || !foreground || !renderer || state.status !== 'connected' || socket?.readyState !== 1) throw new Error('Terminal is not connected.');
+      if (expectedGeneration !== generation || stopped || !context().current || !foreground || !renderer || readState().status !== 'connected' || socket?.readyState !== 1) throw new Error('Terminal is not connected.');
       socket.send(input);
     },
     resize(cols: number, rows: number) {

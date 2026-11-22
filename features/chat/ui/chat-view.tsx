@@ -6,7 +6,8 @@ import { CardContent, Card } from '@/shared/ui/card';
 import { Feedback } from '@/shared/ui/feedback';
 import { withAlpha } from '@/shared/ui/theme/color';
 import * as Clipboard from '@/shared/platform/clipboard';
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
+import { usePathname } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { KeyboardAvoidingView, Linking, Pressable, View } from 'react-native';
 
@@ -24,7 +25,7 @@ import { PendingInteractions } from '@/features/chat/ui/content/pending-interact
 import { TranscriptList } from '@/features/chat/ui/content/transcript-list';
 import { useChatViewController } from '@/features/chat/ui/use-chat-view-controller';
 import { ConnectionStatusBanner } from '@/features/connections/index';
-import { useWorkspaceActions, useWorkspacePresentation } from '@/runtime/workspace';
+import { useSharedInput, useWorkspaceActions, useWorkspacePresentation } from '@/runtime/workspace';
 import { normalizeTranscriptFontSize } from '@/shared/preferences/opencode-preferences';
 import { usePalette } from '@/shared/ui/theme/use-palette';
 import type { TranscriptEntry } from '@/shared/presentation/format';
@@ -35,7 +36,7 @@ export function ChatView() {
   const insets = useSafeAreaInsets();
   const { focus } = useWorkspaceActions();
   const presentation = useWorkspacePresentation();
-  const { header, content, composer, overlay, actions } = useChatViewController();
+  const { header, content, composer, overlay, actions, sharedDraft } = useChatViewController();
   const {
     handleCopyMessage: copyMessage,
     forkSession,
@@ -72,7 +73,7 @@ export function ChatView() {
   ) : null;
 
   return (
-    <>{actions.confirmation}
+    <>{actions.confirmation}<ShareDraftReceiver {...sharedDraft} />
       <KeyboardAvoidingView
         className={cn(stylesClasses.screen, "bg-background")}
         behavior="padding">
@@ -332,4 +333,18 @@ export function ChatView() {
         })()}>{header.conversation.feedback || overlay.voiceFeedback}</Feedback>
     </>
   );
+}
+
+
+// Subscribe to incoming shares separately from the transcript. Only the chat
+// route consumes a confirmed receipt and appends it to the draft.
+function ShareDraftReceiver({ connectionScope, projectPath, sessionId, apply }: ReturnType<typeof useChatViewController>['sharedDraft']) {
+  const pathname = usePathname();
+  const { pending, busy, consumeShared } = useSharedInput();
+  useEffect(() => {
+    if (!pending || pathname !== '/' || !sessionId || !projectPath) return;
+    const payload = consumeShared({ connectionScope, projectPath, sessionId });
+    if (payload) apply(payload);
+  }, [apply, busy, connectionScope, consumeShared, pathname, pending, projectPath, sessionId]);
+  return null;
 }

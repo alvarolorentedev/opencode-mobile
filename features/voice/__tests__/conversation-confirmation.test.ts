@@ -1,10 +1,32 @@
-import { describe, expect, it, vi } from 'vitest';
+// @vitest-environment happy-dom
 
-import { hookRuntime, loadTs } from '../../../tests/helpers/runtime.mjs';
-import type { ChatPreferences } from '@/shared/preferences/opencode-preferences';
+import { act } from 'react';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+
+import { useConversationConfirmation } from '@/features/voice/state/conversation/use-conversation-confirmation';
+import { defaultChatPreferences, type ChatPreferences } from '@/shared/preferences/opencode-preferences';
+import { connectionViewProbe } from '../../../tests/helpers/connection-view-probe';
+import { controlledClock, settleReact } from '../../../tests/helpers/controlled-clock';
+import { renderHook } from '../../../tests/helpers/render-hook';
+
+const { speakText } = vi.hoisted(() => ({ speakText: vi.fn() }));
+vi.mock('@/shared/platform/voice/speech-output', () => ({
+  speakText, stopSpeaking: async () => undefined,
+}));
+vi.mock('react-native', () => ({ Platform: { OS: 'web' } }));
+vi.mock('expo-router', () => ({ usePathname: () => '/' }));
+vi.mock('expo-constants', () => ({ default: {} }));
+vi.mock('expo-localization', () => ({ getLocales: () => [{ languageTag: 'en-US' }] }));
+vi.mock('expo/fetch', () => ({}));
+vi.mock('expo-crypto', () => ({}));
+vi.mock('expo-secure-store', () => ({}));
+vi.mock('expo-file-system', () => ({}));
+vi.mock('@react-native-async-storage/async-storage', () => ({ default: {} }));
+
+let clock: ReturnType<typeof controlledClock>;
+beforeEach(() => { clock = controlledClock(); });
 
 async function confirmationHarness(overrides: Partial<ChatPreferences> = {}) {
-  const runtime = hookRuntime();
   let speechOptions: any;
   const submitCommand = vi.fn();
   const retryCommand = vi.fn(async () => true);
@@ -13,35 +35,15 @@ async function confirmationHarness(overrides: Partial<ChatPreferences> = {}) {
   const startLocalConfirmation = vi.fn(async () => true);
   const stopLocalConfirmation = vi.fn(async () => undefined);
   const stopSystemInput = vi.fn();
-  const phaseRef = { current: 'off' as const };
-  const confirmationTypes = await loadTs('features/voice/state/conversation/confirmation-types.ts');
-  const useLatest = await loadTs('features/voice/state/conversation/use-latest.ts', { react: runtime.react }, runtime.globals);
-  const confirmationGrammar = await loadTs('shared/platform/voice/confirmation.ts');
-  const feedback = await loadTs('features/voice/state/conversation/feedback.ts');
-  const speechConfig = { getSpeechPlayback: () => ({ engine: 'system' }) };
-  const speechOutput = {
-    stopSpeaking: vi.fn(async () => undefined),
-    speakText: vi.fn(async (options: any) => {
-      speechOptions = options;
-      options.onStart();
-      return true;
-    }),
-  };
-  const hook = await loadTs('features/voice/state/conversation/use-conversation-confirmation.ts', {
-    react: runtime.react,
-    '@/shared/platform/voice/confirmation': confirmationGrammar,
-    '@/shared/platform/voice/speech-config': speechConfig,
-    '@/shared/platform/voice/speech-output': speechOutput,
-    '@/features/voice/state/conversation/confirmation-types': confirmationTypes,
-    '@/features/voice/state/conversation/feedback': feedback,
-    '@/features/voice/state/conversation/use-latest': useLatest,
-    "@/shared/i18n/index": { i18n: {
-      getFixedT: () => (key: string, args?: { command?: string }) => args?.command ? `${key}:${args.command}` : key,
-      t: (key: string, args?: { command?: string }) => args?.command ? `${key}:${args.command}` : key,
-    } }
-  }, runtime.globals);
+  const phaseRef: { current: import('@/features/voice/model/types').ConversationPhase } = { current: 'off' };
+  speakText.mockReset().mockImplementation(async (options: typeof speechOptions) => {
+    speechOptions = options;
+    options.onStart();
+    return true;
+  });
 
-  const preferences = {
+  const preferences: ChatPreferences = {
+    ...defaultChatPreferences,
     confirmVoiceCommands: true,
     localTtsPackId: undefined,
     localTtsSpeakerId: 0,
@@ -50,12 +52,12 @@ async function confirmationHarness(overrides: Partial<ChatPreferences> = {}) {
     speechVoiceId: undefined,
     ttsEngine: 'system',
     ...overrides,
-  } as ChatPreferences;
+  };
 
-  runtime.mount(hook.useConversationConfirmation, {
+  const runtime = renderHook(useConversationConfirmation, {
+    scopeKey: 'confirmation-test-workspace',
     chatPreferences: preferences,
     connectionStatus: 'connected',
-    conversationPhaseRef: phaseRef,
     conversationSessionId: 'session-1',
     rearmConversation,
     retryCommand,
@@ -68,26 +70,33 @@ async function confirmationHarness(overrides: Partial<ChatPreferences> = {}) {
     stopLocalConfirmation,
     stopSystemInput,
     submitCommand,
-  });
-  await runtime.settle();
+  }, connectionViewProbe({} as never));
+  await settleReact();
 
   const beginToListening = async (source: 'system' | 'local' = 'system') => {
-    expect(runtime.value.begin('Refactor the login component', source)).toBe(true);
-    await runtime.settle();
-    runtime.fire(120);
-    await runtime.settle();
+    let began = false;
+    act(() => { began = runtime.result.current.begin('Refactor the login component', source); });
+    expect(began).toBe(true);
+    await settleReact();
+    await clock.advance(120);
+    await settleReact();
     expect(speechOptions).toBeDefined();
-    speechOptions.onDone();
-    await runtime.settle();
-    runtime.fire(300);
-    await runtime.settle();
+    act(() => { speechOptions.onDone(); });
+    await settleReact();
+    await clock.advance(300);
+    await settleReact();
     if (source === 'local') expect(startLocalConfirmation).toHaveBeenCalledOnce();
     else expect(startSystemConfirmation).toHaveBeenCalledOnce();
   };
 
   return {
-    ...runtime,
-    get value() { return runtime.value; },
+    unmount: runtime.unmount,
+    get value() { return runtime.result.current; },
+    begin(command: string, source: 'system' | 'local') {
+      let began = false;
+      act(() => { began = runtime.result.current.begin(command, source); });
+      return began;
+    },
     beginToListening,
     rearmConversation,
     retryCommand,
@@ -106,10 +115,10 @@ describe('voice command confirmation', () => {
     expect(view.submitCommand).not.toHaveBeenCalled();
 
     // An interim "yes" is not a confirmation.
-    view.value.handleResult('yes', false);
+    act(() => { view.value.handleResult('yes', false); });
     expect(view.submitCommand).not.toHaveBeenCalled();
-    view.value.handleResult('yes', true);
-    await view.settle();
+    act(() => { view.value.handleResult('yes', true); });
+    await settleReact();
     expect(view.submitCommand).toHaveBeenCalledOnce();
     expect(view.submitCommand).toHaveBeenCalledWith('Refactor the login component');
   });
@@ -118,30 +127,30 @@ describe('voice command confirmation', () => {
     const view = await confirmationHarness();
     await view.beginToListening('local');
     expect(view.startLocalConfirmation).toHaveBeenCalledOnce();
-    view.value.handleResult('yes', true);
-    await view.settle();
+    act(() => { view.value.handleResult('yes', true); });
+    await settleReact();
     expect(view.submitCommand).toHaveBeenCalledWith('Refactor the login component');
   });
 
   it('does not act on recognition while the prompt is still speaking', async () => {
     const view = await confirmationHarness();
-    expect(view.value.begin('Run tests', 'system')).toBe(true);
-    await view.settle();
-    view.value.handleResult('yes', true);
+    expect(view.begin('Run tests', 'system')).toBe(true);
+    await settleReact();
+    act(() => { view.value.handleResult('yes', true); });
     expect(view.submitCommand).not.toHaveBeenCalled();
   });
 
   it('treats extra words as ambiguous and times out without submitting', async () => {
     const view = await confirmationHarness();
     await view.beginToListening();
-    view.value.handleResult('yes but change it', true);
-    await view.settle();
+    act(() => { view.value.handleResult('yes but change it', true); });
+    await settleReact();
     expect(view.submitCommand).not.toHaveBeenCalled();
     expect(view.value.confirmation?.phase).toBe('listening');
-    view.fire(300);
-    await view.settle();
-    view.value.handleResult('still not sure', true);
-    await view.settle();
+    await clock.advance(300);
+    await settleReact();
+    act(() => { view.value.handleResult('still not sure', true); });
+    await settleReact();
     expect(view.value.confirmation?.phase).toBe('expired');
     expect(view.submitCommand).not.toHaveBeenCalled();
   });
@@ -149,25 +158,27 @@ describe('voice command confirmation', () => {
   it('supports retry, edit and cancel without leaking a submission', async () => {
     const retryView = await confirmationHarness();
     await retryView.beginToListening();
-    retryView.value.confirmation?.actions.retry();
-    await retryView.settle();
+    act(() => { retryView.value.confirmation?.actions.retry(); });
+    await settleReact();
     expect(retryView.value.confirmation).toBeUndefined();
     expect(retryView.retryCommand).toHaveBeenCalledOnce();
     expect(retryView.submitCommand).not.toHaveBeenCalled();
+    retryView.unmount();
 
     const editView = await confirmationHarness();
     await editView.beginToListening();
-    editView.value.confirmation?.actions.edit();
-    await editView.settle();
+    act(() => { editView.value.confirmation?.actions.edit(); });
+    await settleReact();
     expect(editView.value.confirmation?.phase).toBe('editing');
-    editView.value.confirmation?.actions.confirm('Refactor the sign-in component');
-    await editView.settle();
+    act(() => { editView.value.confirmation?.actions.confirm('Refactor the sign-in component'); });
+    await settleReact();
     expect(editView.submitCommand).toHaveBeenCalledWith('Refactor the sign-in component');
+    editView.unmount();
 
     const cancelView = await confirmationHarness();
     await cancelView.beginToListening();
-    cancelView.value.confirmation?.actions.cancel();
-    await cancelView.settle();
+    act(() => { cancelView.value.confirmation?.actions.cancel(); });
+    await settleReact();
     expect(cancelView.value.confirmation).toBeUndefined();
     expect(cancelView.rearmConversation).toHaveBeenCalledOnce();
     expect(cancelView.submitCommand).not.toHaveBeenCalled();
@@ -176,12 +187,12 @@ describe('voice command confirmation', () => {
   it('expires the listening window without submitting, then dismisses safely', async () => {
     const view = await confirmationHarness();
     await view.beginToListening();
-    view.fire(15000);
-    await view.settle();
+    await clock.advance(15000);
+    await settleReact();
     expect(view.value.confirmation?.phase).toBe('expired');
     expect(view.submitCommand).not.toHaveBeenCalled();
-    view.fire(60000);
-    await view.settle();
+    await clock.advance(60000);
+    await settleReact();
     expect(view.value.confirmation).toBeUndefined();
     expect(view.rearmConversation).toHaveBeenCalledOnce();
     expect(view.submitCommand).not.toHaveBeenCalled();
@@ -189,7 +200,7 @@ describe('voice command confirmation', () => {
 
   it('keeps confirmation off when explicitly disabled', async () => {
     const view = await confirmationHarness({ confirmVoiceCommands: false });
-    expect(view.value.begin('Run tests', 'system')).toBe(false);
+    expect(view.begin('Run tests', 'system')).toBe(false);
     expect(view.value.confirmation).toBeUndefined();
     expect(view.submitCommand).not.toHaveBeenCalled();
   });
@@ -197,9 +208,9 @@ describe('voice command confirmation', () => {
   it('cannot submit the same confirmation twice', async () => {
     const view = await confirmationHarness();
     await view.beginToListening();
-    view.value.handleResult('yes', true);
-    view.value.handleResult('yes', true);
-    await view.settle();
+    act(() => { view.value.handleResult('yes', true); });
+    act(() => { view.value.handleResult('yes', true); });
+    await settleReact();
     expect(view.submitCommand).toHaveBeenCalledOnce();
   });
 });

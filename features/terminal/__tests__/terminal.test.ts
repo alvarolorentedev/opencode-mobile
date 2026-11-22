@@ -3,6 +3,7 @@ import { readFile } from 'node:fs/promises';
 import { createTerminalDecoder, createTerminalOutputQueue, MAX_TERMINAL_PENDING_BYTES } from '@/shared/protocol/opencode/terminal-stream';
 import { encodeTerminalKey, NO_MODIFIERS, pasteNeedsConfirmation } from '@/features/terminal/ui/terminal-keys';
 import { createTerminalConnection, type TerminalConnectionContext } from '@/features/terminal/services/terminal-connection';
+import type { TerminalInstance } from '@/features/terminal/model/terminal-types';
 import type { ScopedOpencodeClient } from '@/shared/protocol/opencode/client';
 import type { Terminal } from '@xterm/xterm';
 import { installTerminalInput } from '@/features/terminal/ui/terminal-input';
@@ -105,10 +106,12 @@ describe('terminal output', () => {
 
 describe('PTY connection lifecycle', () => {
   function connection(context?: () => TerminalConnectionContext) {
+    let state: TerminalInstance = { id: 'pty-1', generation: 0, status: 'connecting' };
     return createTerminalConnection({
       id: 'pty-1',
       context: context ?? (() => ({ client: {} as ScopedOpencodeClient, current: true, serverUrl: 'https://example.test/prefix', directory: '/workspace', serverContract: 'v1' })),
-      publish: vi.fn(),
+      readState: () => state,
+      publish: (next) => { state = next; },
     });
   }
   it('sends raw input and resumes at the acknowledged UTF-16 cursor with a fresh ticket', async () => {

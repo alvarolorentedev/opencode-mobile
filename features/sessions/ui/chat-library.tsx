@@ -1,3 +1,4 @@
+import { UpdateBlockingSheet as OverlaySheet, UpdateBlockingWorkspaceSelect as WorkspaceSelect, useUpdateBlockingConfirmation as useConfirmation } from '@/features/updates/index';
 import { cn } from '@/shared/ui/cn';
 import { Spinner } from '@/shared/ui/spinner';
 import { Text } from '@/shared/ui/text';
@@ -6,22 +7,19 @@ import { Button } from '@/shared/ui/button';
 import { Icon } from '@/shared/ui/icon';
 import { FlashList } from '@shopify/flash-list';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Switch } from '@/shared/ui/switch';
 import { Pressable, View } from 'react-native';
 
-import { OverlaySheet } from '@/shared/ui/overlay-sheet';
 import { SwipeRow } from '@/shared/ui/swipe-row';
 
 import { ProjectPicker, ProjectPickerButton } from '@/features/projects/index';
-import { WorkspaceSelect } from '@/shared/ui/workspace-select';
 import { formatRelativeTime } from '@/shared/presentation/format';
-import { useConfirmation } from '@/shared/ui/use-confirmation';
-import { usePreferences } from '@/shared/preferences/context';
+import { useWorkspacePreferences , useWorkspaces } from '@/runtime/workspace';
 import { useProjects } from '@/features/projects/context';
-import { useWorkspaces } from '@/runtime/workspace';
-import { useWorkspaceLibrary } from '@/features/sessions/ui/use-workspace-library';
+import { useLibraryOperation } from './use-library-operation';
+import { useWorkspaceLibrary } from '@/features/sessions/state/use-workspace-library';
 import { sessionKey, workspaceKey } from '@/shared/contracts/workspace';
 import type { LibrarySession } from '@/features/sessions/model/workspace-library';
 import { usePalette } from '@/shared/ui/theme/use-palette';
@@ -31,7 +29,7 @@ export function ChatLibrary({ visible, onClose, onNewChat }: { visible: boolean;
   const { t } = useTranslation();
   const palette = usePalette();
   const { activeProject } = useProjects();
-  const { chatPreferences, updateChatPreferences } = usePreferences();
+  const { chatPreferences, updateChatPreferences } = useWorkspacePreferences();
   const registry = useWorkspaces();
   const library = useWorkspaceLibrary(visible);
   const multipleServers = library.servers.length > 1;
@@ -43,11 +41,7 @@ export function ChatLibrary({ visible, onClose, onNewChat }: { visible: boolean;
   const project = library.sessions.some((row) => workspaceKey(row) === projectFilter) ? projectFilter : '';
   const [renaming, setRenaming] = useState<LibrarySession>();
   const [title, setTitle] = useState('');
-  const [busy, setBusyId] = useState<string>();
-  const operationRef = useRef<{ id: string } | undefined>(undefined);
-  const queuedOpenRef = useRef<{ id: string; action: () => Promise<unknown>; onSuccess: () => void } | undefined>(undefined);
-  useEffect(() => () => { operationRef.current = undefined; queuedOpenRef.current = undefined; }, [visible]);
-  const [error, setError] = useState<string>();
+  const { busy, error, setError, reset, run } = useLibraryOperation(visible, t('chat:library.couldNotUpdate'));
   const { refresh } = library;
   useEffect(() => {
     if (!visible) return;
@@ -55,30 +49,7 @@ export function ChatLibrary({ visible, onClose, onNewChat }: { visible: boolean;
     const timer = setInterval(() => { void refresh(); }, 20000);
     return () => clearInterval(timer);
   }, [visible, refresh]);
-  const close = () => { operationRef.current = undefined; queuedOpenRef.current = undefined; setBusyId(undefined); setProjectVisible(false); setRenaming(undefined); setError(undefined); onClose(); };
-  async function run(id: string, action: () => Promise<unknown>, onSuccess?: () => void) {
-    if (operationRef.current) {
-      // Ignore duplicate taps; a different opening waits and the latest wins.
-      if (onSuccess && operationRef.current.id !== id) queuedOpenRef.current = { id, action, onSuccess };
-      return;
-    }
-    const operation = { id };
-    operationRef.current = operation;
-    setBusyId(id); setError(undefined);
-    try {
-      await action();
-      if (operationRef.current === operation && !queuedOpenRef.current) onSuccess?.();
-    } catch (reason) {
-      if (operationRef.current === operation && !queuedOpenRef.current) setError(reason instanceof Error ? reason.message : t('chat:library.couldNotUpdate'));
-    } finally {
-      if (operationRef.current === operation) {
-        operationRef.current = undefined; setBusyId(undefined);
-        const queued = queuedOpenRef.current;
-        queuedOpenRef.current = undefined;
-        if (queued) void run(queued.id, queued.action, queued.onSuccess);
-      }
-    }
-  }
+  const close = () => { reset(); setProjectVisible(false); setRenaming(undefined); onClose(); };
   const needle = query.trim().toLowerCase();
   const rows = library.sessions.filter((row) => (!multipleServers || !serverFilter || row.connectionId === serverFilter) && (!project || workspaceKey(row) === project)
     && (!chatPreferences.hideSubagentChats || !row.session.parentID)

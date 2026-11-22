@@ -42,6 +42,22 @@ export type LiveEventResult =
   | { kind: 'consumed' }
   | { kind: 'unsupported' };
 
+export type LiveTranscriptBuffer = {
+  partition?: string;
+  messages: Map<string, Map<string, LiveTranscriptMessage>>;
+  reconcileOnPage: Map<string, Set<string>>;
+  localUsers: Map<string, SessionMessageRecord[]>;
+  localSends: Map<string, number>;
+};
+
+export function getLiveTranscriptBuffer(scopes: Map<string, LiveTranscriptBuffer>, scopeKey: string): LiveTranscriptBuffer {
+  const existing = scopes.get(scopeKey);
+  if (existing) return existing;
+  const buffer: LiveTranscriptBuffer = { messages: new Map(), reconcileOnPage: new Map(), localUsers: new Map(), localSends: new Map() };
+  scopes.set(scopeKey, buffer);
+  return buffer;
+}
+
 function eventData(event: OpencodeEvent): Record<string, unknown> | undefined {
   if (event.type === 'compatibility' || !('data' in event)) return undefined;
   return event.data as Record<string, unknown>;

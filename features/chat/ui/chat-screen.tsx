@@ -10,7 +10,7 @@ import { View } from 'react-native';
 
 import { ChatView } from '@/features/chat/ui/chat-view';
 import { ProjectPicker } from '@/features/projects/index';
-import { useChat } from '@/features/chat/context';
+import { useChatBootstrap } from '@/features/chat/context';
 import { useConnection } from '@/features/connections/context';
 import { useCurrentSession } from '@/features/sessions/context';
 import { useBootState as useOnboarding } from '@/runtime/workspace';
@@ -24,7 +24,7 @@ export default function ChatLandingScreen() {
   const { activeProject } = useProjects();
   const { connection, connect } = useConnection();
   const { currentSessionId, ensureActiveSession } = useCurrentSession();
-  const { isBootstrappingChat } = useChat();
+  const isBootstrappingChat = useChatBootstrap();
   const { isHydrated } = useOnboarding();
   const [pickerVisible, setPickerVisible] = useState(false);
   const [isReconnecting, setIsReconnecting] = useState(false);

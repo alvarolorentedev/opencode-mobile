@@ -3,7 +3,7 @@ import { AppState } from 'react-native';
 
 import { i18n } from '@/shared/i18n/index';
 import { quickActionsSupported, setQuickActions, type QuickActionItem } from '@/shared/platform/quick-actions';
-import type { ActiveSessionItem } from '@/shared/contracts/domain';
+import type { ActiveSessionItem } from '@/features/sessions/model/types';
 import { getSessionQuickActions } from '@/features/sessions/model/quick-action-items';
 
 // Launcher shortcuts publish only in foreground; widget state is independently
@@ -26,7 +26,7 @@ export function useNativeSurfaces({ ready, connected, connectionScope, language,
 
   const surfaceable = quickActionsSupported;
   const sessionSignature = activeSessions
-    .map((session) => `${session.sessionId}:${session.status.type}:${session.title ?? ''}`)
+    .map((session) => JSON.stringify([session.connectionScope, session.projectPath, session.sessionId, session.status.type, session.title]))
     .join('|');
   const signature = `${ready ? '1' : '0'}:${connected ? '1' : '0'}:${connectionScope}:${language ?? ''}:${sessionSignature}`;
 

@@ -63,27 +63,20 @@ Zustand is an approved dependency for this role. Redux, Redux Toolkit and XState
 - [x] Add core/store/Query and session-catalog integration harness tests.
 - [x] Update the state, boundary and runtime guidance.
 
-## Open follow-ups
+## Migration checklist
 
-The state-ownership work is complete; the orchestration target is not. These
-items remain open and require their own focused pass with the full browser suite.
-
-- [ ] Move probe, renewal, SSE, polling and status refresh into a plain
-  connection manager and remove the per-connection React runtime.
-- [ ] Extract prompt, session and workspace commands from
-  `use-opencode-provider-composition.ts` into plain functions with explicit
-  ports; remove `eventActionsRef` and the composition.
-- [ ] Move canonical messages to per-session infinite queries with a
-  store-backed live overlay and an explicit retention policy.
-- [x] Adopt Query persistence for session and project catalogs and remove the
-  custom session cache. The transcript cache remains by design because messages
-  carry inline media that must not enter the persisted Query cache.
-- [ ] Migrate `loadTs` suites to native imports and add `fast-check` invariants.
-- [ ] Add the full fake-server composition harness (connect, project, session,
-  prompt, SSE, reconnect, scope switch).
-- [ ] Add the fact/command guardrails.
+- [x] Move probe, renewal, SSE, polling and status refresh into a plain
+  connection manager.
+- [x] Extract prompt, session and workspace commands into plain functions with
+  explicit ports and remove the former composition and event-action reference.
+- [x] Move messages into per-session infinite queries with a store-backed live
+  overlay and bounded persistence that excludes inline media.
+- [x] Remove the custom session cache and make Zustand the device preference
+  persistence owner.
+- [x] Migrate the legacy suites to native imports and add property tests.
+- [x] Add a fake-server composition harness and fact/command checks.
 - [x] Add the impact script (`npm run impact -- <file>`).
+- [ ] Complete the remaining [validation handoff](../engineering/optimal-state/README.md#validation-handoff).
 
-A connection-manager extraction was attempted on 2026-11-22 and reverted after
-it regressed live renewal across panel reopening; that flow must stay green
-before the manager lands.
+A prior connection-manager extraction regressed live renewal across panel
+reopening. The full browser checkpoint includes that flow.

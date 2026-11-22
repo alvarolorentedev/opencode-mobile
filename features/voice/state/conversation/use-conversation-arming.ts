@@ -13,7 +13,7 @@ export function useConversationArming({
   clearPendingConversationResult,
   conversationCancelRequestedRef,
   conversationListeningRestartTimeoutRef,
-  conversationPhaseRef,
+  getConversationPhase,
   conversationSessionId,
   conversationSubmittingRef,
   conversationWakePhrase,
@@ -36,7 +36,7 @@ export function useConversationArming({
   clearPendingConversationResult: () => void;
   conversationCancelRequestedRef: { current: boolean };
   conversationListeningRestartTimeoutRef: { current: ReturnType<typeof setTimeout> | undefined };
-  conversationPhaseRef: { current: ConversationInputPhase };
+  getConversationPhase: () => ConversationInputPhase;
   conversationSessionId?: string;
   conversationSubmittingRef: { current: boolean };
   conversationWakePhrase: string;
@@ -88,7 +88,6 @@ export function useConversationArming({
       // after the native start is routed correctly instead of being dropped as
       // stale output. Without a wake phrase, every recognized utterance is a
       // command and confirmation is the submission gate.
-      conversationPhaseRef.current = wakePhraseRequired ? 'armed' : 'listening';
       setConversationPhase(wakePhraseRequired ? 'armed' : 'listening');
       if (!wakePhraseRequired) {
         wakePhraseSessionRef.current.reset();
@@ -116,15 +115,13 @@ export function useConversationArming({
     }
     localWakeModeActiveRef.current = false;
     onSensorChange('phrase');
-    const started = await startSpeechInput({ continuous: true, wakeGate: conversationPhaseRef.current === 'armed' });
-    // The ref can change while the native start resolves (stop, background, or
-    // an immediately matched phrase); widen it back to the full union.
-    if (conversationCancelRequestedRef.current || conversationPhaseRef.current === 'off') {
+    const started = await startSpeechInput({ continuous: true, wakeGate: getConversationPhase() === 'armed' });
+    // A stop or immediately matched phrase can update the phase during native start.
+    if (conversationCancelRequestedRef.current || getConversationPhase() === 'off') {
       abortSpeechInput();
       return false;
     }
     if (!started) {
-      conversationPhaseRef.current = 'off';
       setConversationPhase('off');
       return false;
     }
@@ -135,8 +132,8 @@ export function useConversationArming({
     clearPendingConversationResult,
     conversationCancelRequestedRef,
     conversationListeningRestartTimeoutRef,
-    conversationPhaseRef,
-      conversationSessionId,
+    getConversationPhase,
+    conversationSessionId,
     conversationSubmittingRef,
     conversationWakePhrase,
     localWakeModeActiveRef,

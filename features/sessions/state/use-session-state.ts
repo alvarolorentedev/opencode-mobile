@@ -1,4 +1,4 @@
-import { useCallback, useLayoutEffect, useRef, type Dispatch, type SetStateAction } from 'react';
+import { useCallback, useMemo, type Dispatch, type SetStateAction } from 'react';
 
 import { useAppCore, useAppStore } from '@/runtime/core';
 import type { SelectionState } from '@/runtime/core';
@@ -21,31 +21,18 @@ export function useSessionState(scopeKey: string) {
     write((current) => ({ currentSessionId: typeof value === 'function' ? value(current.currentSessionId) : value }));
   }, [write]);
   const isBootstrappingChat = selection.isBootstrappingChat;
-  const setIsBootstrappingChat = useCallback<Dispatch<SetStateAction<boolean>>>((value) => {
-    write((current) => ({ isBootstrappingChat: typeof value === 'function' ? value(current.isBootstrappingChat) : value }));
-  }, [write]);
-  const activeSessionsVisible = selection.activeSessionsVisible;
-  const setActiveSessionsVisible = useCallback<Dispatch<SetStateAction<boolean>>>((value) => {
-    write((current) => ({ activeSessionsVisible: typeof value === 'function' ? value(current.activeSessionsVisible) : value }));
-  }, [write]);
 
-  const currentSessionIdRef = useRef<string | undefined>(currentSessionId);
+  const currentSessionIdRef = useMemo(() => ({ get current() { return store.getState().selection[scopeKey]?.currentSessionId; } }), [scopeKey, store]);
 
-  const pendingDeepLinkTargetRef = useRef<import('@/shared/contracts/domain').SessionDeepLinkTarget | undefined>(undefined);
+  const pendingDeepLinkTargetRef = useMemo(() => ({
+    get current() { return store.getState().selection[scopeKey]?.pendingDeepLink; },
+    set current(pendingDeepLink: SelectionState['pendingDeepLink']) { write({ pendingDeepLink }); },
+  }), [scopeKey, store, write]);
 
-  const deepLinkOperationRef = useRef<object | undefined>(undefined);
+  const explicitSessionSelectionRef = useMemo(() => ({
+    get current() { return store.getState().selection[scopeKey]?.explicitSessionId; },
+    set current(explicitSessionId: string | undefined) { write({ explicitSessionId }); },
+  }), [scopeKey, store, write]);
 
-  const bootstrapPromiseRef = useRef<Promise<string | undefined> | null>(null);
-
-  const bootstrapTokenRef = useRef<object | undefined>(undefined);
-
-  const explicitSessionSelectionRef = useRef<string | undefined>(undefined);
-
-  const locallyCreatedSessionsRef = useRef<Map<string, number>>(new Map());
-
-  const suppressedPendingRequestIdsRef = useRef<Set<string>>(new Set());
-
-  useLayoutEffect(() => { currentSessionIdRef.current = currentSessionId; });
-
-  return { currentSessionId, setCurrentSessionId, isBootstrappingChat, setIsBootstrappingChat, activeSessionsVisible, setActiveSessionsVisible, currentSessionIdRef, pendingDeepLinkTargetRef, deepLinkOperationRef, bootstrapPromiseRef, bootstrapTokenRef, explicitSessionSelectionRef, locallyCreatedSessionsRef, suppressedPendingRequestIdsRef };
+  return { currentSessionId, setCurrentSessionId, isBootstrappingChat, currentSessionIdRef, pendingDeepLinkTargetRef, explicitSessionSelectionRef };
 }

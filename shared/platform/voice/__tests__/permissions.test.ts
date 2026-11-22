@@ -1,6 +1,5 @@
 import assert from 'node:assert/strict';
-import { it } from 'vitest';
-import { loadTs } from '../../../../tests/helpers/runtime.mjs';
+import { it, vi } from 'vitest';
 
 async function permissionsHarness({
   canAskAgain = true,
@@ -25,20 +24,20 @@ async function permissionsHarness({
     calls.speech++;
     return { granted: true, canAskAgain: true, restricted: false };
   };
-  const module = await loadTs('shared/platform/voice/permissions.ts', {
-    'react-native': { AppState: appState },
-    'expo-linking': { openSettings: async () => undefined },
-    'expo-audio': {
-      getRecordingPermissionsAsync: async () => ({ granted, canAskAgain, restricted }),
-      requestRecordingPermissionsAsync: () => localRequest(),
+  vi.resetModules();
+  vi.doMock('react-native', () => ({ AppState: appState }));
+  vi.doMock('expo-linking', () => ({ openSettings: async () => undefined }));
+  vi.doMock('expo-audio', () => ({
+    getRecordingPermissionsAsync: async () => ({ granted, canAskAgain, restricted }),
+    requestRecordingPermissionsAsync: () => localRequest(),
+  }));
+  vi.doMock('expo-speech-recognition', () => ({
+    ExpoSpeechRecognitionModule: {
+      getPermissionsAsync: async () => ({ granted, canAskAgain, restricted }),
+      requestPermissionsAsync: () => speechRequest(),
     },
-    'expo-speech-recognition': {
-      ExpoSpeechRecognitionModule: {
-        getPermissionsAsync: async () => ({ granted, canAskAgain, restricted }),
-        requestPermissionsAsync: () => speechRequest(),
-      },
-    },
-  });
+  }));
+  const module = await import('@/shared/platform/voice/permissions');
   const emit = (state: string) => {
     appState.currentState = state;
     for (const listener of listeners) listener(state);

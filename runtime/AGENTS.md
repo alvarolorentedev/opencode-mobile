@@ -8,30 +8,33 @@ and [feature boundaries](../docs/architecture/feature-boundaries.md).
 - `runtime/core/`: the app composition root. One Query client for server facts,
   one Zustand store for device facts, and the commands/managers added by
   [ADR 0051](../docs/adr/0051-app-core-state-tiers.md). React mounts it once.
+- `runtime/core/commands/workspace.ts`: project demand and readiness, workspace
+  focus, local/external navigation, and worktree chat creation.
+- `runtime/core/commands/connection.ts`: connection actions, profile activation,
+  registry restoration and automatic failover.
 - `runtime/workspace/workspace-provider.tsx`: coordinates the app-store registry/focus, root persistence,
   native coordinators, and the single connectivity monitor.
 - `runtime/connections/connection-lifecycle.ts`: plain connection state
-  machine. `connection-runtime.tsx` subscribes to it and keeps the probe,
-  renewal and stream effects.
-- `runtime/workspace/workspace-runtime.tsx`: retained connection/project branch.
-- `runtime/composition/`: domain wiring, values, reset and cross-feature effects.
+  machine. `create-connection.ts` owns probing, credential renewal, retry, the
+  catalog client, realtime transport and Query invalidation. The app core's
+  `registry.ts` follows enabled connections and credential revisions.
+  `connection-runtime.tsx` adapts lifecycle and connection catalog data for React.
+- `runtime/core/project-runtimes.ts` and `project-binding.ts`: bind retained project
+  keys to commands and reconciliation on the connection's realtime manager.
+- `runtime/composition/`: app entrypoint, scoped query demand and native views.
 - `runtime/persistence/`: app hydration/write-back and cross-domain credential-scope migration.
 - `runtime/realtime/`: SSE plus polling reconciliation and coalescing.
 - `runtime/presentation/`: stable drafts/scroll positions, owned by the app store and independent of registry updates.
 
 Server facts belong to Query; device facts belong to the app store. Do not add a
 second store or mirror a Query response. Feature domain hooks select the focused
-or scoped values from `runtime/core/workspace-scope.ts`; do not add a per-domain
+or scoped values from `runtime/core/workspace-selectors.ts`; do not add a per-domain
 context.
 
 Use feature headless APIs for behavior; do not grow domain logic in composition.
 Preserve query partitions, cancellation, foreground/demand gates, explicit readiness,
 connection-wide catalogs/streams, and independent Settings/Terminal/Chat targets.
 Keep one owner per value and the existing provider/context ordering.
-
-`ui.ts` exports only the existing workspace scope/context and update-blocker hook.
-Its value imports must never reach root composition, mounts or feature presentation.
-No bridge context, state duplication or broader shared UI exception is allowed.
 
 Validate with runtime Vitest, architecture/discovery checks and the owning E2E flows.
 The tag release runs full E2E; browser/fake-server edits need human validation.

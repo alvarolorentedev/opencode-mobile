@@ -1,23 +1,27 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import * as query from '@tanstack/react-query';
-import { loadTs } from '../../tests/helpers/runtime.mjs';
+import type { ScopedOpencodeClient } from '@/shared/protocol/opencode/client';
+import { commandsOptions } from '@/shared/server-data/catalogs';
+
+const { listCommands } = vi.hoisted(() => ({ listCommands: vi.fn() }));
+vi.mock('@/shared/protocol/services/session-service', async (original) => ({
+  ...await original<typeof import('@/shared/protocol/services/session-service')>(), listCommands,
+}));
+vi.mock('react-native', () => ({ Platform: { OS: 'web' } }));
+vi.mock('expo-constants', () => ({ default: { expoConfig: { extra: {} } } }));
+vi.mock('expo/fetch', () => ({}));
+vi.mock('expo-crypto', () => ({}));
+vi.mock('expo-secure-store', () => ({}));
+vi.mock('expo-file-system', () => ({}));
+vi.mock('@react-native-async-storage/async-storage', () => ({ default: {} }));
 
 const identity = { connectionId: 'a', connectionScope: 'server-a', authRevision: 0 };
-const client = (directory = '/repo') => ({ __opencode: { contract: 'v2', directory } });
-
-async function catalog(read: (client: unknown) => Promise<unknown>) {
-  return loadTs('shared/server-data/catalogs.ts', {
-    '@tanstack/react-query': query,
-    '@/shared/protocol/opencode/client': { withReadSignal: (client: unknown) => client },
-    '@/shared/protocol/opencode/contracts/server-adapter': {},
-    '@/shared/protocol/services/session-service': { listCommands: read },
-  });
-}
+const client = (directory = '/repo') => ({ __opencode: { contract: 'v2', directory } }) as ScopedOpencodeClient;
 
 describe('command catalog lifecycle', () => {
   it('revalidates a fresh retained catalog on project/foreground activation without polling', async () => {
     let reads = 0;
-    const { commandsOptions } = await catalog(async () => [{ name: `command-${++reads}` }]);
+    listCommands.mockImplementation(async () => [{ name: `command-${++reads}` }]);
     const cache = new query.QueryClient({ defaultOptions: { queries: { staleTime: 60_000, gcTime: Infinity, retry: false, refetchInterval: false } } });
     const options = commandsOptions(identity, client());
     await cache.fetchQuery(options);
@@ -41,7 +45,7 @@ describe('command catalog lifecycle', () => {
   it('isolates a late response from a newer server, project and credential partition', async () => {
     let finish!: (commands: object[]) => void;
     const oldClient = client();
-    const { commandsOptions } = await catalog(async (candidate) => candidate === oldClient
+    listCommands.mockImplementation(async (candidate) => candidate.__opencode === oldClient.__opencode
       ? new Promise((resolve) => { finish = resolve; }) : [{ name: 'new' }, { name: 'New' }]);
     const cache = new query.QueryClient({ defaultOptions: { queries: { gcTime: Infinity } } });
     const old = commandsOptions(identity, oldClient);

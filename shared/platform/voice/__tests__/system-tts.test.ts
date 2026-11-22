@@ -1,24 +1,19 @@
 import assert from 'node:assert/strict';
-import { describe, it } from 'vitest';
+import { describe, it, vi } from 'vitest';
 
-import { loadTs } from '../../../../tests/helpers/runtime.mjs';
+import * as speech from '@/shared/platform/voice/system-tts';
+
+const { getAvailableVoicesAsync } = vi.hoisted(() => ({ getAvailableVoicesAsync: vi.fn() }));
+vi.mock('expo-speech', () => ({ getAvailableVoicesAsync, speak: () => {}, stop: async () => {} }));
 
 describe('system speech voice selection', () => {
   it('prefers enhanced voices in the requested locale and falls back when a saved voice disappears', async () => {
-    const compareLabels = await loadTs('shared/utilities/compare-labels.ts');
     const voices = [
       { identifier: 'es-default', name: 'Spanish Default', language: 'es-ES', quality: 'Default' },
       { identifier: 'es-enhanced', name: 'Spanish Enhanced', language: 'es-ES', quality: 'Enhanced' },
       { identifier: 'en-enhanced', name: 'English Enhanced', language: 'en-US', quality: 'Enhanced' },
     ];
-    const speech = await loadTs('shared/platform/voice/system-tts.ts', {
-    '@/shared/utilities/compare-labels': compareLabels,
-    'expo-speech': {
-        getAvailableVoicesAsync: async () => voices,
-        speak: () => {},
-        stop: async () => {},
-      }
-  });
+    getAvailableVoicesAsync.mockResolvedValue(voices);
 
     const options = await speech.getSpeechVoiceOptions();
     assert.deepEqual(

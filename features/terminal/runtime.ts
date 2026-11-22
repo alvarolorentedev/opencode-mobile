@@ -1,1 +1,1 @@
-export { useTerminalState } from './state/use-terminal-state';
+export { createProjectTerminal } from './services/project-terminal';

@@ -1,15 +1,13 @@
 import { setServerQueryOnline } from '@/shared/server-data/client';
 import NetInfo from '@react-native-community/netinfo';
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
 
-import { DEFAULT_NETWORK_STATUS, normalizeNetworkState, type NetworkStatus } from '@/shared/network/network-status';
+import { normalizeNetworkState, type NetworkStatus } from '@/shared/network/network-status';
 
 // Provider-owned connectivity snapshot. NetInfo is sampled only after mount so
 // screens never read the platform module directly and a web/E2E runtime can
 // still start with a deterministic "online" state.
-export function useNetworkStatus(): NetworkStatus {
-  const [status, setStatus] = useState<NetworkStatus>(DEFAULT_NETWORK_STATUS);
-
+export function useNetworkStatus(publish: (status: NetworkStatus) => void) {
   useEffect(() => {
     let active = true;
     // Never make an external reachability probe. A captive portal or a blocked
@@ -20,9 +18,7 @@ export function useNetworkStatus(): NetworkStatus {
       if (!active) return;
       const next = normalizeNetworkState(state);
       setServerQueryOnline(next.online);
-      setStatus((current) => current.online === next.online && current.type === next.type
-        && current.expensive === next.expensive && current.constrained === next.constrained
-        && current.generation === next.generation ? current : next);
+      publish(next);
     };
     // `addEventListener` immediately invokes the listener with the current
     // state on native, so the first sample does not wait for a transition.
@@ -32,7 +28,5 @@ export function useNetworkStatus(): NetworkStatus {
       active = false;
       unsubscribe();
     };
-  }, []);
-
-  return status;
+  }, [publish]);
 }

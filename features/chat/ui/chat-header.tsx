@@ -1,3 +1,4 @@
+import { UpdateBlockingSheet as OverlaySheet } from '@/features/updates/index';
 import { cn } from '@/shared/ui/cn';
 import { Text } from '@/shared/ui/text';
 import { Button } from '@/shared/ui/button';
@@ -19,7 +20,6 @@ import { formatEstimatedCost, formatTokenCount, type SessionUsage } from '@/shar
 import { ConversationOverlay } from '@/features/chat/ui/chat-overlay';
 import { PluginGuiLauncher } from '@/features/extensions/index';
 import { ChatWorkspaceContext } from '@/features/chat/ui/chat-workspace-context';
-import { OverlaySheet } from '@/shared/ui/overlay-sheet';
 import { styles, stylesClasses } from '@/features/chat/ui/chat-view-styles';
 import type { ConversationConfirmationState, ConversationInputPhase, ConversationPhase, ConversationReadbackPhase } from '@/features/voice/index';
 

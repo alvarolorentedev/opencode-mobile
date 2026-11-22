@@ -1,7 +1,24 @@
+// @vitest-environment happy-dom
+
 import { describe, expect, it, vi } from 'vitest';
 
-import { uiImports } from '../../../tests/helpers/ui.mjs';
-import { hookRuntime, loadTs } from '../../../tests/helpers/runtime.mjs';
+import '../../../tests/helpers/native-primitives';
+import { ConnectionMethodChooser } from '@/features/connections/ui/connection-method-chooser';
+import type { WorkspaceRegistry } from '@/runtime/workspace/workspace-context';
+import { connectionViewProbe } from '../../../tests/helpers/connection-view-probe';
+import { renderHook } from '../../../tests/helpers/render-hook';
+
+const native = vi.hoisted(() => ({ platform: 'android', foss: false }));
+vi.mock('react-native', async () => (await import('../../../tests/helpers/native-view-platform')).nativeViewPlatform(native));
+vi.mock('expo-constants', () => ({ default: { expoConfig: { extra: { get foss() { return native.foss; } } } } }));
+vi.mock('expo-router', () => ({ usePathname: () => '/' }));
+vi.mock('react-i18next', async (original) => ({ ...await original<typeof import('react-i18next')>(), useTranslation: () => ({ t: (key: string) => key }) }));
+vi.mock('@react-native-async-storage/async-storage', () => ({ default: {} }));
+vi.mock('expo/fetch', () => ({}));
+vi.mock('expo-localization', () => ({ getLocales: () => [] }));
+vi.mock('expo-crypto', () => ({}));
+vi.mock('expo-secure-store', () => ({}));
+vi.mock('expo-file-system', () => ({}));
 
 type Element = { type: unknown; props: Record<string, any> };
 function find(root: Element | Element[] | null | undefined, testID: string): Element | undefined {
@@ -11,20 +28,11 @@ function find(root: Element | Element[] | null | undefined, testID: string): Ele
   return find(root.props?.children, testID);
 }
 
-async function chooser({ foss = false, platform = 'android', enabled = true } = {}) {
-  const runtime = hookRuntime();
-  const { ConnectionMethodChooser } = await loadTs('features/connections/ui/connection-method-chooser.tsx', {
-    ...uiImports,
-    react: runtime.react,
-    'react/jsx-runtime': { jsx: (type: unknown, props: Record<string, unknown>) => ({ type, props }), jsxs: (type: unknown, props: Record<string, unknown>) => ({ type, props }), Fragment: 'Fragment' },
-    'expo-constants': { expoConfig: { extra: { foss } } },
-    'react-native': { Platform: { OS: platform }, Linking: { openURL: vi.fn(async () => undefined) }, View: 'View' },
-    '@/shared/contracts/cloud-link': { CONNECT_LEARN_MORE_URL: 'https://opencodecloud.link/' },
-    '@/features/connections/context': { useConnection: () => ({ connectSetup: { enabled } }) },
-    '@/shared/ui/theme/use-palette': { usePalette: () => ({}) },
-  }, { Error });
-  runtime.mount(ConnectionMethodChooser, { onScan: vi.fn(), onManual: vi.fn(), onPair: vi.fn() });
-  return (testID: string) => find(runtime.value, testID);
+function chooser({ foss = false, platform = 'android', enabled = true } = {}) {
+  Object.assign(native, { platform, foss });
+  const controls = { connectSetup: { enabled } } as WorkspaceRegistry['connectionControls'];
+  const runtime = renderHook(ConnectionMethodChooser, { onScan: vi.fn(), onManual: vi.fn(), onPair: vi.fn() }, connectionViewProbe(controls));
+  return (testID: string) => find(runtime.result.current, testID);
 }
 
 describe('connection method chooser', () => {

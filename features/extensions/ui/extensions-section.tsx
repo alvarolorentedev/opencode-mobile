@@ -1,3 +1,5 @@
+import { useUpdateBlockingConfirmation as useConfirmation } from '@/features/updates/index';
+import type { WorkspaceTarget } from '@/shared/contracts/workspace';
 import { useEffect, useState } from 'react';
 import { View } from 'react-native';
 import { useTranslation } from 'react-i18next';
@@ -20,22 +22,21 @@ import { Button } from '@/shared/ui/button';
 import { Spinner } from '@/shared/ui/spinner';
 import { FieldDescription } from '@/shared/ui/text-field';
 import { usePalette } from '@/shared/ui/theme/use-palette';
-import { useConfirmation } from '@/shared/ui/use-confirmation';
 import { getErrorMessage } from '@/shared/utilities/error-message';
 import type { ExtensionScope } from '@/shared/protocol/opencode/extensions/types';
 
 const tabs: ExtensionTab[] = ['mcp', 'plugins', 'agents', 'skills', 'commands'];
 const singular = { mcp: 'mcp', plugins: 'plugin', agents: 'agent', skills: 'skill', commands: 'command' } as const;
 
-export function ExtensionsSection() {
+export function ExtensionsSection({ workspace }: { workspace: WorkspaceTarget }) {
   const { t } = useTranslation();
   const palette = usePalette();
   const target = useSettingsTarget();
   const { confirmAction, confirmation } = useConfirmation();
-  const { activeProjectPath } = useProjects();
-  const { settings } = useConnection();
-  const { extensions } = useExtensions();
-  const mcp = useMcp();
+  const { activeProjectPath } = useProjects(workspace);
+  const { settings } = useConnection(workspace);
+  const { extensions } = useExtensions(workspace);
+  const mcp = useMcp(workspace);
   const authentication = useMcpAuthentication(mcp.mcpOAuth, palette);
   const [scope, setScope] = useState<ExtensionScope>(activeProjectPath ? 'project' : 'general');
   const [tab, setTab] = useState<ExtensionTab>(() => tabs.find((entry) => target?.group?.startsWith(`extensions-${entry}`)) ?? 'mcp');
@@ -64,7 +65,7 @@ export function ExtensionsSection() {
     void action().then(() => extensions.refresh()).catch((failure) => setActionError(getErrorMessage(failure))).finally(() => setMcpBusy(false));
   }
   const canAdd = Boolean(data && (tab === 'agents' || tab === 'commands' ? data.markdown[tab].safety.writable : data.safety.writable)) && !(tab === 'agents' || tab === 'commands' ? extensions.snapshot?.errors[tab] : false);
-  const editorProps = { scope: effectiveScope, context: `${settings.serverUrl} · ${t(`settings:extensions.scope.${effectiveScope}`)}${effectiveScope === 'project' ? ` · ${activeProjectPath}` : ''}`, save, onClose: () => setSelection(undefined) };
+  const editorProps = { workspace, scope: effectiveScope, context: `${settings.serverUrl} · ${t(`settings:extensions.scope.${effectiveScope}`)}${effectiveScope === 'project' ? ` · ${activeProjectPath}` : ''}`, save, onClose: () => setSelection(undefined) };
   return <View className="gap-3 px-4 pb-8">
     <Text variant="description" className="text-muted-foreground">{t('settings:extensions.description')}</Text>
     <ToggleGroup type="single" value={effectiveScope} onValueChange={(value) => { if (value && !busy) { setScope(value as ExtensionScope); setGeneralConfirmed(false); } }} className="flex-row flex-wrap">
@@ -83,7 +84,7 @@ export function ExtensionsSection() {
           {(tab === 'agents' || tab === 'commands') && extensions.snapshot?.errors[tab] ? <FieldDescription invalid testID={`extensions-${tab}-error`}>{extensions.snapshot.errors[tab]}</FieldDescription> : null}
           <Button testID={`settings-extension-${singular[tab]}-open`} disabled={busy || !canAdd} onPress={() => { setActionError(undefined); setSelection({ type: tab }); }}><Text>{t(`settings:extensions.${tab}.addTitle`)}</Text></Button>
           {!canAdd ? <FieldDescription>{(tab === 'agents' || tab === 'commands' ? data.markdown[tab].safety.reason : data.safety.reason) || t('settings:extensions.safety.readOnly')}</FieldDescription> : null}
-          <ExtensionInventory tab={tab} data={data} scope={effectiveScope} busy={busy} onEdit={(next) => { setActionError(undefined); setSelection(next); }} onRemove={remove} runMcp={runMcp} authenticate={(name) => { void authentication.open(name).catch((failure) => setActionError(getErrorMessage(failure))); }} />
+          <ExtensionInventory workspace={workspace} tab={tab} data={data} scope={effectiveScope} busy={busy} onEdit={(next) => { setActionError(undefined); setSelection(next); }} onRemove={remove} runMcp={runMcp} authenticate={(name) => { void authentication.open(name).catch((failure) => setActionError(getErrorMessage(failure))); }} />
         </SettingTarget></TabsContent>
       </Tabs>
       <SettingsDisclosure id="extension-config-details" title={t('settings:extensions.editor.configDetails')}>

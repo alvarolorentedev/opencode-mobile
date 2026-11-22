@@ -10,6 +10,5 @@ export { PermissionsSection } from './ui/settings/permissions-section';
 export { QuestionFlow } from './ui/approvals/question-flow';
 export { default as SessionDeepLinkScreen } from './ui/session-link-screen';
 export type { SessionLibraryContextValue } from './model/types';
-export type { useConnectionLinkActions } from './state/use-connection-link-actions';
 export { useQuickActionRoute } from './state/use-quick-action-route';
-export type { useSessionActions } from './state/use-session-actions';
+export type { ActiveSessionItem, FavoriteSession, SessionDeepLinkTarget } from './model/types';

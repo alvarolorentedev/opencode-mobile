@@ -1,33 +1,98 @@
-import { describe, expect, it, vi } from 'vitest';
-import { deferred, hookRuntime, loadTs } from '../../../tests/helpers/runtime.mjs';
-import { DEFAULT_UPDATE_CHECK_PERIOD, parseUpdatePreferences, UPDATE_CHECK_INTERVALS, UPDATE_DISMISS_INTERVAL, updateCheckDue, updateNotice } from '../model/app-update-policy';
-import type { AppUpdateApi, UpdateEvent, UpdateSnapshot } from '../../../shared/platform/app-updates.ts';
+// @vitest-environment happy-dom
+
+import { act } from 'react';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+
+import { useAppUpdates } from '@/features/updates/state/use-app-updates';
+import * as appUpdates from '@/shared/platform/app-updates';
+import type { AppUpdateApi, UpdateEvent, UpdateSnapshot } from '@/shared/platform/app-updates';
+import * as androidUpdates from '@/shared/platform/android-app-updates';
+import { controlledClock, deferred, settleReact } from '../../../tests/helpers/controlled-clock';
+import { renderHook } from '../../../tests/helpers/render-hook';
+import { parseUpdatePreferences, UPDATE_CHECK_INTERVALS, UPDATE_DISMISS_INTERVAL, updateCheckDue, updateNotice } from '../model/app-update-policy';
+
+const device = vi.hoisted(() => ({
+  os: 'android',
+  executionEnvironment: 'standalone',
+  config: {} as object,
+  subscribeAppState: (_listener: (value: string) => void) => {},
+  openURL: (_url: string) => Promise.resolve(),
+  appleEnvironment: async () => 'production',
+  referrer: async () => '',
+  storage: {} as {
+    getItem(key: string): Promise<string | null>;
+    setItem(key: string, value: string): Promise<void>;
+    removeItem(key: string): Promise<void>;
+  },
+  nativeUpdate: {} as {
+    check(): Promise<unknown>;
+    startUpdate(immediate: boolean): Promise<boolean>;
+    addListener(event: string, callback: () => void): () => void;
+  },
+}));
+vi.mock('react-native', () => ({
+  Platform: { get OS() { return device.os; } },
+  AppState: { currentState: 'active', addEventListener: (_event: string, listener: (value: string) => void) => {
+    device.subscribeAppState(listener);
+    return { remove() {} };
+  } },
+  Linking: { openURL: (url: string) => device.openURL(url) },
+}));
+vi.mock('expo-constants', () => ({
+  default: { get executionEnvironment() { return device.executionEnvironment; }, get expoConfig() { return device.config; } },
+}));
+vi.mock('expo-application', () => ({
+  applicationId: 'app.getopencode.mobile', nativeApplicationVersion: '1.0.58',
+  getAppleStoreEnvironmentAsync: () => device.appleEnvironment(),
+  getInstallReferrerAsync: () => device.referrer(),
+}));
+vi.mock('expo-in-app-updates', () => ({
+  checkForUpdate: () => device.nativeUpdate.check(),
+  startUpdate: (immediate: boolean) => device.nativeUpdate.startUpdate(immediate),
+  addUpdateListener: (event: string, callback: () => void) => device.nativeUpdate.addListener(event, callback),
+}));
+vi.mock('@react-native-async-storage/async-storage', () => ({ default: {
+  getItem: (key: string) => device.storage.getItem(key),
+  setItem: (key: string, value: string) => device.storage.setItem(key, value),
+  removeItem: (key: string) => device.storage.removeItem(key),
+} }));
+
+let clock: ReturnType<typeof controlledClock>;
+beforeEach(() => { clock = controlledClock(); });
+afterEach(() => { vi.restoreAllMocks(); vi.unstubAllGlobals(); });
+
+function start<T>(action: () => Promise<T>) {
+  let pending!: Promise<T>;
+  act(() => { pending = action(); });
+  return pending;
+}
 
 const available: UpdateSnapshot = { phase: 'available', version: '59' };
 async function provider({ stored = null, readError = false, snapshot = available, recovery = true, nativeConsent = false, blocked = false, check = vi.fn(async () => snapshot) }:
   { stored?: string | null; readError?: boolean; snapshot?: UpdateSnapshot; recovery?: boolean; nativeConsent?: boolean; blocked?: boolean; check?: () => Promise<UpdateSnapshot> } = {}) {
-  const runtime = hookRuntime();
   let event: (value: UpdateEvent) => void = () => {};
   let foreground: (value: string) => void = () => {};
   const storage = { getItem: vi.fn(async (_key: string) => { if (readError) throw Error(); return stored; }), setItem: vi.fn(async (_key: string, _value: string) => {}), removeItem: vi.fn(async (_key: string) => {}) };
+  device.storage = storage;
+  device.subscribeAppState = (listener) => { foreground = listener; };
   const unsubscribe = vi.fn();
   const api: AppUpdateApi = { nativeConsent, supportsRecovery: recovery, check, start: vi.fn(async () => true),
     subscribe: (listener) => { event = listener; return unsubscribe; } };
-  const persistence = await loadTs('shared/storage/persistence-hydration.ts');
-  const { useAppUpdates } = await loadTs('features/updates/state/use-app-updates.ts', {
-    react: runtime.react,
-    '@react-native-async-storage/async-storage': storage,
-    'react-native': { AppState: { currentState: 'active', addEventListener: (_: string, listener: typeof foreground) => { foreground = listener; return { remove: vi.fn() }; } } },
-    '@/shared/storage/persistence-hydration': persistence,
-    "@/shared/platform/app-updates": { loadAppUpdates: () => api },
-    "@/shared/storage/keys": { APP_UPDATES_STORAGE_KEY: 'updates' },
-    "@/features/updates/model/app-update-policy": { DEFAULT_UPDATE_CHECK_PERIOD, parseUpdatePreferences, UPDATE_CHECK_INTERVALS, UPDATE_DISMISS_INTERVAL, updateCheckDue, updateNotice }
-  }, runtime.globals);
-  runtime.mount(useAppUpdates, { initialized: false, blocked });
-  await runtime.settle();
+  const load = vi.spyOn(appUpdates, 'loadAppUpdates').mockReturnValue(api);
+  let props = { initialized: false, blocked };
+  const view = renderHook(useAppUpdates, props);
+  load.mockRestore();
+  const runtime = { ...view, update(patch: Partial<typeof props>) {
+    props = { ...props, ...patch };
+    view.rerender(props);
+  } };
+  await settleReact();
   expect(api.check).not.toHaveBeenCalled();
-  runtime.value.setSurfaceActive(true); runtime.update({ initialized: true }); await runtime.settle();
-  return { runtime, api, storage, unsubscribe, event: (value: UpdateEvent) => { event(value); runtime.flush(); }, foreground: (value: string) => { foreground(value); runtime.flush(); } };
+  act(() => { runtime.result.current.setSurfaceActive(true); });
+  runtime.update({ initialized: true });
+  await settleReact();
+  return { runtime, api, storage, unsubscribe, event: (value: UpdateEvent) => act(() => { event(value); }),
+    foreground: (value: string) => act(() => { foreground(value); }) };
 }
 
 describe('update policy', () => {
@@ -65,13 +130,14 @@ describe('update policy', () => {
 describe('provider update safety', () => {
   it('opens only immediate consent at a safe moment and suppresses repeat handoffs', async () => {
     const view = await provider({ nativeConsent: true, blocked: true });
-    const release = view.runtime.value.block();
-    view.runtime.update({ blocked: false }); await view.runtime.settle();
+    let release!: () => void;
+    act(() => { release = view.runtime.result.current.block(); });
+    view.runtime.update({ blocked: false }); await settleReact();
     expect(view.api.start).not.toHaveBeenCalled();
-    release(); await view.runtime.settle();
+    act(() => { release(); }); await settleReact();
     expect(view.api.start).toHaveBeenCalledOnce();
-    expect(view.runtime.value.notice).toBeUndefined();
-    view.foreground('background'); view.foreground('active'); await view.runtime.settle();
+    expect(view.runtime.result.current.notice).toBeUndefined();
+    view.foreground('background'); view.foreground('active'); await settleReact();
     expect(view.api.start).toHaveBeenCalledOnce();
   });
   it('rechecks safety before native consent and suppresses cancellation for the version actually offered', async () => {
@@ -80,22 +146,22 @@ describe('provider update safety', () => {
     view.api.check = vi.fn(() => pending.promise);
     view.runtime.update({ blocked: false });
     view.runtime.update({ blocked: true });
-    pending.resolve(available); await view.runtime.settle();
+    await act(async () => { pending.resolve(available); }); await settleReact();
     expect(view.api.start).not.toHaveBeenCalled();
     view.api.check = vi.fn(async () => ({ ...available, version: '60' }));
     vi.mocked(view.api.start).mockResolvedValue(false);
-    view.runtime.update({ blocked: false }); await view.runtime.settle();
+    view.runtime.update({ blocked: false }); await settleReact();
     expect(view.api.start).toHaveBeenCalledOnce();
-    expect(view.runtime.value.notice).toBeUndefined();
+    expect(view.runtime.result.current.notice).toBeUndefined();
     expect(JSON.parse(view.storage.setItem.mock.calls.at(-1)![1]).dismissal.version).toBe('60');
-    view.foreground('background'); view.foreground('active'); await view.runtime.settle();
+    view.foreground('background'); view.foreground('active'); await settleReact();
     expect(view.api.start).toHaveBeenCalledOnce();
   });
   it('rechecks safety after an asynchronous read and prevents duplicate actions', async () => {
     const view = await provider(); const pending = deferred<UpdateSnapshot>();
     view.api.check = vi.fn(() => pending.promise);
-    const action = view.runtime.value.update(); const duplicate = view.runtime.value.update();
-    view.runtime.update({ blocked: true }); pending.resolve(available); await action; await duplicate; await view.runtime.settle();
+    const action = start(() => view.runtime.result.current.update()); const duplicate = start(() => view.runtime.result.current.update());
+    view.runtime.update({ blocked: true }); await act(async () => { pending.resolve(available); }); await action; await duplicate; await settleReact();
     expect(view.api.start).not.toHaveBeenCalled();
   });
   it('recovers interrupted immediate updates inside the discovery interval', async () => {
@@ -108,7 +174,7 @@ describe('provider update safety', () => {
     for (let i = 0; i < 2; i++) {
       const view = await provider({ nativeConsent: true, stored, snapshot: { phase: 'inProgress', version: 'immediate' } });
       expect(view.api.start).toHaveBeenCalledOnce();
-      view.foreground('background'); view.foreground('active'); await view.runtime.settle();
+      view.foreground('background'); view.foreground('active'); await settleReact();
       expect(view.api.start).toHaveBeenCalledOnce();
       view.runtime.unmount();
     }
@@ -120,8 +186,8 @@ describe('provider update safety', () => {
     const downloaded: UpdateSnapshot = { phase: 'downloaded', version: '60' };
     const view = await provider({ nativeConsent: true, snapshot: downloaded, check: vi.fn(async () => downloaded) });
     expect(view.api.start).not.toHaveBeenCalled();
-    expect(view.runtime.value.notice).toEqual(downloaded);
-    await view.runtime.value.update(); await view.runtime.settle();
+    expect(view.runtime.result.current.notice).toEqual(downloaded);
+    await act(async () => { await view.runtime.result.current.update(); }); await settleReact();
     expect(view.api.start).toHaveBeenCalledOnce();
   });
   it('installs a finished download without a fresh store read that can drop it', async () => {
@@ -129,76 +195,80 @@ describe('provider update safety', () => {
     const check = vi.fn(async () => downloaded);
     const view = await provider({ nativeConsent: true, snapshot: downloaded, check });
     check.mockRejectedValueOnce(new Error('Play unavailable'));
-    await view.runtime.value.update(); await view.runtime.settle();
+    await act(async () => { await view.runtime.result.current.update(); }); await settleReact();
     expect(view.api.start).toHaveBeenCalledOnce();
   });
   it('keeps a finished download offered when the install handoff fails', async () => {
     const downloaded: UpdateSnapshot = { phase: 'downloaded', version: '60' };
     const view = await provider({ nativeConsent: true, snapshot: downloaded, check: vi.fn(async () => downloaded) });
     vi.mocked(view.api.start).mockResolvedValue(false);
-    await view.runtime.value.update(); await view.runtime.settle();
-    expect(view.runtime.value.notice).toEqual(downloaded);
+    await act(async () => { await view.runtime.result.current.update(); }); await settleReact();
+    expect(view.runtime.result.current.notice).toEqual(downloaded);
     expect(JSON.parse(view.storage.setItem.mock.calls.at(-1)![1]).dismissal).toMatchObject({ version: '60', phase: 'downloaded', attempted: true });
   });
   it('suppresses a deferred install for seven days without blocking a new version', async () => {
     const downloaded: UpdateSnapshot = { phase: 'downloaded', version: '60' };
     const view = await provider({ nativeConsent: true, snapshot: downloaded, check: vi.fn(async () => downloaded) });
-    view.runtime.value.later(); await view.runtime.settle();
-    expect(view.runtime.value.notice).toBeUndefined();
+    act(() => { view.runtime.result.current.later(); }); await settleReact();
+    expect(view.runtime.result.current.notice).toBeUndefined();
     expect(JSON.parse(view.storage.setItem.mock.calls.at(-1)![1]).dismissal).toMatchObject({ version: '60', phase: 'downloaded' });
   });
   it('defaults to surfacing an available update discovered inside the discovery interval', async () => {
     const view = await provider({ stored: JSON.stringify({ lastCheckAt: Date.now() }), snapshot: available });
-    expect(view.runtime.value.notice).toEqual(available);
+    expect(view.runtime.result.current.notice).toEqual(available);
   });
   it('throttles discovery when the check period is daily or weekly', async () => {
     const view = await provider({ stored: JSON.stringify({ lastCheckAt: Date.now(), checkPeriod: 'weekly' }), snapshot: available });
-    expect(view.runtime.value.notice).toBeUndefined();
+    expect(view.runtime.result.current.notice).toBeUndefined();
   });
   it('does not offer updates when auto-update is disabled', async () => {
     const view = await provider({ stored: JSON.stringify({ lastCheckAt: 0, enabled: false }), snapshot: available });
-    expect(view.runtime.value.notice).toBeUndefined();
+    expect(view.runtime.result.current.notice).toBeUndefined();
   });
   it('persists Later and declines to prompt when storage cannot be read', async () => {
-    const view = await provider(); view.runtime.value.later(); await view.runtime.settle();
-    expect(view.runtime.value.notice).toBeUndefined();
+    const view = await provider(); act(() => { view.runtime.result.current.later(); }); await settleReact();
+    expect(view.runtime.result.current.notice).toBeUndefined();
     expect(JSON.parse(view.storage.setItem.mock.calls.at(-1)![1]).dismissal.version).toBe('59');
-    const unread = await provider({ readError: true }); expect(unread.runtime.value.notice).toBeUndefined();
+    const unread = await provider({ readError: true }); expect(unread.runtime.result.current.notice).toBeUndefined();
   });
   it('handles cancellation, check timeout and installation failure without repeated prompts', async () => {
     const view = await provider(); vi.mocked(view.api.start).mockResolvedValue(false);
-    await view.runtime.value.update(); await view.runtime.settle(); expect(view.runtime.value.notice).toBeUndefined();
+    await act(async () => { await view.runtime.result.current.update(); }); await settleReact(); expect(view.runtime.result.current.notice).toBeUndefined();
     view.event({ phase: 'failed' });
-    expect(view.runtime.value.error).toBe(true); expect(view.runtime.value.notice).toBeUndefined();
+    expect(view.runtime.result.current.error).toBe(true); expect(view.runtime.result.current.notice).toBeUndefined();
     const timeout = await provider(); timeout.api.check = vi.fn(() => new Promise<UpdateSnapshot>(() => {}));
-    const action = timeout.runtime.value.update(); timeout.runtime.fire(15000); await action; await timeout.runtime.settle();
-    expect(timeout.runtime.value.busy).toBe(false); expect(timeout.api.start).not.toHaveBeenCalled();
+    const action = start(() => timeout.runtime.result.current.update()); await clock.advance(15000); await action; await settleReact();
+    expect(timeout.runtime.result.current.busy).toBe(false); expect(timeout.api.start).not.toHaveBeenCalled();
   });
 });
 
-async function platform(os: string, extra: object, native = {}, globals = {}, executionEnvironment = 'standalone') {
-  const resolve = vi.fn(() => native), openURL = vi.fn(async () => {});
-  const module = await loadTs('shared/platform/app-updates.ts', {
-    'expo-application': { applicationId: 'app.getopencode.mobile', nativeApplicationVersion: '1.0.58', getAppleStoreEnvironmentAsync: async () => (await (native as any).getAppStoreInstallation?.())?.eligible ? 'production' : 'sandbox' },
-    '@/shared/platform/android-app-updates': { createAndroidAppUpdates: resolve },
-    'expo-constants': { executionEnvironment, expoConfig: { ios: { bundleIdentifier: 'app.getopencode.mobile' }, extra } },
-    'react-native': { Platform: { OS: os }, Linking: { openURL } },
-  }, globals);
-  return { ...module, resolve, openURL };
+function platform(os: string, extra: object, native: { getAppStoreInstallation?: () => Promise<{ eligible: boolean }> } = {},
+  globals: { fetch?: unknown } = {}, executionEnvironment = 'standalone') {
+  device.os = os;
+  device.executionEnvironment = executionEnvironment;
+  device.config = { ios: { bundleIdentifier: 'app.getopencode.mobile' }, extra };
+  device.appleEnvironment = async () => (await native.getAppStoreInstallation?.())?.eligible ? 'production' : 'sandbox';
+  if (globals.fetch) vi.stubGlobal('fetch', globals.fetch);
+  const resolve = vi.spyOn(androidUpdates, 'createAndroidAppUpdates');
+  resolve.mockClear();
+  const openURL = vi.fn(async () => {});
+  device.openURL = openURL;
+  return { ...appUpdates, resolve, openURL };
 }
+
 describe('store boundary', () => {
   it('does not resolve a native module in FOSS, Expo Go, ordinary web or iOS without an ID', async () => {
     for (const [os, extra] of [['android', { foss: true }], ['web', {}], ['ios', {}], ['android', { e2eMode: true }]]) {
-      const result = await platform(os as string, { updates: { enabled: true }, ...extra as object });
+      const result = platform(os as string, { updates: { enabled: true }, ...extra as object });
       expect(result.loadAppUpdates()).toBeNull(); expect(result.resolve).not.toHaveBeenCalled();
     }
   });
   it('disables Expo Go before native resolution', async () => {
-    const source = await platform('android', { updates: { enabled: true } }, {}, {}, 'storeClient');
+    const source = platform('android', { updates: { enabled: true } }, {}, {}, 'storeClient');
     expect(source.loadAppUpdates()).toBeNull(); expect(source.resolve).not.toHaveBeenCalled();
   });
   it('compares Apple numeric versions and validates the App Store identity', async () => {
-    const source = await platform('ios', {});
+    const source = platform('ios', {});
     expect(source.isNewerStoreVersion('1.10.0', '1.9')).toBe(true);
     expect(source.isNewerStoreVersion('1.2', '1.2.0')).toBe(false);
     expect(source.isNewerStoreVersion('2.0-beta', '1')).toBe(false);
@@ -209,8 +279,8 @@ describe('store boundary', () => {
   it('preserves StoreKit eligibility checks and opens a constructed App Store URL only on request', async () => {
     const fetch = vi.fn(async () => ({ ok: true, json: async () => ({ results: [{ trackId: 123, bundleId: 'app.getopencode.mobile', version: '1.0.59', trackViewUrl: 'https://untrusted.test' }] }) }));
     const installation = vi.fn(async () => ({ eligible: false, bundleId: 'app.getopencode.mobile', installedVersion: '1.0.58' }));
-    const source = await platform('ios', { updates: { enabled: true, appStoreId: '123' } }, { getAppStoreInstallation: installation }, { fetch });
-    const api = source.loadAppUpdates(); expect(await api.check()).toEqual({ phase: 'none' }); expect(fetch).not.toHaveBeenCalled();
+    const source = platform('ios', { updates: { enabled: true, appStoreId: '123' } }, { getAppStoreInstallation: installation }, { fetch });
+    const api = source.loadAppUpdates()!; expect(await api.check()).toEqual({ phase: 'none' }); expect(fetch).not.toHaveBeenCalled();
     installation.mockResolvedValue({ eligible: true, bundleId: 'app.getopencode.mobile', installedVersion: '1.0.58' });
     expect(await api.check()).toEqual({ phase: 'available', version: '1.0.59' }); expect(source.openURL).not.toHaveBeenCalled();
     await api.start(() => true); expect(source.openURL).toHaveBeenCalledWith('https://apps.apple.com/app/id123');
@@ -220,8 +290,8 @@ describe('store boundary', () => {
     // never propagate as a rejection (which trapped Promise.swift:56 via JSI).
     const installation = vi.fn(async () => { throw new Error('StoreKit unavailable'); });
     const fetch = vi.fn();
-    const source = await platform('ios', { updates: { enabled: true, appStoreId: '123' } }, { getAppStoreInstallation: installation }, { fetch });
-    const api = source.loadAppUpdates();
+    const source = platform('ios', { updates: { enabled: true, appStoreId: '123' } }, { getAppStoreInstallation: installation }, { fetch });
+    const api = source.loadAppUpdates()!;
     await expect(api.check()).resolves.toEqual({ phase: 'none' });
     expect(fetch).not.toHaveBeenCalled();
   });
@@ -232,14 +302,10 @@ describe('flexible Android adapter with explicit install', () => {
     const startUpdate = vi.fn(async (_immediate: boolean) => true);
     const referrer = vi.fn(async () => '');
     const remove = vi.fn();
-    const create = async () => {
-      const { createAndroidAppUpdates } = await loadTs('shared/platform/android-app-updates.ts', {
-        'expo-application': { getInstallReferrerAsync: referrer },
-        'expo-in-app-updates': { checkForUpdate: vi.fn(async () => info), startUpdate, addUpdateListener: vi.fn(() => remove) },
-      });
-      return createAndroidAppUpdates() as AppUpdateApi;
-    };
-    return { api: await create(), create, startUpdate, referrer, remove };
+    device.referrer = referrer;
+    device.nativeUpdate = { check: vi.fn(async () => info), startUpdate, addListener: vi.fn(() => remove) };
+    const create = () => androidUpdates.createAndroidAppUpdates();
+    return { api: create(), create, startUpdate, referrer, remove };
   }
   it('uses flexible at priorities 0-3 and immediate at 4-5', async () => {
     for (const serverPriority of [0, 3]) {

@@ -1,6 +1,6 @@
 # Feature ownership and import boundaries
 
-Related: [ADR 0015](../adr/0015-feature-oriented-implementation.md) · [State and data](state-and-data.md) · [Runtime overview](overview.md)
+Related: [ADR 0052](../adr/0052-explicit-overlay-dependencies.md) · [State and data](state-and-data.md) · [Runtime overview](overview.md)
 
 ## Read by task
 
@@ -48,10 +48,9 @@ uses the existing global preference contract in the shared i18n subsystem.
 constructs the app once: one TanStack Query client for server facts and one
 app store for device facts ([ADR 0051](../adr/0051-app-core-state-tiers.md)).
 A workspace is a key, not a React provider subtree. Features read the focused
-or scoped values through selector hooks in `runtime/core/workspace-scope.ts`;
-the old per-domain context tree is gone. `WorkspaceScope` supplies only the
-scoped runtime values and target for retained panes; the narrow shared-UI scope
-exception remains for portal ancestry and update blockers.
+or scoped values through selector hooks in `runtime/core/workspace-selectors.ts`;
+retained Terminal and Settings panes pass workspace targets explicitly. Sheets
+and other portals receive the same target in their child props.
 
 One application owner retains registry/focus, persisted preferences and the stable
 presentation map. One connection owner supplies lifecycle, event transport and
@@ -77,12 +76,12 @@ AI exposes the pure `getInitialMode` resolver through its named `index.ts` and
 command actions share eligible-agent fallback rules without private imports.
 The enforced export list includes only this additional named API.
 
-- `runtime/core.ts`: the public app-core API (`useAppCore`, `useAppStore` and
-  its state/value types). Features may import this entrypoint; they must not
-  import `runtime/core/` internals.
+- `runtime/core.ts`: the public app-core API. `useProjectScope` resolves an
+  explicit or focused target from the app store and connection manager, then
+  supplies its Query identity and demand. Features import this entrypoint.
 - `index.ts`: named consumer UI, helpers and types used outside the feature.
-- `context.ts`: the existing context objects and narrow subscription hooks. This
-  separate leaf prevents portal scope restoration from loading feature workflows.
+- `context.ts`: narrow domain subscription hooks and existing app-wide context
+  objects.
 - `runtime.ts`: named headless hooks/services used by runtime and declared domain
   dependencies; never export feature presentation or workspace-consumer hooks.
 - Existing background tasks have explicit `background` entrypoints; they are not
@@ -94,28 +93,24 @@ The exact export lists and allowed feature edges live in `config/architecture.js
 and are checked by `tests/vitest/feature-boundaries.test.ts`. Feature dependencies,
 including type imports, must be acyclic.
 
+Projects owns project records, archive markers and diff source selection. Sessions
+owns favorites, deep link targets and active library entries. Voice uses the public
+Connections `ConnectionState` type for conversation readiness. Transcript read
+options and connector service management remain in their specific shared contracts
+for callers spanning features and the protocol boundary.
+
 Use the existing `@/*` alias. There are no aliases or forwarding modules for retired
 technical directories. Tests may import the internals they exercise without widening
 the production API.
 
-## Shared UI runtime exception
+## Shared UI dependencies
 
-Shared code is feature-independent. The following existing scope-aware controls
-alone may import `runtime/ui.ts`:
-
-| File under `shared/ui/` | Exact permitted imports |
-| --- | --- |
-| `portal.tsx` | `WorkspaceScope`, `WorkspaceScopeContext` |
-| `overlay-sheet.tsx` | `WorkspaceScopeContext`, `useUpdateBlocker` |
-| `select.tsx` | `WorkspaceScopeContext` |
-| `alert-dialog.tsx` | `WorkspaceScopeContext` |
-| `catalog-select.tsx` | `useUpdateBlocker` |
-| `use-confirmation.tsx` | `useUpdateBlocker` |
-
-The API reuses existing context objects, scope restoration and blocker lifetimes.
-It must not reach root composition, runtime mounts or feature presentation through
-value imports. No other shared file can import runtime, including through a relative
-path or re-export. There is no additional bridge context or duplicated state.
+Shared code is feature-independent. Its controls receive any interaction
+registration callbacks through props. The Updates feature supplies those
+callbacks from its wrappers and tracks open and closed interactions.
+Generic controls keep portal hosting and dismissal independent of the update
+policy. The architecture test checks imports from shared, including relative
+paths and re-exports.
 
 ## Validation
 
@@ -127,7 +122,7 @@ trees and proves every suite matches Vitest and TypeScript test configuration.
 Existing architecture checks still enforce the 60-line provider entrypoint, 500-line
 source ceiling, 127-member combined context surface, compatibility isolation,
 keyboard/tab layout and retained-state ownership. New checks enforce public imports,
-feature cycles, presentation IO boundaries and the exact shared UI exception.
+feature cycles, presentation IO boundaries and shared dependency direction.
 See the [validation strategy](../engineering/validation/strategy.md) for commands and
 test selection; this migration requires the complete gate and native entrypoint checks.
 

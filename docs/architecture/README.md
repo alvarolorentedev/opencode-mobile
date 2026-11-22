@@ -24,11 +24,11 @@ transport, persistence, or the client protocol. Read
 
 | Concern | Owning layer |
 | --- | --- |
-| App-wide connection registry, focus, and persistence | `runtime/workspace/workspace-provider.tsx`, `runtime/workspace/use-workspace-connections.ts`, `runtime/persistence/use-opencode-persistence.ts` |
+| App-wide connection registry, focus, and persistence | `runtime/core/commands/connection.ts`, `runtime/core/commands/workspace.ts`, `runtime/persistence/device-preferences.ts` |
 | Provider-specific agent guidance | `runtime/AGENTS.md` (loaded when working in `runtime/`) |
 | Routine server reads and connection lifecycle | `shared/server-data/`, `runtime/connections/connection-runtime.tsx` ([ADR 0014](../adr/0014-server-data-and-explicit-lifecycles.md)) |
-| Per-workspace domain orchestration | `runtime/composition/use-opencode-provider-composition.ts` and its domain hooks |
-| Public domain hooks and scope selectors | `shared/contracts/domain.ts`, `features/chat/context.ts`, `runtime/core/workspace-scope.ts` |
+| Scoped project commands and presentation | `runtime/core/project-runtimes.ts`, `runtime/core/project-binding.ts` and feature presentation hooks |
+| Public domain hooks and scope selectors | `features/*/context.ts`, `runtime/core/workspace-selectors.ts` |
 | Provider-facing API aggregation | `shared/protocol/services/` |
 | Client construction, endpoint wrappers, protocol types | `shared/protocol/opencode/` |
 | V1 compatibility only | `shared/protocol/opencode/compat/v1/` |

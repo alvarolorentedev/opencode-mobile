@@ -1,14 +1,15 @@
+import { UpdateBlockingSettingSelectField as SettingSelectField, useUpdateBlockingConfirmation as useConfirmation } from '@/features/updates/index';
+import type { WorkspaceTarget } from '@/shared/contracts/workspace';
 import { cn } from '@/shared/ui/cn';
 import { Badge } from '@/shared/ui/badge';
 import { Button } from '@/shared/ui/button';
 import { ListRow } from '@/shared/ui/list-row';
 import { Text } from '@/shared/ui/text';
-import { SettingSelectField, SettingSwitchRow } from '@/shared/ui/settings/setting-rows';
-import { useConfirmation } from '@/shared/ui/use-confirmation';
+import { SettingSwitchRow } from '@/shared/ui/settings/setting-rows';
 import { usePalette } from '@/shared/ui/theme/use-palette';
 import { shareDiagnosticReport } from '@/shared/platform/diagnostics-share';
 import { useObservabilitySnapshot, observability } from '@/shared/observability';
-import { usePreferences } from '@/shared/preferences/context';
+import { useWorkspacePreferences } from '@/runtime/workspace';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { View } from 'react-native';
@@ -25,10 +26,10 @@ function metricValue(name: string, p95: number) {
   return String(Math.round(p95));
 }
 
-export function AppDiagnosticsSection() {
+export function AppDiagnosticsSection({ workspace }: { workspace: WorkspaceTarget }) {
   const { t } = useTranslation();
   const palette = usePalette();
-  const { chatPreferences, updateChatPreferences } = usePreferences();
+  const { chatPreferences, updateChatPreferences } = useWorkspacePreferences(workspace);
   const snapshot = useObservabilitySnapshot();
   const { confirmAction, confirmation } = useConfirmation();
   const [severity, setSeverity] = useState<'all' | 'warn' | 'error'>('all');

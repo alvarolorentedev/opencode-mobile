@@ -4,11 +4,10 @@ import { getEventSessionStatus } from '@/shared/protocol/opencode/events';
 import { stringField } from '@/shared/protocol/opencode/v2/fields';
 import { formToQuestion, mapPermission } from '@/shared/protocol/opencode/v2/mappers';
 import type { V2Form, V2Permission } from '@/shared/protocol/opencode/v2/shared';
-import type { Dispatch, SetStateAction } from 'react';
 
 import type { PendingPermissionRequest, PendingQuestionRequest } from '@/shared/protocol/opencode/client';
 import type { FileDiff, Session, SessionStatus, Todo } from '@/shared/protocol/opencode/types';
-import type { TranscriptRefreshMode } from '@/shared/contracts/domain';
+import type { TranscriptRefreshMode } from '@/shared/contracts/transcript-read';
 
 export type SessionRefreshOptions = {
   messages?: boolean;
@@ -29,6 +28,8 @@ export type SessionRefreshOptions = {
   sessions?: boolean;
   delayMs?: number;
 };
+
+type Write<T> = (value: T | ((current: T) => T)) => void;
 
 export type ProviderEventActions = {
   refreshSessions: () => Promise<unknown>;
@@ -54,17 +55,17 @@ export type ProviderEventActions = {
   // Transcript actually visible on screen. Background sessions keep only their
   // status row until they are opened, so their attachment bytes are not fetched.
   transcriptSessionIds?: Set<string>;
-  setSessions?: Dispatch<SetStateAction<Session[]>>;
+  setSessions?: Write<Session[]>;
   removeCatalogSession?: (sessionId: string) => void;
-  setSessionStatuses: Dispatch<SetStateAction<Record<string, SessionStatus>>>;
-  explicitSessionSelectionRef?: { current: string | undefined };
-  setPromptError: Dispatch<SetStateAction<{ message: string; occurredAt: number; sessionId?: string } | undefined>>;
-  setDiffsBySession: Dispatch<SetStateAction<Record<string, FileDiff[]>>>;
-  setTodosBySession: Dispatch<SetStateAction<Record<string, Todo[]>>>;
-  setPendingPermissionsBySession: Dispatch<SetStateAction<Record<string, PendingPermissionRequest[]>>>;
-  setPendingQuestionsBySession: Dispatch<SetStateAction<Record<string, PendingQuestionRequest[]>>>;
-  setMcpAuthPrompt: Dispatch<SetStateAction<{ mcpName: string; url: string } | undefined>>;
-  selectedDiffMessageBySessionRef: { current: Record<string, string | undefined> };
+  setSessionStatuses: Write<Record<string, SessionStatus>>;
+  clearExplicitSelection?: (sessionId: string) => void;
+  setPromptError: Write<{ message: string; occurredAt: number; sessionId?: string } | undefined>;
+  setDiffsBySession: Write<Record<string, FileDiff[]>>;
+  setTodosBySession: Write<Record<string, Todo[]>>;
+  setPendingPermissionsBySession: Write<Record<string, PendingPermissionRequest[]>>;
+  setPendingQuestionsBySession: Write<Record<string, PendingQuestionRequest[]>>;
+  setMcpAuthPrompt: Write<{ mcpName: string; url: string } | undefined>;
+  readPinnedDiffMessage: (sessionId: string) => string | undefined;
 };
 
 export function handleProviderEvent(event: OpencodeEvent, actions: ProviderEventActions): void {
@@ -110,9 +111,7 @@ export function handleProviderEvent(event: OpencodeEvent, actions: ProviderEvent
         delete next[sessionID];
         return next;
       });
-      if (actions.explicitSessionSelectionRef?.current === sessionID) {
-        actions.explicitSessionSelectionRef.current = undefined;
-      }
+      actions.clearExplicitSelection?.(sessionID);
     }
     scheduleSessions();
     return;

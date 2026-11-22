@@ -9,7 +9,7 @@ This feature owns MCP/plugin/agent/skill/command inventories and serialized muta
 Use ui/ for rendering/local interaction, state/ for domain hooks/actions,
 services/ for aggregation/persistence adapters, model/ for pure rules/types,
 and __tests__/ for existing owned Vitest coverage. Create no empty scaffolding.
-Public entrypoints currently present: `index.ts`, `context.ts`, `runtime.ts`.
+Public entrypoints currently present: `index.ts` and `context.ts`.
 Plugin GUI hosting is implemented in `ui/plugin-gui-*` and documented in
 [plugin GUIs](../../docs/architecture/plugin-guis.md).
 

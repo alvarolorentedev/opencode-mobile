@@ -18,13 +18,62 @@ Related ADRs: [0002 provider-centric orchestration](../adr/0002-provider-centric
 
 ## State Ownership Overview
 
-The application is provider-centric. The app store owns the connection registry,
-focus, preferences and persistence; `WorkspaceProvider` coordinates those
-lifecycles. One `ConnectionRuntime` per connection owns probing, recovery,
-credential renewal and the shared session catalog. Each retained
-`WorkspaceRuntime` owns project workflows. TanStack Query owns routine server
-responses. Feature hooks select the focused or scoped values from the app core;
-there is no per-domain context tree.
+The app store owns the connection registry, focus and preferences.
+`WorkspaceProvider` coordinates persistence and route demand. The app core
+starts one manager per enabled connection for probing, recovery, credential
+renewal and the shared event stream. Connection presentation reads settings
+from the app store and lifecycle state from the manager. The app shell supplies
+the shared profile, setup and service controls once. Query owns the shared
+session catalog and routine server responses. Feature hooks select scoped
+facts from Query and the app store. The core binds commands and reconciliation
+for each retained project key to the connection manager's realtime scopes.
+
+The workspace commands in `runtime/core/commands/workspace.ts` register project
+demand and wait for a matching realtime binding before opening a chat. They
+own navigation cancellation, chat and worktree creation, and independent
+terminal and inspection targets. A newer navigation cancels an older external
+link before it can change focus.
+
+Worktree mutations use the owning project service. Creating a worktree chat
+gets the guarded root client from the connection manager, creates the worktree,
+then creates and opens the chat in the returned checkout.
+
+Project headers and pickers derive their rows from the scoped location,
+connection catalog, worktree and VCS Query entries. The app store supplies
+the selected directory and the connection manager supplies its lifecycle.
+The worktree picker binds its refresh and remove actions to the same scoped
+client as its Query reads.
+One app-core clipboard controller follows the connection registry, serializes
+file mutations per connection, and clears staged entries when their settings
+change or the connection is disabled.
+The Projects screen reads file and VCS results from its scoped Query entries.
+Browser and preview state belong to the scoped client, and each file open
+has a request token. Clipboard writes invalidate reads for detached roots.
+Catalog location and add-project actions run in the Projects service. A change
+to the workspace generation invalidates an outstanding location result. File
+and project status refreshes bind directly to the scoped Query keys.
+
+Navigation, the share picker and Chat Library read project and session
+selection from the app store. Session presentation selects the active row
+from the scoped Query list, and library polling reads visibility from the store.
+Navigation waits for the action binding to match the selected directory and
+credential revision before opening a session.
+Session navigation checks the catalog and project lists in the current
+credential partition. Library and share views consume the connection catalog
+once per server.
+Chat and plugin session views select the scoped lists from Query. Library
+edits call the scoped session commands and favorites update the app store
+using the owning connection scope.
+The workspace picker and library enumerate the same connected project
+partitions. The library and share picker passively observe cached project lists.
+Session opening and creation bind directly to the core commands. The library
+sets its visibility on the selected workspace so connection catalog polling
+runs while the library is open and the route is foregrounded.
+
+Session selection and startup bootstrap use the scoped app-core command in
+`runtime/core/commands/session-navigation.ts`. Explicit selection commits
+before transcript hydration and cancels any in-flight bootstrap for that
+workspace.
 
 State is split into seven practical domains:
 
@@ -70,6 +119,7 @@ responses into React state or add another cache in a service:
 | Files and VCS | `directory(path)`, `search(query)`, `preview(path)`, `file-status`, `vcs`, `worktrees` |
 | Diagnostics and MCP | `diagnostics` health plus shared `mcp` status |
 | Saved permission grants | Connection-wide `saved-permissions` |
+| Pending permission and question requests | Project-scoped `pending-interactions`, with server-wide Settings selections |
 | Cloud Link HTTP catalogs | Trusted environment/store catalog and authenticated machine list |
 | Connector services | Target scope/auth revision plus `list` and `version` |
 
@@ -78,7 +128,15 @@ contract, 'project', directory, resource, ...parameters]`; connection-wide reads
 use `'server', resource` after the contract. Credentials never appear in keys.
 Credential changes cancel/remove the old partition. Same-machine Cloud Link
 renewal copies only existing data with original timestamps into the replacement
-partition, retaining stable presentation and workflow identity.
+partition, retaining stable presentation and workflow identity. Model classifier
+probes are specific to the credential generation and run again after renewal.
+Preference controls read device settings and the selected connection's model
+preferences from the app store. The preference command applies model selection
+rules using the current project's exact credential-partitioned Query data.
+Automatic approval observes pending-interaction writes and connection state in
+the app core. It checks the enabled connection's V2 policy and current credential
+partition before submitting a reply. Settings reads the same Query entries and
+binds replies to the project that owns the request.
 
 The default freshness is 60 seconds and unused data is collected after five
 minutes; previews use zero retention. Commands use zero freshness so every
@@ -93,6 +151,9 @@ entitlement recovery remain transactional Cloud Link state, outside Query.
 
 Only the currently visible Chat/Project, Settings inspection or Terminal target
 provides query demand; remembering a target does not keep it subscribed.
+Project selectors pass the credential revision and identity to the owning hooks.
+The app shell sets route demand for the connection and project lifecycle. Foreground subscribers read the Query focus
+manager directly. The app uses one Query provider for all scopes.
 Retained/background workspaces give `useQueries` an empty query list. This
 destroys observers and releases their held results; disabling a retained observer
 alone would still hold its last response. Optional surfaces subscribe after demand. AppState gates foreground reads;
@@ -166,20 +227,48 @@ Meaning:
 
 Primary fields:
 
-- `messagesBySession`
+- canonical transcript pages per session and their derived `messagesBySession` view
 - `diffsBySession`
 - `todosBySession`
 - `pendingPermissionsBySession`
 - `pendingQuestionsBySession`
 
-Approvals are project-scoped Query data now: the refresh path writes one
+Approvals are project-scoped Query data. The session refresh command writes one
 `pending-interactions` entry per project and the runtime selects it. They are
 listed here because the action layer still calls the grouped maps "session
 caches"; there is no second React copy.
 
-Canonical message windows, diffs, todos and VCS diffs are Query data: one
-connection-scoped entry per resource holds the per-session maps, and the action
-layer keeps its setter boundary. Diffs and todos are no longer React state.
+The app core's session commands reply to permissions and questions through
+the owning connection and project. A pending permission mutation suppresses
+that request during reconciliation. An ambiguous response triggers a fresh
+read before restoring the card, and an old credential generation cannot
+write back into the approvals cache. The connection manager reuses each
+project client for these reads until settings, credentials or the contract
+change.
+
+Each session owns one infinite transcript query in its connection, credential
+and project partition. The pages hold canonical records and their server
+cursors. A bounded tail or an assistant detail updates the held pages while
+preserving their boundaries. Loaded session queries have a 45-minute retention window and the
+project's keep set bounds recent inactive histories. Diffs, todos and VCS diffs
+remain Query data. The `transcript-metadata` project entry holds the usage and
+plan ledgers. The app store holds transcript request flags, the streamed
+overlay, optimistic user records and local send timestamps.
+The displayed transcript combines these sources at paint time. Live deltas
+update the store buffer synchronously and publish a revision at most once per
+50 ms batch. Query holds canonical message records throughout streaming.
+
+OpenCode 2 pending prompts and notices share a project-scoped `prompt-inbox`
+Query entry. Inbox reads, confirmed admissions and confirmed cancellations update
+that entry. The in-memory app store owns local sending and uncertain entries and
+the offline outbox, including the inputs needed for delivery. The pending stack
+combines those sources for the selected session. Credential rotation follows the
+Query partition policy above, and removing a connection discards its outbox.
+
+The prompt command tracks the current submission separately from the visible
+sending indicator so a late completion can clear only its own operation.
+Attachment preparation and notification bookkeeping preserve the captured
+connection scope while the project is still current.
 
 `diffsBySession` holds normalized `FileDiff` entries. Both contracts pass through `shared/protocol/opencode/diff.ts` before they are stored, so a v1 `before`/`after` pair arrives with a rebuilt unified `patch` and the viewer renders the same line preview for either contract.
 
@@ -309,6 +398,12 @@ offline connection, a pending probe, or a missing pack never rewrites the stored
 
 The Extensions snapshot is also server-derived and not persisted. It is keyed to the client and project that produced it, so a connection or project switch immediately hides the previous snapshot. Writes are serialized by the provider. Config mutations read the raw JSONC, create a backup, write a same-directory temporary file, verify its bytes and the server-reloaded document, and atomically rename it over the target; a failed replace or server load restores the backup. Global config reads and atomic moves use fixed shell commands with validated absolute paths, while project files use the normal file API. No config contents are stored locally or logged. Removed skills move to `.opencode-mobile-trash` under their scope rather than being deleted.
 
+The app store retains each workspace's file and directory selection, requested
+surfaces, extension write status and selected GUI plugin. File data and extension
+catalogs stay in Query. The store tracks the selected classifier probe and its
+pending state, and Query holds the result for the credential and model that
+produced it. Local classifier readiness is app-wide device state.
+
 ## Terminal State
 
 Primary fields:
@@ -317,6 +412,11 @@ Primary fields:
 - `activeTerminalId`
 - `terminalRuntime` (scope, opened instances, renderer registration, resize)
 - `terminalConnection`
+
+The terminal list is server data in the project-scoped `terminals` Query
+entry. The app store owns the active PTY, opened instances and renderer
+scope generation for each workspace. PTY transports publish their status to
+that store and retain their sockets, renderer registrations and replay cursors.
 
 The provider retains one WebSocket per opened PTY in the current connection/project
 scope. Each instance reports `connecting`, `connected`, `reconnecting`, `idle`,
@@ -360,6 +460,12 @@ Primary fields:
 - `conversationFeedback`
 - `conversationFeedbackAction`
 - `conversationLatestHeardText`
+
+The app store owns these fields, the turn sequence and the wake sensor for
+each workspace. Native recognition and playback callbacks read the current
+input and readback phases directly from the store. The device session is cleared
+when its workspace runtime unmounts. The same scope holds the pending
+confirmation and scheduled readback utterances.
 
 Input and readback are independent. Submitting a turn immediately returns input
 to `armed`, so a steer or queued command can arrive while the assistant is
@@ -453,9 +559,14 @@ actions, and OS links) keep using `openDeepLinkSession()` from
 `features/sessions/ui/session-link-screen.tsx`, which resolves the connection and validates the target
 before switching.
 
-A session created or forked locally is retained for a short grace period if a
-list read that started before creation resolves afterward. This prevents a
-stale cursor page from dropping the new chat before the list catches up.
+The app-core session commands publish the server's created or forked session
+immediately. Query retains the mutation's session ID for up to ten seconds so
+an older list response cannot drop the new chat before the catalog catches up.
+The project list remains the single cached session record.
+The same command path serializes title changes per session. A confirmed
+deletion clears the session's selection, favorites, approvals and cached
+content from its owning scope. Reverting waits for execution to settle and
+then reloads the session's message window and diff.
 Session-list workflow refreshes and connection-owned routine Query invalidations are
 coalesced independently; `session.deleted` removes its row immediately before reconciliation.
 The focused workspace's overridden domains are memoized independently, so a
@@ -501,8 +612,16 @@ supported key for anything that belongs to one server. `getConnectionScope()`
 is deterministic and encoded so it can be concatenated into storage keys; do
 not re-derive connection keys anywhere else.
 
+Zustand persist projects chat preferences, the trusted control-plane choice,
+favorites, hidden projects and onboarding completion. It reads and upgrades the
+existing per-field records and records the schema version separately. Headless
+consumers can read the same records. The favorites scope migration uses the
+same writer and awaits it before the profile save. The workspace shell waits
+for this hydration and the secure connection settings, after Query restoration.
+
 Persisted values:
 
+- `opencode-mobile.preferences-version` (schema version for the device preference records)
 - `opencode-mobile.settings` (connection URL and username; the password and custom gateway headers live in secure storage)
 - `opencode-mobile.connect-control-plane` (last automatically resolved Cloud Link environment; defaults to production, accepts only production/staging, hydrated before pairing/Cloud Link startup)
 - `opencode-mobile.connection-profiles` (saved connections with name and optional server-scoped catalog filtering, model recents, agent mode, auto-approve, and auto-routing preferences; passwords and custom gateway headers live in secure storage)
@@ -528,7 +647,7 @@ media or are regenerated. Entries older than 24 hours are discarded.
 ### Favorites DTO
 
 Favorites use the explicit `FavoriteSession` model
-(`shared/contracts/domain.ts`): `sessionId`, `connectionScope`,
+(`features/sessions/model/types.ts`): `sessionId`, `connectionScope`,
 `projectPath`, optional `title`, and `favoritedAt`. The connection scope makes
 identical session IDs or project paths on two servers independent, and opening
 a favorite switches to the connection that owns it before running the
@@ -849,7 +968,7 @@ union-merges it, so reconcile is bounded and older loaded records are never
 re-downloaded or trimmed. When a burst is larger than one page and the newest
 page no longer overlaps the held window, the fetched page is adopted and history
 paging restarts from its oldest record instead of downloading bridging pages.
-Held records can exist without a stored cursor when the transcript cache hydrates
+Held records can exist without a stored cursor when Query restores a transcript tail
 before the first network read, or when a window reset leaves a retained transcript
 in place. A tail refresh then keeps those records and stores the newest page's
 cursor; if scroll-up runs first, it repairs the newest window once and returns,
@@ -857,10 +976,16 @@ and the next scroll pages back. This keeps older history reachable instead of
 leaving `hasOlder` false. Only server-side history rewrites rebuild the window
 instead of merging: compaction, revert/unrevert, and (on V1) explicit message
 removal. A rebuild is one newest-window read of up to 200 records, never a scan.
-Reconnects and foreground returns tail-merge. The persisted transcript cache stays
-tail-bounded, while retention keeps the current session plus up to three recently
-viewed sessions in memory so switching back paints before the background read
-settles.
+Reconnects and foreground returns tail-merge. Canonical records live in an
+infinite query for each connection, credential revision, contract, project and
+session. Scoped selectors keep the current and conversation sessions plus up to
+three recent sessions ready to paint. Query persistence keeps up to 64 recent
+session tails for seven days within a shared 400,000 UTF-16 code unit record
+budget. Each tail holds up to 24 records within 200,000 code units. It skips
+inline and transient media and restores no cursor. Legacy on-device snapshots
+can seed an empty query during an upgrade. Remove the legacy reader after one
+snapshot lifetime has elapsed from the release that introduces Query transcript
+persistence.
 
 Merge preserves durable server order, never `time.created` order. A response
 that arrives after a newer window has been applied can still contain a record
@@ -1089,7 +1214,7 @@ Current implementation assumes these invariants:
   V1 submissions retain their existing behavior.
 - File transcript details preserve URI, MIME type and filename, including V2
   returned file bytes. File-only assistant messages remain displayable.
-- `SessionMessageRecord` objects stored in `messagesBySession` are never mutated in place; `mergeSessionMessageRecords` in `shared/presentation/format.ts` adopts a new record object when content changes and preserves record and array references when nothing changed, keeping the WeakMap caches in `toTranscriptEntry` and `getSessionPreviewById` correct
+- Canonical `SessionMessageRecord` objects are immutable. The merge helpers in `shared/presentation/format` preserve record and array references when content stays the same, keeping the WeakMap caches in `toTranscriptEntry` and `getSessionPreviewById` correct.
 
 ## Non-Persisted But Behavioral State
 
@@ -1113,7 +1238,7 @@ A rewrite that only mirrors persisted values would still miss important runtime 
 
 ## Realtime Recovery Ownership
 
-`use-opencode-realtime.ts`, composed by the provider, reconciles session/status,
+The connection's `createRealtime` coordinator reconciles session/status,
 pending permission/question lists, and selected/conversation message, diff, and
 todo snapshots on the first envelope of every subscription, including reconnects.
 Only one reconciliation runs at a time, and a reconnect pass is queued behind an
@@ -1170,7 +1295,7 @@ Project browser state and request-scope guards remain provider-owned. `FilesPane
 Session lists exclude records with a truthy `time.archived`. V1 archive/restore is not supported because it has no V2 equivalent. Explicit open targets absent from cached lists trigger a fresh list read rather than creation of a replacement session. Session idle events only refresh domain state.
 
 
-Transcript, diff, and todo cache pruning is paused while session bootstrap is loading. Only the visible workspace prunes the connection-scoped maps; a hidden workspace does not hold every mounted project's selection, so its keep-set is incomplete. A pending deep-link target is also retained until selection completes, so early transcript reads survive slower capability/configuration requests when reopening a favorite from another project.
+Transcript, diff, and todo cache pruning pauses during session bootstrap. The visible workspace prunes its project transcript queries and the connection-scoped diff and todo resources. Its keep set retains a pending deep-link target until selection completes, so early transcript reads survive slower capability and configuration requests when reopening a favorite from another project.
 
 ## Project file browser
 
@@ -1283,7 +1408,27 @@ Chat focus is validated against live runtimes. When the focused connection error
 
 Enabled and recent catalog models, agent mode, auto-routing tiers, and auto-approve are scoped to a server. Explicit composer model and variant choices are owned by each server session. New servers default to auto-approve off. V2 auto-approve is a local per-server policy that answers each pending request once, using the existing permission service; persistent grants keep the server's actual semantics. General UI, language and voice device preferences remain app-wide. Hide subagents defaults to true when missing; a saved false is retained.
 
+The Chat and Settings toggles use a connection command bound to the selected
+connection revision. Updating a background server preserves the focused
+server's preferences.
+
+AI views read the provider catalog from the selected credential partition.
+Provider commands validate the scoped client after cancelling pending reads
+and invalidate only the same partition after a write.
+
 Chat focus, terminal target and Settings inspection target are independent composite references. The presentation map holds composer text/attachments, failed input, editor baseline/current text and transcript offsets. Hidden dirty drafts and PTYs participate in update blocking. Removing a connection names unsaved drafts in its confirmation. Drafts are intentionally not written to disk.
+
+Editing a server URL selects the new disabled connection so the forms show the
+new settings and require an explicit reconnect. Navigation to an enabled
+workspace waits for a realtime binding that matches the selected directory
+and connection revision. Terminal and Settings await their own targets before
+changing the selected pane.
+
+The registry holds the recent healthy connection IDs used for failover, as well
+as the terminal and Settings inspection targets. The app store holds profile
+metadata and the per-connection file clipboard. Async chat and project actions
+read the current selection and diff preferences from the app store and the
+current session list from Query.
 
 New chat creation is provider-owned: `createChat(target)` resolves and connects the target runtime, creates and opens the session there, then selects that workspace so the Chat screen follows it. The New chat sheet only holds a local draft target; no project is selected and no session is created before confirmation.
 

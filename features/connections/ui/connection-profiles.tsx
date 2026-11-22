@@ -1,5 +1,6 @@
+import { useUpdateBlockingConfirmation as useConfirmation, UpdateBlockingSheet as OverlaySheet } from '@/features/updates/index';
+import type { WorkspaceTarget } from '@/shared/contracts/workspace';
 import { cn } from '@/shared/ui/cn';
-import { useConfirmation } from '@/shared/ui/use-confirmation';
 import { Icon } from '@/shared/ui/icon';
 import { Text } from '@/shared/ui/text';
 import { Button } from '@/shared/ui/button';
@@ -14,13 +15,12 @@ import { Pressable, View } from 'react-native';
 import { ConnectionProfileDialog, type ConnectionProfileFormValues } from '@/features/connections/ui/connection-profile-dialog';
 import { ConnectionMethodChooser } from '@/features/connections/ui/connection-method-chooser';
 import { ConnectionScanFlow } from '@/features/connections/ui/connection-scan-flow';
-import { OverlaySheet } from '@/shared/ui/overlay-sheet';
 import { Colors } from '@/shared/ui/theme/theme';
 import { findMatchingProfile, type ConnectionProfile } from '@/shared/contracts/connection-profiles';
 import { hasWorkspaceDrafts , useWorkspacePresentation, useWorkspaces } from '@/runtime/workspace';
 import { getConnectionUiScope } from '@/shared/contracts/connection-scope';
 import { getErrorMessage } from '@/shared/utilities/error-message';
-import { useConnection } from '@/features/connections/context';
+import { useConnection, useConnectionLifecycles } from '@/features/connections/context';
 
 type Palette = typeof Colors.light;
 
@@ -39,12 +39,13 @@ function connectionHost(serverUrl: string) {
   }
 }
 
-export function ConnectionProfiles({ palette, onManageConnect, onPair }: { palette: Palette; onManageConnect?: () => void; onPair?: () => void }) {
+export function ConnectionProfiles({ workspace, palette, onManageConnect, onPair }: { workspace: WorkspaceTarget; palette: Palette; onManageConnect?: () => void; onPair?: () => void }) {
   const { confirmAction, confirmation } = useConfirmation();
   const { t } = useTranslation();
   const registry = useWorkspaces();
+  const lifecycles = useConnectionLifecycles();
   const presentation = useWorkspacePresentation();
-  const { settings, connection, connect, updateSettings, connectSetup, connectionProfiles } = useConnection();
+  const { settings, connection, connect, updateSettings, connectSetup, connectionProfiles } = useConnection(workspace);
   const { profiles, refresh, connect: connectProfile, passwordForEditing, headersForEditing, certificateForEditing, save, remove, signIn } = connectionProfiles;
   const [error, setError] = useState<string>();
   const [expandedKey, setExpandedKey] = useState<string>();
@@ -246,8 +247,7 @@ export function ConnectionProfiles({ palette, onManageConnect, onPair }: { palet
     const live = registry.connections.find((entry) => entry.id === id);
     const isActive = live?.enabled === true;
     const isSwitching = switchingProfileId === profile.id;
-    const runtime = Object.entries(registry.snapshots).find(([key]) => (JSON.parse(key) as string[])[0] === id)?.[1];
-    const status = runtime?.values.connectionValue.connection.status ?? 'idle';
+    const status = lifecycles.get(id)?.connection.status ?? 'idle';
     const isReconnecting = status === 'connecting';
     const manageOrEdit = profile.connect
       ? onManageConnect ? <Button onPress={() => manageConnect(profile)} variant="outline"><Text>{t('settings:connect.manage')}</Text></Button> : null
@@ -296,16 +296,18 @@ export function ConnectionProfiles({ palette, onManageConnect, onPair }: { palet
         <Text className={cn("text-muted-foreground")} variant="label">{t('settings:connection.addDescription')}</Text>
       ) : null}
       <OverlaySheet visible={choosing} title={t('settings:connection.addConnection')} onClose={() => setChoosing(false)} fitContent testID="connection-method-sheet">
-        <ConnectionMethodChooser onScan={() => { setChoosing(false); setScanning(true); }} onManual={() => { setChoosing(false); setDialog({ mode: 'add' }); }} onPair={() => { setChoosing(false); onPair?.(); }} />
+        <ConnectionMethodChooser workspace={workspace} onScan={() => { setChoosing(false); setScanning(true); }} onManual={() => { setChoosing(false); setDialog({ mode: 'add' }); }} onPair={() => { setChoosing(false); onPair?.(); }} />
       </OverlaySheet>
       {scanning ? (
         <ConnectionScanFlow
+          workspace={workspace}
           onSubmit={addAndConnect}
           onDismiss={() => { addedProfileId.current = undefined; setScanning(false); }}
         />
       ) : null}
       {dialog ? (
         <ConnectionProfileDialog
+          workspace={workspace}
           title={dialog.mode === 'add' ? t('settings:connection.addConnection') : t('settings:connection.editConnection')}
           submitLabel={dialog.mode === 'add' ? t('settings:connection.saveAndConnect') : t('common:actions.save')}
           showName={dialog.mode !== 'edit-current'}

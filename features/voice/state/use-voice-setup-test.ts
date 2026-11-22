@@ -12,11 +12,13 @@ export type VoiceSetupTest = {
   stop: () => Promise<void>;
 };
 
-export const VoiceSetupTestContext = createContext<VoiceSetupTest | undefined>(undefined);
+type VoiceSetupCoordinator = VoiceSetupTest & { runConversation: (action: () => Promise<void>) => Promise<void> };
+
+export const VoiceSetupTestContext = createContext<VoiceSetupCoordinator | undefined>(undefined);
 export const useVoiceTest = () => useContext(VoiceSetupTestContext);
 
 // One app-wide test owner. Detection never enters the conversation submit path.
-export function useVoiceSetupTest(preferences: ChatPreferences, conversationActive: boolean): VoiceSetupTest & { runConversation: (action: () => Promise<void>) => Promise<void> } {
+export function useVoiceSetupTest(preferences: ChatPreferences, conversationActive: boolean): VoiceSetupCoordinator {
   const [status, setStatus] = useState<VoiceSetupTest['status']>('idle');
   const [error, setError] = useState<string>();
   const [pendingConversations, setPendingConversations] = useState(0);

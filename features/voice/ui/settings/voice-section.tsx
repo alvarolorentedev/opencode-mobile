@@ -1,3 +1,4 @@
+import { UpdateBlockingSettingSelectField as SettingSelectField } from '@/features/updates/index';
 import { cn } from '@/shared/ui/cn';
 import { ToggleGroup, ToggleGroupItem } from '@/shared/ui/toggle-group';
 import { Text } from '@/shared/ui/text';
@@ -27,7 +28,7 @@ import { voiceLanguageOptions } from '@/features/voice/ui/voice-language';
 import type { LocalVoiceState } from '@/features/voice/ui/use-voice-setup';
 import { LocalTtsSection } from '@/features/voice/ui/settings/local-tts-section';
 import { VoiceMoreSettings } from '@/features/voice/ui/settings/voice-more-settings';
-import { SettingSelectField, SettingSwitchRow, type Palette } from '@/shared/ui/settings/setting-rows';
+import { SettingSwitchRow, type Palette } from '@/shared/ui/settings/setting-rows';
 export type VoiceSectionProps = {
   onboarding?: boolean;
   availableSpeechVoices: SpeechVoiceOption[];

@@ -1,9 +1,9 @@
+import { UpdateBlockingSheet as OverlaySheet } from '@/features/updates/index';
 import { View, useWindowDimensions } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { useConnection } from '@/features/connections/context';
 import { useExtensions } from '@/features/extensions/context';
 import { useSessionLibrary } from '@/features/sessions/context';
-import { OverlaySheet } from '@/shared/ui/overlay-sheet';
 import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from '@/shared/ui/select';
 import { activePluginGui } from '@/features/extensions/model/plugin-gui';
 import { PluginGuiView } from '@/features/extensions/ui/plugin-gui-view';

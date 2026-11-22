@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-import { FAVORITE_SESSIONS_MAX, type FavoriteSession } from '@/shared/contracts/domain';
+import { FAVORITE_SESSIONS_MAX, type FavoriteSession } from '@/features/sessions/model/types';
 
 // Maps one persisted entry to the explicit favorite model, dropping unknown
 // fields (for example the legacy `projectLabel`, which is derived from the

@@ -1,3 +1,4 @@
+import { UpdateBlockingWorkspaceSelect as WorkspaceSelect, UpdateBlockingSheet as OverlaySheet } from '@/features/updates/index';
 import { cn } from '@/shared/ui/cn';
 import { Text } from '@/shared/ui/text';
 import { TextField } from '@/shared/ui/text-field';
@@ -8,7 +9,6 @@ import { useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Pressable, ScrollView, Text as NativeText, View } from 'react-native';
 
-import { WorkspaceSelect } from '@/shared/ui/workspace-select';
 import { useWorkspaces } from '@/runtime/workspace';
 import { getConnectionScope } from '@/shared/contracts/connection-scope';
 import { useWorkspaceProjects } from '@/features/projects/state/use-workspace-projects';
@@ -17,7 +17,6 @@ import { ProjectOptions } from '@/features/projects/ui/project-options';
 import { ArchivedProjectsSection } from '@/features/projects/ui/archived-projects-section';
 import { ProjectDirectoryPicker } from '@/features/projects/ui/project-directory-picker';
 import type { WorkspaceTarget } from '@/shared/contracts/workspace';
-import { OverlaySheet } from '@/shared/ui/overlay-sheet';
 import { Switch } from '@/shared/ui/switch';
 import { ListRow } from '@/shared/ui/list-row';
 

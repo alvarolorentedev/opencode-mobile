@@ -23,13 +23,13 @@ phase you are executing. Do not preload every phase unless you are planning.
 
 | Phase | Document | Status | Outcome |
 | --- | --- | --- | --- |
-| A | [State evacuation](phase-a-state-evacuation.md) | In progress — A1 done, A2–A7 open | No domain data in per-workspace React state |
-| B | [Connection manager](phase-b-connection-manager.md) | Not started | Transport, probe, renewal, SSE and polling are plain TS |
-| C | [Command core](phase-c-commands.md) | Not started | Cross-domain commands are plain functions; composition deleted |
-| D | [Transcript](phase-d-transcript.md) | Not started | Per-session infinite messages + store live overlay |
-| E | [Flatten React](phase-e-flatten-react.md) | Not started | No scope/provider tree or shared-UI runtime exception |
-| F | [Persistence and tests](phase-f-persistence-and-tests.md) | Partially done | Query persistence done; Zustand persist, `loadTs`, `fast-check`, `knip` remain |
-| G | [Harness and guardrails](phase-g-harness-and-guardrails.md) | Not started | Full composition harness, fact rules, docs, release validation |
+| A | [State evacuation](phase-a-state-evacuation.md) | Complete | No domain data in per-workspace React state |
+| B | [Connection manager](phase-b-connection-manager.md) | Complete | Core-owned connection managers run probe, renewal, SSE and polling |
+| C | [Command core](phase-c-commands.md) | Complete | Cross-domain commands run in the app core and the legacy composition is deleted |
+| D | [Transcript](phase-d-transcript.md) | Complete | Per-session infinite messages, bounded Query persistence and store live overlay |
+| E | [Flatten React](phase-e-flatten-react.md) | Complete | No scope/provider tree or shared-UI runtime exception |
+| F | [Persistence and tests](phase-f-persistence-and-tests.md) | In progress | Persistence and loader removal implemented; Knip and checkpoint open |
+| G | [Harness and guardrails](phase-g-harness-and-guardrails.md) | In progress | Composition harness and ownership checks implemented; final validation open |
 
 ## Current baseline
 
@@ -41,7 +41,7 @@ Completed before this plan:
 - Registry/focus, selection, active project, presentation, chat UI, MCP prompt
   and focused values are store-owned.
 - The feature domain context/provider tree is gone; scope values are selected
-  through `runtime/core/workspace-scope.ts`.
+  through `runtime/core/workspace-selectors.ts`.
 - The connection state machine is a plain manager; its effects are still React.
 - Query persistence for session and project catalogs is enabled.
 - `npm run impact -- <file>` lists dependent tests.
@@ -56,6 +56,420 @@ git status --short
 npm run validate:commit
 ```
 
+## Execution journal
+
+- `d1115184` baseline on Node 22.23.3. `npm ci` and `npm run validate:commit`
+  passed from the clean tree. Vitest reported 1,253 passing tests and one
+  existing skip. ESLint reported 36 existing warnings.
+- A2, `c43ebf70`. Static
+  checks, docs, the development web export, and 31 browser tests across chat,
+  interactions and network resilience passed. The focused Vitest run covered
+  the inbox, the app store and feature boundaries. The impact command found no
+  affected suites because the inbox suites still use the legacy loader.
+- A3, `aa062d6e`.
+  The commit gate reported 1,255 passing tests and one existing skip. The
+  voice and provider suites, fake-server self-test, docs, web export and 47
+  browser tests across chat, onboarding and settings passed. Physical speech
+  recognition and playback still require device acceptance.
+- A4, `00539212`. The
+  commit gate, focused terminal and provider tests, docs and web export passed.
+  All 12 terminal and multi-server browser tests passed, including retained
+  renderer and colliding PTY ID coverage. Native terminal input and screen
+  reader behavior still require device acceptance.
+- A5, `2b3110c4`.
+  The commit gate reported 1,256 passing tests and one existing skip. The
+  46 focused tests, docs, web export, and all 35 chat, diffs, realtime and
+  network resilience browser tests passed. A fake-clock test verified one
+  grouped paint at 50 ms with an optimistic attachment. Comparative latency
+  and cold-start measurement remain part of Phase D.
+- A6, `5d5ad465`.
+  The commit gate, 144 focused tests, docs and web export passed. All 49 chat,
+  settings, extensions, projects and auto-model browser tests passed. The
+  credential partition test verifies that an old classifier result does not
+  carry into a new credential generation.
+- A7 and Phase A gate, `97a2e854`.
+  Static checks passed with 1,256 tests and one existing skip. The 139 focused
+  tests, docs, fake-server self-tests and web export passed. All 95 browser
+  checks passed across the Phase A gate and the affected diffs, projects,
+  onboarding and settings specs.
+- Phase B baseline from the Phase A export passed the live renewal, credential
+  rotation and second-device Restore scenarios in `connect.spec.mjs`.
+- B1, `63e58c7c`.
+  The commit gate reported 1,257 passing tests and one existing skip. The
+  focused lifecycle and Cloud Link recovery tests, docs, web export and all 72
+  connection, realtime, network resilience and multi-server browser tests
+  passed, including live renewal across panel reopening.
+- B2, `ef2c2c1a`. The commit gate reported 1,258 passing tests and one existing skip.
+  The 19 focused tests, docs, web export and all 68 Cloud Link, manual
+  connection and multi-server browser tests passed. The registry test covers
+  revision changes, credential partitions, disable, removal and teardown.
+- B3a, `3c72d13d`. The commit gate reported 1,259 passing tests and one existing skip.
+  The 11 focused tests, docs, web export and all 60 Cloud Link, manual
+  connection and network resilience browser tests passed. The retry policy
+  suite verifies the attempt budget, the radio settling delay and cancellation.
+- B3b, `e1c23b7f`. The commit gate, nine focused tests, docs, both fake-server self-tests,
+  and the development web export passed. All 72 connection, realtime,
+  network resilience and multi-server browser tests passed. The realtime
+  test joins a second project to the same SSE subscription and verifies
+  directory isolation.
+- B4 and Phase B gate, `1976abce`. Catalog projections and retained projects no longer
+  share a connection provider. The commit gate reported 1,259 passing tests
+  and one existing skip. The focused tests, docs, both fake-server self-tests
+  and development web export passed. All 185 browser tests passed, including
+  live Restore, credential rotation, reconnect and fallback polling. The
+  original failing checkout was unavailable locally. Physical network handoff
+  remains device acceptance.
+- C1, `3d0ece8c`. The app core owns workspace readiness, navigation and chat creation.
+  Static checks passed with 1,261 tests and one existing skip. The 21
+  focused tests, docs, web export and all 34 sessions, projects,
+  multi-server and terminal browser tests passed.
+- C2a, `f3db22d7`. Permission and question replies run through scoped session commands.
+  The commit gate passed with 1,262 tests and one existing skip. The 28
+  focused tests, docs, web export and all 27 interaction, multi-server and
+  realtime browser tests passed, including colliding approvals on two servers.
+- C2b, `1ee42b32`. Session opening and bootstrap are app-core commands. The static gate
+  passed with 1,262 tests and one existing skip. The 27 focused tests, docs,
+  web export and all 67 browser tests across chat, sessions, projects,
+  multi-server and onboarding passed. The tests retain checks for a
+  superseded bootstrap, cached windows and delayed hydration.
+- C2c, `3407fd31`. Session creation and forking use app-core commands and a shared
+  Query catalog writer. The commit gate passed with 1,264 tests and one
+  existing skip. The 29 focused tests, docs, web export and all 67 owning
+  browser tests passed, including server defaults and model selection.
+- C2d, `1cfc35c0`. Rename, delete, revert and unrevert use scoped app-core commands.
+  Static checks passed with 1,266 tests and one existing skip. The focused
+  tests, docs, web export and all 53 chat, sessions, diffs, interactions
+  and multi-server browser tests passed.
+- C2e, `d4e3a6ab`. Session list, status and approval refreshes run as scoped commands
+  against manager-owned clients. Static checks passed with 1,267 tests and
+  one existing skip. The 46 focused tests, docs, web export and all 90
+  Cloud Link, realtime, network, interactions, sessions and multi-server
+  browser tests passed.
+- C3a, `e45a7f86`. App-core commands own prompt submission and abort tokens. Static
+  checks passed with 1,267 tests and one existing skip. The 45 focused
+  tests, docs, web export and all 55 chat, auto-model, network, multi-server,
+  realtime, interactions and diffs browser tests passed.
+- C3b, `18b07c5e`. App-core prompt commands own inbox admission, cancellation and
+  reconnect recovery. The commit gate passed with 1,268 tests and one existing
+  skip. The 63 focused tests, docs, web export and all 92 chat, Cloud Link,
+  network, realtime and multi-server browser tests passed. The focused race
+  check rotates credentials during admission and verifies no stale Query write.
+- C3c, `c59c21ca`. Prompt routing and task settlement run in plain commands. The commit
+  gate passed with 1,270 tests and one existing skip. The 90 focused tests,
+  docs, web export and 60 chat, auto-model, settings, onboarding, network and
+  multi-server browser tests passed. Settlement tests cover credential changes
+  and the fast completion path after observing a busy status.
+- C4, `386dca9a`. The connection core owns explicit actions, saved profile activation,
+  registry restoration, credential edits and failover. The commit gate passed
+  with 1,271 tests and one existing skip. The 207 focused tests, docs, web
+  export and 97 browser tests passed across Cloud Link, manual connections,
+  multi-server, network, onboarding and Settings.
+- C5, `51c5ff3e`. Core event dispatch reads the current app store and the realtime owner
+  coalesces project refreshes. The commit gate passed with 1,274 tests, one
+  existing skip and no lint warnings. The 82 focused tests, both fake-server
+  self-tests, docs, web export and all 56 chat, diffs, interactions, multi-server,
+  network, realtime and terminal browser tests passed.
+- C6a, `3946a79e`. Saved links and cross-server favorites run through the connection core.
+  Feature hooks bind commands directly and the root action overrides are gone.
+  The commit gate passed with 1,275 tests and one existing skip. The 43 focused
+  tests, docs, web export and all 88 chat, sessions, projects, multi-server,
+  interactions, onboarding and Settings browser tests passed.
+- C6b, `8d8186bd`. Feature views replace the legacy project composition and value
+  builders. Session link validation and local-send tracking run in the core.
+  The initial full browser run exposed an inbox race that combined a delivery
+  with the ID of a later enqueue. The fix preserves the delivery ID and checks
+  that the server inbox no longer contains it. The final commit gate passed
+  with 1,276 tests, one existing skip and no lint warnings. The 143 focused
+  tests, docs, both fake-server self-tests, web export and all 185 browser
+  tests passed after the fix.
+- D1, `e2d4c9c5`. Canonical transcript windows now use scoped per-session infinite
+  queries. Existing page-read and live-overlay policies stayed in place.
+  The 58 focused tests, docs, web export, 67 browser tests and the local commit
+  gate passed with 1,279 tests and one existing skip. The 8 MiB attachment
+  comparison reached every delta with the same first visible update and
+  comparable commit lag.
+- D2, `450524f9`. Query persistence restores scoped, media-free transcript tails without
+  reusing a server paging cursor. Only the legacy upgrade reader remains for
+  old disk entries. The full browser suite passed all 185 flows. The local
+  commit gate passed with 1,280 tests and one existing skip. In the paired
+  8 MiB attachment benchmark, both builds had a 20–22 ms p95 visible delta lag.
+  The median cold transcript render was 174 ms versus 168 ms on Phase C.
+- E1a, `3139adff`. The terminal screen and retained renderers receive explicit workspace
+  targets. The initial browser run found that a focused chat transition could
+  briefly replace the retained PTY's runtime. Explicit selections now read
+  their own project projection. The corrected build passed the commit gate
+  with 1,280 tests and one existing skip, 34 focused tests, and all 24 Terminal,
+  multi-server and Settings browser flows.
+- E1b, `3866c7e4`. Settings passes its inspection target through feature panels and dialogs.
+  Shared portals keep their modal hosts and carry explicit feature props. The
+  workspace scope contexts are deleted. The commit gate passed with 1,280 tests
+  and one existing skip. Storybook, web export and all 101 multi-server,
+  Settings, Connect, extensions, onboarding and interactions browser flows passed.
+- E1c, `29908afb`. The Updates feature supplies interaction registration through control
+  props. Shared UI imports only shared dependencies. ADR 0052 replaces the
+  previous exception. The commit gate passed with 1,280 tests and one existing
+  skip. The 59 focused Vitest cases, Storybook, web export and all 49 update,
+  chat, Settings and multi-server browser flows passed.
+- E2a, `37be0f0a`. Focused and explicitly targeted views now use one project projection.
+  Workspace actions read the app core, and a separate chat draft adapter
+  consumes app-wide share receipts. The commit gate passed with 1,280 tests
+  and one existing skip. The 60 focused Vitest cases, web export, and all 55
+  share, chat, multi-server, project, session and terminal browser flows passed.
+- E native terminal, `2138e63b`. Simulator creation exposed an Expo DOM ref whose methods
+  were unavailable while the setup sheet was closing. The corrected build
+  created the terminal and retained its output and single WebSocket connection
+  across tab switches. The commit gate passed with 1,280 tests and one existing
+  skip, and all 12 Terminal and multi-server browser flows passed.
+- E2b, `c7f8ea93`. A server URL edit changes focus and retires the previous project
+  projection in one store update. The Settings and Terminal panes resolve their
+  own ready keys. The commit gate passed with 1,281 tests and one existing
+  skip. The 26 focused Vitest cases, web export and all 104 connection,
+  Settings, multi-server, project, session and Terminal browser flows passed.
+- E3, `8462344c`. Connection, transcript, file and catalog hooks receive the exact Query
+  identity and demand through arguments. The app keeps one Query provider
+  and subscribes to foreground changes through the focus manager. The commit
+  gate passed with 1,281 tests and one existing skip. The 86 focused Vitest
+  cases, web export and all 72 affected browser flows passed.
+- E4a, `5b8abdcb`. Onboarding reads registry hydration and review state from the app store.
+  The commit gate passed with 1,281 tests and one existing skip. All 35 focused
+  tests, the web export and all 33 onboarding, Settings and manual connection
+  browser flows passed.
+- E4b, `75e29e31`. The combined domain type file is gone. Feature contracts live with their
+  owners, and shared transcript reads and service management use dedicated
+  contracts. The commit gate passed with 1,281 tests and one existing skip.
+  Focused Vitest passed 470 tests with one existing skip. Web export and 89
+  Connect, project, session, multi-server and diff browser flows passed.
+- E4c, `f6d33d49`. Preference controls read scoped choices from the store and reconcile
+  model selections against the exact Query partition. The shared preferences
+  context and the per-project preference projection are gone. The commit gate
+  passed with 1,282 tests and one existing skip. All 59 focused tests and 58
+  auto-model, Settings, multi-server, onboarding and Chat browser flows passed.
+  Android API 36 smoke verified hardware Back through connection setup and
+  the onboarding provider setup and selector screens.
+- E5, `ce934e2b`. PTY lifecycle commands moved to a plain scoped controller. The commit
+  gate passed with 1,282 tests and one existing skip. All 43 focused tests and
+  12 Terminal and multi-server browser flows passed. The Android emulator
+  retained its PTY output and WebSocket across tabs after loading the new bundle.
+- E6, `157f0958`. The core observes scoped pending approvals and applies each connection's
+  V2 policy. Settings replies in the request's own project without reading
+  workspace projections for pending items. The commit gate passed with 1,282
+  tests and one existing skip. All 74 focused tests and 106 Connect, interaction,
+  multi-server, onboarding, realtime and Settings browser flows passed.
+- E7, `4c401664`. The core owns retained terminal controllers and credentials. The first
+  browser run exposed a lost renderer after disconnecting and re-enabling a
+  server. The corrected controller pauses the transport and retains its renderer.
+  The commit gate passed with 1,282 tests and one existing skip. All 58 focused
+  tests and 32 Terminal, multi-server, Settings, auto-model and update browser
+  flows passed. Android retained the displayed output and one WebSocket across tabs.
+- E8, `f347f1b9`. The single NetInfo listener publishes connectivity into the app store.
+  Diagnostics reads connection retry and stream state directly and uses Query
+  for server health and MCP details. The commit gate passed with 1,282 tests and
+  one existing skip. All 127 focused tests and 54 network, realtime, Settings,
+  Chat, multi-server and Terminal browser flows passed.
+- E9, `92e85e6b`. Extension views use the scope selector and guard writes after cancelling
+  pending reads. Diagnostics shares the selector. The commit gate passed with
+  1,283 tests and one existing skip. All 143 focused tests and 45 extension,
+  Settings, Chat and multi-server browser flows passed. The final scope guard
+  passed all 13 extension and multi-server flows on a fresh build.
+- E10, `6b472566`. MCP controls and saved rules read Query directly. MCP prompt dismissal
+  uses the exact originating credential partition. The commit gate passed with
+  1,283 tests and one existing skip. All 122 focused tests and 62 interaction,
+  extension, Settings, multi-server, Chat and realtime browser flows passed.
+- E11, `9a64f876`. Navigation and automatic failover observe the connection manager directly.
+  The commit gate passed with 1,283 tests and one existing skip. All 42 focused
+  tests and 110 Connect, manual connection, multi-server, Sessions, Projects,
+  Settings and realtime browser flows passed.
+- E12, `5b2693d1`. Connections, Projects, Sessions and native surfaces read lifecycle state
+  from the manager. Profile, setup and service controls mount once at the app
+  shell. The commit gate passed with 1,283 tests and one existing skip.
+  All 164 focused tests and 117 browser flows across Connect, manual connection,
+  multi-server, Sessions, Projects, Settings, Onboarding and Mission Control passed.
+- E13, `0685de5b`. Worktree writes use the Projects service. The app core creates a worktree
+  chat with the exact root client and opens the returned checkout. The commit
+  gate passed with 1,283 tests and one existing skip. All 56 focused tests and
+  37 browser flows across Projects, Sessions, diffs and multi-server passed.
+- E14, `ec4c22e7`. Project headers and pickers read the catalog, location, worktree and VCS
+  Query entries directly. The commit gate passed with 1,283 tests and one
+  existing skip. All 56 focused tests and 84 browser flows across Projects,
+  Onboarding, Terminal, multi-server, Settings, Extensions, Chat and Sessions passed.
+- E15, `78cdabb2`. Navigation, sharing, the library and widgets read the project and session
+  selection from the app store. Navigation waits for a binding at the selected
+  directory and credential revision. The commit gate passed with 1,283 tests
+  and one existing skip. All 79 focused tests passed. The full 185-flow browser
+  run passed before the final directory binding adjustment. All 32 Sessions,
+  Settings, multi-server and share flows passed on the final build.
+- E16, `3517e400`. Session navigation reads Query in the active credential partition.
+  Library and share views consume one catalog per connection. The commit gate
+  passed with 1,283 tests and one existing skip. All 79 focused tests and 52
+  browser flows across Sessions, multi-server, Settings, share, Mission Control
+  and Chat passed.
+- E17, `01c753b7`. Session panels read scoped Query lists and statuses. Library edits use
+  core commands and favorites update the app store. The commit gate passed
+  with 1,283 tests and one existing skip. All 100 focused tests and 60 browser
+  flows across Sessions, Chat, multi-server, Extensions, share, diffs and Settings passed.
+- E18, `7e6eda4b`. Projects and the chat library share a connected scope selector. The
+  library and share picker read project session lists directly from Query.
+  The commit gate passed with 1,283 tests and one existing skip. All 99 focused
+  tests and 55 browser flows across Projects, Sessions, share, multi-server,
+  Mission Control, Chat and Terminal passed.
+- E19, `cf3d3463`. Session navigation and creation call the core directly. The library
+  drives its catalog polling gate from actual visibility. The commit gate
+  passed with 1,283 tests and one existing skip. All 100 focused tests and the
+  full 185-flow browser suite passed.
+- E20, `fc51e761`. Worktree views bind to the project scope. The catalog demand test
+  exercises the new read owner with the same inactive and active assertions.
+  The final commit gate passed with 1,283 tests and one existing skip, and all
+  101 focused tests passed. All 81 affected browser flows passed before the
+  catalog read extraction. All 15 Projects and Terminal flows passed on the
+  final build.
+- E21, `ca1dca78`. The app core owns the file clipboard controller. The final commit gate
+  passed with 1,283 tests and one existing skip. All 58 focused tests and 42
+  browser flows across Projects, multi-server, app updates and Settings passed.
+- E22, `0d3d194f`. File views use their scoped Query entries and device state. Preview
+  requests have per-open tokens, and clipboard writes invalidate detached roots.
+  The commit gate passed with 1,284 tests and one existing skip. All 59 focused
+  tests and 65 browser flows across Projects, Chat, diffs, multi-server,
+  Terminal, Settings and Extensions passed.
+- E23, `1a27d318`. Catalog commands are plain functions and reject stale location reads.
+  Project status refreshes use the scoped Query keys. The final commit gate
+  passed with 1,284 tests and one existing skip. All 59 focused tests passed.
+  All 79 affected browser flows passed before the refresh module extraction.
+  All 40 Projects, Onboarding and Settings flows passed on the final build.
+- E24, `afd680d5`. Chat bootstrap and file search read their owners directly. Chat and
+  Settings share a revision-guarded approval preference command. The commit
+  gate passed with 1,285 tests and one existing skip. All 300 focused tests
+  and 61 affected browser flows passed.
+- E25, `87015f59`. Widgets, quick actions and Mission Control consume scoped Query and
+  connection data. The workspace snapshot no longer supplies native state.
+  The commit gate passed with 1,285 tests and one existing skip, as did 135
+  focused tests and 80 affected browser flows. The ARM64 development app
+  published a 2/2 plan widget snapshot and installed the New chat and scoped
+  session shortcuts on the Android emulator.
+- E26, `17f7fcbf`. AI views read their own Query partition. Provider writes and OAuth use
+  scoped commands, with classifier readiness still provided by the retained
+  project. The commit gate passed with 1,286 tests and one existing skip.
+  All 294 focused tests and 65 affected browser flows passed.
+- E27, `6f92b1bf`. The Chat view reads scoped queries, transcript overlays and device state
+  directly. A single native conversation controller transfers ownership when
+  focus changes. The commit gate passed with 1,287 tests and one existing skip.
+  All 262 focused tests and the full 185-flow browser suite passed.
+- E28, `c45d8f07`. The app store no longer contains workspace snapshots. Connection managers
+  publish readiness for their own realtime bindings. Classifier state and
+  library previews are read from their owners. After fixing the catalog reader
+  and a file-action dismissal race, all 185 browser flows passed. The commit
+  gate passed with 1,288 tests and one existing skip. All 332 focused tests
+  and the Storybook build passed.
+- E29, `f35c9130`. The app core binds retained project keys to connection realtime scopes.
+  React mounts one catalog reader for the demanded target and one activity
+  observer per connection. The commit gate passed with 1,288 tests and one
+  existing skip. All 424 focused tests, Storybook, docs, the development web
+  build and all 185 browser flows passed. iOS checked nested terminal project
+  selection and retained the console across tabs. Android checked Back through
+  both levels of Settings overlays. The paired streaming benchmark preserved
+  the request counts and measured a median p95 delta-to-paint lag of 15 ms
+  against 19 ms for the Phase C baseline.
+- F1, `5c497ab2`. Zustand persist owns the non-secret device preferences and upgrades
+  their existing per-field records. Connection credentials remain in the
+  secure settings adapter. Cloud Link remaps favorites through the same
+  persistence writer and restores them if secure profile save fails. The
+  commit gate passed with 1,289 tests and one existing skip, plus 12 focused
+  tests, docs and 122 affected browser flows.
+- F2, `333009d9`. The first native-import batch covers platform services, preferences,
+  storage, transcript reads and the committed React transcript view. The
+  Vitest collection retained every prior test identity and added four
+  fast-check properties for connection transitions, session statuses and
+  transcript merging and ordering. All 25 affected browser flows passed.
+- F3, `d4615f2d`. Prompt inbox recovery and transcript paging tests use the production
+  controllers, Zustand store and Query cache. The obsolete React controller
+  hooks are deleted. Catalog, notification, favorite and native voice service
+  tests import their modules through Vitest. All 34 affected browser flows
+  passed.
+- F4, `cc4ed15b`. Keyboard, gesture, icon, list row and voice setup tests now use real
+  React. The background notification and native voice model suites import
+  their implementations directly. Discovery and typechecking now include
+  the existing TSX voice settings suite. Its two cases passed, giving
+  1,295 passing tests and one existing skip. Storybook, FOSS preparation and
+  47 affected browser flows passed.
+- F5, `40911cf9`. Connection profile retirement, scoped credential storage, native mod
+  idempotence, session catalog and Mission stats now run through normal
+  imports. The Mission hydration case reads and writes the real persisted
+  record through the platform storage fixture.
+
+- F6, `e1bd2373`. Connection method selection, camera permissions and pairing recovery,
+  chat diff recycling, queued prompts, agent suggestions, subagent status,
+  project file virtualization and voice settings now exercise the production
+  components with React. Voice setup illustrations use static Metro imports.
+  Model-download retry tests use the native file boundary and Vitest timers.
+  All 44 focused cases, the static gate and 27 onboarding and settings browser
+  flows passed.
+
+- F7, `e145a0d2`. Chat composer, markdown, voice and native layout probes exercise real
+  React and render the app's controls. Share handoff and local audio capture,
+  enrollment and wake-word tests use their production hooks and controlled
+  timers with platform fakes. All 83 focused cases retained their executed
+  test identities and passed.
+
+- F8, `f7609622`. Cloud Link store recovery, credential storage, terminal upgrades,
+  Android build-script argument checks and incoming QR flows use normal
+  imports. Native billing, secure storage and subprocess calls stay at the
+  test boundary. The old data-URL loader is deleted. Connection protocol tests
+  now cover the real SDK and redirect-aware transport. All 39 migrated cases
+  retained their identities, and both fake-server contracts passed self-test.
+
+- F9, `1768fedd`. Connection-manager recovery exercises the native OpenCode client, live
+  connection manager, Cloud Link reducer, Query cache and persisted profiles.
+  The test measures renewal and reconnect timers through the manager's
+  injected clock. The share screen uses real scope selectors and React effects.
+
+- F10, `178aa827`. Transcript virtualization, activity rows, conversation animations,
+  connection forms and agent preference reconciliation now exercise real
+  component or hook lifecycles. The connection form uses React Hook Form
+  and the production Zod resolver.
+
+- F11, `2a188dc5`. Speech recognizer ownership, voice command confirmation and app update
+  safety now exercise real React lifecycles and explicit native boundaries.
+  Timer tests advance a controlled clock, and store update checks use the
+  actual Android and Apple adapters.
+
+- F12, `f9edbdef`. Workspace catalog demand and write cancellation use real TanStack Query
+  observers. Project file actions use the production shell adapter, clipboard
+  store and native clipboard boundary. Plugin GUI remains disabled in web.
+
+- F13, `2a16b62e`. Activity notifications and widget lifecycle use real React effects,
+  real persisted records, and controlled SDK responses. The Android compiler
+  and headless render cases continue to run in development and release modes.
+
+- F14. Composer admission and draft races run through real React and the
+  retained presentation state. Optimistic session actions and prompt commands
+  use the production store, Query and protocol boundary.
+
+- F15. The workspace and provider-runtime suites now use real React, Query, the
+  store and SDK requests. The optional plugin integration uses the same Vitest
+  runner and passed against OpenCode 2.3.0. The legacy loader, fake React runtime
+  and test-only prompt hook are deleted. Knip has a platform-aware configuration
+  and some unused public entries have been removed.
+
+- G1. The composition harness starts two fake V2 servers, exercises approvals
+  and transcripts through the real core, and verifies connection disposal. The
+  ownership manifest and AST checks run in the unit gate.
+
+## Validation handoff
+
+The final implementation batch is in commit `85de9005`. Its local checkpoint
+passed the commit gate (1,298 passed and one historical skip), Storybook, both
+fake-server self-tests, the scoped Knip check, and all 185 Chromium flows. The
+executed Vitest inventories preserved every Phase F baseline identity and added
+two restored voice cases plus three harness and ownership checks. Temporarily
+pinning workspace activation to the current connection failed the new
+integration case at the scope-switch assertion. The mutation was reverted.
+
+Knip checks file reachability and dependency usage across the repository. Its
+unused-export checks focus on the migrated runtime, Chat services and server
+data. Android API 36 loaded the retained transcript and returned to it with
+hardware Back after opening the Chat Library. Final iOS interaction and signed
+or physical-device validation remain open. Use the Phase F and G gate commands
+and native acceptance steps to close those checks.
+
 ## Loop protocol
 
 1. Read this index and the earliest phase whose status is not complete.
@@ -67,7 +481,7 @@ npm run validate:commit
    skip a suite, or add retries.
 7. Continue from the next phase.
 
-At checkpoints B, C, E, F, G run the full browser suite:
+At checkpoints B through G run the full browser suite:
 
 ```bash
 EXPO_PUBLIC_E2E_MODE=1 EXPO_APP_VARIANT=development npm run build:web:ci
@@ -91,20 +505,20 @@ first, then use `E2E_SKIP_BUILD=1`.
 
 ## Definition of done
 
-- [ ] `createAppCore` owns store, Query client, connection registry, commands,
+- [x] `createAppCore` owns store, Query client, connection registry, commands,
       event handler and dispose.
-- [ ] Connection transport/probe/renewal/SSE/polling are plain TS; no React
+- [x] Connection transport/probe/renewal/SSE/polling are plain TS; no React
       component mounts a transport.
-- [ ] Cross-domain commands are plain functions; `use-opencode-provider-composition.ts`,
+- [x] Cross-domain commands are plain functions; `use-opencode-provider-composition.ts`,
       `opencode-provider-values*.ts`, `eventActionsRef` and `WorkspaceRuntime`
       are deleted.
-- [ ] Messages use per-session infinite queries; the live overlay is in Zustand.
-- [ ] No `WorkspaceScope`, `WorkspaceValues`, `valuesFor` or shared-UI runtime
+- [x] Messages use per-session infinite queries; the live overlay is in Zustand.
+- [x] No `WorkspaceScope`, `WorkspaceValues`, `valuesFor` or shared-UI runtime
       exception remains.
-- [ ] Query and Zustand persistence own retention; no duplicate caches or
+- [x] Query and Zustand persistence own retention; no duplicate caches or
       writers.
 - [ ] No `loadTs`/`hookRuntime`; `fast-check` and `knip` are in use.
-- [ ] Full fake-server composition harness and fact/command guardrails exist.
+- [x] Full fake-server composition harness and fact/command guardrails exist.
 - [ ] `npm run validate:commit`, full 185-flow E2E, Storybook and native smoke
       pass on the final commit.
 

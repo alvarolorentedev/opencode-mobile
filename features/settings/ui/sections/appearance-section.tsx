@@ -1,3 +1,4 @@
+import { UpdateBlockingSettingSelectField as SettingSelectField } from '@/features/updates/index';
 import { cn } from '@/shared/ui/cn';
 import { FieldDescription } from '@/shared/ui/text-field';
 import { Text } from '@/shared/ui/text';
@@ -10,7 +11,7 @@ import { ACCENT_COLORS, DEFAULT_ACCENT_COLOR, DEFAULT_THEME_MODE, getColors, typ
 import { useColorScheme } from '@/shared/ui/theme/use-color-scheme';
 import type { ChatPreferences } from '@/shared/preferences/opencode-preferences';
 import { SettingTarget } from '@/shared/ui/settings/settings-panel';
-import { SettingSelectField, type Palette } from '@/shared/ui/settings/setting-rows';
+import { type Palette } from '@/shared/ui/settings/setting-rows';
 import { OpeningScreenField } from '@/features/sessions/index';
 
 const ACCENT_LABEL_KEYS: Record<AccentColor, string> = {

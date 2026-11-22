@@ -9,7 +9,7 @@ The runner prints the tested server version; the mobile client uses its pinned
 SDK. It runs separately from the deterministic commit gate because that gate
 must not require an installed OpenCode server.
 
-`tests/integration/server-plugin-commands.mjs` starts a real loopback server in
+`tests/integration/server-plugin-commands.test.ts` starts a real loopback server in
 temporary, isolated XDG directories with no inherited provider credentials. It
 cleans up the process and files on success or failure. The fixture at
 `tests/integration/fixtures/command-plugin.mjs` uses the official

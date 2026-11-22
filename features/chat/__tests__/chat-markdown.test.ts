@@ -1,6 +1,14 @@
+// @vitest-environment happy-dom
+
 import { describe, expect, it, vi } from 'vitest';
 
-import { hookRuntime, loadTs } from '../../../tests/helpers/runtime.mjs';
+import { MarkdownText } from '@/features/chat/ui/chat-markdown';
+import { renderHook } from '../../../tests/helpers/render-hook';
+
+const { selectionAsync: haptic } = vi.hoisted(() => ({ selectionAsync: vi.fn(async () => {}) }));
+vi.mock('react-native', () => ({ Linking: { openURL: async () => {} } }));
+vi.mock('react-native-enriched-markdown', () => ({ EnrichedMarkdownText: 'EnrichedMarkdownText' }));
+vi.mock('expo-haptics', () => ({ notificationAsync: haptic, NotificationFeedbackType: { Success: 'success' } }));
 
 type MarkdownElement = {
   type: unknown;
@@ -36,31 +44,23 @@ const codePalette = {
   },
 };
 
-async function mountMarkdown(text = '```bash\necho hi\n```') {
-  const runtime = hookRuntime();
-  const haptic = vi.fn();
-  const element = (type: unknown, props: unknown) => ({ type, props });
-  const { MarkdownText } = await loadTs('features/chat/ui/chat-markdown.tsx', {
-    react: { ...runtime.react, memo: (component: unknown) => component },
-    'react/jsx-runtime': { jsx: element, jsxs: element, Fragment: 'Fragment' },
-    'react-native': { Linking: { openURL: vi.fn(() => Promise.resolve()) } },
-    'react-native-enriched-markdown': { EnrichedMarkdownText: 'EnrichedMarkdownText' },
-    "@/shared/platform/haptics": { copyHaptic: haptic }
-  }, runtime.globals);
-  const value = runtime.mount(MarkdownText, {
+function mountMarkdown(text = '```bash\necho hi\n```') {
+  haptic.mockClear();
+  const component = (MarkdownText as unknown as { type: typeof MarkdownText }).type;
+  const { result } = renderHook(component, {
     codePalette,
     text,
     color: '#182320',
     fontSize: 16,
     mutedColor: '#667874',
     tokenColor: '#007A5C',
-  }) as MarkdownElement;
-  return { haptic, value };
+  });
+  return { haptic, value: result.current as MarkdownElement };
 }
 
 describe('chat markdown code blocks', () => {
   it('fires a haptic acknowledgement after the native copy succeeds', async () => {
-    const { haptic, value } = await mountMarkdown();
+    const { haptic, value } = mountMarkdown();
 
     value.props.onCopyPress?.({ code: 'echo hi', language: 'bash' });
 
@@ -68,7 +68,7 @@ describe('chat markdown code blocks', () => {
   });
 
   it('uses the supplied opaque code surface and clears the blockquote fill', async () => {
-    const { value } = await mountMarkdown();
+    const { value } = mountMarkdown();
 
     expect(value.props.markdownStyle?.codeBlock).toMatchObject({
       backgroundColor: codePalette.background,
@@ -80,7 +80,7 @@ describe('chat markdown code blocks', () => {
   });
 
   it('styles transcript tokens as bold accent links', async () => {
-    const { value } = await mountMarkdown();
+    const { value } = mountMarkdown();
 
     expect(value.props.markdownStyle?.linkVariants).toMatchObject({
       '^mention:': { color: '#007A5C', fontWeight: 'bold', underline: false },
@@ -89,7 +89,7 @@ describe('chat markdown code blocks', () => {
   });
 
   it('wraps transcript tokens before rendering', async () => {
-    const { value } = await mountMarkdown('Use @general');
+    const { value } = mountMarkdown('Use @general');
 
     expect(value.props.markdown).toBe('Use [@general](mention://x)');
   });

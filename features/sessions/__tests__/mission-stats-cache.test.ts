@@ -1,9 +1,9 @@
-import { describe, expect, it } from 'vitest';
-import { z } from 'zod';
+import { describe, expect, it, vi } from 'vitest';
 
-import { loadTs } from '../../../tests/helpers/runtime.mjs';
+import * as service from '@/features/sessions/services/mission-stats-cache';
 
-const SERVICE = 'features/sessions/services/mission-stats-cache.ts';
+vi.mock('@react-native-async-storage/async-storage', () => ({ default: {} }));
+
 const ACTIVITY_KEY = 'opencode-mobile.mission-activity.';
 const CONTRIBUTIONS_KEY = 'opencode-mobile.mission-contributions.';
 const TTL_MS = 24 * 60 * 60 * 1000;
@@ -15,7 +15,7 @@ function memoryStorage() {
     async getItem(key: string) { return map.get(key) ?? null; },
     async setItem(key: string, value: string) { map.set(key, value); },
     async removeItem(key: string) { map.delete(key); },
-    async multiRemove(keys: string[]) { keys.forEach((key) => map.delete(key)); },
+    async multiRemove(keys: readonly string[]) { keys.forEach((key) => map.delete(key)); },
   };
 }
 
@@ -28,13 +28,9 @@ function days(count: number, start = new Date(2026, 9, 1)) {
   });
 }
 
-async function service() {
-  return loadTs(SERVICE, { zod: { z } });
-}
-
 describe('Mission stats snapshot cache', () => {
   it('round-trips only the painted metrics and scopes entries by connection', async () => {
-    const { hydrateMissionActivityCache, persistMissionActivityCache } = await service();
+    const { hydrateMissionActivityCache, persistMissionActivityCache } = service;
     const storage = memoryStorage();
     const snapshot = { total: { tokens: 120, cost: 0.5 }, buckets: [{ tokens: 60, cost: 0.25 }] };
     await persistMissionActivityCache('scope-a', snapshot, storage);
@@ -52,7 +48,7 @@ describe('Mission stats snapshot cache', () => {
   });
 
   it('drops malformed, expired, and future-dated snapshots', async () => {
-    const { hydrateMissionActivityCache } = await service();
+    const { hydrateMissionActivityCache } = service;
     const storage = memoryStorage();
     let applied = false;
     for (const raw of [
@@ -69,7 +65,7 @@ describe('Mission stats snapshot cache', () => {
   });
 
   it('keeps the contribution snapshot to the last 31 days', async () => {
-    const { hydrateMissionContributionsCache, persistMissionContributionsCache } = await service();
+    const { hydrateMissionContributionsCache, persistMissionContributionsCache } = service;
     const storage = memoryStorage();
     await persistMissionContributionsCache('scope', days(40), storage);
     let applied: { steps: number }[] = [];
@@ -80,7 +76,7 @@ describe('Mission stats snapshot cache', () => {
   });
 
   it('moves snapshots across a connection-scope renewal and clears removed connections', async () => {
-    const { clearMissionStatsCaches, migrateMissionStatsCaches, persistMissionActivityCache, persistMissionContributionsCache } = await service();
+    const { clearMissionStatsCaches, migrateMissionStatsCaches, persistMissionActivityCache, persistMissionContributionsCache } = service;
     const storage = memoryStorage();
     await persistMissionActivityCache('old', { total: { tokens: 3, cost: 1 }, buckets: [{ tokens: 3, cost: 1 }] }, storage);
     await persistMissionContributionsCache('old', days(2), storage);

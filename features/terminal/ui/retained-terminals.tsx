@@ -1,16 +1,26 @@
-import type { Palette } from '@/shared/ui/theme/theme';
 import { View, StyleSheet } from 'react-native';
-import { WorkspaceScope, useWorkspaces } from '@/runtime/workspace';
+
+import type { WorkspaceTarget } from '@/shared/contracts/workspace';
+import type { Palette } from '@/shared/ui/theme/theme';
+
 import { TerminalView } from '@/features/terminal/ui/terminal-view';
-export function RetainedTerminals({ visible, slim, palette, dismissKeyboard = false, onCopied, onError }: { visible: boolean; slim: boolean; palette: Palette; dismissKeyboard?: boolean; onCopied?: () => void; onError: (message: string) => void }) {
-  const registry = useWorkspaces();
-  const selected = registry.terminalTarget ?? registry.focus;
-  const selectedKey = selected && registry.resolveKey(selected);
-  return <>{Object.entries(registry.snapshots).filter(([, runtime]) => runtime.values.terminalValue.terminalRuntime.instances.length > 0).map(([key, runtime]) => {
-    const [connectionId, projectPath] = JSON.parse(key) as [string, string];
-    const active = visible && key === selectedKey && runtime.values.connectionValue.connection.status === 'connected';
-    return <View key={key} pointerEvents={active ? 'auto' : 'none'} accessibilityElementsHidden={!active} importantForAccessibility={active ? 'auto' : 'no-hide-descendants'} style={[StyleSheet.absoluteFill, { opacity: active ? 1 : 0 }]}>
-      <WorkspaceScope target={{ connectionId, projectPath }}><TerminalView visible={active} slim={slim} palette={palette} dismissKeyboard={active && dismissKeyboard} onCopied={onCopied} onError={onError} /></WorkspaceScope>
+import { useRetainedTerminalScopes } from '@/features/terminal/context';
+
+export function RetainedTerminals({ target, connected, visible, slim, palette, dismissKeyboard = false, onCopied, onError }: {
+  target: WorkspaceTarget;
+  connected: boolean;
+  visible: boolean;
+  slim: boolean;
+  palette: Palette;
+  dismissKeyboard?: boolean;
+  onCopied?: () => void;
+  onError: (message: string) => void;
+}) {
+  const { scopes, selectedKey } = useRetainedTerminalScopes(target);
+  return <>{scopes.map((scope) => {
+    const active = visible && connected && scope.key === selectedKey;
+    return <View key={scope.key} pointerEvents={active ? 'auto' : 'none'} accessibilityElementsHidden={!active} importantForAccessibility={active ? 'auto' : 'no-hide-descendants'} style={[StyleSheet.absoluteFill, { opacity: active ? 1 : 0 }]}>
+      <TerminalView target={scope.target} visible={active} slim={slim} palette={palette} dismissKeyboard={active && dismissKeyboard} onCopied={onCopied} onError={onError} />
     </View>;
   })}</>;
 }

@@ -1,6 +1,6 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
-import { loadTs } from '../../../tests/helpers/runtime.mjs';
+import { SETTINGS_STORAGE_KEY } from '@/shared/storage/keys';
 
 // shared/storage/connection-password.ts is the only place that reads or writes the active
 // connection password. It keeps the secret in SecureStore, strips it from
@@ -10,34 +10,24 @@ import { loadTs } from '../../../tests/helpers/runtime.mjs';
 async function loadPasswordModule(platform: 'android' | 'ios' | 'web' = 'android') {
   const secure = new Map<string, string>();
   const storage = new Map<string, string>();
-  const connectSecrets = new Map<string, string>();
-
-  const url = await loadTs('shared/contracts/server-url.ts', {
-    "@/shared/protocol/opencode/client/types": { defaultConnectionSettings: { serverUrl: 'http://localhost' } }
-  });
-  const storageKeys = await loadTs('shared/storage/keys.ts');
-
-  const module = await loadTs('shared/storage/connection-password.ts', {
-    'expo-secure-store': {
-      AFTER_FIRST_UNLOCK_THIS_DEVICE_ONLY: 'after-first-unlock',
-      getItemAsync: async (key: string) => secure.get(key) ?? null,
-      setItemAsync: async (key: string, value: string) => { secure.set(key, value); },
-      deleteItemAsync: async (key: string) => { secure.delete(key); },
+  vi.resetModules();
+  vi.doMock('expo-secure-store', () => ({
+    AFTER_FIRST_UNLOCK_THIS_DEVICE_ONLY: 'after-first-unlock',
+    getItemAsync: async (key: string) => secure.get(key) ?? null,
+    setItemAsync: async (key: string, value: string) => { secure.set(key, value); },
+    deleteItemAsync: async (key: string) => { secure.delete(key); },
+  }));
+  vi.doMock('react-native', () => ({ Platform: { OS: platform } }));
+  vi.doMock('expo-constants', () => ({ default: { expoConfig: { extra: { e2eMode: true, connectPilot: { testing: true } } } } }));
+  vi.doMock('@react-native-async-storage/async-storage', () => ({
+    default: {
+      getItem: async (key: string) => storage.get(key) ?? null,
+      setItem: async (key: string, value: string) => { storage.set(key, value); },
     },
-    'react-native': { Platform: { OS: platform } },
-    '@react-native-async-storage/async-storage': {
-      __esModule: true,
-      default: {
-        getItem: async (key: string) => storage.get(key) ?? null,
-        setItem: async (key: string, value: string) => { storage.set(key, value); },
-      },
-    },
-    '@/shared/storage/keys': storageKeys,
-    '@/shared/contracts/server-url': url,
-    "@/shared/storage/cloud-link": { getConnectTestSecret: (key: string) => connectSecrets.get(key) ?? '', setConnectTestSecret: (key: string, value: string) => { connectSecrets.set(key, value); } }
-  });
-
-  return { module, secure, storage, connectSecrets, settingsKey: storageKeys.SETTINGS_STORAGE_KEY };
+  }));
+  const module = await import('@/shared/storage/connection-password');
+  const { getConnectTestSecret } = await import('@/shared/storage/cloud-link');
+  return { module, secure, storage, connectSecrets: { get: getConnectTestSecret }, settingsKey: SETTINGS_STORAGE_KEY };
 }
 
 const PASSWORD_KEY = 'opencode-mobile.connection-password';
@@ -45,12 +35,13 @@ const PASSWORD_KEY = 'opencode-mobile.connection-password';
 describe('connection password storage', () => {
   it('strips credentials, gateway headers, and URL credentials from persisted settings', async () => {
     const { module } = await loadPasswordModule();
+    // Legacy stored settings may omit the directory.
     expect(module.withoutConnectionSecrets({
       serverUrl: 'https://alice:secret@host.test/proxy',
       username: 'alice',
       password: 'secret',
       headers: { 'CF-Access-Client-Secret': 'gateway-secret' },
-    })).toEqual({ serverUrl: 'https://host.test/proxy', username: 'alice' });
+    } as unknown as Parameters<typeof module.withoutConnectionSecrets>[0])).toEqual({ serverUrl: 'https://host.test/proxy', username: 'alice' });
   });
 
   it('returns the SecureStore value without touching AsyncStorage', async () => {

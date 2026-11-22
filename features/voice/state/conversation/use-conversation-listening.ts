@@ -11,7 +11,7 @@ export function useConversationListeningEffects({
   conversationPhase,
   isConversationListening,
   isConversationListeningStarting,
-  conversationPhaseRef,
+  getConversationPhase,
   conversationCancelRequestedRef,
   conversationSubmittingRef,
   conversationListeningRestartTimeoutRef,
@@ -31,7 +31,7 @@ export function useConversationListeningEffects({
   conversationPhase: ConversationInputPhase;
   isConversationListening: boolean;
   isConversationListeningStarting: boolean;
-  conversationPhaseRef: { current: ConversationInputPhase };
+  getConversationPhase: () => ConversationInputPhase;
   conversationCancelRequestedRef: { current: boolean };
   conversationSubmittingRef: { current: boolean };
   conversationListeningRestartTimeoutRef: { current: ReturnType<typeof setTimeout> | undefined };
@@ -52,7 +52,7 @@ export function useConversationListeningEffects({
   useEffect(() => {
     const subscription = AppState.addEventListener('change', (state) => {
       if (state === 'background' && !isVoicePermissionPromptActive()) {
-        if (conversationPhaseRef.current === 'off') abortSpeechInput();
+        if (getConversationPhase() === 'off') abortSpeechInput();
         else void stopConversationMode();
       }
     });
@@ -60,7 +60,7 @@ export function useConversationListeningEffects({
       subscription.remove();
       abortSpeechInput();
     };
-  }, [abortSpeechInput, conversationPhaseRef, stopConversationMode]);
+  }, [abortSpeechInput, getConversationPhase, stopConversationMode]);
 
   useEffect(() => {
     // Readback briefly owns the audio session. The logical input stays armed,
@@ -112,7 +112,7 @@ export function useConversationListeningEffects({
         conversationListeningRestartTimeoutRef.current = undefined;
       }
     };
-  }, [conversationCancelRequestedRef, conversationListeningRestartTimeoutRef, conversationPhase, conversationPhaseRef, conversationSubmittingRef, isConversationListening, isConversationListeningStarting, localWakeModeRef, readbackPhase, shouldRestartConversation, startConversationListening]);
+  }, [conversationCancelRequestedRef, conversationListeningRestartTimeoutRef, conversationPhase, getConversationPhase, conversationSubmittingRef, isConversationListening, isConversationListeningStarting, localWakeModeRef, readbackPhase, shouldRestartConversation, startConversationListening]);
 
   useEffect(() => {
     if (!speechInputError && !speechInputStartFailed) {
@@ -121,7 +121,7 @@ export function useConversationListeningEffects({
 
     if (
       !speechInputStartFailed &&
-      (conversationPhaseRef.current === 'listening' || conversationPhaseRef.current === 'armed') &&
+      (getConversationPhase() === 'listening' || getConversationPhase() === 'armed') &&
       (speechInputErrorCode === 'client' || speechInputErrorCode === 'no-speech' || speechInputErrorCode === 'speech-timeout')
     ) {
       return;
@@ -133,8 +133,8 @@ export function useConversationListeningEffects({
       speechInputStartFailed ? t('common:voice.startFailed') : speechInputError,
       speechInputErrorAction,
     );
-    if (conversationPhaseRef.current !== 'off') {
+    if (getConversationPhase() !== 'off') {
       void stopConversationMode();
     }
-  }, [conversationPhaseRef, setConversationFeedback, setConversationFeedbackAction, speechInputError, speechInputErrorAction, speechInputErrorCode, speechInputStartFailed, stopConversationMode, t]);
+  }, [getConversationPhase, setConversationFeedback, setConversationFeedbackAction, speechInputError, speechInputErrorAction, speechInputErrorCode, speechInputStartFailed, stopConversationMode, t]);
 }

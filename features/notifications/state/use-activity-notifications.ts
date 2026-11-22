@@ -29,7 +29,7 @@ type Input = {
   // True while the global SSE stream is healthy. When it is, interaction reads
   // can be limited to directories with running work because events reconcile
   // other projects directly.
-  streamConnectedRef: { current: boolean };
+  isStreamConnected: () => boolean;
 };
 
 function eventData(event: OpencodeEvent): Record<string, unknown> {
@@ -124,7 +124,7 @@ export function useActivityNotifications(input: Input) {
           current.settings,
           current.contract,
           watched,
-          !current.streamConnectedRef.current,
+          !current.isStreamConnected(),
         );
         if (cancelled) return;
         if (revision !== eventRevision.current) { rerun = true; return; }

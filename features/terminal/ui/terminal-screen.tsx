@@ -1,3 +1,4 @@
+import { useUpdateBlockingConfirmation as useConfirmation, UpdateBlockingSheet as OverlaySheet } from '@/features/updates/index';
 import { cn } from '@/shared/ui/cn';
 import { Text } from '@/shared/ui/text';
 import { Button } from '@/shared/ui/button';
@@ -8,46 +9,45 @@ import { CardHeader, CardTitle, CardDescription, CardContent, Card } from '@/sha
 import { Feedback } from '@/shared/ui/feedback';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { KeyboardAvoidingView, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, KeyboardAvoidingView, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useRouter, useIsFocused } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { useConfirmation } from '@/shared/ui/use-confirmation';
 import { Fonts } from '@/shared/ui/theme/theme';
 import { RetainedTerminals } from '@/features/terminal/ui/retained-terminals';
 import { NewTerminalSheet } from '@/features/terminal/ui/new-terminal-sheet';
-import { useWorkspaceTerminals } from '@/features/terminal/ui/use-workspace-terminals';
-import { WorkspaceScope, useWorkspaces } from '@/runtime/workspace';
+import { useWorkspaceTerminals } from '@/features/terminal/state/use-workspace-terminals';
+import { useResolvedWorkspaceTarget, useWorkspacePreferences, useWorkspaces } from '@/runtime/workspace';
 import type { WorkspaceTarget } from '@/shared/contracts/workspace';
-import { OverlaySheet } from '@/shared/ui/overlay-sheet';
 import { SwipeRow } from '@/shared/ui/swipe-row';
-import { useUpdateBlocker } from '@/runtime/ui';
+import { useUpdateBlocker } from '@/features/updates/context';
 import { usePalette } from '@/shared/ui/theme/use-palette';
 import { useConnection } from '@/features/connections/context';
-import { usePreferences } from '@/shared/preferences/context';
 import { useProjects } from '@/features/projects/context';
 import { useTerminal } from '@/features/terminal/context';
 
 export default function TerminalScreen() {
-  const registry = useWorkspaces();
-  return <WorkspaceScope target={registry.terminalTarget ?? registry.focus}><TerminalContent /></WorkspaceScope>;
+  const { terminalTarget, focus } = useWorkspaces();
+  const target = useResolvedWorkspaceTarget(terminalTarget ?? focus);
+  return target ? <TerminalContent target={target} />
+    : <View className="flex-1 items-center justify-center"><ActivityIndicator /></View>;
 }
 
-function TerminalContent() {
+function TerminalContent({ target }: { target: WorkspaceTarget }) {
   const { confirmAction, confirmation } = useConfirmation();
   const { t } = useTranslation();
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const palette = usePalette();
   const visible = useIsFocused();
-  const { activeProject } = useProjects();
+  const { activeProject } = useProjects(target);
   const registry = useWorkspaces();
   const { create, terminals: terminalEntries } = useWorkspaceTerminals();
   const multipleServers = registry.connections.length > 1;
   const [creating, setCreating] = useState(false);
-  const { connection } = useConnection();
-  const { chatPreferences } = usePreferences();
+  const { connection } = useConnection(target);
+  const { chatPreferences } = useWorkspacePreferences(target);
   const slim = chatPreferences.slimInterface === true;
   const {
     activeTerminalId,
@@ -56,7 +56,7 @@ function TerminalContent() {
     terminalConnection,
     terminalRuntime,
     terminals,
-  } = useTerminal();
+  } = useTerminal(target);
   const [busyId, setBusyId] = useState<string>();
   const [openingKey, setOpeningKey] = useState<string>();
   const [copied, setCopied] = useState(false);
@@ -122,7 +122,7 @@ function TerminalContent() {
           </View></ScreenHeader>
 
         <View className={cn(stylesClasses.output)}>
-          <RetainedTerminals visible={visible} slim={slim} palette={palette} dismissKeyboard={terminalPickerVisible || creating} onCopied={() => setCopied(true)} onError={setError} />
+          <RetainedTerminals target={target} connected={connection.status === 'connected'} visible={visible} slim={slim} palette={palette} dismissKeyboard={terminalPickerVisible || creating} onCopied={() => setCopied(true)} onError={setError} />
         {connection.status !== 'connected' || !activeProject ? (
           <View className={cn(stylesClasses.emptyScreen)}>
             <View className={cn(stylesClasses.emptyPanel, "bg-surface")}><Text  variant="display">{connection.status !== 'connected' ? t('terminal:screen.connectTitle') : t('terminal:screen.chooseProject')}</Text><Text>{connection.status !== 'connected' ? connection.message : t('terminal:screen.selectProject')}</Text><Button onPress={() => {

@@ -1,9 +1,9 @@
+import { UpdateBlockingWorkspaceSelect as WorkspaceSelect } from '@/features/updates/index';
 import { cn } from '@/shared/ui/cn';
 import { Text } from '@/shared/ui/text';
 import { View } from 'react-native';
 
 import { useTranslation } from 'react-i18next';
-import { WorkspaceSelect } from '@/shared/ui/workspace-select';
 import { useWorkspaces } from '@/runtime/workspace';
 import { useWorkspaceProjects } from '@/features/projects/index';
 export function ServerContextPicker({ server = true }: { server?: boolean }) {

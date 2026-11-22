@@ -1,18 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
-import { persistTranscriptCache } from '@/features/chat/services/transcript-cache';
+import { compactTranscriptSnapshot } from '@/shared/server-data/transcript-snapshots';
 import type { SessionMessageRecord } from '@/shared/presentation/format';
-
-function storage() {
-  const values = new Map<string, string>();
-  return {
-    values,
-    getItem: async (key: string) => values.get(key) ?? null,
-    setItem: async (key: string, value: string) => { values.set(key, value); },
-    removeItem: async (key: string) => { values.delete(key); },
-    getAllKeys: async () => [...values.keys()],
-  };
-}
 
 function text(id: string): SessionMessageRecord {
   return {
@@ -29,11 +18,18 @@ function video(id: string): SessionMessageRecord {
 }
 
 describe('transcript cache bounds', () => {
-  it('keeps the newest small records and never stores an inline-media record', async () => {
-    const cache = storage();
-    await persistTranscriptCache('scope', '/repo', 's', [text('a'), video('video'), text('b')], cache);
-    const raw = [...cache.values.values()][0];
-    const stored = JSON.parse(raw) as { records: SessionMessageRecord[] };
+  it('keeps the newest small records and never stores an inline-media record', () => {
+    const stored = compactTranscriptSnapshot([{ records: [text('a'), video('video'), text('b')] }]);
     expect(stored.records.map((record) => record.info.id)).toEqual(['b']);
+  });
+
+  it('keeps text from a mixed prompt while dropping inline and transient media', () => {
+    const record = text('prompt');
+    const file = video('prompt').parts[0];
+    if (file.type !== 'file') throw new Error('Expected a file part.');
+    record.parts.push({ ...file, url: 'data:text/plain;base64,YQ==' }, { ...file, url: 'blob:https://example.test/part' });
+    const stored = compactTranscriptSnapshot([{ records: [record] }]);
+    expect(stored.records).toEqual([text('prompt')]);
+    expect(JSON.stringify(stored)).not.toMatch(/data:|blob:/);
   });
 });

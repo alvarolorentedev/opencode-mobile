@@ -1,9 +1,17 @@
-import { uiImports } from '../../../tests/helpers/ui.mjs';
+// @vitest-environment happy-dom
+
+import { act, Fragment, useEffect, useState } from 'react';
 import { describe, expect, it, vi } from 'vitest';
 
-import { hookRuntime, loadTs } from '../../../tests/helpers/runtime.mjs';
+import { ConnectCameraGate } from '@/shared/platform/camera/connect-camera-gate';
+import { renderHook } from '../../../tests/helpers/render-hook';
 
-type Element = { type: unknown; props: Record<string, any> };
+const native = vi.hoisted(() => ({ platform: 'android', useCameraPermissions: vi.fn() }));
+vi.mock('react-native', async () => (await import('../../../tests/helpers/native-view-platform')).nativeViewPlatform(native));
+vi.mock('uniwind', () => ({ withUniwind: (component: unknown) => component }));
+vi.mock('@rn-primitives/slot', () => ({ Slot: 'Slot' }));
+vi.mock('expo-camera', () => ({ useCameraPermissions: native.useCameraPermissions }));
+vi.mock('react-i18next', () => ({ useTranslation: () => ({ t: (key: string) => key }) }));
 
 describe('Cloud Link camera permission gate', () => {
   it.each([
@@ -11,52 +19,32 @@ describe('Cloud Link camera permission gate', () => {
     ['requestable denial', false, true],
     ['blocked denial', false, false],
   ] as const)('requests permission on native entry and handles %s', async (_name, granted, canAskAgain) => {
-    const runtime = hookRuntime();
     const permission = { status: granted ? 'granted' : 'denied', granted, canAskAgain };
     const requestPermission = vi.fn(async () => permission);
-    const useCameraPermissions = vi.fn(({ request }: { request: boolean }) => {
-      const [result, setResult] = runtime.react.useState<typeof permission | null>(null);
-      runtime.react.useEffect(() => {
+    native.platform = 'android';
+    const useCameraPermissions = native.useCameraPermissions.mockReset().mockImplementation(({ request }: { request: boolean }) => {
+      const [result, setResult] = useState<typeof permission | null>(null);
+      useEffect(() => {
         if (request) void requestPermission().then(setResult);
       }, [request]);
       return [result, requestPermission];
     });
     const onCancel = vi.fn();
-    const { ConnectCameraGate } = await loadTs('shared/platform/camera/connect-camera-gate.tsx', {
-    ...uiImports,
-    react: runtime.react,
-    'react/jsx-runtime': { jsx: (type: unknown, props: Record<string, unknown>) => ({ type, props }), Fragment: 'Fragment' },
-    'expo-camera': { useCameraPermissions },
-    'react-i18next': { useTranslation: () => ({ t: (key: string) => key }) },
-    'react-native': { Platform: { OS: 'android' }, StyleSheet: { create: (styles: unknown) => styles }, View: 'View' },
-    "./sections/setting-rows": { Button: 'Button' }
-  });
-
-    runtime.mount(ConnectCameraGate, { onCancel, children: 'pairing-and-subscription' });
-    await runtime.settle();
+    const runtime = renderHook(ConnectCameraGate, { onCancel, children: 'pairing-and-subscription' });
+    await act(async () => {});
 
     expect(useCameraPermissions).toHaveBeenCalledWith({ request: true });
     expect(requestPermission).toHaveBeenCalledOnce();
     expect(onCancel).toHaveBeenCalledTimes(granted ? 0 : 1);
-    expect(runtime.value.type).toBe(granted ? 'Fragment' : 'View');
+    expect(runtime.result.current.type).toBe(granted ? Fragment : 'View');
   });
 
   it('passes through web without requesting camera permission', async () => {
-    const runtime = hookRuntime();
-    const useCameraPermissions = vi.fn(() => [null, vi.fn()]);
-    const { ConnectCameraGate } = await loadTs('shared/platform/camera/connect-camera-gate.tsx', {
-    ...uiImports,
-    react: runtime.react,
-    'react/jsx-runtime': { jsx: (type: unknown, props: Record<string, unknown>) => ({ type, props }), Fragment: 'Fragment' },
-    'expo-camera': { useCameraPermissions },
-    'react-i18next': { useTranslation: () => ({ t: (key: string) => key }) },
-    'react-native': { Platform: { OS: 'web' }, StyleSheet: { create: (styles: unknown) => styles }, View: 'View' },
-    "./sections/setting-rows": { Button: 'Button' }
-  });
-
-    runtime.mount(ConnectCameraGate, { onCancel: vi.fn(), children: 'pairing-and-subscription' });
+    native.platform = 'web';
+    const useCameraPermissions = native.useCameraPermissions.mockReset().mockReturnValue([null, vi.fn()]);
+    const runtime = renderHook(ConnectCameraGate, { onCancel: vi.fn(), children: 'pairing-and-subscription' });
 
     expect(useCameraPermissions).toHaveBeenCalledWith({ request: false });
-    expect((runtime.value as Element).type).toBe('Fragment');
+    expect(runtime.result.current.type).toBe(Fragment);
   });
 });

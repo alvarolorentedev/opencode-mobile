@@ -1,5 +1,5 @@
 import type { Session, SessionStatus } from '@/shared/protocol/opencode/types';
-import type { ActiveSessionItem } from '@/shared/contracts/domain';
+import type { ActiveSessionItem } from '@/features/sessions/model/types';
 
 // Pure active-session selection for the Chat Library "Active across projects"
 // group. Kept dependency-free so node tests can transpile and exercise it

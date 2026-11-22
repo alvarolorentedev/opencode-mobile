@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-import { HIDDEN_PROJECTS_MAX, type HiddenProjectsByConnection } from '@/shared/contracts/domain';
+import { HIDDEN_PROJECTS_MAX, type HiddenProjectsByConnection } from '@/features/projects/model/types';
 
 // A hidden path is only a device preference. The parser normalizes each
 // connection's list the same way the retired opened-project list did: trim,

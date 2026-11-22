@@ -1,3 +1,4 @@
+import { UpdateBlockingSheet as OverlaySheet } from '@/features/updates/index';
 import { cn } from '@/shared/ui/cn';
 import { Text } from '@/shared/ui/text';
 import { Button } from '@/shared/ui/button';
@@ -14,7 +15,6 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { AttachmentStrip } from './attachment-strip';
 import { ProjectPicker } from '@/features/projects/index';
-import { OverlaySheet } from '@/shared/ui/overlay-sheet';
 
 import { Fonts } from '@/shared/ui/theme/theme';
 import { usePalette } from '@/shared/ui/theme/use-palette';

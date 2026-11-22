@@ -1,21 +1,49 @@
-import { uiImports } from '../../../tests/helpers/ui.mjs';
-import { describe, expect, it, vi } from 'vitest';
+// @vitest-environment happy-dom
 
-import { getCurrentTurnActivityKey, getEntryModelLabel } from '@/features/chat/ui/chat-view-utils';
-import { hookRuntime, loadTs } from '../../../tests/helpers/runtime.mjs';
+import '../../../tests/helpers/native-primitives';
+import { act } from 'react';
+import { describe, expect, it, vi, onTestFinished } from 'vitest';
 
-type Overrides = Partial<Parameters<typeof listProps>[0]>;
+import { NoticeCard } from '@/features/chat/ui/chat-cards';
+import { TranscriptList } from '@/features/chat/ui/content/transcript-list';
+import { TranscriptSkeleton } from '@/features/chat/ui/content/transcript-skeleton';
+import { Card } from '@/shared/ui/card';
+import { Colors } from '@/shared/ui/theme/theme';
+import { renderHook } from '../../../tests/helpers/render-hook';
 
-function listProps(overrides: Record<string, unknown> = {}) {
+const native = vi.hoisted(() => ({ platform: 'web' }));
+vi.mock('react-native', async () => (await import('../../../tests/helpers/native-view-platform')).nativeViewPlatform(native));
+vi.mock('react-native-enriched-markdown', () => ({ EnrichedMarkdownText: 'EnrichedMarkdownText' }));
+vi.mock('expo-constants', () => ({ default: {} }));
+vi.mock('expo-localization', () => ({ getLocales: () => [] }));
+vi.mock('expo-router', () => ({ useIsFocused: () => true, usePathname: () => '/' }));
+vi.mock('expo/fetch', () => ({}));
+vi.mock('expo-crypto', () => ({}));
+vi.mock('expo-file-system', () => ({}));
+vi.mock('expo-secure-store', () => ({}));
+vi.mock('@react-native-async-storage/async-storage', () => ({ default: {} }));
+vi.mock('react-i18next', async (original) => ({
+  ...await original<typeof import('react-i18next')>(),
+  useTranslation: () => ({ t: (key: string) => key === 'chat:reasoning.high' ? 'High' : key, i18n: { language: 'en' } }),
+}));
+
+const serialize = (value: unknown) => JSON.stringify(value, (key, entry) => key === '_owner' ? undefined : entry);
+
+type Props = Parameters<typeof TranscriptList>[0];
+type Overrides = Omit<Partial<Props>, 'transcriptRows'> & { transcriptRows?: unknown[] };
+type Element = { type: unknown; props: Record<string, any> };
+
+function listProps(overrides: Overrides = {}): Props {
   return {
     activityRunning: false,
     activityStatusLabel: undefined as string | undefined,
     connection: { status: 'connected' as const, message: '' },
     currentSessionId: 'session-1',
-    transcriptRows: [] as unknown[],
+    transcriptRows: [],
     flatTranscript: false,
     hasMessages: false,
     hasOlderMessages: false,
+    isBootstrappingChat: false,
     isLoadingOlderMessages: false,
     isRefreshingMessages: false,
     modelLabels: undefined as ReadonlyMap<string, string> | undefined,
@@ -27,57 +55,41 @@ function listProps(overrides: Record<string, unknown> = {}) {
     onRevertMessage: vi.fn(),
     onSelectStarterPrompt: vi.fn(),
     onToggleSpeak: vi.fn(),
-    palette: {},
+    palette: Colors.light,
     pendingInteractions: 0,
     slim: false,
     transcriptFontSize: 16,
     ...overrides,
-  };
+  } as Props;
 }
 
-async function mountTranscriptList(overrides: Overrides = {}, platform = 'web') {
-  const runtime = hookRuntime();
-  const element = (type: unknown, props: unknown) => ({ type, props });
+function mountTranscriptList(overrides: Overrides = {}, platform = 'web') {
+  native.platform = platform;
   const frames = new Map<number, () => void>();
   let nextFrame = 0;
-  const flushFrames = () => {
-    while (frames.size > 0) {
+  vi.stubGlobal('requestAnimationFrame', (callback: () => void) => { const id = ++nextFrame; frames.set(id, callback); return id; });
+  vi.stubGlobal('cancelAnimationFrame', (id: number) => { frames.delete(id); });
+  onTestFinished(() => { vi.unstubAllGlobals(); });
+  const flushFrames = () => act(() => {
+    while (frames.size) {
       const pending = [...frames.values()];
       frames.clear();
       for (const frame of pending) frame();
     }
-  };
-  const { TranscriptList } = await loadTs('features/chat/ui/content/transcript-list.tsx', {
-    ...uiImports,
-    react: runtime.react,
-    'react/jsx-runtime': { jsx: element, jsxs: element, Fragment: 'Fragment' },
-    '@shopify/flash-list': { FlashList: 'FlashList' },
-    '@expo/vector-icons': { MaterialCommunityIcons: 'Icon' },
-    'expo-router': { useIsFocused: () => true },
-    'react-i18next': { useTranslation: () => ({ t: (key: string) => key === 'chat:reasoning.high' ? 'High' : key }) },
-    'react-native': { AppState: { addEventListener: () => ({ remove: () => undefined }) }, Platform: { OS: platform }, View: 'View' },
-    "@/features/chat/ui/chat-cards": { TranscriptMessage: 'TranscriptMessage', NoticeCard: 'NoticeCard' },
-    "@/features/chat/ui/cards/activity-group": { ActivityGroupRow: 'ActivityGroupRow' },
-    "@/features/chat/ui/cards/subagent-row": { SubagentRow: 'SubagentRow' },
-    "@/features/chat/ui/chat-view-styles": { styles: {}, slimStyles: {}, stylesClasses: {}, slimStylesClasses: {} },
-    "@/features/chat/ui/chat-view-utils": { getCurrentTurnActivityKey, getEntryModelLabel, STARTER_PROMPT_KEYS: [] },
-    "@/features/chat/ui/content/transcript-skeleton": { TranscriptSkeleton: 'TranscriptSkeleton' },
-    "@/shared/ui/theme/theme": { Colors: { light: {} } }
-  }, {
-    ...runtime.globals,
-    requestAnimationFrame: (callback: () => void) => { const id = ++nextFrame; frames.set(id, callback); return id; },
-    cancelAnimationFrame: (id: number) => { frames.delete(id); },
   });
-  const root = runtime.mount(TranscriptList, listProps(overrides));
-  const list = root.type === 'FlashList' ? root : root.props.children[0];
+  let props = listProps(overrides);
+  const runtime = renderHook(TranscriptList, props);
+  const root = runtime.result.current as Element;
+  const listOf = (value: Element): Element => value.type === 'FlashList' ? value : value.props.children[0];
   return {
-    list,
+    list: listOf(root),
     root,
     runtime,
     flushFrames,
     update: (patch: Overrides) => {
-      const next = runtime.update(patch as Record<string, unknown>);
-      return next.type === 'FlashList' ? next : next.props.children[0];
+      props = listProps({ ...props, ...patch });
+      runtime.rerender(props);
+      return listOf(runtime.result.current as Element);
     },
   };
 }
@@ -89,12 +101,12 @@ describe('Android transcript viewport', () => {
   });
 
   async function mountAndroidTranscript() {
-    const mounted = await mountTranscriptList({ hasMessages: true, transcriptRows: [{ key: 'a' }] }, 'android');
+    const mounted = mountTranscriptList({ hasMessages: true, transcriptRows: [{ key: 'a' }] }, 'android');
     const scrollToEnd = vi.fn();
     mounted.list.props.ref.current = { scrollToEnd };
     mounted.flushFrames();
     scrollToEnd.mockClear();
-    mounted.root.props.onLayout(layout(600));
+    act(() => mounted.root.props.onLayout(layout(600)));
     mounted.flushFrames();
     expect(scrollToEnd).not.toHaveBeenCalled();
     return { ...mounted, scrollToEnd };
@@ -102,40 +114,38 @@ describe('Android transcript viewport', () => {
 
   it('keeps the transcript at the end when the viewport shrinks without a scroll event or new rows', async () => {
     const { root, flushFrames, scrollToEnd } = await mountAndroidTranscript();
-    root.props.onLayout(layout(340));
+    act(() => root.props.onLayout(layout(340)));
     flushFrames();
     expect(scrollToEnd).toHaveBeenCalledWith({ animated: false });
   });
 
   it('keeps following when scroll events report the smaller viewport before layout', async () => {
     const { list, root, runtime, flushFrames, scrollToEnd } = await mountAndroidTranscript();
-    list.props.onScroll(scroll(600, 600));
-    list.props.onScroll(scroll(340, 600));
-    list.props.onScroll(scroll(340, 600));
-    root.props.onLayout(layout(340));
-    runtime.flush();
+    act(() => list.props.onScroll(scroll(600, 600)));
+    act(() => list.props.onScroll(scroll(340, 600)));
+    act(() => list.props.onScroll(scroll(340, 600)));
+    act(() => root.props.onLayout(layout(340)));
     flushFrames();
     expect(scrollToEnd).toHaveBeenCalledWith({ animated: false });
-    expect(runtime.value.props.children[1]).toBeNull();
+    expect((runtime.result.current as Element).props.children[1]).toBeNull();
   });
 
   it('keeps the history position on a resize and still offers Jump to latest', async () => {
     const { list, root, runtime, flushFrames, scrollToEnd } = await mountAndroidTranscript();
-    list.props.onScroll(scroll(600, 240));
-    root.props.onLayout(layout(340));
-    list.props.onScroll(scroll(340, 240));
-    runtime.flush();
+    act(() => list.props.onScroll(scroll(600, 240)));
+    act(() => root.props.onLayout(layout(340)));
+    act(() => list.props.onScroll(scroll(340, 240)));
     flushFrames();
     expect(scrollToEnd).not.toHaveBeenCalled();
-    expect(JSON.stringify(runtime.value.props.children[1])).toContain('chat:content.jumpToLatest');
+    expect(serialize((runtime.result.current as Element).props.children[1])).toContain('chat:content.jumpToLatest');
   });
 
   it('cancels a pending resize scroll when a gesture starts', async () => {
     const { list, root, flushFrames, scrollToEnd } = await mountAndroidTranscript();
-    root.props.onLayout(layout(340));
-    list.props.onScrollBeginDrag();
-    root.props.onLayout(layout(600));
-    list.props.onScrollEndDrag(scroll(600, 600));
+    act(() => root.props.onLayout(layout(340)));
+    act(() => list.props.onScrollBeginDrag());
+    act(() => root.props.onLayout(layout(600)));
+    act(() => list.props.onScrollEndDrag(scroll(600, 600)));
     flushFrames();
     expect(scrollToEnd).not.toHaveBeenCalled();
   });
@@ -143,103 +153,100 @@ describe('Android transcript viewport', () => {
 
 describe('transcript empty state', () => {
   it('only offers starter prompts for a session that has no transcript content', async () => {
-    const { list } = await mountTranscriptList();
+    const { list } = mountTranscriptList();
     expect(list.type).toBe('FlashList');
-    expect(list.props.ListEmptyComponent.type).toBe('Card');
+    expect(list.props.ListEmptyComponent.type).toBe(Card);
   });
 
   it('does not show the skeleton while a refresh has held records but no display content', async () => {
-    const { update } = await mountTranscriptList({ hasMessages: true, isRefreshingMessages: true });
+    const { update } = mountTranscriptList({ hasMessages: true, isRefreshingMessages: true });
     expect(update({}).props.ListEmptyComponent).toBeNull();
   });
 
   it('shows the skeleton only for a cold fetch with no held records', async () => {
-    const { update } = await mountTranscriptList({ hasMessages: false, isRefreshingMessages: true });
-    expect(update({}).props.ListEmptyComponent.type).toBe('TranscriptSkeleton');
+    const { update } = mountTranscriptList({ hasMessages: false, isRefreshingMessages: true });
+    expect(update({}).props.ListEmptyComponent.type).toBe(TranscriptSkeleton);
   });
 
   it('offers a retry instead of starter prompts when a cold read failed', async () => {
-    const { update } = await mountTranscriptList({ transcriptReadError: 'request timed out' });
+    const { update } = mountTranscriptList({ transcriptReadError: 'request timed out' });
     const list = update({});
-    expect(list.props.ListEmptyComponent.type).toBe('Card');
-    expect(JSON.stringify(list.props.ListEmptyComponent)).toContain('chat:content.transcriptErrorTitle');
-    expect(JSON.stringify(list.props.ListEmptyComponent)).toContain('request timed out');
-    expect(JSON.stringify(list.props.ListEmptyComponent)).not.toContain('chat:starter.title');
+    expect(list.props.ListEmptyComponent.type).toBe(Card);
+    expect(serialize(list.props.ListEmptyComponent)).toContain('chat:content.transcriptErrorTitle');
+    expect(serialize(list.props.ListEmptyComponent)).toContain('request timed out');
+    expect(serialize(list.props.ListEmptyComponent)).not.toContain('chat:starter.title');
   });
 
   it('offers a load-earlier affordance when only non-display history is loaded', async () => {
-    const { update } = await mountTranscriptList({ hasOlderMessages: true });
+    const { update } = mountTranscriptList({ hasOlderMessages: true });
     const idle = update({});
-    expect(idle.props.ListEmptyComponent.type).toBe('Card');
-    expect(JSON.stringify(idle.props.ListEmptyComponent)).toContain('chat:content.loadEarlier');
+    expect(idle.props.ListEmptyComponent.type).toBe(Card);
+    expect(serialize(idle.props.ListEmptyComponent)).toContain('chat:content.loadEarlier');
   });
 
   it('still offers starter prompts for a brand-new session', async () => {
-    const { update } = await mountTranscriptList({ currentSessionId: undefined });
+    const { update } = mountTranscriptList({ currentSessionId: undefined });
     const list = update({ hasOlderMessages: false });
-    expect(list.props.ListEmptyComponent.type).toBe('Card');
+    expect(list.props.ListEmptyComponent.type).toBe(Card);
   });
 
   it('offers a jump-to-latest control after scrolling away and marks new activity', async () => {
-    const { list, runtime, update } = await mountTranscriptList({ hasMessages: true, transcriptRows: [{ key: 'a' }] });
-    list.props.onScroll({ nativeEvent: { contentOffset: { y: 0 }, contentSize: { height: 1200 }, layoutMeasurement: { height: 600 } } });
-    runtime.flush();
-    expect(JSON.stringify(runtime.value.props.children[1])).toContain('chat:content.jumpToLatest');
+    const { list, runtime, update } = mountTranscriptList({ hasMessages: true, transcriptRows: [{ key: 'a' }] });
+    act(() => list.props.onScroll({ nativeEvent: { contentOffset: { y: 0 }, contentSize: { height: 1200 }, layoutMeasurement: { height: 600 } } }));
+    expect(serialize((runtime.result.current as Element).props.children[1])).toContain('chat:content.jumpToLatest');
 
     update({ transcriptRows: [{ key: 'a' }, { key: 'b' }] });
-    expect(JSON.stringify(runtime.value.props.children[1])).toContain('chat:content.newMessages');
+    expect(serialize((runtime.result.current as Element).props.children[1])).toContain('chat:content.newMessages');
   });
 
   it('dismisses the jump-to-latest control when tapped', async () => {
-    const { list, runtime, flushFrames } = await mountTranscriptList({ hasMessages: true, transcriptRows: [{ key: 'a' }] });
+    const { list, runtime, flushFrames } = mountTranscriptList({ hasMessages: true, transcriptRows: [{ key: 'a' }] });
     const scrollToEnd = vi.fn();
     list.props.ref.current = { scrollToEnd };
-    list.props.onScroll({ nativeEvent: { contentOffset: { y: 0 }, contentSize: { height: 1200 }, layoutMeasurement: { height: 600 } } });
-    runtime.flush();
-    const control = runtime.value.props.children[1];
-    control.props.children.props.onPress();
-    runtime.flush();
+    act(() => list.props.onScroll({ nativeEvent: { contentOffset: { y: 0 }, contentSize: { height: 1200 }, layoutMeasurement: { height: 600 } } }));
+    const control = (runtime.result.current as Element).props.children[1];
+    act(() => control.props.children.props.onPress());
     flushFrames();
-    expect(runtime.value.props.children[1]).toBeNull();
+    expect((runtime.result.current as Element).props.children[1]).toBeNull();
     expect(scrollToEnd).toHaveBeenCalled();
   });
 
   it('leaves tail following to the transcript instead of FlashList autoscroll', async () => {
-    const { list } = await mountTranscriptList();
+    const { list } = mountTranscriptList();
     expect(list.props.maintainVisibleContentPosition).toEqual({ startRenderingFromBottom: true });
   });
 
   it('does not chase the tail when new rows arrive during a drag, then resumes at the bottom', async () => {
-    const { list, update, flushFrames } = await mountTranscriptList({ hasMessages: true, transcriptRows: [{ key: 'a' }] });
+    const { list, update, flushFrames } = mountTranscriptList({ hasMessages: true, transcriptRows: [{ key: 'a' }] });
     const scrollToEnd = vi.fn();
     list.props.ref.current = { scrollToEnd };
     const nearTail = { nativeEvent: { contentOffset: { y: 596 }, contentSize: { height: 1200 }, layoutMeasurement: { height: 600 } } };
 
-    list.props.onScrollBeginDrag(nearTail);
-    list.props.onScroll(nearTail);
+    act(() => list.props.onScrollBeginDrag(nearTail));
+    act(() => list.props.onScroll(nearTail));
     update({ transcriptRows: [{ key: 'a' }, { key: 'b' }] });
     flushFrames();
     expect(scrollToEnd).not.toHaveBeenCalled();
 
-    list.props.onScrollEndDrag(nearTail);
+    act(() => list.props.onScrollEndDrag(nearTail));
     update({ transcriptRows: [{ key: 'a' }, { key: 'b' }, { key: 'c' }] });
     flushFrames();
     expect(scrollToEnd).toHaveBeenCalled();
   });
 
   it('does not reserve a running-status footer', async () => {
-    const { list } = await mountTranscriptList();
+    const { list } = mountTranscriptList();
     expect(list.props.ListFooterComponent).toBeUndefined();
   });
 
   it('appends a live status row in the activity area when requested', async () => {
-    const idle = await mountTranscriptList();
+    const idle = mountTranscriptList();
     expect(idle.list.props.data).toEqual([]);
 
-    const { list } = await mountTranscriptList({ activityStatusLabel: 'OpenCode is working…' });
+    const { list } = mountTranscriptList({ activityStatusLabel: 'OpenCode is working…' });
     expect(list.props.data).toHaveLength(1);
     expect(list.props.data[0]).toMatchObject({ type: 'activityStatus', label: 'OpenCode is working…' });
-    expect(JSON.stringify(list.props.renderItem({ item: list.props.data[0] }))).toContain('OpenCode is working…');
+    expect(serialize(list.props.renderItem({ item: list.props.data[0] }))).toContain('OpenCode is working…');
   });
 
   it('keeps expanded runs keyed to their group instead of a recycled row', async () => {
@@ -248,12 +255,11 @@ describe('transcript empty state', () => {
       type: 'activity' as const,
       group: { key, kind: 'activity' as const, items: [], tools: [], callCount: 0, status: 'idle' as const },
     });
-    const { update, runtime } = await mountTranscriptList({ transcriptRows: [row('g1')] });
+    const { update, runtime } = mountTranscriptList({ transcriptRows: [row('g1')] });
     const header = (list: any, item: ReturnType<typeof row>) => list.props.renderItem({ item, index: 0 }).props.children.props;
 
-    header(runtime.value.props.children[0], row('g1')).onExpandedChange(true);
-    runtime.flush();
-    expect(header(runtime.value.props.children[0], row('g1')).expanded).toBe(true);
+    act(() => header((runtime.result.current as Element).props.children[0], row('g1')).onExpandedChange(true));
+    expect(header((runtime.result.current as Element).props.children[0], row('g1')).expanded).toBe(true);
 
     const next = update({ transcriptRows: [row('g2')] });
     expect(header(next, row('g2')).expanded).toBe(false);
@@ -266,9 +272,9 @@ describe('transcript empty state', () => {
       group: { key, kind: 'activity' as const, items: [], tools: [], callCount: 0, status: 'idle' as const },
     });
     const rows = [row('a'), row('b')];
-    const { list } = await mountTranscriptList({ activityRunning: true, transcriptRows: rows });
-    expect(JSON.stringify(list.props.renderItem({ item: rows[0] }))).toContain('"sessionRunning":false');
-    expect(JSON.stringify(list.props.renderItem({ item: rows[1] }))).toContain('"sessionRunning":true');
+    const { list } = mountTranscriptList({ activityRunning: true, transcriptRows: rows });
+    expect(serialize(list.props.renderItem({ item: rows[0] }))).toContain('"sessionRunning":false');
+    expect(serialize(list.props.renderItem({ item: rows[1] }))).toContain('"sessionRunning":true');
   });
 
   it('does not offer read-aloud for server notice rows', async () => {
@@ -284,8 +290,8 @@ describe('transcript empty state', () => {
         notice: true,
       },
     };
-    const { list } = await mountTranscriptList({ transcriptRows: [row] });
-    expect(JSON.stringify(list.props.renderItem({ item: row }))).toContain('"canSpeak":false');
+    const { list } = mountTranscriptList({ transcriptRows: [row] });
+    expect(serialize(list.props.renderItem({ item: row }))).toContain('"canSpeak":false');
   });
 
   it('renders plugin notices with the distinct notice card', async () => {
@@ -302,10 +308,10 @@ describe('transcript empty state', () => {
         noticeKind: 'plugin' as const,
       },
     };
-    const { list } = await mountTranscriptList({ transcriptRows: [row] });
-    const rendered = JSON.stringify(list.props.renderItem({ item: row }));
-    expect(rendered).toContain('"type":"NoticeCard"');
-    expect(rendered).not.toContain('"canSpeak"');
+    const { list } = mountTranscriptList({ transcriptRows: [row] });
+    const rendered = list.props.renderItem({ item: row });
+    expect(rendered.props.children.type).toBe(NoticeCard);
+    expect(serialize(rendered)).not.toContain('"canSpeak"');
   });
 
   it('passes the resolved model label to assistant message rows', async () => {
@@ -321,11 +327,11 @@ describe('transcript empty state', () => {
         model: { providerID: 'openai', modelID: 'gpt-4.1-mini' },
       },
     };
-    const { list } = await mountTranscriptList({
+    const { list } = mountTranscriptList({
       transcriptRows: [row],
       modelLabels: new Map([['openai/gpt-4.1-mini', 'GPT-4.1 mini']]),
     });
-    expect(JSON.stringify(list.props.renderItem({ item: row }))).toContain('"modelLabel":"GPT-4.1 mini"');
+    expect(serialize(list.props.renderItem({ item: row }))).toContain('"modelLabel":"GPT-4.1 mini"');
   });
 
   it('includes the reasoning variant in the assistant model label', async () => {
@@ -341,10 +347,10 @@ describe('transcript empty state', () => {
         model: { providerID: 'openai', modelID: 'gpt-4.1-mini', variant: 'high' },
       },
     };
-    const { list } = await mountTranscriptList({
+    const { list } = mountTranscriptList({
       transcriptRows: [row],
       modelLabels: new Map([['openai/gpt-4.1-mini', 'GPT-4.1 mini']]),
     });
-    expect(JSON.stringify(list.props.renderItem({ item: row }))).toContain('"modelLabel":"GPT-4.1 mini · High"');
+    expect(serialize(list.props.renderItem({ item: row }))).toContain('"modelLabel":"GPT-4.1 mini · High"');
   });
 });

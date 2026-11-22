@@ -1,5 +1,6 @@
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useMemo } from 'react';
 
+import { useAppCore, useAppStore } from '@/runtime/core';
 import { getRequestHeaders, withReadSignal } from '@/shared/protocol/opencode/client';
 import { getServerBase } from '@/shared/contracts/server-url';
 import { projectPath } from '@/shared/protocol/opencode/project';
@@ -7,85 +8,76 @@ import { projectFileDownloadUrl, projectFileFromText, projectFileMime } from '@/
 import { createFullFilePatch } from '@/shared/protocol/opencode/project-patch';
 import { saveOrShareProjectFile } from '@/features/projects/services/project-file-download';
 import type { ProjectFileInput } from '@/features/projects/model/action-inputs';
+import { projectClientOwner } from '@/features/projects/model/project-client-owner';
 import { fileStatusOptions, vcsInfoOptions } from '@/features/projects/services/queries/status';
-import { useQueryActivity, useQueryIdentity } from '@/shared/server-data/client';
-import { searchOptions } from '@/features/projects/services/queries/files';
 import { projectQueryKey } from '@/shared/server-data/keys';
-import { healthOptions, mcpOptions } from '@/shared/server-data/diagnostics';
-import type { Diagnostics } from '@/shared/protocol/services/diagnostics-service';
 import { getProjectFileDownloadSource, readFile, readProjectFile, saveFile } from '@/features/projects/services/project-service';
 import { useProjectBrowser } from '@/features/projects/state/use-project-browser';
 import { useProjectEntryActions } from '@/features/projects/state/use-project-entry-actions';
 import { useQueries, useQueryClient } from '@tanstack/react-query';
 
 export function useProjectFileActions({
+  identity,
+  queryActive: active,
+  scopeKey,
   fileClipboard, connectionId, connected,
   client,
   isCurrentClient,
-  projectFileRequestRef,
-  currentSessionIdRef,
-  diffScopeBySessionRef,
-  settingsRef,
+  settings,
   refreshVcsDiff,
   refreshServerFeatures,
 }: ProjectFileInput) {
   const cache = useQueryClient();
-  const identity = useQueryIdentity();
-  const active = useQueryActivity();
-  const [selectedPath, setSelectedPath] = useState<{ client: object; path: string }>();
-  const path = selectedPath?.client === client ? selectedPath.path : undefined;
+  const { store } = useAppCore();
+  const owner = projectClientOwner(client);
+  const selectedPath = useAppStore((state) => state.workspaceUi[scopeKey]?.preview);
+  const path = selectedPath?.owner === owner ? selectedPath.path : undefined;
   const previewKey = projectQueryKey(identity, client, 'preview', path);
-  const [diagnosticsRequested, setDiagnosticsRequested] = useState(false);
   const [preview] = useQueries({ queries: [{ queryKey: previewKey, enabled: false, gcTime: 0,
     queryFn: ({ signal }: { signal: AbortSignal }) => readProjectFile(withReadSignal(client, signal), path!) }].filter(() => active) });
-  const [health] = useQueries({ queries: [{ ...healthOptions(identity, client), enabled: diagnosticsRequested }].filter(() => active) });
-  const [diagnosticMcp] = useQueries({ queries: [{ ...mcpOptions(identity, client), enabled: diagnosticsRequested }].filter(() => active) });
-  const diagnostics = useMemo<Diagnostics | undefined>(() => health?.data ? { health: health?.data, mcp: diagnosticMcp?.error
-    ? { available: false, error: diagnosticMcp?.error.message } : { available: true, data: diagnosticMcp?.data ?? {} } } : undefined, [health?.data, diagnosticMcp?.data, diagnosticMcp?.error]);
-  const directoryBrowser = useProjectBrowser({ client, isCurrentClient });
+  const directoryBrowser = useProjectBrowser({ scopeKey, client, identity, isCurrentClient, queryActive: active });
   const setSelectedProjectFile = useCallback((file: import('@/shared/protocol/opencode/project-file').ProjectFile) => {
     cache.setQueryData(projectQueryKey(identity, client, 'preview', file.path), file);
   }, [cache, client, identity]);
+  const readSelectedDiff = useCallback(() => {
+    const state = store.getState();
+    const sessionId = state.selection[scopeKey]?.currentSessionId;
+    return sessionId ? state.chat[scopeKey]?.diffScopeBySession[sessionId] : undefined;
+  }, [scopeKey, store]);
   const refreshEntries = useCallback(async () => {
     if (!isCurrentClient(client)) return;
     await Promise.all([cache.fetchQuery(fileStatusOptions(identity, client)), cache.fetchQuery(vcsInfoOptions(identity, client))]);
     if (!isCurrentClient(client)) return;
     await directoryBrowser.refresh();
-    const scope = diffScopeBySessionRef.current[currentSessionIdRef.current || ''];
+    const scope = readSelectedDiff();
     if (scope === 'uncommitted' || scope === 'branch') await refreshVcsDiff(scope, true);
-  }, [client, currentSessionIdRef, diffScopeBySessionRef, directoryBrowser, isCurrentClient, refreshVcsDiff, cache, identity]);
-  const actions = useProjectEntryActions({ client, isCurrentClient, connectionId, clipboard: fileClipboard, refresh: refreshEntries, enabled: connected });
+  }, [cache, client, directoryBrowser, identity, isCurrentClient, readSelectedDiff, refreshVcsDiff]);
+  const actions = useProjectEntryActions({ scopeKey, client, identity, isCurrentClient, connectionId, clipboard: fileClipboard, refresh: refreshEntries, enabled: connected });
   const browser = useMemo(() => ({ ...directoryBrowser, actions }), [directoryBrowser, actions]);
 
-  const searchProjectFiles = useCallback(async (query: string) => {
-    const trimmed = query.trim();
-    if (!trimmed) return [];
-    return cache.fetchQuery(searchOptions(identity, client, trimmed));
-  }, [cache, client, identity]);
-
-  const refreshDiagnostics = useCallback(async () => {
-    if (!active) return;
-    setDiagnosticsRequested(true);
-    await Promise.allSettled([cache.fetchQuery(healthOptions(identity, client)), cache.fetchQuery(mcpOptions(identity, client))]);
-  }, [active, cache, client, identity]);
+  const readPreviewRequest = useCallback(() => {
+    const preview = store.getState().workspaceUi[scopeKey]?.preview;
+    return preview?.owner === owner ? preview.request : undefined;
+  }, [owner, scopeKey, store]);
 
   const openProjectFile = useCallback(async (path: string) => {
     path = projectPath(path, client.__opencode.directory || '');
-    const request = ++projectFileRequestRef.current;
+    if (!isCurrentClient(client)) throw new Error('File selection was superseded.');
+    const request = Symbol(path);
     const key = projectQueryKey(identity, client, 'preview', path);
-    setSelectedPath({ client, path });
+    store.getState().setWorkspaceUi(scopeKey, { preview: { owner, path, request } });
     await cache.fetchQuery({ queryKey: key, gcTime: 0, staleTime: 0, queryFn: ({ signal }) => readProjectFile(withReadSignal(client, signal), path) });
-    if (!isCurrentClient(client) || request !== projectFileRequestRef.current) throw new Error('File selection was superseded.');
-  }, [cache, client, identity, isCurrentClient, projectFileRequestRef]);
+    if (!isCurrentClient(client) || request !== readPreviewRequest()) throw new Error('File selection was superseded.');
+  }, [cache, client, identity, isCurrentClient, owner, readPreviewRequest, scopeKey, store]);
 
   const closeProjectFile = useCallback(() => {
     // Invalidate an in-flight open so closing cannot be undone when its read
     // resolves after the preview has already gone away.
-    projectFileRequestRef.current += 1;
-    setSelectedPath(undefined);
+    if (store.getState().workspaceUi[scopeKey]?.preview?.owner !== owner) return;
+    store.getState().setWorkspaceUi(scopeKey, { preview: undefined });
     void cache.cancelQueries({ queryKey: projectQueryKey(identity, client, 'preview') });
     cache.removeQueries({ queryKey: projectQueryKey(identity, client, 'preview') });
-  }, [cache, client, identity, projectFileRequestRef]);
+  }, [cache, client, identity, owner, scopeKey, store]);
 
   const downloadProjectFile = useCallback(async (path: string, signal?: AbortSignal) => {
     path = projectPath(path, client.__opencode.directory || '');
@@ -104,7 +96,6 @@ export function useProjectFileActions({
       });
       return;
     }
-    const settings = settingsRef.current;
     const base = getServerBase(settings.serverUrl);
     await saveOrShareProjectFile({
       url: projectFileDownloadUrl({ origin: base.origin, pathPrefix: base.pathPrefix, directory: client.__opencode.directory || '', path }),
@@ -114,11 +105,11 @@ export function useProjectFileActions({
       mime: projectFileMime(path),
       signal,
     });
-  }, [client, isCurrentClient, settingsRef]);
+  }, [client, isCurrentClient, settings]);
 
   const saveProjectFile = useCallback(async (path: string, expectedContent: string, content: string) => {
     path = projectPath(path, client.__opencode.directory || '');
-    const request = projectFileRequestRef.current;
+    const request = readPreviewRequest();
     const latest = await readFile(client, path);
     if (!isCurrentClient(client)) throw new Error('The project changed before saving.');
     if (latest.type !== 'text' || latest.encoding === 'base64') throw new Error('Only text files can be edited.');
@@ -135,23 +126,22 @@ export function useProjectFileActions({
         throw error;
       }
       if (!isCurrentClient(client)) throw error;
-      setSelectedProjectFile(projectFileFromText(path, recovered));
+      if (request === readPreviewRequest()) setSelectedProjectFile(projectFileFromText(path, recovered));
       await refreshServerFeatures();
       return;
     }
     const saved = await readFile(client, path);
     if (!isCurrentClient(client)) throw new Error('The project changed before saving completed.');
     if (saved.type !== 'text' || saved.encoding === 'base64' || saved.content !== content) throw new Error('The saved file did not match your changes. Reopen it before retrying.');
-    if (isCurrentClient(client) && request === projectFileRequestRef.current) {
+    if (isCurrentClient(client) && request === readPreviewRequest()) {
       setSelectedProjectFile(projectFileFromText(path, saved));
       await refreshServerFeatures();
-      const activeSessionId = currentSessionIdRef.current;
-      const scope = activeSessionId ? diffScopeBySessionRef.current[activeSessionId] : undefined;
+      const scope = readSelectedDiff();
       if (scope === 'uncommitted' || scope === 'branch') {
         void refreshVcsDiff(scope, true);
       }
     }
-  }, [client, currentSessionIdRef, diffScopeBySessionRef, isCurrentClient, projectFileRequestRef, refreshServerFeatures, refreshVcsDiff, setSelectedProjectFile]);
+  }, [client, isCurrentClient, readPreviewRequest, readSelectedDiff, refreshServerFeatures, refreshVcsDiff, setSelectedProjectFile]);
 
-  return { selectedProjectFile: preview?.data, diagnostics, refreshServerFeatures, refreshDiagnostics, searchProjectFiles, browser, openProjectFile, saveProjectFile, closeProjectFile, downloadProjectFile };
+  return { selectedProjectFile: preview?.data, browser, openProjectFile, saveProjectFile, closeProjectFile, downloadProjectFile };
 }

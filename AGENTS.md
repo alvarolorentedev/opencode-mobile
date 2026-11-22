@@ -16,7 +16,7 @@ Do not preload the documentation tree or invent another architecture.
 - `tests/e2e/` and `tests/fake-opencode/`: the behavioral contract, with central harnesses.
 
 See [feature boundaries](docs/architecture/feature-boundaries.md) for ownership,
-public APIs and the strictly limited shared UI/runtime exception.
+public APIs and shared dependency direction.
 
 ## Start here
 
@@ -47,9 +47,9 @@ policy; keep its changes deliberate and documented.
 
 Presentation never fetches, persists credentials, normalizes raw server payloads,
 or directly invokes arbitrary native SDKs. Reuse domain actions, pure contracts
-and the shared platform interfaces. Shared UI remains feature-independent. Only
-the exact existing controls listed in the architecture documentation may import
-specified symbols from `runtime/ui.ts`; no new bridge context or duplicated state.
+and the shared platform interfaces. Shared UI receives any feature behavior
+through props and does not import features or runtime. See the architecture
+documentation for interaction registration and portal boundaries.
 
 Protocol normalization belongs in `shared/protocol/`. Existing V1 imports and
 compatibility branching stay in the compatibility/contract boundary. New

@@ -9,14 +9,20 @@
   },
   "include": [
     "tests/vitest/**/*.ts",
+    "tests/integration/**/*.test.ts",
+    "tests/integration/**/*.test.tsx",
+    "tests/vitest/**/*.tsx",
     "base-64.d.ts",
     "expo-env.d.ts",
     "global.d.ts",
     "uniwind-types.d.ts",
     ".expo/types/**/*.ts",
     "features/**/__tests__/**/*.ts",
+    "features/**/__tests__/**/*.tsx",
     "shared/**/__tests__/**/*.ts",
-    "runtime/**/__tests__/**/*.ts"
+    "shared/**/__tests__/**/*.tsx",
+    "runtime/**/__tests__/**/*.ts",
+    "runtime/**/__tests__/**/*.tsx"
   ],
   "exclude": [
     "node_modules",

@@ -1,25 +1,31 @@
-import { base64 } from '@scure/base';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { isContractMismatchError } from '@/shared/protocol/opencode/client/errors';
 import { fetchConnection } from '@/shared/protocol/opencode/client/fetch';
 import { detectServerContract, probeConnection } from '@/shared/protocol/opencode/client/probe';
 import { getServerHostname } from '@/shared/contracts/server-url';
 import { parseLocalPairing, resolveLocalPairing } from '@/shared/protocol/opencode/pairing';
-import * as readDeadline from '@/shared/protocol/opencode/client/read-deadline';
-import { loadTs } from '../../../tests/helpers/runtime.mjs';
+import { buildClient, buildPtyWebSocketUrl } from '@/shared/protocol/opencode/client';
+import { buildV2Raw } from '@/shared/protocol/opencode/v2/raw';
 
-vi.mock('react-native', () => ({ Platform: { OS: 'web' } }));
-vi.mock('@/shared/protocol/opencode/client/types', () => ({ defaultConnectionSettings: { serverUrl: 'http://127.0.0.1:4096' } }));
-vi.mock('@/shared/protocol/opencode/client/fetch', () => ({
-  fetchConnection: vi.fn(),
-  getRequestHeaders: (settings: { password: string; username: string }) => settings.password ? { Authorization: `Basic ${Buffer.from(`${settings.username || 'opencode'}:${settings.password}`).toString('base64')}` } : undefined,
-}));
+const { nativeFetch, device } = vi.hoisted(() => ({ nativeFetch: vi.fn<typeof fetch>(), device: { os: 'web' } }));
+vi.mock('react-native', () => ({ Platform: { get OS() { return device.os; } } }));
+vi.mock('expo/fetch', () => ({ fetch: nativeFetch }));
+vi.mock('expo-constants', () => ({ default: {} }));
+vi.mock('expo-crypto', () => ({}));
+vi.mock('expo-file-system', () => ({}));
+vi.mock('expo-secure-store', () => ({}));
+vi.mock('@react-native-async-storage/async-storage', () => ({ default: {} }));
 
-const fetchMock = vi.mocked(fetchConnection);
+const fetchMock = vi.fn<typeof fetch>();
 const settings = { serverUrl: 'http://example.test', username: '', password: '', directory: '' };
 const json = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status, headers: { 'content-type': 'application/json' } });
-beforeEach(() => { fetchMock.mockReset(); });
-afterEach(() => { vi.useRealTimers(); });
+beforeEach(() => {
+  device.os = 'web';
+  fetchMock.mockReset();
+  nativeFetch.mockReset().mockImplementation(fetchMock);
+  vi.stubGlobal('fetch', fetchMock);
+});
+afterEach(() => { vi.useRealTimers(); vi.unstubAllGlobals(); });
 
 describe('connection setup probe', () => {
   it('keeps V1 authoritative when compatibility routes look like V2', async () => {
@@ -58,43 +64,28 @@ describe('connection setup probe', () => {
 
 describe('local pairing', () => {
   it('preserves Cloudflare startup errors before SDK parsing, while auth denials and manual transport stay actionable', async () => {
-    const transport = await loadTs('shared/protocol/opencode/client/fetch.ts', {
-    './read-deadline': readDeadline,
-    '@/shared/protocol/opencode/client/types': { defaultConnectionSettings: settings },
-    '@scure/base': { base64 },
-    'expo/fetch': { fetch: async () => response },
-    "@/shared/network/data-usage": { recordBytes: () => {}, recordRequest: () => {} },
-    "@/shared/network/request-stats": { recordRequestStart: () => () => {} },
-    "@/shared/protocol/opencode/client/request-policy": { getRequestTimeout: () => 30_000, shouldRetryRead: () => false },
-    "@/shared/contracts/cloud-link": { getConnectCredentialError: () => undefined }
-  }, { fetch: async () => response });
     const html = (status: number) => new Response('<html>Cloudflare Error 1033</html>', { status, headers: { 'content-type': 'text/html' } });
-    let response = html(530);
-    const cloudSettings = { ...settings, connect: {} };
-    await expect(transport.fetchConnection('https://machine.test', {}, cloudSettings)).rejects.toThrow('1033');
-    for (const status of [401, 403]) {
-      response = html(status);
-      await expect(transport.fetchConnection('https://machine.test', {}, cloudSettings)).rejects.toThrow(status === 401 ? 'credentials were rejected' : 'access was denied');
+    device.os = 'android';
+    let status = 530;
+    fetchMock.mockImplementation(async () => html(status));
+    const cloudSettings = { ...settings, connect: {
+      controlPlaneUrl: 'https://api.opencodecloud.link', machineId: 'machine', machineName: 'Machine',
+      deviceId: 'device', expiresAt: '2099-01-01T00:00:00Z',
+    }, password: 'credential' };
+    await expect(fetchConnection('https://machine.test', {}, cloudSettings)).rejects.toThrow('1033');
+    for (const denial of [401, 403]) {
+      status = denial;
+      await expect(fetchConnection('https://machine.test', {}, cloudSettings)).rejects.toThrow(status === 401 ? 'credentials were rejected' : 'access was denied');
     }
-    response = html(530);
-    expect(await (await transport.fetchConnection('http://manual.test')).text()).toContain('1033');
+    status = 530;
+    expect(await (await fetchConnection('http://manual.test')).text()).toContain('1033');
   });
   it('uses redirect-aware native transport for redemption while preserving normal manual transport', async () => {
-    const manualFetch = vi.fn(async () => json({}));
-    const nativeFetch = vi.fn(async () => json({}));
-    const transport = await loadTs('shared/protocol/opencode/client/fetch.ts', {
-    './read-deadline': readDeadline,
-    '@/shared/protocol/opencode/client/types': { defaultConnectionSettings: settings },
-    '@scure/base': { base64 },
-    'expo/fetch': { fetch: nativeFetch },
-    "@/shared/network/data-usage": { recordBytes: () => {}, recordRequest: () => {} },
-    "@/shared/network/request-stats": { recordRequestStart: () => () => {} },
-    "@/shared/protocol/opencode/client/request-policy": { getRequestTimeout: () => 30_000, shouldRetryRead: () => false },
-    "@/shared/contracts/cloud-link": { getConnectCredentialError: () => undefined }
-  }, { fetch: manualFetch });
-    await transport.fetchConnection('http://example.test/api/info');
-    await transport.fetchConnection('http://example.test/auth/connect/code', { redirect: 'error' });
-    expect(manualFetch).toHaveBeenCalledOnce();
+    fetchMock.mockImplementation(async () => json({}));
+    nativeFetch.mockImplementation(async () => json({}));
+    await fetchConnection('http://example.test/api/info');
+    await fetchConnection('http://example.test/auth/connect/code', { redirect: 'error' });
+    expect(fetchMock).toHaveBeenCalledOnce();
     expect(nativeFetch).toHaveBeenCalledWith('http://example.test/auth/connect/code', expect.objectContaining({ redirect: 'error', signal: expect.any(AbortSignal) }));
   });
   it.each([
@@ -127,8 +118,11 @@ describe('local pairing', () => {
     fetchMock.mockImplementation(async (url) => { if (String(url).includes('unreachable')) throw new Error('Network'); return json({ token: 'session-token' }); });
     const result = await resolveLocalPairing(JSON.stringify({ code: 'one-use-code', urls: ['http://127.0.0.1', 'http://unreachable.test', 'http://example.test', 'http://example.test'] }));
     expect(result).toEqual({ ...settings, password: 'session-token' });
-    expect(fetchMock.mock.calls.map(([url]) => url)).toEqual(['http://unreachable.test/auth/connect/one-use-code', 'http://example.test/auth/connect/one-use-code']);
-    expect(fetchMock.mock.calls[1][1]).toMatchObject({ headers: { Accept: 'application/json' }, redirect: 'error' });
+    const attempts = fetchMock.mock.calls.map(([url]) => url);
+    expect([...new Set(attempts)]).toEqual(['http://unreachable.test/auth/connect/one-use-code', 'http://example.test/auth/connect/one-use-code']);
+    // The actual GET transport retries the first network failure once.
+    expect(attempts).toEqual([attempts[0], attempts[0], attempts[2]]);
+    expect(fetchMock.mock.calls[2][1]).toMatchObject({ headers: { Accept: 'application/json' }, redirect: 'error' });
   });
   it('bounds each address attempt to five seconds', async () => {
     vi.useFakeTimers();
@@ -171,40 +165,23 @@ describe('native defaults', () => {
     expect(await detectServerContract(settings)).toEqual({ contract: 'v2' });
   });
   it('constructs native clients and PTY URLs unless compatibility is explicit', async () => {
-    const native = vi.fn(() => ({ api: {} }));
-    const legacy = vi.fn(() => ({}));
-    const urls = await loadTs('shared/contracts/server-url.ts', {
-    "@/shared/protocol/opencode/client/types": { defaultConnectionSettings: settings }
-  });
-    const client = await loadTs('shared/protocol/opencode/client.ts', {
-    '@/shared/contracts/server-url': urls,
-    '@/shared/protocol/opencode/client/types': { defaultConnectionSettings: settings },
-    '@/shared/protocol/opencode/client/fetch': {},
-    '@/shared/protocol/opencode/client/management-api': {},
-    '@/shared/protocol/opencode/client/errors': {},
-    '@/shared/protocol/opencode/client/probe': {},
-    '@/shared/protocol/opencode/client/interactions': {},
-    "@/shared/protocol/opencode/compat/v1/client": { buildV1Compatibility: legacy },
-    "@/shared/protocol/opencode/v2-client": { buildV2Client: native }
-  });
     const connection = { ...settings, directory: '/repo', serverUrl: 'https://test/proxy/api' };
-    client.buildClient(connection); expect(native).toHaveBeenCalledOnce(); expect(legacy).not.toHaveBeenCalled();
-    expect(client.buildPtyWebSocketUrl(connection, 'p')).toBe('wss://test/proxy/api/pty/p/connect?location%5Bdirectory%5D=%2Frepo');
-    client.buildClient(connection, 'v1'); expect(legacy).toHaveBeenCalledOnce();
+    const native = buildClient(connection);
+    expect(native.__opencode.contract).toBe('v2');
+    expect(native.api).toBeDefined();
+    expect(native.compatibility).toBeUndefined();
+    expect(buildPtyWebSocketUrl(connection, 'p')).toBe('wss://test/proxy/api/pty/p/connect?location%5Bdirectory%5D=%2Frepo');
+    const legacy = buildClient(connection, 'v1');
+    expect(legacy.__opencode.contract).toBe('v1');
+    expect(legacy.compatibility).toBeDefined();
   });
 });
 
 describe('installed native SDK error boundary', () => {
   it('retains actionable status through SDK transport wrapping', async () => {
-    const { OpenCode } = await import('@opencode/client');
     let status = 404;
-    const raw = await loadTs('shared/protocol/opencode/v2/raw.ts', {
-    '@opencode/client': { OpenCode },
-    "@/shared/protocol/opencode/client/fetch": { getRequestHeaders: () => ({}), createPrefixFetch: () => async () => json({ error: 'Request denied' }, status) },
-    "@/shared/protocol/opencode/v2/config-read-cache": { bustConfigReadCache: () => undefined },
-    "@/shared/protocol/opencode/v2/shared": { resolveV2Base: () => ({ base: { origin: 'http://test' }, pathPrefix: '' }) }
-  }, { Error });
-    const api = raw.buildV2Raw(settings).api;
+    fetchMock.mockImplementation(async () => json({ error: 'Request denied' }, status));
+    const api = buildV2Raw(settings).api;
     for (status of [404, 405, 401, 403, 500, 503]) {
       try { await api.location.get(); throw new Error('Request unexpectedly succeeded'); }
       catch (error) {

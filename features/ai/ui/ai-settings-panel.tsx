@@ -1,3 +1,5 @@
+import { useUpdateBlockingConfirmation as useConfirmation } from '@/features/updates/index';
+import type { WorkspaceTarget } from '@/shared/contracts/workspace';
 import { Feedback } from '@/shared/ui/feedback';
 import { Portal } from '@/shared/ui/portal';
 import { useMemo, useState } from 'react';
@@ -5,7 +7,6 @@ import { useTranslation } from 'react-i18next';
 import { useIsFocused } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { useConfirmation } from '@/shared/ui/use-confirmation';
 import { findMatchingProfile } from '@/shared/contracts/connection-profiles';
 import { AiDefaultsSection } from '@/features/ai/ui/settings/ai-defaults-section';
 import { AutoModelSection } from '@/features/ai/ui/settings/auto-model-section';
@@ -13,19 +14,19 @@ import { getProviderCopy } from '@/features/ai/model/settings-utils';
 import { useProviderConfiguration } from '@/features/ai/ui/use-provider-configuration';
 import { useCapabilities } from '@/features/ai/context';
 import { useConnection } from '@/features/connections/context';
-import { usePreferences } from '@/shared/preferences/context';
+import { useWorkspacePreferences } from '@/runtime/workspace';
 import { usePalette } from '@/shared/ui/theme/use-palette';
 
-export function AiSettingsPanel() {
+export function AiSettingsPanel({ workspace }: { workspace?: WorkspaceTarget }) {
   const { confirmAction, confirmation } = useConfirmation();
   const { t } = useTranslation();
   const focused = useIsFocused();
   const insets = useSafeAreaInsets();
   const palette = usePalette();
-  const { currentConfig, availableModels, availableProviders, configuredProviders, providerAccounts, providerAuthMethodsById, removeProvider, modelRouting } = useCapabilities();
-  const { serverCapabilities, settings, connectionProfiles } = useConnection();
-  const { chatPreferences, updateChatPreferences } = usePreferences();
-  const providerConfig = useProviderConfiguration();
+  const { currentConfig, availableModels, availableProviders, configuredProviders, providerAccounts, providerAuthMethodsById, removeProvider, modelRouting } = useCapabilities(workspace);
+  const { serverCapabilities, settings, connectionProfiles } = useConnection(workspace);
+  const { chatPreferences, updateChatPreferences } = useWorkspacePreferences(workspace);
+  const providerConfig = useProviderConfiguration(workspace);
   const [expandedProviderIds, setExpandedProviderIds] = useState<Set<string>>(() => new Set());
   const enabledModelIds = useMemo(() => new Set(chatPreferences.enabledModelIds), [chatPreferences.enabledModelIds]);
 

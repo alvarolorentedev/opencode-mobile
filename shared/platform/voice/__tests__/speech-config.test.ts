@@ -1,11 +1,10 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'vitest';
 
-import { loadTs } from '../../../../tests/helpers/runtime.mjs';
+import { getSpeechPlayback } from '@/shared/platform/voice/speech-config';
 
 describe('speech playback selection', () => {
   it('uses the system engine unless a local pack is explicitly selected', async () => {
-    const { getSpeechPlayback } = await loadTs('shared/platform/voice/speech-config.ts');
 
     assert.deepEqual(
       JSON.parse(JSON.stringify(getSpeechPlayback({ speechVoiceId: 'voice-1' }))),

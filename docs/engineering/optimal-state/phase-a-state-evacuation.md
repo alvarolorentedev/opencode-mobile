@@ -1,6 +1,6 @@
 # Phase A — State Evacuation
 
-Status: **in progress**. A1 is complete; A2–A7 remain.
+Status: **complete**. A1–A7 passed their automated checks and the Phase A gate.
 
 Goal: remove every piece of domain data from the per-workspace React runtime so
 the runtime can be deleted in Phase E without losing retained state.
@@ -15,122 +15,71 @@ that must survive a workspace or tab switch.
 - Prompt sending state and prompt error are in the store (`runtime/core/store.ts`,
   prompt slice).
 - Transcript read errors are in the store (`chat.readErrors`).
-- `runtime/workspace/use-session-runtime-state.ts` exposes the workspace
-  `scopeKey` for store-keyed hooks.
+- Store-keyed hooks receive the workspace `scopeKey`. The original React
+  adapter was removed during Phase E.
 - The legacy `loadTs` helper has a default app-core stand-in so existing suites
   can exercise store-backed hooks until Phase F migrates them.
 
 Commit: `refactor(chat): move prompt and transcript-error state into the app store`.
 
-## Remaining work
-
 ### A2 — Prompt inbox and notices
 
-Current: `features/chat/state/use-prompt-inbox.ts` owns a
-`Map<scope, { prompts, notices }>`, a queue size, queued inputs and revisions in
-`useState`/refs.
-
-Target:
-- Put the per-scope prompt/notice snapshot and queue size in the prompt store
-  slice.
-- Treat canonical inbox/notices as Query data when the transport exposes them;
-  keep only the local outbox/admission queue in the store.
-- Keep timers, the flushing lock and in-flight promise refs as refs.
-- Do not keep a second canonical copy in the hook.
-
-Acceptance:
-- No authoritative `useState`/ref for prompts, notices, queue size or queued
-  inputs.
-- Queue recovery and offline delivery tests pass.
-- `npm run impact -- features/chat/state/use-prompt-inbox.ts` suites pass.
+The [prompt inbox and outbox](../../architecture/state-and-data.md#session-content-caches)
+have separate owners. Query owns confirmed inbox entries and notices, and the
+app store owns local admission entries and offline inputs. Queue length is
+derived from the outbox. The hook retains request revisions and the flush lock.
+Cancellation invalidates reads that started before the server confirmed it.
 
 ### A3 — Conversation
 
-Current: `features/voice/state/use-conversation-state.ts` owns ten state values:
-phase, readback phase, turn sequence, session id, queued/pending turn, feedback,
-feedback action, latest heard text and wake sensor.
-
-Target:
-- Add a scope-keyed conversation slice to the store.
-- Keep recognizer/audio handles and timers in refs.
-- The hook reads selectors and writes through store setters/commands only.
-
-Acceptance:
-- No conversation state in `useState`.
-- Voice unit suites, onboarding voice and settings voice pass.
-- `npm run impact -- features/voice/state/use-conversation-state.ts` suites pass.
+The [conversation runtime state](../../architecture/state-and-data.md#conversation-state)
+is scoped to its workspace in the app store. Input and readback callbacks read
+the latest phases directly. The workspace retains the recognizer, audio and
+timer lifecycles.
 
 ### A4 — Terminal
 
-Current: `features/terminal/state/use-terminal-state.ts` owns terminals,
-active terminal id, instances and scope in `useState`; transport connections and
-foreground flags are refs.
-
-Target:
-- Add a scope-keyed terminal slice for terminals, active id, instances and scope.
-- Keep transport connection handles, request counters and foreground flags as
-  refs.
-- The retained renderer reads the scope/instance data from selectors.
-
-Acceptance:
-- No terminal data in `useState`.
-- `terminal.spec.mjs`, multi-server terminal and retained renderer pass.
+The [terminal state](../../architecture/state-and-data.md#terminal-state) uses
+Query for PTY inventory and the app store for the opened instances, selection
+and renderer generation. The terminal connection service publishes status into
+the workspace's store entry and keeps the transport handles and replay cursor.
 
 ### A5 — Transcript state and live overlay
 
-Current:
-- `features/chat/state/use-transcript-state.ts` owns `messageWindows`,
-  `loadingOlderBySession`, `hydratingSessionIds`, `usageStepsBySession` and
-  `todoRecordsBySession` in `useState`.
-- `features/chat/state/use-live-transcript.ts` owns the live message overlay,
-  local sends and local users in refs.
-
-Target:
-- Add a scope-keyed transcript slice for pagination windows, hydration flags,
-  usage steps and todo records. These are derived server data; if a Query
-  resource is a better owner, move it there instead of duplicating it.
-- Move live overlay, local send times and local user records to the store.
-- Keep paint timers, generation counters and in-flight read refs as refs.
-- Keep `reduceLiveEvent` pure. The store holds the result, not a second reducer.
-
-Acceptance:
-- No transcript pagination/overlay data in `useState` or authoritative refs.
-- Transcript-policy, live-transcript and prompt tests pass.
-- Chat, diffs and realtime E2E pass.
+The [transcript sources](../../architecture/state-and-data.md#session-content-caches)
+are scope-keyed. Query owns pagination cursors and the accumulated usage and
+plan ledgers. The app store owns request flags, the live overlay and optimistic
+local admission. React presents the combined transcript with the existing
+50 ms stream cadence. Phase D replaces the connection-wide canonical window
+with per-session infinite queries and verifies the cold-start path.
 
 ### A6 — Extensions, MCP, projects and capabilities
 
-Files:
-- `features/extensions/state/use-extensions-state.ts`
-- `features/extensions/state/use-mcp-state.ts`
-- `features/projects/state/use-project-browser.ts`
-- `features/projects/state/use-project-file-actions.ts`
-- `features/ai/state/use-capabilities-actions.ts`
-
-Target:
-- Server catalogs go to Query; selection, busy, error, requested and probe
-  status flags go to a scope-keyed store slice.
-- Keep file handles, timers and request counters as refs.
-
-Acceptance:
-- No domain data in `useState` for these hooks.
-- Settings, extensions, projects and chat E2E pass.
+Workspace device state covers extension requests, mutations and plugin
+selection, MCP and diagnostics demand, file browser and preview selection, and
+the current classifier probe. Query still owns server catalogs and now caches
+classifier outcomes by project, credential generation and model.
 
 ### A7 — Delete the remaining per-workspace state
 
-- Delete `features/chat/state/use-chat-runtime-state.ts` when its last field
-  moves.
-- Remove any ref that only mirrors a store/Query value. A ref is allowed only
-  for a timer, socket, promise, request id or lock.
-- Audit:
+The workspace adapter reads diff preferences, selected sessions, active project
+paths and connection settings directly from the app store. Session lists read
+through to Query. The obsolete chat runtime state hook is deleted. Voice
+confirmation and the readback queue use the conversation slice. Entry-operation
+capability uses Query, and the file clipboard, feedback and inspection targets
+use the app store.
+
+The audit covers retained workspaces. Connection-level catalog publications and
+route scope carriers remain for the connection and React flattening phases.
+Screen editors and native speech setup retain local interaction state. Request
+refs retain tokens, timers, audio handles and locks for in-flight work.
+
+Audit commands:
 
 ```bash
 grep -R "useState" features/*/state runtime/workspace
 grep -R "useRef" features/*/state runtime/workspace
 ```
-
-For each remaining hit, either move the data or add a one-line comment
-explaining why it is ephemeral transport state.
 
 ## Phase A gate
 

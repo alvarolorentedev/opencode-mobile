@@ -11,7 +11,7 @@ import { getNormalizedServerUrl } from '@/shared/contracts/server-url';
 import { getVisibleModels } from '@/features/ai/index';
 import { useCapabilities } from '@/features/ai/context';
 import { useConnection } from '@/features/connections/context';
-import { usePreferences } from '@/shared/preferences/context';
+import { useWorkspacePreferences } from '@/runtime/workspace';
 import { useProjects } from '@/features/projects/context';
 import { usePalette } from '@/shared/ui/theme/use-palette';
 
@@ -21,7 +21,7 @@ export function SetupSummary() {
   const { settings, connection, serverCapabilities } = useConnection();
   const { activeProject } = useProjects();
   const { availableModels, configuredProviders } = useCapabilities();
-  const { chatPreferences } = usePreferences();
+  const { chatPreferences } = useWorkspacePreferences();
   const { voices } = useSpeechVoices();
   const voiceLabel = voices.find((voice) => voice.id === chatPreferences.speechVoiceId)?.label || t('settings:voice.voiceSelect.automatic');
   const ttsPack = getLocalTtsPack(chatPreferences.localTtsPackId);

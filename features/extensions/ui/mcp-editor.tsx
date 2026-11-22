@@ -1,3 +1,4 @@
+import { UpdateBlockingSettingSelectField as SettingSelectField } from '@/features/updates/index';
 import { View } from 'react-native';
 import { Controller, useFieldArray, useForm, useWatch } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -5,17 +6,17 @@ import { useTranslation } from 'react-i18next';
 import { useExtensions } from '@/features/extensions/context';
 import { mcpEditorSchema, type McpEditorDraft } from '@/features/extensions/model/extension-schemas';
 import { ExtensionEditor, type EditorProps } from '@/features/extensions/ui/extension-editor';
-import { SettingField, SettingSelectField } from '@/shared/ui/settings/setting-rows';
+import { SettingField } from '@/shared/ui/settings/setting-rows';
 import { Text } from '@/shared/ui/text';
 import { Button } from '@/shared/ui/button';
 import { FieldDescription } from '@/shared/ui/text-field';
 import { usePalette } from '@/shared/ui/theme/use-palette';
 import type { ExtensionMcpRow } from '@/shared/protocol/opencode/extensions/types';
 
-export function McpEditor({ row, remote = false, context, scope, onClose, save }: EditorProps & { row?: ExtensionMcpRow; remote?: boolean; context: string }) {
+export function McpEditor({ workspace, row, remote = false, context, scope, onClose, save }: EditorProps & { row?: ExtensionMcpRow; remote?: boolean; context: string }) {
   const { t } = useTranslation();
   const palette = usePalette();
-  const { extensions } = useExtensions();
+  const { extensions } = useExtensions(workspace);
   const command = row?.config && 'command' in row.config && Array.isArray(row.config.command) ? row.config.command : [];
   const form = useForm<McpEditorDraft>({ resolver: zodResolver(mcpEditorSchema), defaultValues: {
     name: row?.name ?? '', type: row?.config?.type === 'remote' || remote ? 'remote' : 'local', url: row?.config && 'url' in row.config && typeof row.config.url === 'string' ? row.config.url : '',

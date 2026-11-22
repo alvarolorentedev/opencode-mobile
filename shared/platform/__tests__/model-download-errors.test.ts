@@ -1,7 +1,18 @@
 import assert from 'node:assert/strict';
-import { describe, it } from 'vitest';
+import { describe, it, beforeEach, afterEach, vi } from 'vitest';
 
-import { loadTs } from '../../../tests/helpers/runtime.mjs';
+import type { File } from 'expo-file-system';
+import {
+  classifyModelDownloadError,
+  downloadFileWithRetry,
+  isRetryableModelDownloadError,
+  ModelDownloadError,
+  modelDownloadErrorCode,
+  modelDownloadMessageKeyForCode,
+} from '@/shared/platform/models/model-download';
+
+const { createDownloadTask } = vi.hoisted(() => ({ createDownloadTask: vi.fn() }));
+vi.mock('expo-file-system', () => ({ File: { createDownloadTask } }));
 
 class FakeFile {
   path: string;
@@ -21,24 +32,10 @@ class FakeFile {
   }
 }
 
-function fakeFileModule(File: unknown) {
-  return { 'expo-file-system': { File } };
-}
-
-const immediateTimers = {
-  setTimeout: (callback: () => void) => {
-    callback();
-    return 0;
-  },
-  console: { warn() {} },
-};
+const destination = () => new FakeFile('/cache/model') as unknown as File;
 
 describe('model download error classification', () => {
   it('classifies native network failures into user-facing codes', async () => {
-    const { classifyModelDownloadError } = await loadTs(
-      'shared/platform/models/model-download.ts',
-      fakeFileModule(FakeFile),
-    );
 
     assert.equal(
       classifyModelDownloadError(new Error("Call to function 'FileSystem.downloadFileAsync' has been rejected. → Caused by: java.net.SocketTimeoutException: timeout")),
@@ -60,20 +57,12 @@ describe('model download error classification', () => {
   });
 
   it('retries 5xx server failures but not 4xx failures', async () => {
-    const { isRetryableModelDownloadError } = await loadTs(
-      'shared/platform/models/model-download.ts',
-      fakeFileModule(FakeFile),
-    );
 
     assert.equal(isRetryableModelDownloadError(new Error('UnableToDownloadException: HTTP 503')), true);
     assert.equal(isRetryableModelDownloadError(new Error('UnableToDownloadException: HTTP 404')), false);
   });
 
   it('maps error codes to the shared translation keys', async () => {
-    const { ModelDownloadError, modelDownloadErrorCode, modelDownloadMessageKeyForCode } = await loadTs(
-      'shared/platform/models/model-download.ts',
-      fakeFileModule(FakeFile),
-    );
 
     assert.equal(modelDownloadErrorCode(new ModelDownloadError('timeout', 'timed out', true)), 'timeout');
     assert.equal(modelDownloadErrorCode(new Error('move failed')), 'install');
@@ -83,97 +72,44 @@ describe('model download error classification', () => {
 });
 
 describe('model download retry policy', () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+    createDownloadTask.mockReset();
+    vi.spyOn(console, 'warn').mockImplementation(() => {});
+  });
+  afterEach(() => {
+    vi.useRealTimers();
+    vi.restoreAllMocks();
+  });
   it('retries once after a transient transfer failure', async () => {
-    let attempts = 0;
-    class File extends FakeFile {
-      static createDownloadTask() {
-        attempts += 1;
-        const attempt = attempts;
-        return {
-          async downloadAsync() {
-            if (attempt === 1) {
-              throw new Error('java.net.SocketTimeoutException: timeout');
-            }
-            return new File('/cache/model');
-          },
-          release() {},
-        };
-      }
-    }
-
-    const { downloadFileWithRetry } = await loadTs(
-      'shared/platform/models/model-download.ts',
-      fakeFileModule(File),
-      immediateTimers,
-    );
-    const file = await downloadFileWithRetry(
-      'https://example.com/model.bin',
-      new File('/cache/model'),
-      'voice model',
-    );
-
-    assert.equal(attempts, 2);
-    assert.equal(file.path, '/cache/model');
+    createDownloadTask
+      .mockReturnValueOnce({ downloadAsync: async () => { throw new Error('java.net.SocketTimeoutException: timeout'); }, release() {} })
+      .mockReturnValueOnce({ downloadAsync: async () => destination(), release() {} });
+    const pending = downloadFileWithRetry('https://example.com/model.bin', destination(), 'voice model');
+    await vi.advanceTimersByTimeAsync(1500);
+    const file = await pending;
+    assert.equal(createDownloadTask.mock.calls.length, 2);
+    assert.equal(file instanceof FakeFile && file.path, '/cache/model');
   });
 
   it('does not retry an integrity failure', async () => {
-    let attempts = 0;
-    class File extends FakeFile {
-      static createDownloadTask() {
-        attempts += 1;
-        return {
-          async downloadAsync() {
-            return new File('/cache/model');
-          },
-          release() {},
-        };
-      }
-    }
-
-    const { downloadFileWithRetry, ModelDownloadError } = await loadTs(
-      'shared/platform/models/model-download.ts',
-      fakeFileModule(File),
-      immediateTimers,
-    );
-
-    await assert.rejects(
-      downloadFileWithRetry(
-        'https://example.com/model.bin',
-        new File('/cache/model'),
-        'voice model',
-        () => {
-          throw new ModelDownloadError('integrity', 'The download failed integrity verification.', false);
-        },
-      ),
-      /integrity verification/,
-    );
-    assert.equal(attempts, 1);
+    createDownloadTask.mockReturnValue({ downloadAsync: async () => destination(), release() {} });
+    await assert.rejects(downloadFileWithRetry('https://example.com/model.bin', destination(), 'voice model', () => {
+      throw new ModelDownloadError('integrity', 'The download failed integrity verification.', false);
+    }), /integrity verification/);
+    assert.equal(createDownloadTask.mock.calls.length, 1);
   });
 
   it('throws the classified error after the retry budget is exhausted', async () => {
-    let attempts = 0;
-    class File extends FakeFile {
-      static createDownloadTask() {
-        attempts += 1;
-        return {
-          async downloadAsync() {
-            throw new Error('java.net.SocketTimeoutException: timeout');
-          },
-          release() {},
-        };
-      }
-    }
-
-    const { downloadFileWithRetry } = await loadTs(
-      'shared/platform/models/model-download.ts',
-      fakeFileModule(File),
-      immediateTimers,
-    );
-
-    await assert.rejects(
-      downloadFileWithRetry('https://example.com/model.bin', new File('/cache/model'), 'voice model'),
+    createDownloadTask.mockReturnValue({
+      downloadAsync: async () => { throw new Error('java.net.SocketTimeoutException: timeout'); }, release() {},
+    });
+    const rejection = assert.rejects(
+      downloadFileWithRetry('https://example.com/model.bin', destination(), 'voice model'),
       (error: Error & { code?: string }) => error.code === 'timeout',
     );
-    assert.equal(attempts, 2);
+    await vi.advanceTimersByTimeAsync(1500);
+    await rejection;
+    assert.equal(createDownloadTask.mock.calls.length, 2);
   });
 });

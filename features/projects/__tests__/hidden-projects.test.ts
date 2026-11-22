@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import { z } from 'zod';
+
+import * as storage from '@/features/projects/services/hidden-projects-storage';
 
 import { splitHiddenProjects } from '@/features/projects/model/hidden-projects';
-import { loadTs } from '../../../tests/helpers/runtime.mjs';
 
 const projects = [
   { path: '/repo', label: 'repo' },
@@ -20,7 +20,6 @@ describe('hidden projects', () => {
   });
 
   it('parses and serializes bounded connection-scoped paths', async () => {
-    const storage = await loadTs('features/projects/services/hidden-projects-storage.ts', { zod: { z } });
     const many = Array.from({ length: 55 }, (_, index) => `/project-${index}`);
     const parsed = storage.parseHiddenProjects(JSON.stringify({
       ' https://server.test ': [' /repo ', '/repo', '', 42, ...many],

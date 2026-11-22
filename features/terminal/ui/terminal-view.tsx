@@ -1,14 +1,16 @@
-import { useConfirmation } from '@/shared/ui/use-confirmation';
+import { useUpdateBlockingConfirmation as useConfirmation } from '@/features/updates/index';
 import { withAlpha } from '@/shared/ui/theme/color';
 import { useCallback, useEffect, useMemo, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import * as Clipboard from '@/shared/platform/clipboard';
 import type { Palette } from '@/shared/ui/theme/theme';
+import type { WorkspaceTarget } from '@/shared/contracts/workspace';
 import { useTerminal } from '@/features/terminal/context';
 import TerminalDOM, { type TerminalDOMRef } from '@/features/terminal/ui/terminal-dom';
 import { pasteNeedsConfirmation } from '@/features/terminal/ui/terminal-keys';
 
-export function TerminalView({ visible, slim, palette, dismissKeyboard = false, onCopied, onError }: {
+export function TerminalView({ target, visible, slim, palette, dismissKeyboard = false, onCopied, onError }: {
+  target: WorkspaceTarget;
   visible: boolean; slim: boolean;
   palette: Palette;
   dismissKeyboard?: boolean;
@@ -17,15 +19,16 @@ export function TerminalView({ visible, slim, palette, dismissKeyboard = false, 
 }) {
   const { confirmAction, confirmation } = useConfirmation();
   const { t } = useTranslation();
-  const { terminalRuntime, activeTerminalId, sendTerminalInput } = useTerminal();
+  const { terminalRuntime, activeTerminalId, sendTerminalInput } = useTerminal(target);
   const bridge = useRef<TerminalDOMRef>(null);
   const runtime = useRef(terminalRuntime);
   const registrations = useRef(new Map<string, () => void>());
   const sequence = useRef(0);
   const pending = useRef(new Map<number, { id: string; resolve: () => void; reject: (error: Error) => void; timer: ReturnType<typeof setTimeout> }>());
   useEffect(() => { runtime.current = terminalRuntime; }, [terminalRuntime]);
-  // The shared overlay hook only dismisses RN inputs; this DOM field owns its own webview keyboard.
-  useEffect(() => { if (dismissKeyboard) bridge.current?.blur(); }, [dismissKeyboard]);
+  // Expo attaches the native ref before the WebView registers its methods.
+  // A newly created terminal may mount while its setup sheet is still open.
+  useEffect(() => { if (dismissKeyboard) bridge.current?.blur?.(); }, [dismissKeyboard]);
 
   const cancelWrites = useCallback((id?: string) => {
     for (const [key, write] of pending.current) if (!id || write.id === id) {
@@ -65,7 +68,7 @@ export function TerminalView({ visible, slim, palette, dismissKeyboard = false, 
       if (!text) return;
       const paste = () => { if (runtime.current.instances.some((entry) => entry.id === id && entry.status === 'connected')) bridge.current?.paste(id, text); };
       if (!pasteNeedsConfirmation(text)) { paste(); return; }
-      bridge.current?.blur();
+      bridge.current?.blur?.();
       confirmAction(t('terminal:console.pasteTitle'), t('terminal:console.pasteMessage'), t('terminal:accessory.paste'), t('common:actions.cancel'), paste);
     } catch (error) { onError(String(error)); }
   }, [confirmAction, onError, t]);

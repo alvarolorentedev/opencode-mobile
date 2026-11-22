@@ -1,3 +1,4 @@
+import { UpdateBlockingCatalogSelect as CatalogSelect } from '@/features/updates/index';
 import { cn } from '@/shared/ui/cn';
 import { Collapsible, CollapsibleContent } from '@/shared/ui/collapsible';
 import { Text } from '@/shared/ui/text';
@@ -9,7 +10,6 @@ import { Checkbox } from '@/shared/ui/checkbox';
 import { useTranslation } from 'react-i18next';
 import { Pressable, StyleSheet, Text as NativeText, View } from 'react-native';
 
-import { CatalogSelect } from '@/shared/ui/catalog-select';
 import { renderProviderIcon } from '@/features/ai/ui/provider-icon';
 import { SettingTarget } from '@/shared/ui/settings/settings-panel';
 import { Palette, SettingSwitchRow } from '@/shared/ui/settings/setting-rows';

@@ -1,113 +1,123 @@
-import { describe, expect, it, vi } from 'vitest';
+// @vitest-environment happy-dom
 
-import { hookRuntime, loadTs } from '../../../tests/helpers/runtime.mjs';
+import '../../../tests/helpers/native-primitives';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { act, createElement } from 'react';
+import { describe, expect, it, onTestFinished, vi } from 'vitest';
+
+import { useExtensionsState } from '@/features/extensions/state/use-extensions-state';
+import { PluginGuiView } from '@/features/extensions/ui/plugin-gui-view';
+import { AppCoreProvider } from '@/runtime/core/context';
+import type { AppCore } from '@/runtime/core/create-app-core';
+import { createAppStore } from '@/runtime/core/store';
+import { defaultChatPreferences } from '@/shared/preferences/opencode-preferences';
+import type { ScopedOpencodeClient } from '@/shared/protocol/opencode/client';
+import { FieldDescription } from '@/shared/ui/text-field';
+import { connectionViewProbe } from '../../../tests/helpers/connection-view-probe';
+import { settleReact } from '../../../tests/helpers/controlled-clock';
+import { renderHook } from '../../../tests/helpers/render-hook';
+
+const platform = vi.hoisted(() => ({ fetch: vi.fn() }));
+vi.mock('react-native', async () => (await import('../../../tests/helpers/native-view-platform')).nativeViewPlatform({ platform: 'web' }));
+vi.mock('expo-router', () => ({ usePathname: () => '/' }));
+vi.mock('expo-constants', () => ({ default: {} }));
+vi.mock('expo-localization', () => ({ getLocales: () => [] }));
+vi.mock('expo/fetch', () => ({ fetch: platform.fetch }));
+vi.mock('expo-crypto', () => ({}));
+vi.mock('expo-secure-store', () => ({}));
+vi.mock('expo-file-system', () => ({}));
+vi.mock('@react-native-async-storage/async-storage', () => ({ default: {} }));
+vi.mock('react-i18next', async (original) => ({
+  ...await original<typeof import('react-i18next')>(),
+  useTranslation: () => ({ t: (key: string) => key, i18n: { language: 'en' } }),
+}));
 
 const identity = { connectionId: 'test', connectionScope: 'scope', authRevision: 0 };
-const client = { __opencode: { contract: 'v2', directory: '/repo' } };
 const settings = { serverUrl: 'http://server', username: '', password: '', directory: '/repo' };
 
-function queryOptions(key: string, queryFn: () => Promise<unknown>) {
-  return { queryKey: ['opencode', 'test', key], queryFn };
-}
-
-async function load(active: () => boolean) {
-  const driver = hookRuntime();
-  const plugins = vi.fn(async () => [{
-    id: 'flowgraph',
-    source: { type: 'package', target: 'flowgraph' },
-    features: { gui: true },
-    state: { status: 'active' },
-  }]);
-  const unchanged = vi.fn(async () => undefined);
-  const { useExtensionsState } = await loadTs('features/extensions/state/use-extensions-state.ts', {
-    react: driver.react,
-    '@/shared/server-data/client': {
-      useQueryIdentity: () => identity,
-      useQueryActivity: active,
-      useQueryForeground: () => true,
+function load(queryActive: boolean, isCurrentClient = () => true) {
+  const data = async () => ({ data: [] });
+  const plugins = vi.fn(async () => ({ data: [{
+    id: 'flowgraph', source: { type: 'package', target: 'flowgraph' },
+    features: { gui: true }, state: { status: 'active' },
+  }] }));
+  const mutate = vi.fn();
+  const client = {
+    __opencode: { contract: 'v2', directory: '/repo' },
+    api: {
+      config: { get: async () => [] },
+      plugin: { list: plugins },
+      skill: { list: data }, mcp: { list: data }, agent: { list: data }, command: { list: data },
+      file: { list: data, write: mutate }, shell: { create: async () => { throw new Error('No shell'); } },
     },
-    '@/shared/server-data/catalogs': {
-      configurationOptions: () => queryOptions('configuration', vi.fn(async () => ({ entries: [], config: {} }))),
-      skillsOptions: () => queryOptions('skills', vi.fn(async () => ({ details: [] }))),
-    },
-    '@/features/extensions/services/queries/extensions': {
-      pluginsOptions: () => queryOptions('plugins', plugins),
-      extensionInspectionOptions: () => queryOptions('inspection', vi.fn(async () => ({}))),
-    },
-    '@/shared/server-data/diagnostics': { mcpOptions: () => queryOptions('mcp', vi.fn(async () => ({}))) },
-    '@/features/extensions/services/extensions-service': {
-      addMcpServer: unchanged, addPlugin: unchanged, createSkill: unchanged, extensionSnapshot: () => ({}),
-      removeMcpServer: unchanged, removePlugin: unchanged, removeSkill: unchanged, restoreConfig: unchanged,
-      updateMcpServer: unchanged, updateSkill: unchanged,
-    },
-    '@/features/extensions/services/definitions-service': { removeAgent: unchanged, removeCommand: unchanged, saveAgent: unchanged, saveCommand: unchanged },
-    '@/features/extensions/services/plugin-gui-service': { readPluginGui: vi.fn() },
-    '@/features/extensions/model/plugin-gui': {
-      isPluginGui: (plugin: { features?: { gui?: boolean } }) => Boolean(plugin.features?.gui),
-      pluginGuiLabel: (plugin: { id: string }) => plugin.id,
-    },
-    '@/shared/utilities/error-message': { getErrorMessage: (error: unknown) => String(error) },
-  });
-  driver.mount(() => useExtensionsState({ client, isCurrentClient: () => true, settings }), {});
-  return { driver, plugins };
+  } as unknown as ScopedOpencodeClient;
+  const store = createAppStore({ settings, chatPreferences: defaultChatPreferences, controlPlaneUrl: '' });
+  const cache = new QueryClient({ defaultOptions: { queries: { retry: false, gcTime: Infinity } } });
+  const core = { store, queryClient: cache } as AppCore;
+  onTestFinished(() => cache.clear());
+  const driver = renderHook(
+    (active: boolean) => useExtensionsState({ identity, queryActive: active, scopeKey: 'extensions-test-workspace', client, isCurrentClient, settings }),
+    queryActive,
+    ({ children }) => createElement(AppCoreProvider, { core }, createElement(QueryClientProvider, { client: cache }, children)),
+  );
+  return { driver, cache, plugins, mutate };
 }
 
 describe('plugin GUI state', () => {
+  it('cancels an extension write when the connection changes while reads are being cancelled', async () => {
+    let current = true;
+    const { driver, cache, mutate } = load(true, () => current);
+    await act(async () => {
+      await driver.result.current.extensions.refresh();
+      await new Promise<void>((resolve) => setTimeout(resolve, 0));
+    });
+    expect(driver.result.current.extensions.snapshot).toBeDefined();
+    const cancel = vi.spyOn(cache, 'cancelQueries').mockImplementationOnce(async () => { current = false; });
+    await act(async () => {
+      await expect(driver.result.current.extensions.addPlugin('project', 'flowgraph')).rejects.toThrow('Refresh extensions before making a change.');
+    });
+    expect(cancel).toHaveBeenCalledOnce();
+    expect(mutate).not.toHaveBeenCalled();
+    driver.unmount();
+  });
+
   it('observes the plugin list when the workspace activates, before the launcher loads', async () => {
-    let active = true;
-    const { driver, plugins } = await load(() => active);
-    await driver.settle();
+    const { driver, plugins } = load(true);
+    await settleReact();
     expect(plugins).toHaveBeenCalled();
-    active = false;
     driver.unmount();
   });
 
   it('starts the plugin list read when a retained workspace becomes demanded', async () => {
-    let active = false;
-    const { driver, plugins } = await load(() => active);
-    await driver.settle();
+    const { driver, plugins } = load(false);
+    await settleReact();
     expect(plugins).not.toHaveBeenCalled();
-    active = true;
-    driver.flush();
-    await driver.settle();
+    driver.rerender(true);
+    await settleReact();
     expect(plugins).toHaveBeenCalled();
     driver.unmount();
   });
 
   it('keeps the selected plugin in the workspace runtime', async () => {
-    const { driver } = await load(() => true);
-    await driver.settle();
-    expect(driver.value.extensions.pluginGui.selectedPluginId).toBeUndefined();
-    driver.value.extensions.pluginGui.selectPlugin('flowgraph');
-    await driver.settle();
-    expect(driver.value.extensions.pluginGui.selectedPluginId).toBe('flowgraph');
+    const { driver } = load(true);
+    await settleReact();
+    expect(driver.result.current.extensions.pluginGui.selectedPluginId).toBeUndefined();
+    act(() => { driver.result.current.extensions.pluginGui.selectPlugin('flowgraph'); });
+    expect(driver.result.current.extensions.pluginGui.selectedPluginId).toBe('flowgraph');
     driver.unmount();
   });
 });
 
 it('does not load or mount a plugin bundle in the browser app page', async () => {
-  const driver = hookRuntime();
-  const read = vi.fn(async () => ({ code: 'throw new Error("bundle ran")' }));
-  const element = (type: unknown, props: unknown) => ({ type, props });
-  const { PluginGuiView } = await loadTs('features/extensions/ui/plugin-gui-view.tsx', {
-    react: driver.react,
-    'react/jsx-runtime': { jsx: element, jsxs: element },
-    'react-native': { Platform: { OS: 'web' }, View: 'View' },
-    'react-i18next': { useTranslation: () => ({ t: (key: string) => key, i18n: { language: 'en' } }) },
-    '@/features/extensions/context': { useExtensions: () => ({ extensions: { pluginGui: { plugins: [{ id: 'flowgraph' }], read } } }) },
-    '@/features/connections/context': { useConnection: () => ({ settings }) },
-    '@/shared/ui/theme/appearance-context': { useAppearance: () => ({ scheme: 'light' }) },
-    '@/shared/ui/theme/use-palette': { usePalette: () => ({}) },
-    '@/shared/ui/select': {},
-    '@/shared/ui/button': {},
-    '@/shared/ui/spinner': {},
-    '@/shared/ui/text': {},
-    '@/shared/ui/text-field': { FieldDescription: 'FieldDescription' },
-    '@/features/extensions/ui/plugin-gui-dom': { default: 'PluginGuiDom' },
-  });
-  driver.mount(PluginGuiView, { pluginId: 'flowgraph', session: { id: 's' } });
-  await driver.settle();
+  const read = vi.fn(async () => Response.json({ code: 'throw new Error("bundle ran")' }));
+  platform.fetch.mockImplementation(read);
+  vi.stubGlobal('fetch', read);
+  onTestFinished(() => { vi.unstubAllGlobals(); });
+  const driver = renderHook(PluginGuiView, {
+    pluginId: 'flowgraph', session: { id: 's' }, onClose: vi.fn(), onOpenSession: vi.fn(async () => {}),
+  }, connectionViewProbe({} as never, false, { initialize: (store) => store.getState().setShellValue('settings', settings) }));
+  await settleReact();
   expect(read).not.toHaveBeenCalled();
-  expect(driver.value).toMatchObject({ type: 'FieldDescription', props: { children: 'settings:extensions.gui.unavailable' } });
+  expect(driver.result.current).toMatchObject({ type: FieldDescription, props: { children: 'settings:extensions.gui.unavailable' } });
   driver.unmount();
 });

@@ -1,6 +1,7 @@
 import type { ComponentProps } from 'react';
 import { Pressable, View } from 'react-native';
 import { CatalogSelect, type CatalogOption } from '@/shared/ui/catalog-select';
+import type { InteractionBlock } from '@/shared/ui/hooks/use-interaction-block';
 import { NumericSlider } from '@/shared/ui/numeric-slider';
 import { TextField } from '@/shared/ui/text-field';
 import { Switch } from '@/shared/ui/switch';
@@ -26,12 +27,12 @@ export function SettingSwitchRow({ description, disabled = false, onValueChange,
   </SettingTarget>;
 }
 
-export function SettingSelectField<T extends string>({ compact = false, disabled = false, label, onValueChange, options, searchable = false, selectedValue, testID, valueLabel }: {
-  compact?: boolean; disabled?: boolean; label: string; onValueChange: (value: T) => void; options: CatalogOption<T>[]; palette: Palette;
+export function SettingSelectField<T extends string>({ block, compact = false, disabled = false, label, onValueChange, options, searchable = false, selectedValue, testID, valueLabel }: {
+  block?: InteractionBlock; compact?: boolean; disabled?: boolean; label: string; onValueChange: (value: T) => void; options: CatalogOption<T>[]; palette: Palette;
   searchable?: boolean; selectedValue?: T; testID?: string; valueLabel: string;
 }) {
   return <SettingTarget label={label}>
-    <CatalogSelect disabled={disabled} onValueChange={onValueChange} options={options} searchable={searchable} selectedValue={selectedValue} title={label}
+    <CatalogSelect block={block} disabled={disabled} onValueChange={onValueChange} options={options} searchable={searchable} selectedValue={selectedValue} title={label}
       renderTrigger={({ disabled: blocked, open, openState }) => <Pressable accessibilityRole="button" accessibilityLabel={`${label}. ${valueLabel}`}
         accessibilityState={{ disabled: blocked, expanded: openState }} disabled={blocked} onPress={open} testID={testID}
         className={cn('min-h-field flex-row items-center gap-3 rounded-control border border-input bg-background p-3 active:bg-accent web:focus-visible:outline-2 web:focus-visible:outline-ring', blocked && 'opacity-55')}>

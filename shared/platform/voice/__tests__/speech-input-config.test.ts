@@ -1,28 +1,22 @@
 import assert from 'node:assert/strict';
-import { it } from 'vitest';
-import { loadTs } from '../../../../tests/helpers/runtime.mjs';
+import { it, vi } from 'vitest';
+import { resolveSpeechInputLocale, resultTranscripts } from '@/shared/platform/voice/speech-input-config';
+
+const { getLocales } = vi.hoisted(() => ({ getLocales: vi.fn() }));
+vi.mock('expo-localization', () => ({ getLocales }));
 
 it('follows the system locale when the setting is empty and keeps an explicit override', async () => {
-  const { resolveSpeechInputLocale } = await loadTs('shared/platform/voice/speech-input-config.ts', {
-    'expo-localization': { getLocales: () => [{ languageTag: 'de-DE' }] },
-  });
+  getLocales.mockReturnValue([{ languageTag: 'de-DE' }]);
   assert.equal(resolveSpeechInputLocale(), 'de-DE');
   assert.equal(resolveSpeechInputLocale('fr-FR'), 'fr-FR');
 });
 
 it('falls back to en-US when the device locale cannot be read', async () => {
-  const { resolveSpeechInputLocale } = await loadTs('shared/platform/voice/speech-input-config.ts', {
-    'expo-localization': {
-      getLocales: () => {
-        throw new Error('unavailable');
-      },
-    },
-  });
+  getLocales.mockImplementation(() => { throw new Error('unavailable'); });
   assert.equal(resolveSpeechInputLocale(), 'en-US');
 });
 
 it('keeps non-empty transcripts in recognizer order', async () => {
-  const { resultTranscripts } = await loadTs('shared/platform/voice/speech-input-config.ts');
   assert.deepEqual(
     resultTranscripts([
       { transcript: ' hey code ', confidence: 0.5, segments: [] },

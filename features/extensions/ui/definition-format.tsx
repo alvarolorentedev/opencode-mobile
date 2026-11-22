@@ -1,5 +1,5 @@
+import { UpdateBlockingSettingSelectField as SettingSelectField } from '@/features/updates/index';
 import { useTranslation } from 'react-i18next';
-import { SettingSelectField } from '@/shared/ui/settings/setting-rows';
 import { usePalette } from '@/shared/ui/theme/use-palette';
 import type { ExtensionFormat } from '@/shared/protocol/opencode/extensions/types';
 

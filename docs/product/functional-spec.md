@@ -428,17 +428,10 @@ Abort behavior:
 
 ## Auto-Approve Behavior
 
-The auto-approve toggle updates the server config, not just local UI state.
-
-Enabled means these permissions are set to `allow`:
-
-- `edit`
-- `bash`
-- `webfetch`
-- `doom_loop`
-- `external_directory`
-
-Disabled sets them back to `ask`.
+On OpenCode 2, Chat and the server's Approvals settings change the same
+device-local policy for that connection. When enabled, the app approves pending
+requests once. Changing the toggle leaves server configuration and saved
+permission grants intact.
 
 ## Provider / Model / Reasoning Selection
 
@@ -979,7 +972,7 @@ recent tasks without opening the app.
 Quick actions:
 
 - dynamic-only items, capped at four: `New chat` plus up to three running/recent
-  sessions from the connection-wide active-session selection (`features/sessions/model/active-sessions.ts`)
+  sessions selected from the connected servers' catalogs (`features/sessions/model/active-sessions.ts`)
 - session labels fall back to the untitled chat copy; labels follow the app
   language and refresh when sessions or the language change
 - publishing is debounced and only happens while the app is foregrounded;
@@ -1000,7 +993,8 @@ Android home widgets:
   short request excerpts and overflow count. Descendants group under parents;
   global requests appear once. Responses happen in the app after tapping.
 - Plan progress: current chat's real todo steps, completed/total count, current
-  step and upcoming steps, plus complete/empty states. No inferred plan text.
+  step and upcoming steps, plus complete/empty states. The widget reads the
+  current chat's scoped plan data, which also drives Mission Control progress.
 - Resizable light/dark layouts with accessible names and bounded rows. Existing
   SessionWidget placements become Latest replies; two new widgets are available.
 - Reads use global SSE and existing polling even with the chat library closed or
@@ -1066,7 +1060,7 @@ Any reimplementation should preserve these functional outcomes:
 - diagnostics
 - provider discovery and auth configuration from server metadata
 - enabled-model filtering separate from model selection
-- auto-approve writing back to server permissions config
+- OpenCode 2 auto-approval scoped to the selected connection
 - attachment conversion from mobile-local URIs to data URLs
 - attachment capability enforcement and 10 MB local-file limit
 - reconnecting global SSE filtered to the active project, with polling fallback for refreshable session data

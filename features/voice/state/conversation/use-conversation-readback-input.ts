@@ -6,15 +6,15 @@ import type { ConversationInputPhase, ConversationReadbackPhase } from '@/featur
 // logically armed; only the native detector is paused while reading.
 export function useConversationReadbackInput({
   abortSpeechInput,
-  conversationInputPhaseRef,
-  conversationReadbackPhaseRef,
+  getConversationPhase,
+  getReadbackPhase,
   conversationSessionId,
   startConversationListening,
   stopLocalWakeRef,
 }: {
   abortSpeechInput: () => void;
-  conversationInputPhaseRef: { current: ConversationInputPhase };
-  conversationReadbackPhaseRef: { current: ConversationReadbackPhase };
+  getConversationPhase: () => ConversationInputPhase;
+  getReadbackPhase: () => ConversationReadbackPhase;
   conversationSessionId?: string;
   startConversationListening: (sessionId?: string, options?: { preserveSession?: boolean }) => Promise<boolean | void>;
   stopLocalWakeRef: { current: () => Promise<void> };
@@ -28,16 +28,16 @@ export function useConversationReadbackInput({
   }, [abortSpeechInput, stopLocalWakeRef]);
 
   const resumeInput = useCallback(() => {
-    const phase = conversationInputPhaseRef.current;
+    const phase = getConversationPhase();
     if (phase === 'off' || phase === 'confirming' || phase === 'submitting') {
       return;
     }
     void startConversationListening(conversationSessionId).catch(() => undefined);
-  }, [conversationInputPhaseRef, conversationSessionId, startConversationListening]);
+  }, [getConversationPhase, conversationSessionId, startConversationListening]);
 
   const canRead = useCallback(
-    () => conversationInputPhaseRef.current !== 'off' && conversationReadbackPhaseRef.current === 'speaking',
-    [conversationInputPhaseRef, conversationReadbackPhaseRef],
+    () => getConversationPhase() !== 'off' && getReadbackPhase() === 'speaking',
+    [getConversationPhase, getReadbackPhase],
   );
 
   return { canRead, pauseInput, resumeInput };

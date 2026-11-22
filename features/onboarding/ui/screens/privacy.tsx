@@ -8,14 +8,14 @@ import { View } from 'react-native';
 import { OnboardingStep } from '@/features/onboarding/ui/onboarding-step';
 import { useOnboardingNavigation } from '@/features/onboarding/ui/use-onboarding-navigation';
 import { remoteAvailable } from '@/shared/observability/config';
-import { usePreferences } from '@/shared/preferences/context';
+import { useWorkspacePreferences } from '@/runtime/workspace';
 import { usePalette } from '@/shared/ui/theme/use-palette';
 
 export default function OnboardingPrivacyScreen() {
   const { t } = useTranslation();
   const navigation = useOnboardingNavigation('privacy');
   const palette = usePalette();
-  const { chatPreferences, updateChatPreferences } = usePreferences();
+  const { chatPreferences, updateChatPreferences } = useWorkspacePreferences();
   const remote = remoteAvailable();
 
   return (

@@ -1,51 +1,41 @@
-import { useCallback, useLayoutEffect, useRef, type Dispatch, type SetStateAction } from 'react';
-import { skipToken, useQuery, useQueryClient } from '@tanstack/react-query';
+import type { QueryIdentity } from '@/shared/server-data/keys';
+import { useMemo, useSyncExternalStore } from 'react';
+import { useQuery, useQueryClient, type QueryClient } from '@tanstack/react-query';
 
-import { useQueryIdentity } from '@/shared/server-data/client';
 import type { ScopedOpencodeClient } from '@/shared/protocol/opencode/client';
-import type { Session, SessionStatus } from '@/shared/protocol/opencode/types';
 
-import { projectSessionsKey, projectSessionsOptions, sessionCatalogKey, type SessionCatalogData } from '../services/queries';
+import { projectSessionsOptions, type SessionCatalogData } from '../services/queries';
+import { EMPTY_SESSIONS, EMPTY_STATUSES, sessionCatalogAccess } from '../services/session-catalog-access';
 
-const EMPTY_SESSIONS: Session[] = [];
-const EMPTY_STATUSES: Record<string, SessionStatus> = {};
+function observeStatuses(cache: QueryClient, key: readonly unknown[]) {
+  return {
+    read: () => cache.getQueryData<SessionCatalogData>(key)?.statuses ?? EMPTY_STATUSES,
+    subscribe(listener: () => void) {
+      return cache.getQueryCache().subscribe(({ query: { queryKey }, type }) => {
+        if ((type === 'updated' || type === 'removed') && queryKey.length === key.length
+          && key.every((part, index) => part === queryKey[index])) listener();
+      });
+    },
+  };
+}
 
-// Query-backed view of one project's session list plus the connection-wide
-// status map. The setters keep the action layer's existing contract while the
-// cache becomes the only copy.
-export function useSessionCatalog(client: ScopedOpencodeClient) {
-  const identity = useQueryIdentity();
-  const queryClient = useQueryClient();
-  const sessionsKey = projectSessionsKey(identity, client);
-  const catalogKey = sessionCatalogKey(identity, client.__opencode.contract);
+export function useSessionCatalog(identity: QueryIdentity, client: ScopedOpencodeClient) {
+  const cache = useQueryClient();
+  const writer = useMemo(() => sessionCatalogAccess(cache, identity, client), [cache, client, identity]);
   const sessionsQuery = useQuery(projectSessionsOptions(identity, client));
-  // The connection owner fetches the catalog; this observer only reads it and
-  // re-renders when events or the owner publish a new snapshot.
-  const catalogQuery = useQuery<SessionCatalogData>({ queryKey: sessionCatalogKey(identity, client.__opencode.contract), queryFn: skipToken });
-  const sessions = sessionsQuery.data ?? EMPTY_SESSIONS;
-  const sessionStatuses = catalogQuery.data?.statuses ?? EMPTY_STATUSES;
+  // A project observes the shared catalog without replacing the connection's
+  // fetch options. Connection demand can refetch that catalog at any time.
+  const statuses = useMemo(() => observeStatuses(cache, writer.catalogKey), [cache, writer.catalogKey]);
+  const sessionStatuses = useSyncExternalStore(statuses.subscribe, statuses.read, statuses.read);
+  const sessionsRef = useMemo(() => ({ get current() { return writer.readSessions(); } }), [writer]);
 
-  const sessionsRef = useRef(sessions);
-  useLayoutEffect(() => { sessionsRef.current = sessions; });
-
-  const setSessions = useCallback<Dispatch<SetStateAction<Session[]>>>((value) => {
-    queryClient.setQueryData<Session[]>(sessionsKey, (current) => {
-      const previous = current ?? EMPTY_SESSIONS;
-      return typeof value === 'function' ? value(previous) : value;
-    });
-  }, [queryClient, sessionsKey]);
-
-  const setSessionStatuses = useCallback<Dispatch<SetStateAction<Record<string, SessionStatus>>>>((value) => {
-    queryClient.setQueryData<SessionCatalogData>(catalogKey, (current) => {
-      const previous = current?.statuses ?? EMPTY_STATUSES;
-      return {
-        sessions: current?.sessions ?? EMPTY_SESSIONS,
-        statuses: typeof value === 'function' ? value(previous) : value,
-      };
-    });
-  }, [queryClient, catalogKey]);
-
-  return { sessions, sessionsRef, sessionStatuses, setSessions, setSessionStatuses };
+  return {
+    sessions: sessionsQuery.data ?? EMPTY_SESSIONS,
+    sessionsRef,
+    sessionStatuses,
+    setSessions: writer.setSessions,
+    setSessionStatuses: writer.setSessionStatuses,
+  };
 }
 
 export type SessionCatalog = ReturnType<typeof useSessionCatalog>;

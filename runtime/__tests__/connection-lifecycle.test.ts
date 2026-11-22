@@ -1,12 +1,17 @@
 import { describe, expect, it, vi } from 'vitest';
 
-import { loadTs } from '../../tests/helpers/runtime.mjs';
+import { createConnectionLifecycle } from '@/runtime/connections/connection-lifecycle';
+
+vi.mock('react-native', () => ({ Platform: { OS: 'web' } }));
+vi.mock('expo-constants', () => ({ default: { expoConfig: { extra: {} } } }));
+vi.mock('expo/fetch', () => ({}));
+vi.mock('expo-crypto', () => ({}));
+vi.mock('expo-secure-store', () => ({}));
+vi.mock('expo-file-system', () => ({}));
+vi.mock('@react-native-async-storage/async-storage', () => ({ default: {} }));
 
 describe('connection lifecycle manager', () => {
   it('applies transitions and notifies subscribers without React', async () => {
-    const { createConnectionLifecycle } = await loadTs('runtime/connections/connection-lifecycle.ts', {
-      '@/features/connections/runtime': await loadTs('features/connections/model/connection-lifecycle.ts'),
-    });
     const manager = createConnectionLifecycle();
     const listener = vi.fn();
     const unsubscribe = manager.subscribe(listener);

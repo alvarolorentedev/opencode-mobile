@@ -1,22 +1,24 @@
+import type { QueryIdentity } from '@/shared/server-data/keys';
+import { useAppCore, useAppStore } from '@/runtime/core';
 import type { ScopedOpencodeClient } from '@/shared/protocol/opencode/client';
 import { projectPath, type ProjectFileEntry } from '@/shared/protocol/opencode/project';
-import { useQueryActivity, useQueryIdentity } from '@/shared/server-data/client';
 import { directoryOptions, searchOptions } from '@/features/projects/services/queries/files';
 import { projectParentPath } from '@/features/projects/model/project-utils';
+import { projectClientOwner } from '@/features/projects/model/project-client-owner';
 import { useQueries, useQueryClient } from '@tanstack/react-query';
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useMemo } from 'react';
 
 export type ProjectBrowserState = {
   path: string; entries: ProjectFileEntry[]; results: string[]; query?: string;
   initialized: boolean; loading: boolean; searching: boolean; error?: string;
 };
 const EMPTY: never[] = [];
-export function useProjectBrowser({ client, isCurrentClient }: { client: ScopedOpencodeClient; isCurrentClient: (client: object) => boolean }) {
+export function useProjectBrowser({ scopeKey, client, identity, isCurrentClient, queryActive: active }: { scopeKey: string; client: ScopedOpencodeClient; identity: QueryIdentity; isCurrentClient: (client: object) => boolean; queryActive: boolean }) {
   const cache = useQueryClient();
-  const identity = useQueryIdentity();
-  const active = useQueryActivity();
-  const [selection, setSelection] = useState<{ client: object; path: string; query?: string }>();
-  const current = selection?.client === client ? selection : undefined;
+  const { store } = useAppCore();
+  const owner = projectClientOwner(client);
+  const selection = useAppStore((state) => state.workspaceUi[scopeKey]?.browser);
+  const current = selection?.owner === owner ? selection : undefined;
   const path = current?.path ?? '';
   const query = current?.query;
   const [directory] = useQueries({ queries: [{ ...directoryOptions(identity, client, path), enabled: Boolean(current) && !query }].filter(() => active) });
@@ -24,16 +26,17 @@ export function useProjectBrowser({ client, isCurrentClient }: { client: ScopedO
   const openDirectory = useCallback(async (requested: string) => {
     const path = projectPath(requested, client.__opencode.directory || '', true);
     if (!isCurrentClient(client) || !active) return;
-    setSelection({ client, path });
+    store.getState().setWorkspaceUi(scopeKey, { browser: { owner, path } });
     await cache.fetchQuery(directoryOptions(identity, client, path)).catch(() => undefined);
-  }, [active, cache, client, identity, isCurrentClient]);
+  }, [active, cache, client, identity, isCurrentClient, owner, scopeKey, store]);
   const search = useCallback(async (requested: string) => {
     projectPath('', client.__opencode.directory || '', true);
     if (!isCurrentClient(client) || !active) return;
     const query = requested.trim() || undefined;
-    setSelection((previous) => ({ client, path: previous?.client === client ? previous.path : '', query }));
+    const previous = store.getState().workspaceUi[scopeKey]?.browser;
+    store.getState().setWorkspaceUi(scopeKey, { browser: { owner, path: previous?.owner === owner ? previous.path : '', query } });
     if (query) await cache.fetchQuery(searchOptions(identity, client, query)).catch(() => undefined);
-  }, [active, cache, client, identity, isCurrentClient]);
+  }, [active, cache, client, identity, isCurrentClient, owner, scopeKey, store]);
   const refresh = useCallback(async () => {
     if (!current || !active || !isCurrentClient(client)) return;
     if (query) await cache.fetchQuery(searchOptions(identity, client, query));

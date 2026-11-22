@@ -1,6 +1,17 @@
-import { describe, expect, it } from 'vitest';
+// @vitest-environment happy-dom
 
+import { describe, expect, it, vi } from 'vitest';
+import { act, createElement, type PropsWithChildren } from 'react';
+
+import type { ScopedOpencodeClient } from '@/shared/protocol/opencode/client';
 import type { ToolPart } from '@/shared/protocol/opencode/types';
+import type { SessionMessageRecord } from '@/shared/presentation/format';
+import { createAppStore } from '@/runtime/core/store';
+import { AppCoreProvider } from '@/runtime/core/context';
+import type { AppCore } from '@/runtime/core/create-app-core';
+import { createLiveTranscript } from '@/features/chat/services/live-transcript-controller';
+import { useLiveTranscriptView } from '@/features/chat/state/use-live-transcript';
+import { renderHook } from '../../../tests/helpers/render-hook';
 import {
   liveTranscriptRecord,
   overlayLiveRecords,
@@ -9,6 +20,17 @@ import {
   userMessageRecord,
   type LiveTranscriptMessage,
 } from '@/features/chat/model/live-transcript';
+
+vi.mock('expo-router', () => ({ usePathname: () => '/' }));
+vi.mock('react-native', () => ({ AppState: { currentState: 'active' }, Platform: { OS: 'web' } }));
+vi.mock('expo-constants', () => ({ default: { expoConfig: { extra: {} } } }));
+vi.mock('@react-native-async-storage/async-storage', () => ({ default: {} }));
+vi.mock('expo/fetch', () => ({}));
+vi.mock('expo-crypto', () => ({}));
+vi.mock('expo-secure-store', () => ({}));
+
+const store = createAppStore({ settings: { serverUrl: '', username: '', password: '', directory: '' }, chatPreferences: {} as never, controlPlaneUrl: '' });
+const wrapper = ({ children }: PropsWithChildren) => createElement(AppCoreProvider, { core: { store } as AppCore }, children);
 
 const DATA_URL = 'data:video/mp4;base64,AAAA';
 
@@ -21,6 +43,35 @@ function message(previous: LiveTranscriptMessage | undefined, event: Record<stri
   if (result.kind !== 'update') throw new Error(`expected update, got ${result.kind}`);
   return result.message;
 }
+
+it('paints a batch at 50 ms without writing the live reply or local media to the canonical window', () => {
+  vi.useFakeTimers();
+  const scopeKey = 'stream-workspace';
+  const canonical: Record<string, SessionMessageRecord[]> = {};
+  const actions = createLiveTranscript({
+    store, clock: Date.now, scopeKey, client: {} as ScopedOpencodeClient, isCurrentClient: () => true,
+    readCanonicalSession: (id: string) => canonical[id] ?? [], recordUsageAndTodos: vi.fn(),
+  });
+  const mounted = renderHook(() => useLiveTranscriptView(scopeKey, undefined, canonical), undefined, wrapper);
+  try {
+    const url = `data:video/mp4;base64,${'A'.repeat(1024 * 1024)}`;
+    act(() => actions.appendUserMessage('s', { id: 'u', createdAt: 10, text: 'look', attachments: [{ url }] }));
+    const before = mounted.result.current;
+    for (const delta of ['one', ' two', ' three']) {
+      expect(actions.applyEvent({ type: 'session.text.delta', created: 11, data: { sessionID: 's', assistantMessageID: 'a', ordinal: 0, delta } })).toBe(true);
+    }
+    act(() => { vi.advanceTimersByTime(49); });
+    expect(mounted.result.current).toBe(before);
+    act(() => { vi.advanceTimersByTime(1); });
+    expect(mounted.result.current.s[0]).toBe(before.s[0]);
+    expect(mounted.result.current.s[1].parts[0]).toMatchObject({ type: 'text', text: 'one two three' });
+    expect(canonical).toEqual({});
+  } finally {
+    mounted.unmount();
+    actions.dispose();
+    vi.useRealTimers();
+  }
+});
 
 describe('live V2 transcript reducer', () => {
   it('accumulates text deltas and replaces them with the ended text', () => {

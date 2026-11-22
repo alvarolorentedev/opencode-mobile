@@ -1,7 +1,7 @@
+import { UpdateBlockingSheet as OverlaySheet } from '@/features/updates/index';
 import { Button } from '@/shared/ui/button';
 import { Text as UiText } from '@/shared/ui/text';
 import { cn } from '@/shared/ui/cn';
-import { OverlaySheet } from '@/shared/ui/overlay-sheet';
 import { withAlpha } from '@/shared/ui/theme/color';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useEffect, useMemo, useRef, useState } from 'react';
@@ -9,7 +9,7 @@ import { useTranslation } from 'react-i18next';
 import { Input } from '@/shared/ui/input';
 import { Keyboard, Pressable, SectionList, StyleSheet, Text, View } from 'react-native';
 
-import { useUpdateBlocker } from '@/runtime/ui';
+import { useUpdateBlocker } from '@/features/updates/context';
 import { NumericSlider } from '@/shared/ui/numeric-slider';
 import { getModelVariantLabel } from '@/features/ai/model/model-variant-label';
 import { renderProviderIcon } from '@/features/ai/ui/provider-icon';

@@ -1,37 +1,36 @@
+// @vitest-environment happy-dom
+
 import { describe, expect, it, vi } from 'vitest';
 
-import { uiImports } from '../../../tests/helpers/ui.mjs';
-import { hookRuntime, loadTs } from '../../../tests/helpers/runtime.mjs';
+import '../../../tests/helpers/native-primitives';
+
+import { ConnectionOidcFields } from '@/features/connections/ui/connection-oidc-fields';
+import { SettingSwitchRow } from '@/shared/ui/settings/setting-rows';
+import { Colors } from '@/shared/ui/theme/theme';
+import { renderHook } from '../../../tests/helpers/render-hook';
+
+vi.mock('react-i18next', () => ({ useTranslation: () => ({ t: (key: string, variables?: Record<string, unknown>) => variables?.uri ? `${key}:${variables.uri}` : key }) }));
+vi.mock('react-native', async () => (await import('../../../tests/helpers/native-view-platform')).nativeViewPlatform({ platform: 'android' }));
 
 type Element = { type: unknown; props: Record<string, any> };
-function find(root: Element | Element[] | undefined, testID: string): Element | undefined {
+function find(root: Element | Element[] | undefined, testID: string | typeof SettingSwitchRow): Element | undefined {
   if (Array.isArray(root)) return root.map((child) => find(child, testID)).find(Boolean);
   if (!root || typeof root !== 'object') return;
   if (root.props?.testID === testID || root.type === testID) return root;
   return find(root.props?.children, testID);
 }
 
-async function fields(props: Record<string, unknown> = {}) {
-  const runtime = hookRuntime();
-  const { ConnectionOidcFields } = await loadTs('features/connections/ui/connection-oidc-fields.tsx', {
-    ...uiImports,
-    react: runtime.react,
-    'react/jsx-runtime': { jsx: (type: unknown, props: Record<string, unknown>) => ({ type, props }), jsxs: (type: unknown, props: Record<string, unknown>) => ({ type, props }), Fragment: 'Fragment' },
-    'react-i18next': { useTranslation: () => ({ t: (key: string, variables?: Record<string, unknown>) => variables?.uri ? `${key}:${variables.uri}` : key }) },
-    'react-native': { View: 'View', StyleSheet: { create: (styles: unknown) => styles } },
-    '@/shared/ui/settings/setting-rows': { SettingField: 'Input', SettingSwitchRow: 'SwitchRow' },
-  }, { Error });
-  runtime.mount(ConnectionOidcFields, {
-    status: 'unknown',
-    defaultRedirectUri: 'opencodemobile://oidc-callback',
-    disabled: false,
-    palette: {},
-    onChange: vi.fn(),
-    onSignIn: vi.fn(),
-    ...props,
+function fields(props: Pick<Parameters<typeof ConnectionOidcFields>[0], 'value'> & Partial<Parameters<typeof ConnectionOidcFields>[0]>) {
+  const runtime = renderHook(ConnectionOidcFields, {
+    status: 'unknown', defaultRedirectUri: 'opencodemobile://oidc-callback', disabled: false,
+    palette: Colors.light, onChange: vi.fn(), onSignIn: vi.fn(), ...props,
   });
-  const element = (id: string) => { const value = find(runtime.value, id); if (!value) throw new Error(`Missing ${id}`); return value; };
-  return { runtime, element, value: (id: string) => find(runtime.value, id) };
+  const element = (id: string | typeof SettingSwitchRow) => {
+    const value = find(runtime.result.current, id);
+    if (!value) throw new Error(`Missing ${String(id)}`);
+    return value;
+  };
+  return { element, value: (id: string) => find(runtime.result.current, id) };
 }
 
 const disabledValue = { enabled: false, issuer: '', clientId: '', scopes: 'openid profile email offline_access', tokenHeader: 'X-Auth-Request-Access-Token', redirectUri: '' };
@@ -40,10 +39,10 @@ const enabledValue = { ...disabledValue, enabled: true };
 describe('OpenID Connect connection fields', () => {
   it('hides provider fields until the option is enabled', async () => {
     const view = await fields({ value: disabledValue });
-    expect(view.element('SwitchRow')).toBeDefined();
+    expect(view.element(SettingSwitchRow)).toBeDefined();
     expect(view.value('connection-oidc-issuer-input')).toBeUndefined();
-    view.element('SwitchRow').props.onValueChange(true);
-    expect(view.element('SwitchRow').props.value).toBe(false);
+    view.element(SettingSwitchRow).props.onValueChange(true);
+    expect(view.element(SettingSwitchRow).props.value).toBe(false);
   });
 
   it('collects issuer, client id, scopes and the redirect URI', async () => {
