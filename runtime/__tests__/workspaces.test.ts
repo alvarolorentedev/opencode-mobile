@@ -40,13 +40,13 @@ describe('multi-server contracts', () => {
     const connection = (id: string) => ({ id, name: id, enabled: true, settings: { serverUrl: `http://${id}`, username: '' } });
     const session = (id: string, updated: number) => ({ id, directory: '/same', title: id, time: { updated } });
     const snapshot = (id: string, sessions: any[], current?: string) => ({ catalogSessions: sessions, catalogStatuses: { busy: { type: 'busy' } }, values: {
-      connectionValue: { connection: { status: 'connected' } }, projectsValue: { activeProjectPath: '/same' }, currentSessionValue: { currentSessionId: current },
+      projectsValue: { activeProjectPath: '/same' }, currentSessionValue: { currentSessionId: current },
       sessionLibraryValue: { sessions, sessionStatuses: {}, favoriteSessions: [], sessionPreviewById: {} },
     } });
     const rows = librarySessions([connection('a'), connection('b')], {
       '["a","/same"]': snapshot('a', [session('same', 3), session('idle', 1)], 'same'),
       '["b","/same"]': snapshot('b', [session('same', 9), session('busy', 2)]),
-    }, { connectionId: 'a', projectPath: '/same' });
+    }, new Map(['a', 'b'].map((id) => [id, { connection: { status: 'connected' } }])), { connectionId: 'a', projectPath: '/same' });
     expect(rows.map((row: any) => [row.connectionId, row.sessionId])).toEqual([['a', 'same'], ['b', 'busy'], ['b', 'same'], ['a', 'idle']]);
     expect(rows.filter((row: any) => row.current)).toHaveLength(1);
   });
@@ -58,20 +58,22 @@ describe('multi-server contracts', () => {
   });
     const connection = (id: string, enabled = true) => ({ id, name: id, enabled, settings: { serverUrl: `http://${id}`, username: '' } });
     const session = (id: string) => ({ id, directory: '/same', title: id, time: { updated: 1 } });
-    const snapshot = (status: string, sessions: any[], favoriteSessions: any[] = []) => ({ catalogSessions: sessions, catalogStatuses: {}, values: {
-      connectionValue: { connection: { status } }, projectsValue: { activeProjectPath: '/same' }, currentSessionValue: { currentSessionId: undefined },
+    const snapshot = (sessions: any[], favoriteSessions: any[] = []) => ({ catalogSessions: sessions, catalogStatuses: {}, values: {
+      projectsValue: { activeProjectPath: '/same' }, currentSessionValue: { currentSessionId: undefined },
       sessionLibraryValue: { sessions, sessionStatuses: {}, favoriteSessions, sessionPreviewById: {} },
     } });
     const favorite = (connectionScope: string) => ({ connectionScope, projectPath: '/favorite', sessionId: 'f', title: 'f', favoritedAt: 1 });
     const connections = [connection('disabled', false), connection('connected'), connection('connecting'), connection('errored'), connection('idle')];
     const snapshots = {
-      '["disabled","/same"]': snapshot('connected', [], [favorite('http://disabled:')]),
-      '["connected","/same"]': snapshot('connected', [session('kept')], [favorite('http://connected:')]),
-      '["connecting","/same"]': snapshot('connecting', [session('connecting')]),
-      '["errored","/same"]': snapshot('error', [session('errored')]),
+      '["disabled","/same"]': snapshot([], [favorite('http://disabled:')]),
+      '["connected","/same"]': snapshot([session('kept')], [favorite('http://connected:')]),
+      '["connecting","/same"]': snapshot([session('connecting')]),
+      '["errored","/same"]': snapshot([session('errored')]),
     };
-    expect(connectedConnections(connections, snapshots).map((entry: any) => entry.id)).toEqual(['connected']);
-    expect(librarySessions(connections, snapshots).map((row: any) => [row.connectionId, row.sessionId]).sort())
+    const lifecycles = new Map(Object.entries({ disabled: 'connected', connected: 'connected', connecting: 'connecting', errored: 'error' })
+      .map(([id, status]) => [id, { connection: { status } }]));
+    expect(connectedConnections(connections, lifecycles).map((entry: any) => entry.id)).toEqual(['connected']);
+    expect(librarySessions(connections, snapshots, lifecycles).map((row: any) => [row.connectionId, row.sessionId]).sort())
       .toEqual([['connected', 'f'], ['connected', 'kept']]);
   });
   it('keeps unrelated workspace domains stable when only chat data changes', async () => {
@@ -85,6 +87,8 @@ describe('multi-server contracts', () => {
       connection: { retry: vi.fn(), openSession: vi.fn(), openSessionInProject: vi.fn() },
       workspace: { activate: vi.fn() },
     };
+    const connectionControls = { connectionProfiles: [], connectSetup: {}, services: {} };
+    const lifecycle = { connection: { status: 'connected' }, contract: 'v2' };
     const { useConnection, useProjects, useCurrentSession, useSessionLibrary, useOnboarding, useChat } = await loadTs([
       'features/connections/context.ts', 'features/projects/context.ts', 'features/sessions/context.ts',
       'features/onboarding/context.ts', 'features/chat/context.ts',
@@ -94,9 +98,13 @@ describe('multi-server contracts', () => {
       '@/runtime/core': {
         useWorkspaceDomainValue: (select: (values: Record<string, unknown>) => unknown) => select(current),
         useAppStore: (select: (state: AppState) => unknown) => select(store.getState()),
-        useAppCore: () => ({ commands }),
+        useAppCore: () => ({ commands, store }),
         useActiveWorkspaceTarget: () => ({ connectionId: 'http://a:', projectPath: '/repo' }),
+        useConnectionLifecycle: () => lifecycle,
+        useWorkspaceConnectionSettings: () => settings,
       },
+      '@/runtime/workspace': { useWorkspaces: () => ({ connectionControls }) },
+      '@/shared/protocol/opencode/capabilities': { getServerCapabilities: () => ({ contract: 'v2' }) },
       '@/shared/contracts/connection-scope': identity,
       './state/use-server-pending-interactions': {},
       './state/use-permission-rules-state': {},
@@ -104,7 +112,6 @@ describe('multi-server contracts', () => {
       './state/use-workspace-diagnostics': {},
     });
     const base = {
-      connectionValue: { settings, connect: async () => ({}), switchConnection: async () => ({}), connectionProfiles: [], connectSetup: {}, services: {} },
       projectsValue: { activeProjectPath: '/repo', projects: [], selectProject: () => {} },
       currentSessionValue: { currentSessionId: 's', openDeepLinkSession: async () => ({ ok: true }) },
       sessionLibraryValue: { openSessionInProject: async () => {} },
@@ -323,7 +330,7 @@ it('keeps lifecycle decisions current without resetting retained runtimes', asyn
   expect(isEnabled('a')).toBe(true);
   const snapshot = (id: string, path: string) => ({ enabled: true, native: { settings: driver.value.connections.find((entry: any) => entry.id === id).settings },
     loadProjectCatalog: vi.fn(async () => ({ currentProjectPath: '/repo', serverProjects: [] })),
-    catalogSessions: [], suspend: vi.fn(), values: { sessionLibraryValue: { sessions: [], refreshSessions: vi.fn(async () => []) }, currentSessionValue: { openSession: vi.fn(async () => {}), openDeepLinkSession: vi.fn(async () => ({ ok: true })) }, projectsValue: { activeProjectPath: path }, conversationValue: { conversation: { active: true }, toggleConversationMode: vi.fn(async () => {}) }, connectionValue: { connection: { status: 'connected' }, connect: async () => ({ status: 'connected' }) } } });
+    catalogSessions: [], suspend: vi.fn(), values: { sessionLibraryValue: { sessions: [], refreshSessions: vi.fn(async () => []) }, currentSessionValue: { openSession: vi.fn(async () => {}), openDeepLinkSession: vi.fn(async () => ({ ok: true })) }, projectsValue: { activeProjectPath: path }, conversationValue: { conversation: { active: true }, toggleConversationMode: vi.fn(async () => {}) } } });
   const original = snapshot('a', '/repo'), other = snapshot('a', '/other'), b = snapshot('b', '/repo');
   driver.value.publish('["a","/repo"]', original); driver.value.publish('["a","/other"]', other); driver.value.publish('["b","/repo"]', b); driver.flush();
   original.catalogSessions = [{ id: 'collision', directory: '/repo' }] as never[];
@@ -466,10 +473,10 @@ it('moves chat focus to a connected server when the focused server fails', async
   const store = mountWorkspaceConnections(driver, useWorkspaceConnections, createWorkspaceCommands, createConnectionCommands, shell, connections);
   await driver.settle();
   store.getState().setSelection('["a",""]', { activeProjectPath: '/repo' });
-  const snapshot = (id: string, status: string) => ({ enabled: true, native: { settings: entries.find((entry) => entry.id === id)!.settings }, suspend: vi.fn(),
-    values: { projectsValue: { activeProjectPath: '/repo' }, conversationValue: { conversation: { active: false }, toggleConversationMode: vi.fn(async () => {}) }, connectionValue: { connection: { status } } } });
-  driver.value.publish('["a","/repo"]', snapshot('a', 'connected'));
-  driver.value.publish('["b",""]', snapshot('b', 'connected'));
+  const snapshot = (id: string) => ({ enabled: true, native: { settings: entries.find((entry) => entry.id === id)!.settings }, suspend: vi.fn(),
+    values: { projectsValue: { activeProjectPath: '/repo' }, conversationValue: { conversation: { active: false }, toggleConversationMode: vi.fn(async () => {}) } } });
+  driver.value.publish('["a","/repo"]', snapshot('a'));
+  driver.value.publish('["b",""]', snapshot('b'));
   await driver.settle();
   expect(driver.value.focus).toEqual({ connectionId: 'b', projectPath: '' });
   setStatus('b', 'error');

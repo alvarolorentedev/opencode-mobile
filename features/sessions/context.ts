@@ -2,7 +2,7 @@ import type { WorkspaceTarget } from '@/shared/contracts/workspace';
 import { useCallback, useMemo } from 'react';
 import { hashKey } from '@tanstack/react-query';
 
-import { useAppCore, useAppStore, useProjectScope, useWorkspaceDomainValue } from '@/runtime/core';
+import { useAppCore, useAppStore, useProjectScope, useWorkspaceConnectionSettings, useWorkspaceDomainValue } from '@/runtime/core';
 import { getConnectionScope } from '@/shared/contracts/connection-scope';
 import { mcpOptions } from '@/shared/server-data/diagnostics';
 import { usePermissionRulesState } from './state/use-permission-rules-state';
@@ -15,7 +15,7 @@ export function useCurrentSession() {
 
 export function useSessionLibrary() {
   const value = useWorkspaceDomainValue((values) => values.sessionLibraryValue, 'useSessionLibrary');
-  const settings = useWorkspaceDomainValue((values) => values.connectionValue.settings, 'useSessionLibrary');
+  const settings = useWorkspaceConnectionSettings();
   const { openSessionInProject: openInProject } = useAppCore().commands.connection;
   const scope = getConnectionScope(settings);
   const openSessionInProject = useCallback((projectPath: string, sessionId: string, targetConnectionScope = scope) =>

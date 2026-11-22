@@ -275,10 +275,15 @@ npm run validate:commit
   uses the exact originating credential partition. The commit gate passed with
   1,283 tests and one existing skip. All 122 focused tests and 62 interaction,
   extension, Settings, multi-server, Chat and realtime browser flows passed.
-- E11. Navigation and automatic failover observe the connection manager directly.
+- E11, `9a64f876`. Navigation and automatic failover observe the connection manager directly.
   The commit gate passed with 1,283 tests and one existing skip. All 42 focused
   tests and 110 Connect, manual connection, multi-server, Sessions, Projects,
   Settings and realtime browser flows passed.
+- E12. Connections, Projects, Sessions and native surfaces read lifecycle state
+  from the manager. Profile, setup and service controls mount once at the app
+  shell. The commit gate passed with 1,283 tests and one existing skip.
+  All 164 focused tests and 117 browser flows across Connect, manual connection,
+  multi-server, Sessions, Projects, Settings, Onboarding and Mission Control passed.
 
 ## Loop protocol
 

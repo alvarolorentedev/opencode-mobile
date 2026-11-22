@@ -6,7 +6,7 @@ import type { TFunction } from 'i18next';
 import { AppState } from 'react-native';
 import { createConnection } from '@/runtime/connections/create-connection';
 import { useAppCore } from '@/runtime/core';
-import type { ConnectionLifecycle } from '@/features/connections/index';
+import { idleConnection } from './idle-connection';
 import { projectsOptions } from '@/features/projects/runtime';
 import { useConnectionQueryIdentity, useQueryForeground } from '@/shared/server-data/client';
 import { readSessionStats } from '@/shared/protocol/services/session-stats';
@@ -26,8 +26,7 @@ function connectionTranslator(t: TFunction) {
     (options ? t(key, options as never) : t(key)) as string;
 }
 
-const IDLE: ConnectionLifecycle = { phase: 'idle', operation: 0, connection: { status: 'idle', message: 'Disconnected' }, contract: 'v2' };
-const readIdle = () => IDLE;
+const readIdle = () => idleConnection;
 const noSubscription = () => () => {};
 const emptyCatalog: WorkspaceCatalog = { sessions: [], statuses: {}, refresh: async () => {}, removeSession: () => {} };
 
@@ -58,7 +57,7 @@ function useManagedConnection(entry: ConnectionRecord) {
   const state = useSyncExternalStore(manager?.subscribe ?? noSubscription, manager?.getState ?? readIdle, readIdle);
   const connect = useCallback(() => commands.connection.connect(entry.id), [commands.connection, entry.id]);
   return useMemo(() => ({
-    connection: entry.enabled ? state.connection : IDLE.connection,
+    connection: entry.enabled ? state.connection : idleConnection.connection,
     serverContract: state.contract,
     connect,
     onInvalidated: manager?.onInvalidated ?? noSubscription,

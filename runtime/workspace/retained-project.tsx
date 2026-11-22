@@ -22,7 +22,6 @@ import { mcpOptions } from '@/shared/server-data/diagnostics';
 import { workspaceChatPreferences } from '@/runtime/core/commands/connection';
 import type { ChatPreferences } from '@/shared/preferences/opencode-preferences';
 import { workspaceKey } from '@/shared/contracts/workspace';
-import { getServerCapabilities } from '@/shared/protocol/opencode/capabilities';
 import type { useWorkspaceConnections } from '@/runtime/workspace/use-workspace-connections';
 import type { ProjectBindingInput, WorkspaceSnapshot, WorkspaceValues } from '@/runtime/workspace/workspace-types';
 
@@ -219,9 +218,6 @@ export const RetainedProject = memo(function RetainedProject({ defaults, updateS
     clearProjectState();
     resetPrompt();
   }), [clearProjectState, onInvalidated, resetPrompt, scopeGenerationRef]);
-  const updateConnectionSettings = useCallback((patch: Partial<OpencodeConnectionSettings>) => {
-    setSettings((current) => ({ ...current, ...patch }));
-  }, [setSettings]);
   const { conversation, clearConversationFeedback, toggleConversationMode } = useConversationState({
     scopeKey: state.scopeKey,
     connection: state.connection,
@@ -316,22 +312,15 @@ export const RetainedProject = memo(function RetainedProject({ defaults, updateS
     cancelPrompt: inbox.cancelPrompt,
   });
 
-  const serverCapabilities = useMemo(() => getServerCapabilities(state.serverContract), [state.serverContract]);
-  const connectionValue = useMemo<WorkspaceValues['connectionValue']>(() => ({
-    connectionProfiles: input.connectionProfiles, settings: state.settings, updateSettings: updateConnectionSettings,
-    switchConnection: input.switchConnection, connection: state.connection, serverCapabilities, connect: connectionRuntime.connect,
-    connectSetup: input.connectSetup, services: input.servicesValue,
-  }), [input.connectionProfiles, state.settings, updateConnectionSettings, input.switchConnection, state.connection, serverCapabilities,
-    connectionRuntime.connect, input.connectSetup, input.servicesValue]);
   const capabilitiesValue = useCapabilitiesPresentation(serverData, capabilities);
   const { projectsValue, projectFilesValue } = useProjectPresentation({ ...domain, ...project, ...worktree, activeProject, projects });
   const conversationValue = useMemo<WorkspaceValues['conversationValue']>(() => ({
     conversation, clearConversationFeedback, toggleConversationMode,
   }), [conversation, clearConversationFeedback, toggleConversationMode]);
   const values = useMemo<WorkspaceValues>(() => ({
-    connectionValue, capabilitiesValue, projectsValue, projectFilesValue,
+    capabilitiesValue, projectsValue, projectFilesValue,
     currentSessionValue, sessionLibraryValue, chatValue, conversationValue,
-  }), [connectionValue, capabilitiesValue, projectsValue, projectFilesValue,
+  }), [capabilitiesValue, projectsValue, projectFilesValue,
     currentSessionValue, sessionLibraryValue, chatValue, conversationValue]);
 
   const suspend = useCallback(() => {

@@ -2,13 +2,15 @@ import { describe, expect, it } from 'vitest';
 
 import { buildWorkspaceProjectGroups } from '@/features/projects/model/workspace-project-groups';
 
-function snapshot({ path, root = '/repo', entries = [], branch = 'main', activePath = path, status = 'connected', projects = [] }: {
+const online: { connection: { status: string }; contract: 'v2' } = { connection: { status: 'connected' }, contract: 'v2' };
+const connected = new Map([['server-1', online]]);
+
+function snapshot({ path, root = '/repo', entries = [], branch = 'main', activePath = path, projects = [] }: {
   path: string;
   root?: string;
   entries?: { directory: string; name: string; branch?: string }[];
   branch?: string;
   activePath?: string;
-  status?: string;
   projects?: { id?: string; label: string; path: string }[];
 }) {
   return {
@@ -18,7 +20,6 @@ function snapshot({ path, root = '/repo', entries = [], branch = 'main', activeP
         worktrees: { entries, project: { id: 'project-1', root, label: 'repo' }, loading: false },
         vcsInfo: { branch },
       },
-      connectionValue: { connection: { status } },
     },
   } as never;
 }
@@ -32,7 +33,7 @@ describe('workspace project groups', () => {
         entries: [{ directory: '/repo/wt', name: 'wt', branch: 'feature/wt' }],
         branch: 'feature/wt',
       }),
-    });
+    }, connected);
     expect(groups).toHaveLength(1);
     expect(groups[0].projects).toHaveLength(1);
     expect(groups[0].projects[0].path).toBe('/repo');
@@ -49,7 +50,7 @@ describe('workspace project groups', () => {
         entries: [{ directory: '/repo/wt', name: 'wt', branch: 'feature/wt' }],
         branch: 'feature/wt',
       }),
-    });
+    }, connected);
     expect(groups[0].projects).toHaveLength(1);
     expect(groups[0].projects[0].path).toBe('/repo');
     expect(groups[0].projects[0].checkouts.map((checkout) => checkout.directory)).toEqual(['/repo', '/repo/wt']);
@@ -64,7 +65,7 @@ describe('workspace project groups', () => {
           { id: 'project-2', label: 'another', path: '/another' },
         ],
       }),
-    });
+    }, connected);
     expect(groups[0].projects.map((project) => project.path)).toEqual(['/another', '/repo']);
     expect(groups[0].projects.find((project) => project.path === '/repo')?.opened).toBe(true);
     expect(groups[0].projects.find((project) => project.path === '/another')?.opened).toBe(false);
@@ -81,7 +82,7 @@ describe('workspace project groups', () => {
         activePath: '/gone',
         projects: [{ id: 'project-1', label: 'repo', path: '/repo' }],
       }),
-    });
+    }, connected);
     expect(groups[0].projects.map((project) => project.path)).toEqual(['/repo']);
   });
 
@@ -93,8 +94,12 @@ describe('workspace project groups', () => {
     ], {
       '["connected","/repo"]': snapshot({ path: '/repo' }),
       '["disabled","/repo"]': snapshot({ path: '/repo' }),
-      '["unavailable","/repo"]': snapshot({ path: '/repo', status: 'error' }),
-    });
+      '["unavailable","/repo"]': snapshot({ path: '/repo' }),
+    }, new Map([
+      ['connected', online],
+      ['disabled', online],
+      ['unavailable', { ...online, connection: { status: 'error' } }],
+    ]));
     expect(groups.map((group) => group.id)).toEqual(['connected']);
   });
 });

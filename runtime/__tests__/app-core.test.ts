@@ -76,7 +76,6 @@ function connectedProject(core: ReturnType<typeof newCore>, connectionId: string
   const snapshot = {
     enabled: true, catalogSessions: [{ id: 'rendered', directory: projectPath }], suspend: vi.fn(),
     values: {
-      connectionValue: { connection: { status: 'connected' } },
       projectsValue: { activeProjectPath: projectPath },
       conversationValue: { conversation: { active: false } },
       currentSessionValue: { openSession, openDeepLinkSession, createSession },

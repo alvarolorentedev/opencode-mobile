@@ -15,6 +15,7 @@ import { HIDDEN_PROJECTS_MAX, useFileClipboard } from '@/features/projects/runti
 import { useNetworkStatus } from '@/shared/network/use-network-status';
 import { useOpencodePersistence } from '@/runtime/persistence/use-opencode-persistence';
 import { useAppCore, useAppStore } from '@/runtime/core/context';
+import { useConnectionLifecycles } from '@/runtime/core/workspace-selectors';
 import { workspaceReadTarget } from '@/runtime/core/project-scope';
 import { useShareState } from '@/features/sharing/runtime';
 import { useVoiceSetupTest, VoiceSetupTestContext } from '@/features/voice/runtime';
@@ -56,6 +57,7 @@ export function WorkspaceProvider({ children }: PropsWithChildren) {
   const profiles = useAppStore((state) => state.shell.profiles);
   const setProfiles = useCallback((value: SetStateAction<ConnectionProfile[]>) => core.store.getState().setShellValue('profiles', value), [core]);
   const registryState = useAppStore((state) => state.registry);
+  const lifecycles = useConnectionLifecycles();
   const manager = useWorkspaceConnections(isHydrated, {
     registry: registryState,
     commands: core.commands,
@@ -81,11 +83,10 @@ export function WorkspaceProvider({ children }: PropsWithChildren) {
   useMissionWidget(mission, missionWidgetScope, isHydrated && manager.ready, shell.chatPreferences.language);
   const fileClipboard = useFileClipboard(connections);
   const current = focus ? snapshots[resolveKey(focus)] : undefined;
-  const focusedSettings = current?.values.connectionValue.settings;
+  const focusedSettings = current?.native.settings;
   const settings = focusedSettings ?? shell.settings;
   const focusedPreferences = connections.find(({ id }) => id === focus?.connectionId)?.preferences;
-  const settingsConnectionId = focus?.connectionId
-    ?? (current ? getConnectionUiScope(current.values.connectionValue.settings) : undefined);
+  const settingsConnectionId = focus?.connectionId;
   const updateSettings = useCallback<ConnectionContextValue['updateSettings']>((patch) => {
     if (settingsConnectionId) updateWorkspaceSettings(settingsConnectionId, { ...settings, ...patch });
   }, [settingsConnectionId, updateWorkspaceSettings, settings]);
@@ -128,16 +129,17 @@ export function WorkspaceProvider({ children }: PropsWithChildren) {
   const profileRemoved = useCallback(async (profile: ConnectionProfile) => removeConnection(getConnectionUiScope(profile)), [removeConnection]);
   const connectionProfiles = useConnectionProfiles({ clearCapabilitiesSnapshots, settings, switchConnection, updateSettings, profiles, setProfiles, onSaved: profileSaved, onRemoved: profileRemoved });
   const { servicesValue } = useServicesState({ settings, connectSetup, connections: manager.connections, visible: pathname === '/settings' || pathname === '/service' });
+  const connectionControls = useMemo(() => ({ connectionProfiles, connectSetup, services: servicesValue }), [connectionProfiles, connectSetup, servicesValue]);
   const { terminalTarget, inspectionTarget } = registryState;
   const { selectTerminalTarget, inspect } = core.commands.workspace;
   const { openSession } = core.commands.connection;
   const refreshTargets = useCallback(async () => {
     await Promise.all(Object.values(catalogs).map((catalog) => catalog.refresh()));
   }, [catalogs]);
-  const shareTargets = useMemo(() => librarySessions(connections, snapshots, focus)
+  const shareTargets = useMemo(() => librarySessions(connections, snapshots, lifecycles, focus)
     .filter((row) => !shell.chatPreferences.hideSubagentChats || !row.session.parentID)
     .map((row) => ({ connectionScope: getConnectionScope(connections.find((entry) => entry.id === row.connectionId)!.settings),
-      projectPath: row.projectPath, sessionId: row.sessionId, title: `${row.serverName} · ${row.session.title}` })), [connections, snapshots, focus, shell.chatPreferences.hideSubagentChats]);
+      projectPath: row.projectPath, sessionId: row.sessionId, title: `${row.serverName} · ${row.session.title}` })), [connections, snapshots, lifecycles, focus, shell.chatPreferences.hideSubagentChats]);
   const sharedInput = useShareState({ hydrated: isHydrated, connectionScope: getConnectionScope(settings),
     projectPath: focus ? current?.values.projectsValue.activeProjectPath : undefined,
     currentSessionId: focus ? current?.values.currentSessionValue.currentSessionId : undefined,
@@ -160,7 +162,7 @@ export function WorkspaceProvider({ children }: PropsWithChildren) {
   const voiceSetupTest = useVoiceSetupTest(shell.chatPreferences, Object.values(snapshots).some((snapshot) => snapshot.values.conversationValue.conversation.phase !== 'off'));
   const registry = useMemo<WorkspaceRegistry>(() => ({ ...manager, removeConnection,
     terminalTarget: connections.some((entry) => entry.id === terminalTarget?.connectionId) ? terminalTarget : undefined, selectTerminalTarget,
-    inspectionTarget: connections.some((entry) => entry.id === inspectionTarget?.connectionId) ? inspectionTarget : undefined, inspect, sharedInput, catalogs, mission }), [manager, removeConnection, connections, terminalTarget, selectTerminalTarget, inspectionTarget, inspect, sharedInput, catalogs, mission]);
+    inspectionTarget: connections.some((entry) => entry.id === inspectionTarget?.connectionId) ? inspectionTarget : undefined, inspect, sharedInput, connectionControls, catalogs, mission }), [manager, removeConnection, connections, terminalTarget, selectTerminalTarget, inspectionTarget, inspect, sharedInput, connectionControls, catalogs, mission]);
   const updates = useAppUpdates({ initialized: isHydrated && shell.onboardingVersion >= CURRENT_ONBOARDING_VERSION && !shell.onboardingActive,
     blocked: Object.values(fileClipboard.busy).some(Boolean) || Object.values(snapshots).some((runtime) => runtime.busy) || connectSetup.busy || hasWorkspaceDrafts(presentation) });
   useEffect(() => {
@@ -182,8 +184,8 @@ export function WorkspaceProvider({ children }: PropsWithChildren) {
         const visible = focus?.connectionId === entry.id && (focus.projectPath === path || current === snapshots[key]);
         const demanded = readTarget?.connectionId === entry.id && (readTarget.projectPath === path || readTarget === focus && visible);
         return <RetainedProject key={key} demanded={demanded}
-          connection={entry} catalog={catalogs[entry.id]} switchConnection={switchConnection} projectPath={path || undefined} shared={shared} network={network} defaults={shell.chatPreferences} isHydrated={isHydrated}
-          visible={visible} isConnectionOwner={index === 0} connectSetup={connectSetup} connectionProfiles={connectionProfiles} servicesValue={servicesValue}
+          connection={entry} catalog={catalogs[entry.id]} projectPath={path || undefined} shared={shared} network={network} defaults={shell.chatPreferences} isHydrated={isHydrated}
+          visible={visible} isConnectionOwner={index === 0}
           updateSettings={updateWorkspaceSettings} updatePreferences={manager.updatePreferences} publish={manager.publish} forget={manager.forget} />;
     }))}
     {current ? <UpdatesContext.Provider value={updates}>

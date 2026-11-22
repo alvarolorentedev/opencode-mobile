@@ -20,7 +20,7 @@ import { findMatchingProfile, type ConnectionProfile } from '@/shared/contracts/
 import { hasWorkspaceDrafts , useWorkspacePresentation, useWorkspaces } from '@/runtime/workspace';
 import { getConnectionUiScope } from '@/shared/contracts/connection-scope';
 import { getErrorMessage } from '@/shared/utilities/error-message';
-import { useConnection } from '@/features/connections/context';
+import { useConnection, useConnectionLifecycles } from '@/features/connections/context';
 
 type Palette = typeof Colors.light;
 
@@ -43,6 +43,7 @@ export function ConnectionProfiles({ workspace, palette, onManageConnect, onPair
   const { confirmAction, confirmation } = useConfirmation();
   const { t } = useTranslation();
   const registry = useWorkspaces();
+  const lifecycles = useConnectionLifecycles();
   const presentation = useWorkspacePresentation();
   const { settings, connection, connect, updateSettings, connectSetup, connectionProfiles } = useConnection(workspace);
   const { profiles, refresh, connect: connectProfile, passwordForEditing, headersForEditing, certificateForEditing, save, remove, signIn } = connectionProfiles;
@@ -246,8 +247,7 @@ export function ConnectionProfiles({ workspace, palette, onManageConnect, onPair
     const live = registry.connections.find((entry) => entry.id === id);
     const isActive = live?.enabled === true;
     const isSwitching = switchingProfileId === profile.id;
-    const runtime = Object.entries(registry.snapshots).find(([key]) => (JSON.parse(key) as string[])[0] === id)?.[1];
-    const status = runtime?.values.connectionValue.connection.status ?? 'idle';
+    const status = lifecycles.get(id)?.connection.status ?? 'idle';
     const isReconnecting = status === 'connecting';
     const manageOrEdit = profile.connect
       ? onManageConnect ? <Button onPress={() => manageConnect(profile)} variant="outline"><Text>{t('settings:connect.manage')}</Text></Button> : null

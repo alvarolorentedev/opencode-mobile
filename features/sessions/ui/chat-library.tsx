@@ -18,7 +18,7 @@ import { ProjectPicker, ProjectPickerButton } from '@/features/projects/index';
 import { formatRelativeTime } from '@/shared/presentation/format';
 import { useWorkspacePreferences , useWorkspaces } from '@/runtime/workspace';
 import { useProjects } from '@/features/projects/context';
-import { useWorkspaceLibrary } from '@/features/sessions/ui/use-workspace-library';
+import { useWorkspaceLibrary } from '@/features/sessions/state/use-workspace-library';
 import { sessionKey, workspaceKey } from '@/shared/contracts/workspace';
 import type { LibrarySession } from '@/features/sessions/model/workspace-library';
 import { usePalette } from '@/shared/ui/theme/use-palette';

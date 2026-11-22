@@ -1,18 +1,12 @@
 import { connectionTransition } from '@/features/connections/runtime';
 import type { ConnectionLifecycle } from '@/features/connections/index';
-
-const INITIAL: ConnectionLifecycle = {
-  phase: 'idle',
-  operation: 0,
-  connection: { status: 'idle', message: 'Disconnected' },
-  contract: 'v2',
-};
+import { idleConnection } from './idle-connection';
 
 type Transition = Parameters<typeof connectionTransition>[1];
 
 // The connection state machine is plain state plus listeners, so it can be
 // driven without React and reused by a future non-React manager.
-export function createConnectionLifecycle(initial: ConnectionLifecycle = INITIAL) {
+export function createConnectionLifecycle(initial: ConnectionLifecycle = idleConnection) {
   let state = initial;
   const listeners = new Set<() => void>();
   return {

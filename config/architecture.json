@@ -101,7 +101,10 @@
       "useActiveWorkspaceTarget",
       "useAppCore",
       "useAppStore",
+      "useConnectionLifecycle",
+      "useConnectionLifecycles",
       "useProjectScope",
+      "useWorkspaceConnectionSettings",
       "useWorkspaceDomainValue"
     ],
     "features/updates/index.ts": [

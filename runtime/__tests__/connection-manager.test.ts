@@ -117,7 +117,12 @@ describe('connection manager', () => {
     setRegistry({ connections: [a, b] });
     const first = registry.get('a')!;
     expect(registry.get('b')).toBeUndefined();
+    const connecting = registry.getLifecycles();
+    expect(connecting.get('a')).toBe(first.getState());
+    expect(registry.getLifecycles()).toBe(connecting);
     expect(await first.connect()).toMatchObject({ status: 'connected' });
+    expect(registry.getLifecycles()).not.toBe(connecting);
+    expect(registry.getLifecycle('a')).toBe(first.getState());
     setShellValue('onboardingActive', true);
     expect(createManager).toHaveBeenCalledTimes(1);
     expect(ports.probe).toHaveBeenCalledTimes(1);
@@ -144,6 +149,8 @@ describe('connection manager', () => {
     setRegistry({ connections: [{ ...rotated, enabled: false }] });
     expect(registry.get('a')).toBeUndefined();
     expect(registry.get('b')).toBeUndefined();
+    expect(registry.getLifecycles().size).toBe(0);
+    expect(registry.getLifecycle('a').connection.status).toBe('idle');
     expect(first.getState().phase).toBe('disabled');
     expect(second.getState().phase).toBe('disabled');
     expect(subscribe).toHaveBeenCalledTimes(3);

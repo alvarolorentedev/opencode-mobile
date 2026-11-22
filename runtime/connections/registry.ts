@@ -7,6 +7,8 @@ import type { ConnectionRecord } from '@/shared/contracts/workspace';
 import { replaceQueryPartition, type QueryIdentity } from '@/shared/server-data/keys';
 
 import type { createConnection, ConnectionInput } from './create-connection';
+import type { ConnectionLifecycle } from '@/features/connections/index';
+import { idleConnection } from './idle-connection';
 
 type Manager = ReturnType<typeof createConnection>;
 type Configuration = Pick<ConnectionInput, 'setup' | 'hydrated' | 'translate' | 'updateSettings'> & {
@@ -39,6 +41,7 @@ export function createConnectionRegistry({ store, queryClient }: { store: AppSto
   let queryForeground = true;
   let unsubscribed: (() => void) | undefined;
   let configuration: Configuration | undefined;
+  let lifecycles: ReadonlyMap<string, ConnectionLifecycle> | undefined;
   const foreground = {
     isActive: () => foregroundActive,
     subscribe(listener: (active: boolean) => void) {
@@ -47,7 +50,10 @@ export function createConnectionRegistry({ store, queryClient }: { store: AppSto
     },
   };
   function notify() { for (const listener of listeners) listener(); }
-  function notifyState() { for (const listener of stateListeners) listener(); }
+  function notifyState() {
+    lifecycles = undefined;
+    for (const listener of stateListeners) listener();
+  }
   function notifyEnvironment() { for (const listener of environmentListeners) listener(); }
   const isOnline = () => store.getState().network.online;
   function applyDemand() {
@@ -110,6 +116,8 @@ export function createConnectionRegistry({ store, queryClient }: { store: AppSto
 
   return {
     get: (id: string) => slots.get(id)?.manager,
+    getLifecycle: (id: string | undefined) => (id ? slots.get(id)?.manager.getState() : undefined) ?? idleConnection,
+    getLifecycles: () => lifecycles ??= new Map([...slots].map(([id, { manager }]) => [id, manager.getState()])),
     environment: {
       isForeground: () => foregroundActive,
       isOnline,

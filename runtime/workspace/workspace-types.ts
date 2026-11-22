@@ -6,7 +6,6 @@ import type { ChatPreferences } from '@/shared/preferences/opencode-preferences'
 
 import type { CapabilitiesContextValue } from '@/features/ai/index';
 import type { ChatContextValue } from '@/features/chat/index';
-import type { ConnectionContextValue } from '@/features/connections/index';
 import type { ProjectFilesContextValue, ProjectsContextValue } from '@/features/projects/index';
 import type { useProjectCatalogActions } from '@/features/projects/runtime';
 import type { ActiveSessionItem, CurrentSessionContextValue, SessionLibraryContextValue } from '@/features/sessions/index';
@@ -27,16 +26,12 @@ export type SharedWorkspaceState = Pick<WorkspaceShellState,
 export type ProjectBindingInput = {
   connection: ConnectionRecord;
   catalog?: WorkspaceCatalog;
-  switchConnection: ConnectionContextValue['switchConnection'];
   projectPath?: string;
   preferences: ChatPreferences;
   setChatPreferences: Dispatch<SetStateAction<ChatPreferences>>;
   setSettings: Dispatch<SetStateAction<OpencodeConnectionSettings>>;
   shared: SharedWorkspaceState;
   network: NetworkStatus;
-  connectSetup: ConnectionContextValue['connectSetup'];
-  connectionProfiles: ConnectionContextValue['connectionProfiles'];
-  servicesValue: ConnectionContextValue['services'];
   isHydrated: boolean;
   visible: boolean;
   demanded: boolean;
@@ -60,7 +55,6 @@ export type WorkspaceSnapshot = {
 };
 
 export type WorkspaceValues = {
-  connectionValue: ConnectionContextValue;
   capabilitiesValue: CapabilitiesContextValue;
   projectsValue: ProjectsContextValue;
   projectFilesValue: ProjectFilesContextValue;

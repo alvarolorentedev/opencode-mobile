@@ -21,10 +21,12 @@ Related ADRs: [0002 provider-centric orchestration](../adr/0002-provider-centric
 The app store owns the connection registry, focus and preferences.
 `WorkspaceProvider` coordinates persistence and route demand. The app core
 starts one manager per enabled connection for probing, recovery, credential
-renewal and the shared event stream. Query owns the shared session catalog and
-routine server responses. Independent catalog projections and retained
-Retained project adapters read those sources. Feature hooks select
-the focused or scoped values from the app core.
+renewal and the shared event stream. Connection presentation reads settings
+from the app store and lifecycle state from the manager. The app shell supplies
+the shared profile, setup and service controls once. Query owns the shared
+session catalog and routine server responses. Catalog projections and retained
+project adapters read those sources. Feature hooks select the focused or scoped
+values from the app core.
 
 The workspace commands in `runtime/core/commands/workspace.ts` register project
 demand and wait for a matching retained publication before opening a chat. They

@@ -3,22 +3,17 @@ import type { ConnectionRecord, WorkspaceTarget } from '@/shared/contracts/works
 import type { WorkspaceSnapshot } from '@/runtime/workspace';
 import { sessionKey } from '@/shared/contracts/workspace';
 import { getConnectionScope } from '@/shared/contracts/connection-scope';
+
+type ConnectionStates = ReadonlyMap<string, { connection: { status: string } }>;
+
 export type LibrarySession = WorkspaceTarget & {
   sessionId: string; session: Session; status: SessionStatus; serverName: string; preview?: string;
   current: boolean; favorite: boolean;
 };
-export function connectedConnections(connections: ConnectionRecord[], snapshots: Record<string, WorkspaceSnapshot>) {
-  const primaryByConnection = new Map<string, WorkspaceSnapshot>();
-  for (const [key, snapshot] of Object.entries(snapshots)) {
-    const [connectionId] = JSON.parse(key) as [string, string];
-    if (!primaryByConnection.has(connectionId)) primaryByConnection.set(connectionId, snapshot);
-  }
-  return connections.filter((entry) => {
-    const primary = primaryByConnection.get(entry.id);
-    return Boolean(entry.enabled && primary?.values.connectionValue.connection.status === 'connected');
-  });
+export function connectedConnections(connections: ConnectionRecord[], lifecycles: ConnectionStates) {
+  return connections.filter((entry) => entry.enabled && lifecycles.get(entry.id)?.connection.status === 'connected');
 }
-export function librarySessions(connections: ConnectionRecord[], snapshots: Record<string, WorkspaceSnapshot>, focus?: WorkspaceTarget) {
+export function librarySessions(connections: ConnectionRecord[], snapshots: Record<string, WorkspaceSnapshot>, lifecycles: ConnectionStates, focus?: WorkspaceTarget) {
   const rows = new Map<string, LibrarySession>();
   const runtimesByConnection = new Map<string, WorkspaceSnapshot[]>();
   for (const [key, runtime] of Object.entries(snapshots)) {
@@ -27,7 +22,7 @@ export function librarySessions(connections: ConnectionRecord[], snapshots: Reco
     if (list) list.push(runtime);
     else runtimesByConnection.set(connectionId, [runtime]);
   }
-  const servers = connectedConnections(connections, snapshots);
+  const servers = connectedConnections(connections, lifecycles);
   const nameCounts = new Map<string, number>();
   for (const entry of servers) nameCounts.set(entry.name, (nameCounts.get(entry.name) ?? 0) + 1);
   for (const entry of servers) {

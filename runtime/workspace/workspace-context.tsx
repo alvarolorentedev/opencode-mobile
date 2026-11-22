@@ -2,6 +2,7 @@ import type { Session } from '@/shared/protocol/opencode/types';
 import type { useWorkspaceConnections } from '@/runtime/workspace/use-workspace-connections';
 import type { NewWorktreeChatResult, NewWorktreeChatTarget, WorkspaceCatalog, WorkspaceTarget } from '@/shared/contracts/workspace';
 import type { SharedInput } from '@/features/sharing/index';
+import type { ConnectionContextValue } from '@/features/connections/index';
 import { createContext, useCallback, useContext, useMemo } from 'react';
 import type { MissionOverview } from '@/features/sessions/runtime';
 import { useAppCore, useAppStore } from '@/runtime/core/context';
@@ -14,6 +15,7 @@ export type WorkspaceRegistry = ReturnType<typeof useWorkspaceConnections> & {
   inspectionTarget?: WorkspaceTarget;
   inspect: (target: WorkspaceTarget) => Promise<void>;
   sharedInput: SharedInput;
+  connectionControls: Pick<ConnectionContextValue, 'connectionProfiles' | 'connectSetup' | 'services'>;
   catalogs: Record<string, WorkspaceCatalog>;
   mission: MissionOverview;
 };

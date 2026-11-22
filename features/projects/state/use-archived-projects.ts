@@ -6,19 +6,14 @@ import { resolveProjectLocation } from '@/shared/protocol/services/session-servi
 import { getConnectionScope } from '@/shared/contracts/connection-scope';
 import { connectionQueryKey } from '@/shared/server-data/keys';
 import { useWorkspaces } from '@/runtime/workspace';
+import { useConnectionLifecycle } from '@/runtime/core';
 import { archivedProjectsOptions } from '@/features/projects/services/queries/catalog';
 
 export function useArchivedProjects(connectionId: string | undefined, enabled: boolean) {
   const registry = useWorkspaces();
   const cache = useQueryClient();
   const entry = useMemo(() => registry.connections.find((connection) => connection.id === connectionId), [connectionId, registry.connections]);
-  const contract = useMemo(() => {
-    for (const [key, snapshot] of Object.entries(registry.snapshots)) {
-      const [id] = JSON.parse(key) as string[];
-      if (id === connectionId) return snapshot.values.connectionValue.serverCapabilities.contract;
-    }
-    return 'v2' as const;
-  }, [connectionId, registry.snapshots]);
+  const { contract } = useConnectionLifecycle(connectionId);
   const identity = useMemo(() => entry ? {
     connectionId: entry.id,
     connectionScope: getConnectionScope(entry.settings),

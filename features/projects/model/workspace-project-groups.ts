@@ -44,6 +44,7 @@ type ProjectSnapshotValues = {
 export function buildWorkspaceProjectGroups(
   connections: readonly ConnectionRecord[],
   snapshots: Record<string, WorkspaceSnapshot>,
+  lifecycles: ReadonlyMap<string, { connection: { status: string }; contract: 'v1' | 'v2' }>,
 ): WorkspaceServerGroup[] {
   const byConnection = new Map<string, WorkspaceSnapshot[]>();
   for (const [key, snapshot] of Object.entries(snapshots)) {
@@ -58,6 +59,7 @@ export function buildWorkspaceProjectGroups(
   // reconnected without appearing in settings or project selectors.
   return connections.map((entry) => {
     const runtimes = byConnection.get(entry.id) ?? [];
+    const lifecycle = lifecycles.get(entry.id);
     // The server catalog is the list, like the web client. Retained runtimes
     // for directories the server no longer reports must not become rows.
     // Until any runtime on the connection reports a catalog, keep the active
@@ -127,7 +129,8 @@ export function buildWorkspaceProjectGroups(
       id: entry.id,
       name: entry.name,
       enabled: entry.enabled,
-      status: runtimes[0]?.values.connectionValue.connection.status ?? 'idle',
+      status: lifecycle?.connection.status ?? 'idle',
+      contract: lifecycle?.contract ?? 'v2',
       projects: [...byRoot.values()].sort((left, right) => compareLabels(left.label, right.label)),
     };
   }).filter((group) => group.enabled && group.status === 'connected');
