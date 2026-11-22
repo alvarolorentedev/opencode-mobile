@@ -63,33 +63,25 @@ Zustand is an approved dependency for this role. Redux, Redux Toolkit and XState
 - [x] Add core/store/Query and session-catalog integration harness tests.
 - [x] Update the state, boundary and runtime guidance.
 
-## Accepted boundaries
+## Open follow-ups
 
-The state-tier plan is complete. The following are deliberate final boundaries,
-not unfinished work. Reopen one only with a concrete product or performance need
-and a full browser-suite budget.
+The state-ownership work is complete; the orchestration target is not. These
+items remain open and require their own focused pass with the full browser suite.
 
-- **The per-workspace composition is the command adapter.** It is headless,
-  publishes memoized domain values, and is covered by the runtime and browser
-  suites. A separate non-React command core has no second consumer today; the
-  cost of explicit ports for prompt, session and project actions is not justified
-  without one.
-- **SSE, renewal and probe effects stay in React.** The state machine is a plain
-  manager; the effects depend on Query identity, AppState and translated copy and
-  are already isolated in `useConnectionLifecycle`. A manager with no non-React
-  consumer would add an indirection without removing the lifecycle.
-- **Messages, diffs and todos use connection-scoped Query maps.** This is the
-  final retained shape: bounded per connection, one writer, Query-owned, and
-  covered by the chat, realtime and diff flows. Per-session infinite queries were
-  evaluated and rejected for this app because they multiply cache keys and
-  retention policy without a demonstrated profile gain.
-- **The existing scoped caches are the retention policy.** They are media-aware,
-  TTL-bounded, and keyed by connection and project. Query persistence would
-  duplicate that policy and risk cold-start flashes, so it is not adopted.
-- **`loadTs` migrates on touch.** It remains only in legacy suites; new tests use
-  native imports and `vi.mock` at platform boundaries. A big-bang rewrite would
-  risk the behavioral contract for no state-layer gain.
-- **The full headless composition harness is optional.** The core, store, Query
-  and session-catalog seams have integration tests; a full composition harness
-  belongs with the command-core change above.
+- [ ] Move probe, renewal, SSE, polling and status refresh into a plain
+  connection manager and remove the per-connection React runtime.
+- [ ] Extract prompt, session and workspace commands from
+  `use-opencode-provider-composition.ts` into plain functions with explicit
+  ports; remove `eventActionsRef` and the composition.
+- [ ] Move canonical messages to per-session infinite queries with a
+  store-backed live overlay and an explicit retention policy.
+- [ ] Adopt Query persistence and remove the custom session/transcript caches,
+  or record a measured decision to keep them.
+- [ ] Migrate `loadTs` suites to native imports and add `fast-check` invariants.
+- [ ] Add the full fake-server composition harness (connect, project, session,
+  prompt, SSE, reconnect, scope switch).
+- [ ] Add the fact/command guardrails and an impact script.
 
+A connection-manager extraction was attempted on 2026-11-22 and reverted after
+it regressed live renewal across panel reopening; that flow must stay green
+before the manager lands.
