@@ -17,7 +17,7 @@ type ProjectPresentationInput = Pick<ProjectsContextValue, 'addProject' | 'refre
 export function useProjectPresentation({
   addProject, refreshProjectCatalog,
   refreshServerFeatures, selectedProjectFile, openProjectFile, saveProjectFile, closeProjectFile, downloadProjectFile,
-  browser, projectFileStatuses, vcsInfo, worktrees, refreshWorktrees, removeWorktree,
+  browser, projectFileStatuses, vcsInfo,
 }: ProjectPresentationInput) {
   const projectsValue = useMemo(() => ({
     addProject, refreshProjectCatalog,
@@ -28,7 +28,7 @@ export function useProjectPresentation({
     selected: selectedProjectFile, open: openProjectFile, save: saveProjectFile, close: closeProjectFile, download: downloadProjectFile,
   }), [selectedProjectFile, openProjectFile, saveProjectFile, closeProjectFile, downloadProjectFile]);
   const projectFilesValue = useMemo<ProjectFilesContextValue>(() => ({
-    browser, projectFileStatuses, projectFile, vcsInfo, worktrees, refreshWorktrees, removeWorktree,
-  }), [browser, projectFileStatuses, projectFile, vcsInfo, worktrees, refreshWorktrees, removeWorktree]);
+    browser, projectFileStatuses, projectFile, vcsInfo,
+  }), [browser, projectFileStatuses, projectFile, vcsInfo]);
   return { projectsValue, projectFilesValue };
 }

@@ -312,10 +312,16 @@ npm run validate:commit
   The commit gate passed with 1,283 tests and one existing skip. All 99 focused
   tests and 55 browser flows across Projects, Sessions, share, multi-server,
   Mission Control, Chat and Terminal passed.
-- E19. Session navigation and creation call the core directly. The library
+- E19, `cf3d3463`. Session navigation and creation call the core directly. The library
   drives its catalog polling gate from actual visibility. The commit gate
   passed with 1,283 tests and one existing skip. All 100 focused tests and the
   full 185-flow browser suite passed.
+- E20. Worktree views bind to the project scope. The catalog demand test
+  exercises the new read owner with the same inactive and active assertions.
+  The final commit gate passed with 1,283 tests and one existing skip, and all
+  101 focused tests passed. All 81 affected browser flows passed before the
+  catalog read extraction. All 15 Projects and Terminal flows passed on the
+  final build.
 
 ## Loop protocol
 

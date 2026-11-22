@@ -214,7 +214,6 @@
       "useProjectCatalogActions",
       "useProjectFileActions",
       "useProjectRuntimeState",
-      "useWorktreeState",
       "vcsInfoOptions"
     ],
     "features/notifications/runtime.ts": [

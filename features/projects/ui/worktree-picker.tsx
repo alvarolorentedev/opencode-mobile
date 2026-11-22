@@ -11,7 +11,6 @@ import { useTranslation } from 'react-i18next';
 import { View } from 'react-native';
 
 import { usePalette } from '@/shared/ui/theme/use-palette';
-import { useProjectFiles } from '@/features/projects/context';
 import { useProjectCheckouts } from '@/features/projects/state/use-project-checkouts';
 import { useWorkspaces } from '@/runtime/workspace';
 
@@ -20,8 +19,7 @@ export function WorktreeSwitcher({ onClose }: { onClose: () => void }) {
   const { t } = useTranslation();
   const palette = usePalette();
   const registry = useWorkspaces();
-  const { activeProject, checkouts, activeCheckout, worktrees } = useProjectCheckouts();
-  const { refreshWorktrees, removeWorktree } = useProjectFiles();
+  const { activeProject, checkouts, activeCheckout, worktrees, refreshWorktrees, removeWorktree } = useProjectCheckouts();
   const [managing, setManaging] = useState(false);
   const [busy, setBusy] = useState<string>();
   const [error, setError] = useState<string>();

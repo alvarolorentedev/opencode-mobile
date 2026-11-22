@@ -3,8 +3,7 @@ import type { ScopedOpencodeClient } from '@/shared/protocol/opencode/client';
 import type { CachedCapabilities } from '@/features/ai/index';
 import { hydrateCapabilitiesSnapshot, persistCapabilitiesSnapshot , getConfiguredProviderIds , agentsOptions , capabilitiesOptions } from '@/features/ai/runtime';
 import { commandsOptions, configurationOptions, referencesOptions, skillsOptions } from '@/shared/server-data/catalogs';
-import { fileStatusOptions, vcsInfoOptions , locationOptions, projectsOptions } from '@/features/projects/runtime';
-import { combineProjectCatalog } from '@/shared/protocol/services/session-service';
+import { fileStatusOptions, vcsInfoOptions } from '@/features/projects/runtime';
 import { useQueries, useQueryClient } from '@tanstack/react-query';
 import { useCallback, useEffect, useMemo } from 'react';
 
@@ -20,12 +19,6 @@ export function useWorkspaceServerData(identity: QueryIdentity, client: ScopedOp
   const [agents] = useQueries({ queries: [{ ...agentsOptions(identity, client), enabled }].filter(() => demanded) });
   const [skills] = useQueries({ queries: [{ ...skillsOptions(identity, client), enabled }].filter(() => demanded) });
   const [references] = useQueries({ queries: [{ ...referencesOptions(identity, client), enabled }].filter(() => demanded) });
-  // The project catalog is connection-wide and tiny. Its observers stay
-  // mounted even when this runtime is not demanded so a connection-level
-  // connection probe's warm fetch is visible to pickers and sheets
-  // without waking the runtime's heavier queries.
-  const [projects] = useQueries({ queries: [{ ...projectsOptions(identity, client), enabled: active }] });
-  const [location] = useQueries({ queries: [{ ...locationOptions(identity, client), enabled: active }] });
   const [commands] = useQueries({ queries: [{ ...commandsOptions(identity, client), enabled }].filter(() => demanded) });
   const [statuses] = useQueries({ queries: [{ ...fileStatusOptions(identity, client), enabled }].filter(() => demanded) });
   const [vcs] = useQueries({ queries: [{ ...vcsInfoOptions(identity, client), enabled }].filter(() => demanded) });
@@ -36,7 +29,6 @@ export function useWorkspaceServerData(identity: QueryIdentity, client: ScopedOp
       providers: discovery?.data.providers.map((provider) => ({ ...provider, configured: provider.configured || ids.has(provider.id) })),
       agents: agents?.data ?? EMPTY, skills: skills?.data?.items ?? EMPTY, references: references?.data ?? EMPTY };
   }, [discovery?.data, configuration?.data, agents?.data, skills?.data, references?.data]);
-  const catalog = useMemo(() => projects?.data && location?.data ? combineProjectCatalog(client, projects?.data, location?.data) : undefined, [client, projects?.data, location?.data]);
   useEffect(() => {
     const path = client.__opencode.directory;
     if (!path || !demanded || identity.authRevision > 0) return;
@@ -79,8 +71,6 @@ export function useWorkspaceServerData(identity: QueryIdentity, client: ScopedOp
     providerAuthMethodsById: capabilities?.providerAuthMethodsById ?? EMPTY_METHODS,
     availableModels: capabilities?.models ?? EMPTY, availableAgents: capabilities?.agents ?? EMPTY,
     availableSkills: capabilities?.skills ?? EMPTY, availableReferences: capabilities?.references ?? EMPTY,
-    serverProjects: catalog?.serverProjects ?? EMPTY,
-    currentProjectPath: catalog?.currentProjectPath, serverRootPath: catalog?.serverRootPath,
     commands: commands?.data ?? EMPTY,
     projectFileStatuses: statuses?.data ?? EMPTY, vcsInfo: vcs?.data,
   };

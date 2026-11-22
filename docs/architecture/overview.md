@@ -380,8 +380,9 @@ The completion version, preference schema and first-run migration are unchanged.
 - `features/sessions/state/use-permission-rules-state.ts`
   V2 saved "always allow" rules: list, refresh, and remove, connection-scoped
   like the rest of the provider state.
-- `features/projects/state/use-worktree-state.ts`
-  Project-scoped worktree inventory, owning project identity, and guarded lifecycle actions.
+- `features/projects/state/use-project-inventory.ts` and
+  `features/projects/state/use-worktree-actions.ts`
+  Scoped catalog and worktree reads with guarded checkout actions.
 - `features/sessions/state/use-active-sessions.ts`
   Connection-wide running/recent session snapshot for the Chat Library. One
   runtime per connection owns the read; the shell shares the resulting sessions

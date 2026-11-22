@@ -4,7 +4,7 @@ import { memo, useCallback, useEffect, useLayoutEffect, useMemo, type Dispatch, 
 import { buildClient, type OpencodeConnectionSettings } from '@/shared/protocol/opencode/client';
 import { getActiveSessions, MAX_ACTIVE_SESSIONS, useApprovalsCatalog, useSessionCatalog, useSessionExecutionActions, useSessionPreviews } from '@/features/sessions/runtime';
 import { useConnectionRuntime } from '@/runtime/connections/connection-runtime';
-import { useProjectPresentation, useWorktreeState } from '@/features/projects/runtime';
+import { useProjectPresentation } from '@/features/projects/runtime';
 import { useActivityNotifications } from '@/features/notifications/runtime';
 import { useCapabilitiesActions, useCapabilitiesPresentation } from '@/features/ai/runtime';
 import { useConversationState } from '@/features/voice/runtime';
@@ -136,7 +136,6 @@ export const RetainedProject = memo(function RetainedProject({ defaults, updateS
     if (!sessionId) return;
     await refreshInboxMessages(sessionId, false).catch(() => undefined);
   }, [refreshInboxMessages, state.currentSessionId]);
-  const worktree = useWorktreeState({ ...domain, client, isCurrentClient, connected: state.connection.status === 'connected' });
   const activeSessions = useMemo(() => getActiveSessions({
     sessions: catalog.sessions,
     statuses: catalog.statuses,
@@ -295,7 +294,7 @@ export const RetainedProject = memo(function RetainedProject({ defaults, updateS
   });
 
   const capabilitiesValue = useCapabilitiesPresentation(serverData, capabilities);
-  const { projectsValue, projectFilesValue } = useProjectPresentation({ ...domain, ...project, ...worktree });
+  const { projectsValue, projectFilesValue } = useProjectPresentation({ ...domain, ...project });
   const conversationValue = useMemo<WorkspaceValues['conversationValue']>(() => ({
     conversation, clearConversationFeedback, toggleConversationMode,
   }), [conversation, clearConversationFeedback, toggleConversationMode]);

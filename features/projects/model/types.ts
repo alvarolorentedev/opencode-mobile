@@ -60,7 +60,4 @@ export type ProjectFilesContextValue = {
     download: (path: string, signal?: AbortSignal) => Promise<void>;
   };
   vcsInfo?: VcsInfo;
-  worktrees: WorktreeCatalog;
-  refreshWorktrees: () => Promise<void>;
-  removeWorktree: (directory: string) => Promise<void>;
 };

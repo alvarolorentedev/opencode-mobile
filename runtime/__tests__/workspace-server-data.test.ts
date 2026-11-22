@@ -43,7 +43,9 @@ describe('retained workspace query demand', () => {
     let active = true;
     let restore!: (value: any, timestamp: number) => void;
     const cache = queryRuntime(driver.react).useQueryClient() as QueryClient;
-    const { useWorkspaceServerData } = await loadTs('runtime/composition/use-workspace-server-data.ts', {
+    const { useWorkspaceServerData, useProjectCatalogReads } = await loadTs([
+      'runtime/composition/use-workspace-server-data.ts', 'features/projects/state/use-project-inventory.ts',
+    ], {
     react: driver.react,
     "@/shared/protocol/opencode/agent-option": { toAgentOption: (value: unknown) => value },
     "@/features/ai/model/opencode-model-selection": { getConfiguredProviderIds: () => new Set() },
@@ -54,7 +56,10 @@ describe('retained workspace query demand', () => {
     "@/features/ai/services/capabilities-snapshot": { hydrateCapabilitiesSnapshot: async (_scope: string, _path: string, apply: typeof restore) => { restore = apply; }, persistCapabilitiesSnapshot: async () => {} }
   });
     const current = () => true;
-    driver.mount(() => useWorkspaceServerData(identity, client, true, current, active), {});
+    driver.mount(() => {
+      useProjectCatalogReads({ identity, client, connected: true, queryActive: active });
+      return useWorkspaceServerData(identity, client, true, current, active);
+    }, {});
     await driver.settle();
     expect(reads.map((read) => read.mock.calls.length)).toEqual(reads.map(() => 1));
     restore({ providers: [], models: [{ id: 'disk' }], connected: [], agents: [], providerAuthMethodsById: {} }, 123);

@@ -41,6 +41,8 @@ then creates and opens the chat in the returned checkout.
 Project headers and pickers derive their rows from the scoped location,
 connection catalog, worktree and VCS Query entries. The app store supplies
 the selected directory and the connection manager supplies its lifecycle.
+The worktree picker binds its refresh and remove actions to the same scoped
+client as its Query reads.
 
 Navigation, the share picker and Chat Library read project and session
 selection from the app store. Session presentation selects the active row

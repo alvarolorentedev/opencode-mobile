@@ -96,7 +96,7 @@ describe('multi-server contracts', () => {
     };
     const connectionControls = { connectionProfiles: [], connectSetup: {}, services: {} };
     const lifecycle = { connection: { status: 'connected' }, contract: 'v2' };
-    const projectInventory = { activeProjectPath: '/repo', projects: [] };
+    const projectInventory = { project: { activeProjectPath: '/repo', projects: [] } };
     const projectSessions = [{ id: 's' }];
     const sessionCatalog = { sessions: projectSessions, sessionStatuses: {} };
     const { useConnection, useProjects, useCurrentSession, useSessionLibrary, useOnboarding, useChat } = await loadTs([
