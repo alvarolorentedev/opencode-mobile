@@ -1,4 +1,5 @@
 import type { Dispatch, SetStateAction } from 'react';
+import type { QueryIdentity } from '@/shared/server-data/keys';
 
 import type { OpencodeConnectionSettings, ScopedOpencodeClient, ServerContract } from '@/shared/protocol/opencode/client';
 
@@ -9,6 +10,8 @@ import type { FileDiff, Todo } from '@/shared/protocol/opencode/types';
 import type { DiffScope, TranscriptReadOptions } from '@/shared/contracts/domain';
 
 export type ProjectActionsInput = {
+  identity: QueryIdentity;
+  queryActive: boolean;
   scopeKey: string;
   fileClipboard?: import('@/features/projects/state/use-file-clipboard').FileClipboard;
   connectionId: string;
@@ -46,12 +49,12 @@ export type ProjectActionsInput = {
 // inputs above are the composition contracts used by the provider wiring; these
 // aliases keep sub-hooks from silently depending on unrelated setters and refs.
 export type ProjectCatalogInput = Pick<ProjectActionsInput,
-  'connected' | 'client' | 'catalogClient' | 'isCurrentClient' | 'isCurrentCatalogClient' | 'activeProjectPath' |
+  'identity' | 'queryActive' | 'connected' | 'client' | 'catalogClient' | 'isCurrentClient' | 'isCurrentCatalogClient' | 'activeProjectPath' |
   'setActiveProjectPath' | 'activeProjectPathRef' | 'clearProjectState' |
   'connectionScope' | 'connectionScopeRef' | 'isHydrated' | 'scopeGenerationRef' | 'serverContract' | 'settingsRef'>;
 
 export type ProjectFileInput = Pick<ProjectActionsInput,
-  'scopeKey' | 'fileClipboard' | 'connectionId' | 'connected' | 'client' | 'isCurrentClient' | 'activeProjectPath' |
+  'identity' | 'queryActive' | 'scopeKey' | 'fileClipboard' | 'connectionId' | 'connected' | 'client' | 'isCurrentClient' | 'activeProjectPath' |
   'projectFileRequestRef' | 'currentSessionIdRef' |
   'readDiffScope' | 'settingsRef' | 'refreshServerFeatures'> & {
   refreshVcsDiff: (scope: 'uncommitted' | 'branch', silent?: boolean) => Promise<unknown>;

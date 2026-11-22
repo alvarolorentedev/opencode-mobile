@@ -220,11 +220,16 @@ npm run validate:commit
   created the terminal and retained its output and single WebSocket connection
   across tab switches. The commit gate passed with 1,280 tests and one existing
   skip, and all 12 Terminal and multi-server browser flows passed.
-- E2b. A server URL edit changes focus and retires the previous project
+- E2b, `c7f8ea93`. A server URL edit changes focus and retires the previous project
   projection in one store update. The Settings and Terminal panes resolve their
   own ready keys. The commit gate passed with 1,281 tests and one existing
   skip. The 26 focused Vitest cases, web export and all 104 connection,
   Settings, multi-server, project, session and Terminal browser flows passed.
+- E3. Connection, transcript, file and catalog hooks receive the exact Query
+  identity and demand through arguments. The app keeps one Query provider
+  and subscribes to foreground changes through the focus manager. The commit
+  gate passed with 1,281 tests and one existing skip. The 86 focused Vitest
+  cases, web export and all 72 affected browser flows passed.
 
 ## Loop protocol
 

@@ -9,7 +9,6 @@ import { createFullFilePatch } from '@/shared/protocol/opencode/project-patch';
 import { saveOrShareProjectFile } from '@/features/projects/services/project-file-download';
 import type { ProjectFileInput } from '@/features/projects/model/action-inputs';
 import { fileStatusOptions, vcsInfoOptions } from '@/features/projects/services/queries/status';
-import { useQueryActivity, useQueryIdentity } from '@/shared/server-data/client';
 import { searchOptions } from '@/features/projects/services/queries/files';
 import { projectQueryKey } from '@/shared/server-data/keys';
 import { healthOptions, mcpOptions } from '@/shared/server-data/diagnostics';
@@ -20,6 +19,8 @@ import { useProjectEntryActions } from '@/features/projects/state/use-project-en
 import { useQueries, useQueryClient } from '@tanstack/react-query';
 
 export function useProjectFileActions({
+  identity,
+  queryActive: active,
   scopeKey,
   fileClipboard, connectionId, connected,
   client,
@@ -32,8 +33,6 @@ export function useProjectFileActions({
   refreshServerFeatures,
 }: ProjectFileInput) {
   const cache = useQueryClient();
-  const identity = useQueryIdentity();
-  const active = useQueryActivity();
   const { store } = useAppCore();
   const owner = useMemo(() => Symbol(client.__opencode.directory), [client]);
   const selectedPath = useAppStore((state) => state.workspaceUi[scopeKey]?.preview);
@@ -46,7 +45,7 @@ export function useProjectFileActions({
   const [diagnosticMcp] = useQueries({ queries: [{ ...mcpOptions(identity, client), enabled: diagnosticsRequested }].filter(() => active) });
   const diagnostics = useMemo<Diagnostics | undefined>(() => health?.data ? { health: health?.data, mcp: diagnosticMcp?.error
     ? { available: false, error: diagnosticMcp?.error.message } : { available: true, data: diagnosticMcp?.data ?? {} } } : undefined, [health?.data, diagnosticMcp?.data, diagnosticMcp?.error]);
-  const directoryBrowser = useProjectBrowser({ scopeKey, client, isCurrentClient });
+  const directoryBrowser = useProjectBrowser({ scopeKey, client, identity, isCurrentClient, queryActive: active });
   const setSelectedProjectFile = useCallback((file: import('@/shared/protocol/opencode/project-file').ProjectFile) => {
     cache.setQueryData(projectQueryKey(identity, client, 'preview', file.path), file);
   }, [cache, client, identity]);
@@ -58,7 +57,7 @@ export function useProjectFileActions({
     const scope = readDiffScope(currentSessionIdRef.current || '');
     if (scope === 'uncommitted' || scope === 'branch') await refreshVcsDiff(scope, true);
   }, [client, currentSessionIdRef, readDiffScope, directoryBrowser, isCurrentClient, refreshVcsDiff, cache, identity]);
-  const actions = useProjectEntryActions({ scopeKey, client, isCurrentClient, connectionId, clipboard: fileClipboard, refresh: refreshEntries, enabled: connected });
+  const actions = useProjectEntryActions({ scopeKey, client, identity, isCurrentClient, connectionId, clipboard: fileClipboard, refresh: refreshEntries, enabled: connected });
   const browser = useMemo(() => ({ ...directoryBrowser, actions }), [directoryBrowser, actions]);
 
   const searchProjectFiles = useCallback(async (query: string) => {

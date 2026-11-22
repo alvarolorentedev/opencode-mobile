@@ -455,6 +455,7 @@ it('reads the shared active-session catalog only for the owning runtime', async 
     "@/shared/protocol/services/session-service": { listSessions }
   });
   driver.mount((props: any) => useActiveSessions(props), {
+    identity: { connectionId: 'test', connectionScope: 'scope', authRevision: 0 },
     catalogClient: { __opencode: { contract: 'v2', directory: '' } },
     connected: false, currentSessionId: undefined, hideSubagentChats: false, visible: false,
   });

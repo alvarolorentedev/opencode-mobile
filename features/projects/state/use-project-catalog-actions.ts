@@ -5,11 +5,12 @@ import type { ProjectCatalogInput } from '@/features/projects/model/action-input
 import type { ProjectCatalog } from '@/shared/contracts/domain';
 import { fetchProjectCatalog } from '@/features/projects/services/queries/catalog';
 import { telemetry } from '@/shared/observability/client';
-import { useQueryActivity, useQueryIdentity } from '@/shared/server-data/client';
 import { isKnownProjectLocation as svcIsKnownProjectLocation, resolveProjectLocation as svcResolveProjectLocation } from '@/shared/protocol/services/session-service';
 import { useQueryClient } from '@tanstack/react-query';
 
 export function useProjectCatalogActions({
+  identity,
+  queryActive: active,
   client,
   connected,
   catalogClient,
@@ -25,9 +26,7 @@ export function useProjectCatalogActions({
   serverContract,
   settingsRef,
 }: ProjectCatalogInput) {
-  const active = useQueryActivity();
   const cache = useQueryClient();
-  const identity = useQueryIdentity();
   // Runtime refreshes use the scoped client so `location.get` reports that
   // runtime's directory/worktree. Connect probes still use the catalog client.
   const isCurrent = useCallback((candidate: ScopedOpencodeClient) => (

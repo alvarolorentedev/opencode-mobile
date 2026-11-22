@@ -45,6 +45,7 @@ export type ProjectBindingInput = {
   servicesValue: ConnectionContextValue['services'];
   isHydrated: boolean;
   visible: boolean;
+  demanded: boolean;
   isConnectionOwner: boolean;
 };
 

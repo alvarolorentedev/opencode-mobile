@@ -13,14 +13,14 @@ import { getConfiguredProviderIds, getInitialMode, getVisibleModels, reconcileEn
 import type { ChatPreferences } from '@/shared/preferences/opencode-preferences';
 import type { ProviderOption } from '@/features/ai/model/types';
 import { skipToken, useQuery, useQueryClient } from '@tanstack/react-query';
-import { useQueryIdentity } from '@/shared/server-data/client';
-import { projectQueryKey } from '@/shared/server-data/keys';
+import { projectQueryKey, type QueryIdentity } from '@/shared/server-data/keys';
 import { CLASSIFIER_PROBE_STALE_MS, probeServerClassifier, type ServerClassifierStatus } from '@/features/ai/services/model-routing-service';
 
 const CLASSIFIER_QUERY_META = { retainOnCredentialRenewal: false };
 type ClassifierResult = Awaited<ReturnType<typeof probeServerClassifier>>;
 
 type CapabilitiesActionsInput = {
+  identity: QueryIdentity;
   scopeKey: string;
   isHydrated: boolean;
   client: ScopedOpencodeClient;
@@ -37,6 +37,7 @@ type CapabilitiesActionsInput = {
 };
 
 export function useCapabilitiesActions({
+  identity,
   scopeKey,
   isHydrated,
   client,
@@ -49,7 +50,6 @@ export function useCapabilitiesActions({
   chatPreferences,
   setChatPreferences,
 }: CapabilitiesActionsInput) {
-  const identity = useQueryIdentity();
   const cache = useQueryClient();
   const { store } = useAppCore();
   const connectionScope = JSON.stringify([identity.connectionId, identity.connectionScope, identity.authRevision, activeProjectPath]);

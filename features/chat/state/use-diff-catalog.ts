@@ -1,7 +1,7 @@
+import type { QueryIdentity } from '@/shared/server-data/keys';
 import { useCallback, type Dispatch, type SetStateAction } from 'react';
 import { skipToken, useQuery, useQueryClient } from '@tanstack/react-query';
 
-import { useQueryIdentity } from '@/shared/server-data/client';
 import type { ScopedOpencodeClient } from '@/shared/protocol/opencode/client';
 import type { FileDiff, Todo } from '@/shared/protocol/opencode/types';
 
@@ -13,8 +13,7 @@ const EMPTY_VCS: Record<'uncommitted' | 'branch', FileDiff[]> = { uncommitted: [
 
 // Diffs, todos and VCS diffs are server facts. The refresh actions keep their
 // setter contract while Query becomes the only copy.
-export function useDiffCatalog(client: ScopedOpencodeClient) {
-  const identity = useQueryIdentity();
+export function useDiffCatalog(identity: QueryIdentity, client: ScopedOpencodeClient) {
   const queryClient = useQueryClient();
   const diffsQueryKey = diffsKey(identity, client);
   const todosQueryKey = todosKey(identity, client);

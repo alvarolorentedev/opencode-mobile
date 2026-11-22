@@ -1,13 +1,11 @@
+import type { QueryIdentity } from '@/shared/server-data/keys';
 import { removeSavedPermissionRule, type ScopedOpencodeClient } from '@/shared/protocol/opencode/client';
-import { useQueryActivity, useQueryIdentity } from '@/shared/server-data/client';
 import { useQueries, useQueryClient } from '@tanstack/react-query';
 import { useCallback, useMemo } from 'react';
 import { savedPermissionOptions } from '../services/queries';
 const EMPTY: never[] = [];
-export function usePermissionRulesState({ client, isCurrentClient }: { client: ScopedOpencodeClient; isCurrentClient: (client: object) => boolean }) {
+export function usePermissionRulesState({ client, identity, isCurrentClient, queryActive: active }: { client: ScopedOpencodeClient; identity: QueryIdentity; isCurrentClient: (client: object) => boolean; queryActive: boolean }) {
   const cache = useQueryClient();
-  const identity = useQueryIdentity();
-  const active = useQueryActivity();
   const options = useMemo(() => savedPermissionOptions(identity, client), [identity, client]);
   const { queryKey } = options;
   const [query] = useQueries({ queries: [{ ...options, enabled: false, subscribed: active }].filter(() => active) });

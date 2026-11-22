@@ -1,3 +1,4 @@
+import type { QueryIdentity } from '@/shared/server-data/keys';
 import { useCallback, useMemo } from 'react';
 
 import type { ScopedOpencodeClient } from '@/shared/protocol/opencode/client';
@@ -5,7 +6,6 @@ import type { ProjectWorktree } from '@/shared/protocol/opencode/project';
 import type { Project } from '@/shared/protocol/opencode/types';
 import { getProjectLabel } from '@/features/projects/model/project-utils';
 import { locationOptions, projectsOptions } from '@/features/projects/services/queries/catalog';
-import { useQueryActivity, useQueryIdentity } from '@/shared/server-data/client';
 import { worktreeOptions } from '@/features/projects/services/queries/files';
 import { createWorktree as svcCreateWorktree, listWorktrees as svcListWorktrees, removeWorktree as svcRemoveWorktree } from '@/features/projects/services/project-service';
 import { resolveProjectLocation } from '@/shared/protocol/services/session-service';
@@ -13,15 +13,15 @@ import { useQueries, useQueryClient } from '@tanstack/react-query';
 
 export type WorktreeCatalog = { entries: ProjectWorktree[]; project?: { id: string; root: string; label: string }; loading: boolean; error?: string };
 
-export function useWorktreeState({ client, isCurrentClient, serverProjects, connected }: {
+export function useWorktreeState({ client, identity, isCurrentClient, serverProjects, connected, queryActive: active }: {
+  identity: QueryIdentity;
+  queryActive: boolean;
   client: ScopedOpencodeClient;
   isCurrentClient: (candidate: object) => boolean;
   serverProjects: Project[];
   connected: boolean;
 }) {
   const cache = useQueryClient();
-  const identity = useQueryIdentity();
-  const active = useQueryActivity();
   const options = worktreeOptions(identity, client);
   const [query] = useQueries({ queries: [{ ...options, enabled: connected && active && Boolean(client.__opencode.directory), subscribed: active }].filter(() => active) });
   const worktrees = useMemo<WorktreeCatalog>(() => ({

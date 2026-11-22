@@ -1,7 +1,7 @@
+import type { QueryIdentity } from '@/shared/server-data/keys';
 import { useAppCore, useAppStore } from '@/runtime/core';
 import type { ScopedOpencodeClient } from '@/shared/protocol/opencode/client';
 import { projectPath, type ProjectFileEntry } from '@/shared/protocol/opencode/project';
-import { useQueryActivity, useQueryIdentity } from '@/shared/server-data/client';
 import { directoryOptions, searchOptions } from '@/features/projects/services/queries/files';
 import { projectParentPath } from '@/features/projects/model/project-utils';
 import { useQueries, useQueryClient } from '@tanstack/react-query';
@@ -12,10 +12,8 @@ export type ProjectBrowserState = {
   initialized: boolean; loading: boolean; searching: boolean; error?: string;
 };
 const EMPTY: never[] = [];
-export function useProjectBrowser({ scopeKey, client, isCurrentClient }: { scopeKey: string; client: ScopedOpencodeClient; isCurrentClient: (client: object) => boolean }) {
+export function useProjectBrowser({ scopeKey, client, identity, isCurrentClient, queryActive: active }: { scopeKey: string; client: ScopedOpencodeClient; identity: QueryIdentity; isCurrentClient: (client: object) => boolean; queryActive: boolean }) {
   const cache = useQueryClient();
-  const identity = useQueryIdentity();
-  const active = useQueryActivity();
   const { store } = useAppCore();
   const owner = useMemo(() => Symbol(client.__opencode.directory), [client]);
   const selection = useAppStore((state) => state.workspaceUi[scopeKey]?.browser);

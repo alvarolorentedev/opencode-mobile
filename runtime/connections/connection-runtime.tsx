@@ -9,7 +9,7 @@ import { NO_RETRY } from '@/runtime/connections/retry';
 import { useAppCore } from '@/runtime/core';
 import type { ConnectionLifecycle } from '@/features/connections/index';
 import { projectsOptions } from '@/features/projects/runtime';
-import { useQueryActivity, useQueryForeground, useQueryIdentity } from '@/shared/server-data/client';
+import { useConnectionQueryIdentity, useQueryForeground } from '@/shared/server-data/client';
 import { readSessionStats } from '@/shared/protocol/services/session-stats';
 import type { SessionStatsSource } from '@/shared/server-data/session-stats';
 import { useActiveSessions, useMissionActivity } from '@/features/sessions/runtime';
@@ -79,20 +79,20 @@ export function useConnectionRuntime(entry: ConnectionRecord, catalog = emptyCat
   return { ...lifecycle, catalogClient, catalog, isCurrentCatalogClient };
 }
 
-export function ConnectionCatalog({ entry, online, onCatalog, libraryVisible, missionVisible }: {
+export function ConnectionCatalog({ entry, online, onCatalog, libraryVisible, missionVisible, demanded }: {
   entry: ConnectionRecord;
   online: boolean;
   libraryVisible: boolean;
   missionVisible: boolean;
+  demanded: boolean;
   onCatalog: (entry: ConnectionRecord, catalog: WorkspaceCatalog) => void;
 }) {
   const lifecycle = useConnectionRuntime(entry);
   const { catalogClient } = lifecycle;
-  const identity = useQueryIdentity();
-  const active = useQueryActivity();
-  const sessions = useActiveSessions({ catalogClient, connected: entry.enabled && lifecycle.connection.status === 'connected', currentSessionId: undefined, hideSubagentChats: false, visible: active && libraryVisible });
-  const sessionCatalog = useMemo<WorkspaceCatalog>(() => ({ sessions: sessions.catalogSessions, statuses: sessions.catalogStatuses, refresh: sessions.refreshActiveSessions, removeSession: sessions.removeSession }), [sessions.catalogSessions, sessions.catalogStatuses, sessions.refreshActiveSessions, sessions.removeSession]);
+  const identity = useConnectionQueryIdentity(entry);
   const foreground = useQueryForeground();
+  const sessions = useActiveSessions({ identity, catalogClient, connected: entry.enabled && lifecycle.connection.status === 'connected', currentSessionId: undefined, hideSubagentChats: false, visible: demanded && entry.enabled && foreground && libraryVisible });
+  const sessionCatalog = useMemo<WorkspaceCatalog>(() => ({ sessions: sessions.catalogSessions, statuses: sessions.catalogStatuses, refresh: sessions.refreshActiveSessions, removeSession: sessions.removeSession }), [sessions.catalogSessions, sessions.catalogStatuses, sessions.refreshActiveSessions, sessions.removeSession]);
   const projects = useQuery({ ...projectsOptions(identity, catalogClient),
     enabled: entry.enabled && online && foreground && lifecycle.connection.status === 'connected' && lifecycle.serverContract === 'v2' }).data ?? EMPTY_PROJECTS;
   const knownDirectories = useMemo(() => projects.flatMap(({ worktree, sandboxes }) => [worktree, ...(sandboxes ?? [])]).filter(Boolean), [projects]);

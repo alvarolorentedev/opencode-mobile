@@ -54,7 +54,6 @@ async function mountTranscript(
   ], {
     react: runtime.react,
     '@tanstack/react-query': query,
-    '@/shared/server-data/client': { useQueryIdentity: () => identity },
     '@/shared/protocol/opencode/client': { withReadSignal: (value: object) => value },
     '@/runtime/core': {
       useAppCore: () => ({ store }),
@@ -84,6 +83,7 @@ async function mountTranscript(
   function useHarness() {
     const [, setIsRefreshingMessages] = runtime.react.useState(false);
     return useTranscriptState({
+      identity,
       scopeKey: 'transcript-test-workspace',
       client,
       isCurrentClient: () => true,

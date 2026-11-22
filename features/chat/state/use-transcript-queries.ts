@@ -3,7 +3,6 @@ import { useMemo, useSyncExternalStore } from 'react';
 
 import type { SessionMessageRecord } from '@/shared/presentation/format';
 import type { ScopedOpencodeClient } from '@/shared/protocol/opencode/client';
-import { useQueryIdentity } from '@/shared/server-data/client';
 import type { QueryIdentity } from '@/shared/server-data/keys';
 
 import { transcriptPrefix } from '../services/queries';
@@ -46,10 +45,8 @@ function observeRecentTranscripts(cache: QueryClient, identity: QueryIdentity, c
   };
 }
 
-export function useTranscriptQueries(client: ScopedOpencodeClient, currentSessionId?: string, conversationSessionId?: string) {
-  const { connectionId, connectionScope, authRevision } = useQueryIdentity();
+export function useTranscriptQueries(identity: QueryIdentity, client: ScopedOpencodeClient, currentSessionId?: string, conversationSessionId?: string) {
   const cache = useQueryClient();
-  const identity = useMemo(() => ({ connectionId, connectionScope, authRevision }), [authRevision, connectionId, connectionScope]);
   const access = useMemo(() => transcriptAccess(cache, identity, client), [cache, client, identity]);
 
   // The lifecycle reads the initial page or bounded tail explicitly. Enabling

@@ -105,6 +105,9 @@ entitlement recovery remain transactional Cloud Link state, outside Query.
 
 Only the currently visible Chat/Project, Settings inspection or Terminal target
 provides query demand; remembering a target does not keep it subscribed.
+Connection and project adapters pass the credential revision, identity and
+query demand into the owning hooks. Foreground subscribers read the Query focus
+manager directly. The app uses one Query provider for all scopes.
 Retained/background workspaces give `useQueries` an empty query list. This
 destroys observers and releases their held results; disabling a retained observer
 alone would still hold its last response. Optional surfaces subscribe after demand. AppState gates foreground reads;

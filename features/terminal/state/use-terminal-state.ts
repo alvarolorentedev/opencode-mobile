@@ -5,8 +5,7 @@ import { AppState } from 'react-native';
 import { useAppCore, useAppStore, type AppState as CoreState } from '@/runtime/core';
 import type { ScopedOpencodeClient, ServerContract } from '@/shared/protocol/opencode/client';
 import type { Pty } from '@/shared/protocol/opencode/types';
-import { useQueryIdentity } from '@/shared/server-data/client';
-import { projectQueryKey } from '@/shared/server-data/keys';
+import { projectQueryKey, type QueryIdentity } from '@/shared/server-data/keys';
 import { createTerminal as svcCreateTerminal, listTerminals, removeTerminal } from '@/features/terminal/services/terminal-service';
 import { createTerminalConnection, type TerminalConnectionContext } from '@/features/terminal/services/terminal-connection';
 import type { TerminalInstance, TerminalRenderer, TerminalRuntime } from '@/features/terminal/model/terminal-types';
@@ -14,7 +13,8 @@ import type { TerminalInstance, TerminalRenderer, TerminalRuntime } from '@/feat
 const EMPTY_TERMINALS: Pty[] = [];
 const EMPTY_INSTANCES: TerminalInstance[] = [];
 
-export function useTerminalState({ scopeKey, client, isCurrentClient, serverUrl, directory, serverContract, headers, rejectRedirects, enabled = true, online = true }: {
+export function useTerminalState({ scopeKey, identity, client, isCurrentClient, serverUrl, directory, serverContract, headers, rejectRedirects, enabled = true, online = true }: {
+  identity: QueryIdentity;
   scopeKey: string;
   client: ScopedOpencodeClient;
   isCurrentClient: (candidate: object) => boolean;
@@ -29,9 +29,8 @@ export function useTerminalState({ scopeKey, client, isCurrentClient, serverUrl,
   const { store } = useAppCore();
   const device = useAppStore((state) => state.terminal[scopeKey]);
   const { scope = 0, activeTerminalId, instances = EMPTY_INSTANCES } = device ?? {};
-  const { connectionId, connectionScope, authRevision } = useQueryIdentity();
   const cache = useQueryClient();
-  const key = useMemo(() => projectQueryKey({ connectionId, connectionScope, authRevision }, client, 'terminals'), [authRevision, client, connectionId, connectionScope]);
+  const key = useMemo(() => projectQueryKey(identity, client, 'terminals'), [client, identity]);
   const { data: terminals = EMPTY_TERMINALS } = useQuery<Pty[]>({ queryKey: key, queryFn: skipToken });
   const setDevice = useCallback((patch: Parameters<CoreState['setTerminalState']>[1]) => {
     store.getState().setTerminalState(scopeKey, patch);

@@ -8,7 +8,6 @@ import { ConnectionCatalog, useConnectionDemand, useConnectionRegistryBinding } 
 import { CURRENT_ONBOARDING_VERSION } from '@/features/onboarding/runtime';
 import { defaultChatPreferences } from '@/shared/preferences/opencode-preferences';
 import type { ConnectionContextValue } from '@/features/connections/index';
-import { ServerDataScope } from '@/shared/server-data/client';
 import { useAppUpdates } from '@/features/updates/runtime';
 import { UpdatesContext } from '@/features/updates/context';
 import { PreferencesContext } from '@/shared/preferences/context';
@@ -175,18 +174,15 @@ export function WorkspaceProvider({ children }: PropsWithChildren) {
   useConnectionDemand(readTarget?.connectionId, network.online);
   return <VoiceSetupTestContext.Provider value={voiceSetupTest}>
     <WorkspaceContext.Provider value={registry}>
-    {connections.map((entry) => <ServerDataScope key={entry.id} connection={entry} active={readTarget?.connectionId === entry.id}>
-      <ConnectionCatalog entry={entry} online={network.online} libraryVisible={pathname === '/' && focus?.connectionId === entry.id && Boolean(current?.libraryVisible)} missionVisible={pathname === MISSION_PATH} onCatalog={publishCatalog} />
-    </ServerDataScope>)}
+    {connections.map((entry) => <ConnectionCatalog key={entry.id} entry={entry} demanded={readTarget?.connectionId === entry.id} online={network.online} libraryVisible={pathname === '/' && focus?.connectionId === entry.id && Boolean(current?.libraryVisible)} missionVisible={pathname === MISSION_PATH} onCatalog={publishCatalog} />)}
     {connections.flatMap((entry) => entry.projects.map((path, index) => {
         const key = workspaceKey({ connectionId: entry.id, projectPath: path });
         const visible = focus?.connectionId === entry.id && (focus.projectPath === path || current === snapshots[key]);
         const demanded = readTarget?.connectionId === entry.id && (readTarget.projectPath === path || readTarget === focus && visible);
-        return <ServerDataScope key={key} connection={entry} active={demanded}><RetainedProject
+        return <RetainedProject key={key} demanded={demanded}
           connection={entry} catalog={catalogs[entry.id]} switchConnection={switchConnection} projectPath={path || undefined} shared={shared} network={network} defaults={shell.chatPreferences} isHydrated={isHydrated}
           visible={visible} isConnectionOwner={index === 0} connectSetup={connectSetup} connectionProfiles={connectionProfiles} servicesValue={servicesValue}
-          updateSettings={updateWorkspaceSettings} updatePreferences={manager.updatePreferences} publish={manager.publish} forget={manager.forget} />
-        </ServerDataScope>;
+          updateSettings={updateWorkspaceSettings} updatePreferences={manager.updatePreferences} publish={manager.publish} forget={manager.forget} />;
     }))}
     {current ? <UpdatesContext.Provider value={updates}>
       <PreferencesContext.Provider value={current.values.preferencesValue}>

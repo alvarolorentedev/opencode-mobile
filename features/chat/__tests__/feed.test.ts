@@ -12,6 +12,8 @@ import { handleProviderEvent } from '@/shared/protocol/opencode/event-dispatch';
 import { toTranscriptEntry } from '@/shared/presentation/format';
 import { isTranscriptDisplayMessage } from '@/shared/presentation/transcript';
 
+const identity = { connectionId: 'test', connectionScope: 'scope', authRevision: 0 };
+
 const native = vi.hoisted(() => ({ OS: 'ios', files: new Map<string, Uint8Array>(), shared: vi.fn(), released: vi.fn() }));
 const decodeSpy = vi.spyOn(base64, 'decode');
 vi.mock('expo/fetch', () => ({ fetch: (...args: any[]) => (globalThis.fetch as any)(...args) }));
@@ -145,6 +147,7 @@ describe('provider-owned prompt inbox', () => {
     "@/shared/utilities/error-message": { getErrorMessage: (error: unknown) => error instanceof Error ? error.message : String(error) }
   });
     runtime.mount(usePromptInbox, {
+      identity,
       client,
       queueScope: 'test-workspace',
       isCurrentClient: (candidate: any) => candidate === client,

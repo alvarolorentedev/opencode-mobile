@@ -2,7 +2,6 @@ import { skipToken, useQuery } from '@tanstack/react-query';
 import { useCallback, useLayoutEffect, useMemo, useState } from 'react';
 
 import { useAppCore, useAppStore } from '@/runtime/core';
-import { useQueryIdentity } from '@/shared/server-data/client';
 
 import { EMPTY_OUTBOX, EMPTY_SNAPSHOT, mergePrompts, type createPromptInboxCommands, type PromptInboxBinding, type PromptSnapshot } from '../services/prompt-inbox-commands';
 import { promptInboxKey } from '../services/queries';
@@ -10,19 +9,18 @@ import { promptInboxKey } from '../services/queries';
 type InboxActions = ReturnType<ReturnType<typeof createPromptInboxCommands>['actions']>;
 
 export function usePromptInbox({
-  client, queueScope, isCurrentClient, refreshMessages: readMessages, appendUserMessage, connected = true, online = true,
-}: Omit<PromptInboxBinding, 'identity' | 'readMessages' | 'scope'> & {
+  client, identity, queueScope, isCurrentClient, refreshMessages: readMessages, appendUserMessage, connected = true, online = true,
+}: Omit<PromptInboxBinding, 'readMessages' | 'scope'> & {
   queueScope: string;
   refreshMessages: PromptInboxBinding['readMessages'];
   connected?: boolean;
   online?: boolean;
 }) {
   const { commands } = useAppCore();
-  const { connectionId, connectionScope, authRevision } = useQueryIdentity();
   const [inbox] = useState(() => commands.prompt.createInbox());
   const binding = useMemo<PromptInboxBinding>(() => ({
-    client, identity: { connectionId, connectionScope, authRevision }, scope: queueScope, isCurrentClient, readMessages, appendUserMessage,
-  }), [appendUserMessage, authRevision, client, connectionId, connectionScope, isCurrentClient, queueScope, readMessages]);
+    client, identity, scope: queueScope, isCurrentClient, readMessages, appendUserMessage,
+  }), [appendUserMessage, client, identity, isCurrentClient, queueScope, readMessages]);
 
   useLayoutEffect(() => inbox.dispose, [inbox]);
   useLayoutEffect(() => { inbox.configure({ ...binding, connected, online }); }, [binding, connected, inbox, online]);

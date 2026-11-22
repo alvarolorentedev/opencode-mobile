@@ -23,6 +23,8 @@ Start only after Phase D is complete and green.
   project. The registry retains project projections. Focus changes when the
   requested projection is ready, including when a server URL edit replaces
   the connection identity.
+- Connection and project adapters pass Query identity and demand explicitly.
+  Query has one app-level provider.
 - `runtime/core/workspace-selectors.ts` selects the retained project projection.
 - [ADR 0052](../../adr/0052-explicit-overlay-dependencies.md) records explicit
   portal targets and update blocker callbacks. Shared controls use shared imports.

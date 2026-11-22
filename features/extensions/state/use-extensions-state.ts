@@ -1,3 +1,4 @@
+import type { QueryIdentity } from '@/shared/server-data/keys';
 import { useCallback, useMemo } from 'react';
 
 import { useAppCore, useAppStore } from '@/runtime/core';
@@ -6,7 +7,6 @@ import type { OpencodeConnectionSettings, ScopedOpencodeClient } from '@/shared/
 import type { ExtensionAgentDraft, ExtensionAgentRow, ExtensionCommandDraft, ExtensionCommandRow, ExtensionScope, ExtensionSkillDraft, ExtensionSkillRow, ExtensionSnapshot } from '@/shared/protocol/opencode/extensions/types';
 import type { McpLocalConfig, McpRemoteConfig } from '@/shared/protocol/opencode/types';
 import { configurationOptions, skillsOptions } from '@/shared/server-data/catalogs';
-import { useQueryActivity, useQueryIdentity } from '@/shared/server-data/client';
 import { extensionInspectionOptions, pluginsOptions } from '@/features/extensions/services/queries/extensions';
 import { readPluginGui } from '@/features/extensions/services/plugin-gui-service';
 import { isPluginGui, pluginGuiLabel } from '@/features/extensions/model/plugin-gui';
@@ -16,6 +16,8 @@ import { removeAgent, removeCommand, saveAgent, saveCommand } from '@/features/e
 import { useQueries, useQueryClient } from '@tanstack/react-query';
 
 type ExtensionsInput = {
+  identity: QueryIdentity;
+  queryActive: boolean;
   scopeKey: string;
   client: ScopedOpencodeClient;
   isCurrentClient: (candidate: object) => boolean;
@@ -23,14 +25,14 @@ type ExtensionsInput = {
 };
 
 export function useExtensionsState({
+  identity,
+  queryActive: active,
   scopeKey,
   client,
   isCurrentClient,
   settings,
 }: ExtensionsInput) {
   const cache = useQueryClient();
-  const identity = useQueryIdentity();
-  const active = useQueryActivity();
   const { store } = useAppCore();
   const requested = useAppStore((state) => state.workspaceUi[scopeKey]?.extensionsRequested ?? false);
   const busy = useAppStore((state) => state.workspaceUi[scopeKey]?.extensionMutation?.name);

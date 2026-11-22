@@ -4,6 +4,8 @@ import { projectPath } from '@/shared/protocol/opencode/project';
 import { EntryOperationError } from '@/shared/protocol/opencode/project-entry-operations';
 import { createAppStore, type AppState } from '@/runtime/core/store';
 
+const identity = { connectionId: 'test', connectionScope: 'scope', authRevision: 0 };
+
 const t = (key: string) => key;
 const file = { path: 'src/demo.ts', name: 'demo.ts', type: 'file' as const };
 const connection = (id = 'server', enabled = true, password = '') => ({ id, enabled, settings: { password } });
@@ -42,7 +44,7 @@ async function mount() {
   const isCurrentClient = () => current;
   runtime.mount(({ connections }: any) => {
     const clipboard = useFileClipboard(connections);
-    const useActions = (client: any, refresh: any) => useProjectEntryActions({ scopeKey: client.__opencode.directory, client, refresh, clipboard, connectionId: 'server', enabled: true, isCurrentClient });
+    const useActions = (client: any, refresh: any) => useProjectEntryActions({ identity, scopeKey: client.__opencode.directory, client, refresh, clipboard, connectionId: 'server', enabled: true, isCurrentClient });
     return { clipboard, a: useActions(clientA, refreshA), b: useActions(clientB, refreshB) };
   }, { connections: [connection()] });
   await runtime.value.a.probe(); await runtime.value.b.probe(); runtime.flush();

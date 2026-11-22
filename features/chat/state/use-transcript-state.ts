@@ -10,6 +10,7 @@ import { recordSessionUsageAndTodos } from '@/features/chat/model/session-ledger
 import { useLiveTranscript } from '@/features/chat/state/use-live-transcript';
 import { useTranscriptMetadata } from '@/features/chat/state/use-transcript-metadata';
 import { useTranscriptQueries } from '@/features/chat/state/use-transcript-queries';
+import type { QueryIdentity } from '@/shared/server-data/keys';
 import { coalesceRead } from '@/shared/protocol/opencode/in-flight';
 import { isV2Client } from '@/shared/protocol/opencode/contracts/contract';
 import { toMessageRecord } from '@/shared/protocol/opencode/v2/mappers';
@@ -38,6 +39,7 @@ function replaceMessageRecord(previous: SessionMessageRecord[], record: SessionM
 
 // Coordinates transcript reads and keeps usage and plan ledgers across paging.
 export function useTranscriptState({
+  identity,
   scopeKey,
   client,
   isCurrentClient,
@@ -46,6 +48,7 @@ export function useTranscriptState({
   activeProjectPath,
   setIsRefreshingMessages,
 }: {
+  identity: QueryIdentity;
   scopeKey: string;
   client: ScopedOpencodeClient;
   isCurrentClient: (candidate: object) => boolean;
@@ -58,9 +61,9 @@ export function useTranscriptState({
   const loadingOlderBySession = useAppStore((state) => state.transcriptUi[scopeKey]?.loadingOlderBySession ?? EMPTY_FLAGS);
   const hydratingSessionIds = useAppStore((state) => state.transcriptUi[scopeKey]?.hydratingSessionIds ?? EMPTY_FLAGS);
   const conversationSessionId = useAppStore((state) => state.conversation[scopeKey]?.sessionId);
-  const { access, messagesBySession, messageWindows } = useTranscriptQueries(client, currentSessionId, conversationSessionId);
+  const { access, messagesBySession, messageWindows } = useTranscriptQueries(identity, client, currentSessionId, conversationSessionId);
   const { read: readCanonicalSession, window: readMessageWindow } = access;
-  const { usageStepsBySession, setUsageStepsBySession, todoRecordsBySession, setTodoRecordsBySession } = useTranscriptMetadata(client);
+  const { usageStepsBySession, setUsageStepsBySession, todoRecordsBySession, setTodoRecordsBySession } = useTranscriptMetadata(identity, client);
   const hydrationRequestRef = useRef<Record<string, symbol>>({});
   const olderRequestRef = useRef<Record<string, symbol>>({});
   // Transcript reads can overlap: a cold window, a prompt-send refresh, a

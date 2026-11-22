@@ -20,7 +20,7 @@ import { useTerminalState } from '@/features/terminal/runtime';
 import { useSessionRuntimeState } from '@/runtime/workspace/use-session-runtime-state';
 import { useWorkspaceServerData } from '@/runtime/composition/use-workspace-server-data';
 import { useAppCore } from '@/runtime/core';
-import { useQueryActivity, useQueryIdentity } from '@/shared/server-data/client';
+import { useConnectionQueryIdentity, useQueryForeground } from '@/shared/server-data/client';
 
 import { serverPreferences } from '@/runtime/core/commands/connection';
 import { defaultChatPreferences, type ChatPreferences } from '@/shared/preferences/opencode-preferences';
@@ -56,7 +56,10 @@ export const RetainedProject = memo(function RetainedProject({ defaults, updateS
 
   const connectionRuntime = useConnectionRuntime(input.connection, input.catalog);
   const local = useSessionRuntimeState(input, connectionRuntime.connection, connectionRuntime.serverContract);
-  const state = { ...local, ...input.shared, chatPreferences: input.preferences, setChatPreferences: input.setChatPreferences };
+  const identity = useConnectionQueryIdentity(input.connection);
+  const foreground = useQueryForeground();
+  const demanded = input.demanded && input.connection.enabled && foreground;
+  const state = { ...local, ...input.shared, identity, queryActive: demanded, chatPreferences: input.preferences, setChatPreferences: input.setChatPreferences };
   // Connectivity is owned by WorkspaceProvider. NetInfo.configure() is global
   // and tears down existing listeners, so a per-runtime hook would freeze every
   // workspace except the one that mounted last.
@@ -64,8 +67,6 @@ export const RetainedProject = memo(function RetainedProject({ defaults, updateS
   const { connection: inputConnection } = input;
   const refreshQueue = useMemo(() => events.createProjectRefreshQueue(), [events]);
   useEffect(() => refreshQueue.clear, [refreshQueue]);
-  const identity = useQueryIdentity();
-  const demanded = useQueryActivity();
   const isHydrated = input.isHydrated && input.connection.enabled;
   const {
     setOnboardingVersion,
@@ -126,10 +127,10 @@ export const RetainedProject = memo(function RetainedProject({ defaults, updateS
     (candidate: object) => input.connection.enabled && clientGenerationRef.current.get(candidate) === scopeGenerationRef.current,
     [clientGenerationRef, scopeGenerationRef, input.connection.enabled],
   );
-  const serverData = useWorkspaceServerData(client, state.connection.status === 'connected', isCurrentClient);
-  const sessionCatalog = useSessionCatalog(client);
-  const approvalsCatalog = useApprovalsCatalog(client);
-  const diffCatalog = useDiffCatalog(client);
+  const serverData = useWorkspaceServerData(identity, client, state.connection.status === 'connected', isCurrentClient, demanded);
+  const sessionCatalog = useSessionCatalog(identity, client);
+  const approvalsCatalog = useApprovalsCatalog(identity, client);
+  const diffCatalog = useDiffCatalog(identity, client);
   const transcript = useTranscriptState({ ...state, client, isCurrentClient });
   const domain = {
     ...state, ...serverData, ...sessionCatalog, ...approvalsCatalog, ...diffCatalog,
@@ -147,7 +148,7 @@ export const RetainedProject = memo(function RetainedProject({ defaults, updateS
     refreshMessages: transcript.refreshMessages,
   });
   const inbox = usePromptInbox({
-    client,
+    client, identity,
     queueScope: JSON.stringify([input.connection.id, state.activeProjectPath || '', state.settings.connect ? state.settings.serverUrl : '']),
     isCurrentClient,
     refreshMessages: transcriptRead.readMessages,
@@ -190,7 +191,7 @@ export const RetainedProject = memo(function RetainedProject({ defaults, updateS
     [projects, state.activeProjectPath, worktree.worktrees],
   );
   const mcp = useMcpState({ ...domain, client, isCurrentClient });
-  const permissionRules = usePermissionRulesState({ client, isCurrentClient });
+  const permissionRules = usePermissionRulesState({ client, identity, isCurrentClient, queryActive: demanded });
 
   // Clear the MCP auth alert once the named server reports connected. Doing this
   // here keeps `mcpStatuses` out of the approvals value's dependencies, so
@@ -236,6 +237,8 @@ export const RetainedProject = memo(function RetainedProject({ defaults, updateS
 
   const capabilities = useCapabilitiesActions({ ...domain, client, isCurrentClient, isHydrated });
   const extensions = useExtensionsState({
+    identity,
+    queryActive: demanded,
     scopeKey: state.scopeKey,
     client,
     isCurrentClient,

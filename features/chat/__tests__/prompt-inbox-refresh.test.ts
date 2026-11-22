@@ -3,6 +3,8 @@ import { describe, expect, it, vi } from 'vitest';
 import { deferred, hookRuntime } from '../../../tests/helpers/runtime.mjs';
 import { createFixtureInbox, loadPromptInbox } from '../../../runtime/__tests__/prompt-command-fixture';
 
+const identity = { connectionId: 'test', connectionScope: 'scope', authRevision: 0 };
+
 describe('prompt inbox refresh', () => {
   it('only promotes a delivered prompt after the server inbox no longer holds it', async () => {
     const runtime = hookRuntime();
@@ -15,6 +17,7 @@ describe('prompt inbox refresh', () => {
       '@/shared/protocol/opencode/client/errors': { classifyConnectionFailure: () => 'unknown' },
     });
     runtime.mount(() => usePromptInbox({
+      identity,
       client, queueScope: 'scope', isCurrentClient: () => true, refreshMessages: async () => [], appendUserMessage,
     }), {});
     const delivery = { inboxOnly: true, delivered: true, inboxID: 'm1' };
@@ -69,6 +72,7 @@ describe('prompt inbox refresh', () => {
       '@/shared/utilities/error-message': { getErrorMessage: (error: unknown) => String(error) },
     });
     const value = runtime.mount(() => usePromptInbox({
+      identity,
       client: { __opencode: { contract: 'v2', directory: '/workspace' }, promptInbox: {} } as never,
       queueScope: 'scope',
       isCurrentClient: () => true,

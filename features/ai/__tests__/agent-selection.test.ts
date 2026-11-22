@@ -6,6 +6,8 @@ import type { ModelOption } from '@/shared/contracts/model-options';
 
 vi.mock('@react-native-async-storage/async-storage', () => ({ default: {} }));
 
+const identity = { connectionId: 'test', connectionScope: 'scope', authRevision: 0 };
+
 const build = { id: 'build', label: 'Build', mode: 'primary' as const };
 const plan = { id: 'plan', label: 'Plan', mode: 'primary' as const };
 
@@ -22,6 +24,7 @@ async function capabilitiesHarness() {
   const write = vi.fn((update: (value: typeof preferences) => typeof preferences) => { preferences = update(preferences); });
   const client = { __opencode: { contract: 'v2' } };
   runtime.mount(useCapabilitiesActions, {
+    identity,
     scopeKey: 'capabilities-test-workspace',
     client, isCurrentClient: (candidate: unknown) => candidate === client, isHydrated: false,
     activeProjectPath: '/a', availableProviders: [], availableModels: [], chatPreferences: preferences,

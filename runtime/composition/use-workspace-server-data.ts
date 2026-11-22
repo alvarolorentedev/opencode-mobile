@@ -1,18 +1,16 @@
+import type { QueryIdentity } from '@/shared/server-data/keys';
 import type { ScopedOpencodeClient } from '@/shared/protocol/opencode/client';
 import type { CachedCapabilities } from '@/features/ai/index';
 import { hydrateCapabilitiesSnapshot, persistCapabilitiesSnapshot , getConfiguredProviderIds , agentsOptions , capabilitiesOptions } from '@/features/ai/runtime';
 import { commandsOptions, configurationOptions, referencesOptions, skillsOptions } from '@/shared/server-data/catalogs';
 import { fileStatusOptions, vcsInfoOptions , locationOptions, projectsOptions } from '@/features/projects/runtime';
-import { useQueryActivity, useQueryIdentity } from '@/shared/server-data/client';
 import { combineProjectCatalog } from '@/shared/protocol/services/session-service';
 import { useQueries, useQueryClient } from '@tanstack/react-query';
 import { useCallback, useEffect, useMemo } from 'react';
 
 const EMPTY: never[] = [];
 const EMPTY_METHODS = {};
-export function useWorkspaceServerData(client: ScopedOpencodeClient, active: boolean, isCurrent: (client: object) => boolean) {
-  const identity = useQueryIdentity();
-  const demanded = useQueryActivity();
+export function useWorkspaceServerData(identity: QueryIdentity, client: ScopedOpencodeClient, active: boolean, isCurrent: (client: object) => boolean, demanded: boolean) {
   active = active && demanded;
   const cache = useQueryClient();
   const capOptions = capabilitiesOptions(identity, client);

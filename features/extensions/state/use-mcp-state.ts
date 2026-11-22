@@ -1,10 +1,10 @@
+import type { QueryIdentity } from '@/shared/server-data/keys';
 import { useCallback, useEffect, useMemo } from 'react';
 import type { McpContextValue } from '@/features/extensions/model/types';
 
 import { useAppCore, useAppStore } from '@/runtime/core';
 import type { ScopedOpencodeClient } from '@/shared/protocol/opencode/client';
 import type { McpLocalConfig, McpRemoteConfig } from '@/shared/protocol/opencode/types';
-import { useQueryActivity, useQueryIdentity } from '@/shared/server-data/client';
 import { mcpOptions } from '@/shared/server-data/diagnostics';
 import { completeLegacyMcpOAuth, startLegacyMcpOAuth, addMcpServer as svcAddMcpServer, connectMcpServer as svcConnectMcpServer, disconnectMcpServer as svcDisconnectMcpServer } from '@/shared/protocol/services/mcp-service';
 import { useQueries, useQueryClient } from '@tanstack/react-query';
@@ -12,17 +12,19 @@ import { useQueries, useQueryClient } from '@tanstack/react-query';
 const EMPTY_STATUSES: Record<string, import('@/shared/protocol/opencode/types').McpStatus> = {};
 // Status shares the same query as diagnostics and extension discovery.
 export function useMcpState({
+  identity,
+  queryActive: active,
   scopeKey,
   client,
   isCurrentClient,
 }: {
+  identity: QueryIdentity;
+  queryActive: boolean;
   scopeKey: string;
   client: ScopedOpencodeClient;
   isCurrentClient: (candidate: object) => boolean;
 }) {
-  const identity = useQueryIdentity();
   const cache = useQueryClient();
-  const active = useQueryActivity();
   const { store } = useAppCore();
   const requested = useAppStore((state) => state.workspaceUi[scopeKey]?.mcpRequested ?? false);
   const [query] = useQueries({ queries: [{ ...mcpOptions(identity, client), enabled: active && requested, subscribed: active && requested }].filter(() => active && requested) });

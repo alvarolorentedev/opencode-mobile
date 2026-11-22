@@ -7,12 +7,12 @@ import { copyHaptic, selectionAsync } from '@/shared/platform/haptics';
 import type { ScopedOpencodeClient } from '@/shared/protocol/opencode/client';
 import { projectPath, type ProjectFileEntry } from '@/shared/protocol/opencode/project';
 import { EntryOperationError, type EntryOperation } from '@/shared/protocol/opencode/project-entry-operations';
-import { useQueryIdentity } from '@/shared/server-data/client';
-import { projectQueryKey } from '@/shared/server-data/keys';
+import { projectQueryKey, type QueryIdentity } from '@/shared/server-data/keys';
 import { projectEntryOperations } from '@/features/projects/services/project-service';
 import type { FileClipboard } from '@/features/projects/state/use-file-clipboard';
 
-export function useProjectEntryActions({ scopeKey, client, isCurrentClient, connectionId, clipboard, refresh, enabled }: {
+export function useProjectEntryActions({ scopeKey, client, identity, isCurrentClient, connectionId, clipboard, refresh, enabled }: {
+  identity: QueryIdentity;
   scopeKey: string;
   client: ScopedOpencodeClient;
   isCurrentClient: (candidate: object) => boolean;
@@ -23,7 +23,6 @@ export function useProjectEntryActions({ scopeKey, client, isCurrentClient, conn
 }) {
   const { t } = useTranslation();
   const { store } = useAppCore();
-  const identity = useQueryIdentity();
   const cache = useQueryClient();
   const root = client.__opencode.directory || '';
   const adapter = useMemo(() => projectEntryOperations(client), [client]);

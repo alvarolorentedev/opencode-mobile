@@ -21,11 +21,6 @@ async function load(active: () => boolean) {
   const unchanged = vi.fn(async () => undefined);
   const { useExtensionsState } = await loadTs('features/extensions/state/use-extensions-state.ts', {
     react: driver.react,
-    '@/shared/server-data/client': {
-      useQueryIdentity: () => identity,
-      useQueryActivity: active,
-      useQueryForeground: () => true,
-    },
     '@/shared/server-data/catalogs': {
       configurationOptions: () => queryOptions('configuration', vi.fn(async () => ({ entries: [], config: {} }))),
       skillsOptions: () => queryOptions('skills', vi.fn(async () => ({ details: [] }))),
@@ -48,7 +43,7 @@ async function load(active: () => boolean) {
     },
     '@/shared/utilities/error-message': { getErrorMessage: (error: unknown) => String(error) },
   });
-  driver.mount(() => useExtensionsState({ scopeKey: 'extensions-test-workspace', client, isCurrentClient: () => true, settings }), {});
+  driver.mount(() => useExtensionsState({ identity, queryActive: active(), scopeKey: 'extensions-test-workspace', client, isCurrentClient: () => true, settings }), {});
   return { driver, plugins };
 }
 

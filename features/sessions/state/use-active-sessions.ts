@@ -1,7 +1,7 @@
+import type { QueryIdentity } from '@/shared/server-data/keys';
 import { useCallback, useMemo } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 
-import { useQueryIdentity } from '@/shared/server-data/client';
 import type { ScopedOpencodeClient } from '@/shared/protocol/opencode/client';
 import type { Session, SessionStatus } from '@/shared/protocol/opencode/types';
 import { getActiveSessions } from '@/features/sessions/model/active-sessions';
@@ -19,19 +19,20 @@ const EMPTY_STATUSES: Record<string, SessionStatus> = {};
 // unscoped catalog is the single owner of the connection-wide status map;
 // project lists read statuses from the same key.
 export function useActiveSessions({
+  identity,
   catalogClient,
   connected,
   currentSessionId,
   hideSubagentChats,
   visible,
 }: {
+  identity: QueryIdentity;
   catalogClient: ScopedOpencodeClient;
   connected: boolean;
   currentSessionId?: string;
   hideSubagentChats: boolean;
   visible: boolean;
 }) {
-  const identity = useQueryIdentity();
   const queryClient = useQueryClient();
   const options = useMemo(() => sessionCatalogOptions(identity, catalogClient), [identity, catalogClient]);
   const selectActive = useCallback((sessions: Session[], statuses: Record<string, SessionStatus>) => getActiveSessions({

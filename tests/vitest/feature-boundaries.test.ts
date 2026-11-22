@@ -61,6 +61,7 @@ describe('feature boundaries', () => {
         [/<RetainedProject(?:\s|>)/, ['runtime/workspace/workspace-provider.tsx']],
         [/\buseWorkspaceConnections\s*\(/, ['runtime/workspace/use-workspace-connections.ts', 'runtime/workspace/workspace-provider.tsx']],
         [/\b(?:useOpencodeProviderComposition|useOpencodeProviderValues|WorkspaceRuntime|eventActionsRef)\b/, []],
+        [/\b(?:ServerDataScope|useQueryIdentity|useQueryActivity)\b/, []],
       ];
       for (const [mount, allowed] of owners) if (mount.test(mod.source) && !allowed.includes(mod.file)) problems.push(`${mod.file}: duplicate shared runtime owner`);
       for (const edge of mod.imports) {

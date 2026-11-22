@@ -121,8 +121,7 @@ export async function loadTs(relative, imports = {}, globals = {}) {
     resolved['@/shared/protocol/services/session-service'] ??= {};
     resolved['@tanstack/react-query'] ??= queryRuntime(imports.react);
     resolved['@/shared/server-data/client'] ??= {
-      useQueryIdentity: () => ({ connectionId: 'test', connectionScope: 'scope', authRevision: 0 }),
-      useQueryActivity: () => true, useQueryForeground: () => true,
+      useQueryForeground: () => true,
     };
   }
   if (resolved['@/shared/protocol/opencode/client']) resolved['@/shared/protocol/opencode/client'] = { withReadSignal: (client) => client, ...resolved['@/shared/protocol/opencode/client'] };

@@ -2,6 +2,8 @@ import { describe, expect, it } from 'vitest';
 
 import { hookRuntime, loadTs } from '../../../tests/helpers/runtime.mjs';
 
+const identity = { connectionId: 'test', connectionScope: 'scope', authRevision: 0 };
+
 const client = { __opencode: { contract: 'v2', directory: '/repo' } };
 
 describe('session catalog', () => {
@@ -13,7 +15,7 @@ describe('session catalog', () => {
       '@/shared/protocol/services/session-service': { listSessions: async () => ({ sessions: [], statuses: {} }) },
     }, driver.globals);
 
-    driver.mount(() => useSessionCatalog(client as never), {});
+    driver.mount(() => useSessionCatalog(identity, client as never), {});
     driver.value.setSessions([{ id: 's1', title: 'one', time: { created: 1, updated: 1 } }]);
     driver.flush();
     expect(driver.value.sessions).toHaveLength(1);

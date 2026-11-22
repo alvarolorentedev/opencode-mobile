@@ -18,6 +18,8 @@ import type { RealtimeScopeInput } from '@/runtime/realtime/create-realtime';
 import type { ConnectionFailureKind } from '@/shared/protocol/opencode/client';
 import { fixturePromptCommands } from './prompt-command-fixture';
 
+const identity = { connectionId: 'test', connectionScope: 'scope', authRevision: 0 };
+
 const realtimeDeps = {
     '@/runtime/realtime/backoff': realtimeBackoff,
     '@/runtime/realtime/liveness': realtimeLiveness,
@@ -143,7 +145,7 @@ const browserHook = await loadTs('features/projects/state/use-project-browser.ts
     '@/shared/protocol/opencode/project': projectProtocol,
     "@/features/projects/services/project-service": { findFiles: context.findFiles, listFiles: (_: any, path: any) => { const gate = deferred(); directoryReads.set(path, gate); return gate.promise; } }
   });
-browserRuntime.mount(browserHook.useProjectBrowser, { scopeKey: 'browser-test-workspace', client, isCurrentClient: (candidate: any) => candidate === active });
+browserRuntime.mount(browserHook.useProjectBrowser, { identity, queryActive: true, scopeKey: 'browser-test-workspace', client, isCurrentClient: (candidate: any) => candidate === active });
 const searchFiles = (query: any) => browserRuntime.value.search(query);
 
 const first = searchFiles('first'), last = searchFiles('last');
@@ -182,6 +184,7 @@ function makeProjectCatalogActions(activePath: any, isCurrent = () => true) {
   const activeProjectPathRef = { current: activePath };
   const scopeGenerationRef = { current: 0 };
   state.actions = projectCatalogHook.useProjectCatalogActions({
+    identity, queryActive: true,
     hydrateSessionCache: () => {},
     client: { __opencode: { contract: 'v2' } },
     catalogClient: { __opencode: { contract: 'v2' } },
@@ -1210,7 +1213,7 @@ assert.deepEqual(Object.keys(cachedTodos).sort(), ['background', 'stale', 'targe
       records.set(id, record); return record;
     } }
   });
-  runtime.mount(useTerminalState, { scopeKey: 'terminal-test-workspace', client, isCurrentClient: () => true, serverUrl: 'http://example.test', directory: '/repo', serverContract: 'v1' });
+  runtime.mount(useTerminalState, { identity, scopeKey: 'terminal-test-workspace', client, isCurrentClient: () => true, serverUrl: 'http://example.test', directory: '/repo', serverContract: 'v1' });
   await runtime.value.openTerminal('first'); runtime.flush();
   const rotatedClient = { ...client };
   runtime.update({ client: rotatedClient });
