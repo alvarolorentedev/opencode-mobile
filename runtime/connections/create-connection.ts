@@ -3,7 +3,7 @@ import type { QueryClient } from '@tanstack/react-query';
 import { fetchProjectCatalog } from '@/features/projects/runtime';
 import { sessionCatalogOptions } from '@/features/sessions/runtime';
 import type { ConnectSetup } from '@/shared/contracts/cloud-link-setup';
-import { getConnectCredentialError } from '@/shared/contracts/cloud-link';
+import { getConnectCredentialError, getConnectRenewalAt } from '@/shared/contracts/cloud-link';
 import { getConnectionScope } from '@/shared/contracts/connection-scope';
 import type { ConnectionState } from '@/features/connections/index';
 import { getNormalizedServerUrl, isValidServerUrl } from '@/shared/contracts/server-url';
@@ -37,7 +37,6 @@ const systemClock = {
 };
 
 const MAX_TIMER_MS = 2_147_483_647;
-const RENEW_LEAD_MS = 300_000;
 const RENEW_RECHECK_MS = 60_000;
 
 function isRenewalPaused(phase: ConnectSetup['phase']) {
@@ -233,13 +232,17 @@ export function createConnection({ queryClient, foreground, clock = systemClock 
     let stopped = false;
     let expiryTimer: ReturnType<typeof setTimeout> | undefined;
     let refreshTimer: ReturnType<typeof setTimeout> | undefined;
+    // Older profiles have no stored renewal target; derive one once so capped
+    // wake-ups still land near the intended deadline.
+    const storedRenewAt = metadata.renewAt ? Date.parse(metadata.renewAt) : NaN;
+    const renewAt = Number.isFinite(storedRenewAt) ? storedRenewAt : Date.parse(getConnectRenewalAt(metadata.expiresAt, clock.now()) ?? metadata.expiresAt);
     const schedule = () => {
       clock.clearTimeout(refreshTimer);
       if (stopped || paused()) return;
       const key = `${metadata.controlPlaneUrl}:${metadata.machineId}:${metadata.expiresAt}`;
       const recover = getConnectCredentialError(metadata, entry.settings.password, clock.now()) || connectionState().status === 'error';
       if (!recover && renewed === key) return;
-      const remaining = Date.parse(metadata.expiresAt) - clock.now() - RENEW_LEAD_MS;
+      const remaining = renewAt - clock.now();
       const capped = !recover && remaining > MAX_TIMER_MS;
       // Keep best-effort renewal before expiry and stagger devices on the same machine.
       const jitter = capped ? 0 : Math.floor(clock.random() * RENEW_RECHECK_MS);

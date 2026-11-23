@@ -94,6 +94,8 @@ assert.equal(new connect.ConnectApiError(403, { error: 'no active subscription' 
 assert.equal(new connect.ConnectApiError(502, { error: 'Google test purchases are disabled in this environment' }).testPurchase, false);
 assert.equal(new connect.ConnectApiError(403, { error: 'no active subscription' }).noActiveSubscription, true);
 assert.equal(new connect.ConnectApiError(403, { error: 'another denial' }).noActiveSubscription, false);
+assert.equal(new connect.ConnectApiError(403, { error: 'legacy session requires device credential step-up', code: 'legacy_session_step_up_required' }).legacySessionStepUpRequired, true);
+assert.equal(new connect.ConnectApiError(403, { error: 'another denial' }).legacySessionStepUpRequired, false);
 assert.equal(new connect.ConnectApiError(502, { error: 'no active subscription' }).noActiveSubscription, false);
 assert.match(new connect.ConnectApiError(403, { code: 'capacity_reached' }).message, /provisioning is pending/);
 assert.equal(new connect.ConnectApiError(403, { code: 'capacity_reached' }).noActiveSubscription, false);
@@ -133,6 +135,12 @@ for (const legacyControlPlane of ['https://api.getopencode.app', 'https://apista
   assert.throws(() => connect.parseConnectPairing(legacyLink.toString()), /trusted/);
   const legacyMetadata = { controlPlaneUrl: legacyControlPlane, machineId: 'legacy-machine', machineName: 'Mac', deviceId: 'legacy-device', expiresAt: '2030-01-01T00:00:00Z' };
   assert.deepEqual(connect.parseConnectMetadata(legacyMetadata), legacyMetadata, 'Legacy profiles remain readable.');
+  const scheduled = { ...legacyMetadata, controlPlaneUrl: pairing.controlPlaneUrl, renewAt: '2029-12-01T00:00:00Z' };
+  assert.equal(connect.parseConnectMetadata(scheduled)?.renewAt, scheduled.renewAt);
+  assert.equal(connect.parseConnectMetadata({ ...scheduled, renewAt: '2031-01-01T00:00:00Z' })?.renewAt, undefined, 'A renewal target after expiry is ignored.');
+  assert.equal(connect.parseConnectMetadata({ ...scheduled, renewAt: 'not-a-date' })?.renewAt, undefined);
+  const issued = Date.parse('2026-01-01T00:00:00Z');
+  assert.equal(connect.getConnectRenewalAt(new Date(issued + 90 * 86_400_000).toISOString(), issued), new Date(issued + 60 * 86_400_000).toISOString(), 'A 90-day credential schedules renewal around day 60.');
   assert.match(connect.getConnectCredentialError(legacyMetadata, 'legacy-secret')!, /trusted/);
   await assert.rejects(connect.getConnectSession(legacyControlPlane, 'apple'), /trusted/);
   const legacySegment = Array.from(legacyControlPlane).map((char) => char.charCodeAt(0).toString(16)).join('-');
@@ -206,13 +214,24 @@ try {
     await assert.rejects(connect.claimConnectPairing(pairing, 'user-token', 'Phone'), (error: any) => error.status === expected && !error.message.includes('signed-credential'));
   }
   status = 200;
-  for (const invalid of [{ ...claim, device_secret: undefined }, { ...claim, expires_at: 'bad' }, { ...claim, expires_at: '2000-01-01T00:00:00Z' }, { ...claim, server_url: 'http://m.example.test' }, { ...claim, server_url: 'https://user:secret@m.example.test' }]) {
+  const credentialless = { server_url: claim.server_url, machine_id: claim.machine_id, machine_name: claim.machine_name };
+  assert.deepEqual(connect.parseConnectClaim(pairing.controlPlaneUrl, credentialless), credentialless);
+  assert.equal(connect.hasConnectClaimCredential(connect.parseConnectClaim(pairing.controlPlaneUrl, credentialless)), false);
+  assert.equal(connect.hasConnectClaimCredential(connect.parseConnectClaim(pairing.controlPlaneUrl, claim)), true);
+  assert.deepEqual(connect.parseConnectClaim(pairing.controlPlaneUrl, { ...claim, device_secret: undefined }), credentialless);
+  assert.throws(() => connect.parseConnectClaim(pairing.controlPlaneUrl, { ...claim, device_id: undefined }));
+  assert.throws(() => connect.parseConnectAccess(pairing.controlPlaneUrl, credentialless));
+  for (const invalid of [{ ...claim, expires_at: 'bad' }, { ...claim, expires_at: '2000-01-01T00:00:00Z' }, { ...claim, server_url: 'http://m.example.test' }, { ...claim, server_url: 'https://user:secret@m.example.test' }]) {
     response = invalid; await assert.rejects(connect.claimConnectPairing(pairing, 'user-token', 'Phone'));
   }
   response = { machines: [{ id: 'machine-1', name: 'Machine', hostname: 'm.example.test', public_url: claim.server_url, created_at: '2026-10-02T00:00:00Z', access_enabled: true }] };
   assert.equal((await connect.listConnectMachines(pairing.controlPlaneUrl, 'user-token'))[0].id, 'machine-1');
   response = claim;
-  assert.equal((await connect.accessConnectMachine(pairing.controlPlaneUrl, 'machine-1', 'user-token')).machine_id, 'machine-1');
+  assert.equal((await connect.accessConnectMachine(pairing.controlPlaneUrl, 'machine-1', { token: 'user-token' })).machine_id, 'machine-1');
+  const rotated = { ...claim, device_id: 'device-2', device_secret: 'signed-credential-2' };
+  response = rotated;
+  assert.equal((await connect.accessConnectMachine(pairing.controlPlaneUrl, 'machine-1', { deviceId: claim.device_id, deviceSecret: claim.device_secret })).device_id, 'device-2');
+  assert.equal(calls.at(-1)!.init.headers.Authorization, `Basic ${Buffer.from(`${claim.device_id}:${claim.device_secret}`).toString('base64')}`);
   const activationClaim = { ...claim, activation: { state: 'pending_approval', retry_after_ms: 2000, expires_at: new Date(Date.now() + 30_000).toISOString() } };
   assert.deepEqual(connect.parseConnectClaim(pairing.controlPlaneUrl, activationClaim).activation, activationClaim.activation);
   assert.equal('activation' in connect.parseConnectClaim(pairing.controlPlaneUrl, claim), false);
@@ -229,7 +248,7 @@ try {
   response = { state: 'invalid' };
   assert.equal(await connect.getConnectMachineActivation(pairing.controlPlaneUrl, 'machine-1', 'user-token'), undefined);
   response = { ...claim, machine_id: 'other-machine' };
-  await assert.rejects(connect.accessConnectMachine(pairing.controlPlaneUrl, 'machine-1', 'user-token'), /machine_identity_mismatch/);
+  assert.equal((await connect.accessConnectMachine(pairing.controlPlaneUrl, 'machine-1', { token: 'user-token' })).machine_id, 'other-machine');
   response = { ...session, acknowledgement_pending: true };
   assert.deepEqual(await connect.claimConnectSubscription(pairing.controlPlaneUrl, { store: 'apple', signedTransaction: 'native.jws.proof' }), session);
   assert.equal(calls.at(-1)!.init.headers.Authorization, undefined);

@@ -273,7 +273,16 @@ describe('connection profiles', () => {
       assert.equal(toConnectionProfile({ ...next, username: 'another-device' }), undefined);
       await setActiveConnection({ serverUrl: next.serverUrl, username: next.username, connect: next.connect });
       await secureStore.setItemAsync(passwordStorageKey, 'signed-secret-2');
-      await assert.rejects(saveConnectProfile('https://api.opencodecloud.link', { ...claim, server_url: 'https://replacement.example.test' }), /machine_hostname_mismatch/);
+      const moved = await saveConnectProfile('https://api.opencodecloud.link', { ...claim, server_url: 'https://moved.example.test', device_id: 'device-3', device_secret: 'signed-secret-3' });
+      assert.equal(moved.id, next.id, 'A same-machine server move keeps the profile identity.');
+      assert.equal(moved.serverUrl, 'https://moved.example.test');
+      assert.equal(await getProfilePassword(next.id), 'signed-secret-3');
+      const replaced = await saveConnectProfile('https://api.opencodecloud.link', { ...claim, machine_id: 'machine-2', server_url: 'https://replacement.example.test', device_id: 'device-4', device_secret: 'signed-secret-4' }, moved);
+      assert.equal(replaced.id, moved.id, 'A replacement machine reuses the stored profile identity.');
+      assert.equal(replaced.connect?.machineId, 'machine-2');
+      assert.equal(replaced.serverUrl, 'https://replacement.example.test');
+      assert.deepEqual(await loadConnectionProfiles(), [replaced]);
+      assert.equal(await getProfilePassword(moved.id), 'signed-secret-4');
 
       await saveConnectionProfiles([{ ...next, connect: { ...next.connect, expiresAt: '2000-01-01T00:00:00Z' } }]);
       assert.equal(await resolveConnectionPassword(next), undefined, 'Expired profiles cannot fall back to active credentials.');

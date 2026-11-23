@@ -269,7 +269,36 @@ Management API revision 1 and pre-version connectors keep the legacy path-only s
 
 Client code and the validation mirror live in `shared/contracts/service-management.ts` and `shared/contracts/service-access.ts`; the provider exposes it through the connection domain (`useConnection().services`). The provider resolves the target machine from the active Cloud Link connection or a saved Cloud Link profile, so management keeps working while another connection is active and links use the target machine's own origin. See the connector repository's frozen service-management protocol documentation → "Service management API (device-authenticated)".
 
-## Cloud Link Activation Readiness
+## Cloud Link Sessions and Device Credentials
+
+The control plane classifies sessions server-side as `web`, `mobile` or
+`legacy`; the app never sends a kind. `POST /v1/pairings/:id/claim` and
+`POST /v1/machines/:id/access` return the connection profile. A claim may omit
+`device_id`, `device_secret` and `expires_at`; that is valid and the app must
+recover through the store proof and machine access. Access always returns a
+rotated device credential and the same profile shape.
+
+`POST /v1/machines/:id/access` accepts either the session bearer or HTTP Basic
+`device_id:device_secret`. Basic always works with a valid stored credential.
+A Bearer request from a legacy session may return:
+
+```json
+{ "error": "legacy session requires device credential step-up", "code": "legacy_session_step_up_required" }
+```
+
+The app retries that request once with Basic. A missing credential falls back to
+the session bearer. A rejected `401` device credential, or a session that cannot
+renew access, silently claims the stored store proof at
+`POST /v1/subscriptions/claim` and retries access with the resulting mobile
+session. `503` and transient `409` responses use bounded backoff. Deployment
+deadlines are control-plane configuration; the client handles the runtime code
+and hardcodes no dates.
+
+A response may carry a replacement `machine_id`, `server_url` or hostname when an
+old connector cannot prove tunnel ownership. The app persists the replacement
+atomically and removes the retired profile. The old `machine_id` is not required
+to match for access, and a changed hostname is not rejected.
+
 
 Claim and machine-access responses may include an optional `activation` object:
 

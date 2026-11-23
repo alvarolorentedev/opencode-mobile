@@ -86,6 +86,7 @@ All current decisions are `Accepted`.
 | [0050](0050-live-v2-transcript-with-reconciliation.md) | Live V2 transcript with boundary reconciliation |
 | [0051](0051-app-core-state-tiers.md) | App core with Query for server facts and Zustand for device facts |
 | [0052](0052-explicit-overlay-dependencies.md) | Feature ownership and explicit overlay dependencies |
+| [0053](0053-cloud-link-device-credential-renewal.md) | Cloud Link device-credential renewal and session step-up |
 
 ## Superseded history
 

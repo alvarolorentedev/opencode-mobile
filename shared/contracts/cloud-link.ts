@@ -8,6 +8,7 @@ export type ConnectMetadata = {
   machineName: string;
   deviceId: string;
   expiresAt: string;
+  renewAt?: string;
 };
 
 export type ConnectPairing = { controlPlaneUrl: string; pairingId: string; pairingToken: string; machineName: string };
@@ -23,7 +24,10 @@ export type ConnectActivation = {
   ready_at?: string;
 };
 
-export type ConnectClaim = { server_url: string; machine_id: string; machine_name: string; device_id: string; device_secret: string; expires_at: string; activation?: ConnectActivation };
+// Pairing claims may omit the device credential; machine access always returns it.
+export type ConnectClaim = { server_url: string; machine_id: string; machine_name: string; device_id?: string; device_secret?: string; expires_at?: string; activation?: ConnectActivation };
+
+export type ConnectAccess = ConnectClaim & { device_id: string; device_secret: string; expires_at: string };
 
 export type ConnectMachine = { id: string; name: string; hostname: string; public_url: string; created_at: string; access_enabled: boolean };
 
@@ -105,6 +109,9 @@ export function parseConnectMetadata(value: unknown): ConnectMetadata | undefine
     const result = Object.fromEntries(keys.map((key) => [key, (record[key] as string).trim()])) as ConnectMetadata;
     result.controlPlaneUrl = normalizeControlPlaneUrl(result.controlPlaneUrl);
     if (!Number.isFinite(Date.parse(result.expiresAt))) return undefined;
+    // Scheduling metadata is optional and never invalidates an otherwise usable
+    // profile. A target after expiry is ignored so renewal cannot miss the deadline.
+    if (typeof record.renewAt === 'string' && Number.isFinite(Date.parse(record.renewAt)) && Date.parse(record.renewAt) <= Date.parse(result.expiresAt)) result.renewAt = record.renewAt;
     return result;
   } catch { return undefined; }
 }
@@ -116,6 +123,16 @@ export function getConnectCredentialError(connect: ConnectMetadata | undefined, 
   if (Date.parse(connect.expiresAt) <= now) return 'Cloud Link credentials expired. Restore or renew access to reconnect.';
   if (!password) return 'Cloud Link credentials are missing. Recover machine access to reconnect.';
   return undefined;
+}
+
+// Schedule a renewal at one third of the credential lifetime, capped at 30 days
+// with a five-minute floor. A 90-day credential therefore renews around day 60.
+export function getConnectRenewalAt(expiresAt: string, now = Date.now()) {
+  const expires = Date.parse(expiresAt);
+  if (!Number.isFinite(expires)) return undefined;
+  const lifetime = Math.max(0, expires - now);
+  const lead = Math.min(30 * 86_400_000, Math.max(lifetime / 3, 5 * 60_000));
+  return new Date(Math.max(now, expires - lead)).toISOString();
 }
 
 export function getConnectStore(): ConnectStore {
@@ -159,15 +176,41 @@ export function parseConnectActivation(value: unknown): ConnectActivation | unde
   return activation;
 }
 
-export function parseConnectClaim(controlPlaneUrl: string, value: unknown): ConnectClaim {
-  const result = value as ConnectClaim | undefined;
-  const fields = ['server_url', 'machine_id', 'machine_name', 'device_id', 'device_secret', 'expires_at'] as const;
-  if (!result || fields.some((key) => typeof result[key] !== 'string' || !result[key].trim()) || !Number.isFinite(Date.parse(result.expires_at))) throw new Error('Invalid pairing response. Create a new pairing.');
+export function hasConnectClaimCredential(claim: ConnectClaim): claim is ConnectAccess {
+  return Boolean(claim.device_id && claim.device_secret && claim.expires_at);
+}
+
+function parseConnectConnection(controlPlaneUrl: string, value: unknown, requireCredential: boolean): ConnectClaim {
+  const result = value as Record<string, unknown> | undefined;
+  const fields = ['server_url', 'machine_id', 'machine_name'] as const;
+  const invalid = requireCredential ? 'Invalid machine access response. Retry access.' : 'Invalid pairing response. Create a new pairing.';
+  if (!result || fields.some((key) => typeof result[key] !== 'string' || !(result[key] as string).trim())) throw new Error(invalid);
+  const serverUrl = result.server_url as string;
   let server: URL;
-  try { server = new URL(result.server_url); } catch { throw new Error('The connector returned an unsafe server URL.'); }
+  try { server = new URL(serverUrl); } catch { throw new Error('The connector returned an unsafe server URL.'); }
   requireControlPlane(controlPlaneUrl);
   if (server.protocol !== 'https:' || server.username || server.password || server.search || server.hash) throw new Error('The connector returned an unsafe server URL.');
-  if (Date.parse(result.expires_at) <= Date.now()) throw new Error('The connector returned expired credentials. Pair again.');
   const activation = parseConnectActivation(result.activation);
-  return { ...Object.fromEntries(fields.map((key) => [key, result[key]])), ...(activation ? { activation } : {}) } as ConnectClaim;
+  const hasSecret = typeof result.device_secret === 'string' && Boolean(result.device_secret.trim());
+  if (requireCredential || hasSecret) {
+    const credentialFields = ['device_id', 'device_secret', 'expires_at'] as const;
+    if (credentialFields.some((key) => typeof result[key] !== 'string' || !(result[key] as string).trim()) || !Number.isFinite(Date.parse(result.expires_at as string))) throw new Error(invalid);
+    if (Date.parse(result.expires_at as string) <= Date.now()) throw new Error(requireCredential ? 'The machine returned expired credentials. Retry access.' : 'The connector returned expired credentials. Pair again.');
+  }
+  const base = {
+    server_url: serverUrl,
+    machine_id: result.machine_id as string,
+    machine_name: result.machine_name as string,
+    ...(activation ? { activation } : {}),
+  };
+  if (!requireCredential && !hasSecret) return base;
+  return { ...base, device_id: result.device_id as string, device_secret: result.device_secret as string, expires_at: result.expires_at as string };
+}
+
+export function parseConnectClaim(controlPlaneUrl: string, value: unknown): ConnectClaim {
+  return parseConnectConnection(controlPlaneUrl, value, false);
+}
+
+export function parseConnectAccess(controlPlaneUrl: string, value: unknown): ConnectAccess {
+  return parseConnectConnection(controlPlaneUrl, value, true) as ConnectAccess;
 }

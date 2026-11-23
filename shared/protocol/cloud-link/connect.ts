@@ -1,7 +1,10 @@
 
+import { base64 } from '@scure/base';
 import { fetch as expoFetch } from 'expo/fetch';
 
-import { ConnectPairing, ConnectClaim, ConnectMachine, ConnectCatalog, ConnectSession, ConnectProof, ConnectActivation, parseConnectActivation, parseConnectSession, hasConnectEntitlement, parseConnectClaim , requireControlPlane } from '@/shared/contracts/cloud-link';
+import { ConnectPairing, ConnectClaim, ConnectAccess, ConnectMachine, ConnectCatalog, ConnectSession, ConnectProof, ConnectActivation, parseConnectActivation, parseConnectSession, hasConnectEntitlement, parseConnectClaim, parseConnectAccess, requireControlPlane } from '@/shared/contracts/cloud-link';
+
+export type ConnectAccessAuth = { token: string } | { deviceId: string; deviceSecret: string };
 
 export class ConnectApiError extends Error {
   public machineId?: string;
@@ -9,6 +12,7 @@ export class ConnectApiError extends Error {
   public pairingExpired: boolean;
   public testPurchase: boolean;
   public noActiveSubscription: boolean;
+  public legacySessionStepUpRequired: boolean;
   public activation?: ConnectActivation;
   public activationUnsupported: boolean;
   constructor(public status: number, value?: unknown) {
@@ -25,6 +29,8 @@ export class ConnectApiError extends Error {
     const record = value as { machine_id?: unknown; error?: unknown; code?: unknown; activation?: unknown } | undefined;
     this.testPurchase = status === 403 && record?.error === 'Google test purchases are disabled in this environment';
     this.noActiveSubscription = status === 403 && record?.error === 'no active subscription';
+    this.legacySessionStepUpRequired = status === 403 && record?.code === 'legacy_session_step_up_required';
+    if (this.legacySessionStepUpRequired) this.message = 'Cloud Link requires device credential renewal. Renew access to continue.';
     if (this.noActiveSubscription) this.message = 'No active Cloud Link entitlement. Purchase or restore to recover access.';
     if (status === 403 && record?.code === 'capacity_reached') this.message = 'Cloud Link machine provisioning is pending or capacity has been reached. Wait for cleanup, then scan a fresh desktop QR. Your subscription has not been rejected.';
     if ((status === 409 || status === 503) && typeof record?.machine_id === 'string' && /^[a-zA-Z0-9_-]{1,128}$/.test(record.machine_id)) this.machineId = record.machine_id;
@@ -36,9 +42,9 @@ export class ConnectApiError extends Error {
   }
 }
 
-async function connectRequest(controlPlaneUrl: string, path: string, token?: string, method = 'GET', body?: object, signal?: AbortSignal) {
+async function connectRequest(controlPlaneUrl: string, path: string, token?: string, method = 'GET', body?: object, signal?: AbortSignal, basic?: { deviceId: string; deviceSecret: string }) {
   const base = requireControlPlane(controlPlaneUrl);
-  if (token !== undefined && !token.trim()) throw new ConnectApiError(401);
+  if (token !== undefined && !basic && !token.trim()) throw new ConnectApiError(401);
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), 30_000);
   const abort = () => controller.abort();
@@ -46,10 +52,13 @@ async function connectRequest(controlPlaneUrl: string, path: string, token?: str
   if (signal?.aborted) abort();
   try {
     let response: Response;
+    const authorization = basic
+      ? `Basic ${base64.encode(new TextEncoder().encode(`${basic.deviceId}:${basic.deviceSecret}`))}`
+      : token ? `Bearer ${token.trim()}` : undefined;
     try {
       response = await expoFetch(`${base}${path}`, {
         method, signal: controller.signal, redirect: 'error',
-        headers: { ...(token ? { Authorization: `Bearer ${token.trim()}` } : {}), ...(body ? { 'Content-Type': 'application/json' } : {}) },
+        headers: { ...(authorization ? { Authorization: authorization } : {}), ...(body ? { 'Content-Type': 'application/json' } : {}) },
         ...(body ? { body: JSON.stringify(body) } : {}),
       });
     } catch { throw new Error('Could not reach the control plane. Retry the same request without purchasing again.'); }
@@ -118,11 +127,11 @@ export async function revokeConnectMachine(controlPlaneUrl: string, machineId: s
   await connectRequest(controlPlaneUrl, `/v1/machines/${encodeURIComponent(machineId)}`, token, 'DELETE');
 }
 
-export async function accessConnectMachine(controlPlaneUrl: string, machineId: string, token: string): Promise<ConnectClaim> {
-  const value = await connectRequest(controlPlaneUrl, `/v1/machines/${encodeURIComponent(machineId)}/access`, token, 'POST');
-  const result = parseConnectClaim(controlPlaneUrl, value);
-  if (result.machine_id !== machineId) throw new Error('machine_identity_mismatch: Access returned a different machine.');
-  return result;
+export async function accessConnectMachine(controlPlaneUrl: string, machineId: string, auth: ConnectAccessAuth): Promise<ConnectAccess> {
+  const value = 'token' in auth
+    ? await connectRequest(controlPlaneUrl, `/v1/machines/${encodeURIComponent(machineId)}/access`, auth.token, 'POST')
+    : await connectRequest(controlPlaneUrl, `/v1/machines/${encodeURIComponent(machineId)}/access`, undefined, 'POST', undefined, undefined, auth);
+  return parseConnectAccess(controlPlaneUrl, value);
 }
 
 // Read-only activation polling. Never poll access: each access call rotates the

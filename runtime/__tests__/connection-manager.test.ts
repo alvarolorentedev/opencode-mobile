@@ -19,7 +19,10 @@ vi.mock('@/features/sessions/runtime', () => ({
 }));
 vi.mock('@/shared/observability/client', () => ({ telemetry: { counter: vi.fn(), info: vi.fn(), markStartup: vi.fn(), warn: vi.fn() } }));
 vi.mock('@/shared/platform/tls-trust', () => ({}));
-vi.mock('@/shared/contracts/cloud-link', () => ({ getConnectCredentialError: () => undefined }));
+vi.mock('@/shared/contracts/cloud-link', () => ({
+  getConnectCredentialError: () => undefined,
+  getConnectRenewalAt: (expiresAt: string) => new Date(Date.parse(expiresAt) - 5 * 60_000).toISOString(),
+}));
 vi.mock('@/shared/protocol/opencode/client/types', () => ({ defaultConnectionSettings: { serverUrl: 'http://localhost' } }));
 vi.mock('@/shared/protocol/opencode/client', () => ({
   buildClient: (settings: { username: string }) => ({ username: settings.username }),

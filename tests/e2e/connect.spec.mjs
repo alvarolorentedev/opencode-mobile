@@ -111,7 +111,13 @@ async function mockControlPlane(page, options = {}) {
       if (state.subscriptionClaims === 1) state.paidThrough = Date.now() + ttl;
       await send({ user_id: 'store-owner', user_token: 'test-user-token', session_expires_at: new Date(Date.now() + 86400000).toISOString(), subscription_expires_at: new Date(state.paidThrough).toISOString(), entitlements: ['cloudlink'] }); return;
     }
-    expect(request.headers().authorization).toBe('Bearer test-user-token');
+    const authorization = request.headers().authorization;
+    if (/\/access$/.test(path)) {
+      const basic = authorization?.startsWith('Basic ') ? Buffer.from(authorization.slice(6), 'base64').toString() : '';
+      expect(authorization === 'Bearer test-user-token' || /^device-\d+:device-test-secret$/.test(basic)).toBeTruthy();
+    } else {
+      expect(authorization).toBe('Bearer test-user-token');
+    }
     const connection = { server_url: machine.public_url, machine_id: options.mismatch ? 'wrong-machine' : machine.id, machine_name: machine.name, device_id: `device-${state.accesses + 1}`, device_secret: 'device-test-secret', expires_at: new Date(state.paidThrough).toISOString(), ...(state.activation ? { activation: state.activation } : {}) };
     if (/\/activation$/.test(path)) {
       state.activationCalls += 1;
@@ -564,7 +570,7 @@ for (const options of [{ lostResponse: true, activation: { state: 'ready' } }, {
   });
 }
 
-test('second-device Restore lists durable machines; access mismatch saves nothing', async ({ page }) => {
+test('second-device Restore lists durable machines and accepts a replacement machine', async ({ page }) => {
   await storeFixture(page); const state = await mockControlPlane(page, { owned: true, mismatch: true });
   await page.addInitScript(() => localStorage.setItem('opencode-mobile.onboarding-version', JSON.stringify({ version: 1 })));
   await page.goto('/pair'); await showGuidedSubscription(page); await expect(page.getByTestId('connect-restore')).toBeEnabled();
@@ -573,9 +579,12 @@ test('second-device Restore lists durable machines; access mismatch saves nothin
   await manage(page);
   await expect(page.getByTestId('connect-access-machine-1')).toBeVisible();
   await page.getByTestId('connect-access-machine-1').click();
-  await expect(page.getByTestId('connect-error')).toContainText('machine_identity_mismatch');
+  await expect(page).toHaveURL(/\/projects$/, { timeout: 30_000 });
+  const profiles = await page.evaluate(() => JSON.parse(localStorage.getItem('opencode-mobile.connection-profiles')).filter((profile) => profile.connect));
+  expect(profiles).toHaveLength(1);
+  expect(profiles[0].connect.machineId).toBe('wrong-machine');
   expect(state.pairClaims).toBe(0);
-  expect(await page.evaluate(() => JSON.parse(localStorage.getItem('opencode-mobile.connection-profiles')).filter((profile) => profile.connect))).toEqual([]);
+  await assertNoStoredSecrets(page);
 });
 
 test('second-device Restore reconnects the same owned machine without a QR', async ({ page }) => {

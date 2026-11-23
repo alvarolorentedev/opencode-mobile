@@ -2,6 +2,7 @@
 
 import { cloudLinkPlatform as device } from '../../../tests/helpers/cloud-link-platform';
 import assert from 'node:assert/strict';
+import { Buffer } from 'node:buffer';
 import { focusManager, QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { act, createElement, useCallback, useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore } from 'react';
 import { flushSync } from 'react-dom';
@@ -20,10 +21,10 @@ import * as profiles from '@/shared/storage/connection-profiles';
 import { controlledClock, deferred, settleReact } from '../../../tests/helpers/controlled-clock';
 import { renderHook } from '../../../tests/helpers/render-hook';
 
-const metrics = vi.hoisted(() => ({ calls: [] as unknown[][] }));
+const metrics = vi.hoisted(() => ({ calls: [] as unknown[][], logs: [] as string[] }));
 vi.mock('expo-router', () => ({ usePathname: () => '/' }));
 vi.mock('@/shared/observability/client', () => ({
-  telemetry: { counter: (...args: unknown[]) => metrics.calls.push(args), debug() {}, info() {}, warn() {}, markStartup() {} },
+  telemetry: { counter: (...args: unknown[]) => metrics.calls.push(args), debug: (...args: unknown[]) => metrics.logs.push(JSON.stringify(args)), info: (...args: unknown[]) => metrics.logs.push(JSON.stringify(args)), warn: (...args: unknown[]) => metrics.logs.push(JSON.stringify(args)), markStartup() {} },
   withSpan: async (_name: string, _attrs: unknown, run: (span: { setAttribute: () => void }) => Promise<unknown>) =>
     run({ setAttribute() {} }),
 }));
@@ -47,10 +48,17 @@ afterEach(() => { vi.unstubAllGlobals(); vi.restoreAllMocks(); });
 
 describe('connect recovery', () => {
   it('connect recovery', async () => {
+  const consoleLogs: string[] = [];
+  const consoleSpies = (['log', 'warn', 'error', 'info', 'debug'] as const).map((method) =>
+    vi.spyOn(console, method).mockImplementation((...args) => { consoleLogs.push(args.map((arg) => String(arg)).join(' ')); }));
+  onTestFinished(() => { for (const spy of consoleSpies) spy.mockRestore(); });
 
-async function fixture({ expired = false, missing = false, storedSession = true, storeGate, ttl = 600000, unchangedExpiry = false, denyAccess = 0, activation: initialActivation, accessActivation }: { expired?: boolean; missing?: boolean; storedSession?: boolean; storeGate?: Barrier; ttl?: number; unchangedExpiry?: boolean; denyAccess?: number; activation?: cloudLink.ConnectActivation; accessActivation?: cloudLink.ConnectActivation } = {}) {
+async function fixture({ expired = false, missing = false, storedSession = true, manual = false, storeGate, ttl = 600000, unchangedExpiry = false, denyAccess = 0, activation: initialActivation, accessActivation, claimResponse: initialClaimResponse, accessHandler: initialAccessHandler }: { expired?: boolean; missing?: boolean; storedSession?: boolean; manual?: boolean; storeGate?: Barrier; ttl?: number; unchangedExpiry?: boolean; denyAccess?: number; activation?: cloudLink.ConnectActivation; accessActivation?: cloudLink.ConnectActivation; claimResponse?: Record<string, unknown>; accessHandler?: (call: number, authorization: string | undefined) => { status?: number; body?: unknown } | undefined } = {}) {
   let now = Date.now(), accessCalls = 0, pairClaims = 0, claims = 0, catalogs = 0, resets = 0, secretWrites = 0, activationCalls = 0, accessFailure = false, catalogFailure: string | boolean = false, accessDenials = denyAccess, accessGate: Barrier | undefined;
   let activation = initialActivation;
+  const claimResponse = initialClaimResponse;
+  const accessHandler = initialAccessHandler;
+  const accessAuth: (string | undefined)[] = [];
   const listeners = new Set<(state: string) => void>();
   const timers = controlledClock(now);
   const deadlines = new Map<ReturnType<typeof setTimeout>, number>();
@@ -109,16 +117,24 @@ async function fixture({ expired = false, missing = false, storedSession = true,
       return new Response(null, { status: 404 });
     }
   let body;
+  const authorization = options?.headers ? new Headers(options.headers as HeadersInit).get('authorization') ?? undefined : undefined;
   if (url.endsWith('/catalog')) body = { plans: [{ id: 'cloudlink', entitlements: ['cloudlink'], products: [{ store: 'google', productId: 'fixture', basePlanId: 'monthly', offerIds: [] }] }] };
   else if (url.endsWith('/subscriptions/claim')) { claims++; body = session; }
   else if (/\/v1\/(?:pairings|machines)\/[^/]+\/activation$/.test(url)) { activationCalls++; body = activation ?? { state: 'ready' }; }
-  else if (/\/pairings\/[^/]+\/claim$/.test(url)) { pairClaims++; body = { ...claim, ...(activation ? { activation } : {}) }; }
+  else if (/\/pairings\/[^/]+\/claim$/.test(url)) { pairClaims++; body = claimResponse ?? { ...claim, ...(activation ? { activation } : {}) }; }
   else if (url.endsWith('/access')) {
     accessCalls++;
+    accessAuth.push(authorization);
     await accessGate?.promise;
     if (accessFailure) return new Response(JSON.stringify({ error: 'temporarily unavailable' }), { status: 503 });
     if (accessDenials > 0) { accessDenials--; return new Response(JSON.stringify({ error: 'no active subscription' }), { status: 403 }); }
-    body = { ...claim, device_id: `device-${accessCalls}`, device_secret: `secret-${accessCalls}`, expires_at: unchangedExpiry ? claim.expires_at : new Date(now + 3600000).toISOString(), ...(accessActivation ? { activation: accessActivation } : {}) };
+    const handled = accessHandler?.(accessCalls, authorization);
+    if (handled) {
+      if (handled.status && handled.status >= 400) return new Response(JSON.stringify(handled.body ?? {}), { status: handled.status });
+      body = handled.body;
+    } else {
+      body = { ...claim, device_id: `device-${accessCalls}`, device_secret: `secret-${accessCalls}`, expires_at: unchangedExpiry ? claim.expires_at : new Date(now + 3600000).toISOString(), ...(accessActivation ? { activation: accessActivation } : {}) };
+    }
   } else body = { machines: [{ id: claim.machine_id, name: 'Mac', hostname: 'machine.test', public_url: claim.server_url, created_at: new Date(now).toISOString(), access_enabled: true }] };
   return Response.json(body);
   });
@@ -152,7 +168,9 @@ async function fixture({ expired = false, missing = false, storedSession = true,
     },
   });
   const runtime = renderHook(() => {
-    const [settings, setSettings] = useState<OpencodeConnectionSettings>({ serverUrl: profile.serverUrl, username: profile.username, password: missing ? '' : claim.device_secret, directory: '', connect: profile.connect });
+    const [settings, setSettings] = useState<OpencodeConnectionSettings>(manual
+      ? { serverUrl: 'https://manual.test', username: 'manual', password: '', directory: '' }
+      : { serverUrl: profile.serverUrl, username: profile.username, password: missing ? '' : claim.device_secret, directory: '', connect: profile.connect });
     const [activeProjectPath] = useState('/fixture');
     const [controlPlaneUrl, setControlPlaneUrl] = useState(CP);
     const [savedProfiles, setProfiles] = useState<ConnectionProfile[]>([]);
@@ -208,6 +226,7 @@ async function fixture({ expired = false, missing = false, storedSession = true,
     get accesses() { return accessCalls; }, get pairClaims() { return pairClaims; }, get claims() { return claims; },
     get catalogs() { return catalogs; }, get resets() { return resets; }, get activations() { return activationCalls; },
     get secretWrites() { return secretWrites; },
+    get accessAuth() { return accessAuth; },
     extendEntitlement(ms: number) {
       session.subscription_expires_at = new Date(Date.parse(session.subscription_expires_at) + ms).toISOString();
       return session.subscription_expires_at;
@@ -280,8 +299,11 @@ async function fixture({ expired = false, missing = false, storedSession = true,
   assert.equal(f.accesses, 0, 'A credential outside the renewal window is not refreshed.');
   f.failAccess(true);
   f.advance(120000);
-  await invoke(() => f.runtime.result.current.connect()); await settleReact();
-  assert.equal(f.accesses, 1, 'The pre-expiry refresh must run.');
+  const retrying = start(() => f.runtime.result.current.connect());
+  await settleReact();
+  await f.clock.advance(3000); await settleReact();
+  await retrying;
+  assert.equal(f.accesses, 3, 'A transient control-plane failure retries with backoff.');
   assert.equal(f.claims, 0, 'A transient control-plane failure must not verify the store again.');
   assert.equal(f.runtime.result.current.connection.status, 'connected');
   assert.equal(f.runtime.result.current.settings.password, 'secret-a', 'The still-valid credential is retained.');
@@ -309,6 +331,18 @@ async function fixture({ expired = false, missing = false, storedSession = true,
   assert.equal(f.clock.countTimers(max), 2, 'The refresh timer re-arms for the remaining lifetime.');
   f.runtime.unmount();
 }
+// A 90-day credential renews near two thirds of its lifetime, before expiry.
+{
+  const max = 2_147_483_647;
+  const f = await fixture({ ttl: 90 * 86_400_000 }); await settleReact();
+  f.advance(max); await f.clock.advance(max); await settleReact();
+  f.advance(max); await f.clock.advance(max); await settleReact();
+  assert.equal(f.accesses, 0);
+  f.advance(11 * 86_400_000); await f.clock.advance(11 * 86_400_000); await settleReact();
+  assert.ok(f.accesses >= 1, 'The 90-day credential renews around day 60.');
+  assert.equal(f.runtime.result.current.connection.status, 'connected');
+  f.runtime.unmount();
+}
 // Failed native initialization surfaces an error without sending expired auth.
 {
   const gate = deferred<void>();
@@ -323,9 +357,11 @@ async function fixture({ expired = false, missing = false, storedSession = true,
 {
   const f = await fixture({ expired: true }); await settleReact(); f.failAccess(true);
   await f.clock.advance(1000); await settleReact();
-  assert.equal(f.accesses, 1); assert.equal(f.clock.countTimers(60000), 1);
+  await f.clock.advance(3000); await settleReact();
+  assert.equal(f.accesses, 3, 'The retry budget runs before the foreground retry is armed.');
+  assert.equal(f.clock.countTimers(60000), 1);
   f.failAccess(false); f.advance(60000); await f.clock.advance(60000); await f.clock.advance(1000); await settleReact();
-  assert.equal(f.accesses, 2); assert.equal(f.runtime.result.current.connection.status, 'connected');
+  assert.equal(f.accesses, 4); assert.equal(f.runtime.result.current.connection.status, 'connected');
   f.runtime.unmount();
 }
 // Already-expired credentials returned by the backend remain blocked and back off.
@@ -343,7 +379,8 @@ async function fixture({ expired = false, missing = false, storedSession = true,
   assert.equal(f.runtime.result.current.connection.status, 'error');
   assert.equal(f.clock.countTimers(1000), 1);
   await f.clock.advance(1000); await settleReact();
-  assert.equal(f.accesses, 1); assert.equal(f.runtime.result.current.connection.status, 'error');
+  await f.clock.advance(3000); await settleReact();
+  assert.equal(f.accesses, 3); assert.equal(f.runtime.result.current.connection.status, 'error');
   assert.equal(f.clock.countTimers(60000), 1);
   f.appState('background'); assert.equal(f.clock.countTimers(60000), 0);
   f.failAccess(false); f.appState('active'); await f.clock.advance(1000); await settleReact();
@@ -388,6 +425,7 @@ async function fixture({ expired = false, missing = false, storedSession = true,
   const gate = f.blockAccess(); f.failAccess(true);
   await f.clock.advance(1000); await settleReact();
   f.appState('background'); await invoke(() => gate.resolve()); await settleReact();
+  await f.clock.advance(3000); await settleReact();
   assert.equal(f.clock.countTimers(60000), 0);
   f.runtime.unmount();
 }
@@ -400,7 +438,9 @@ for (const [fail, cloud] of [[false, false], [true, false], [false, true], [true
   const serverUrl = next?.serverUrl ?? 'https://manual.test';
   act(() => f.runtime.result.current.updateSettings({ serverUrl, username: next?.username ?? 'manual', password: cloud ? 'secret-b' : '', connect: next?.connect }));
   await settleReact(); await invoke(() => f.runtime.result.current.connect()); await settleReact();
-  f.failAccess(fail); await invoke(() => gate.resolve()); await recovery; await settleReact();
+  f.failAccess(fail); await invoke(() => gate.resolve());
+  if (fail) await f.clock.advance(3000);
+  await recovery; await settleReact();
   assert.equal(f.runtime.result.current.settings.serverUrl, serverUrl);
   assert.equal(f.runtime.result.current.connection.status, 'connected');
   f.runtime.unmount();
@@ -433,6 +473,105 @@ for (const [fail, cloud] of [[false, false], [true, false], [false, true], [true
   const stored = await f.profiles.loadConnectionProfiles();
   assert.equal(f.runtime.result.current.connectionProfiles.profiles[0].username, stored[0].username);
   assert.notEqual(stored[0].username, f.profile.username);
+  f.runtime.unmount();
+}
+
+// A near-expiry renewal prefers the stored device credential.
+{
+  const f = await fixture({ ttl: 120000, accessHandler: (_call, authorization) => authorization?.startsWith('Basic ')
+    ? { body: { server_url: 'https://machine.test', machine_id: 'machine-a', machine_name: 'Mac', device_id: 'device-basic', device_secret: 'secret-basic', expires_at: new Date(Date.now() + 3600000).toISOString() } }
+    : { status: 401, body: { error: 'invalid device credential' } } });
+  await settleReact();
+  assert.equal(f.accesses, 1, 'A near-expiry renewal runs on launch.');
+  assert.equal(f.accessAuth[0], `Basic ${Buffer.from('device-a:secret-a').toString('base64')}`);
+  assert.equal(await f.profiles.getProfilePassword(f.profile.id), 'secret-basic');
+  assert.equal((await f.profiles.loadConnectionProfiles())[0].connect?.deviceId, 'device-basic');
+  f.runtime.unmount();
+}
+// A rejected device credential verifies the store once and retries with the session.
+{
+  const f = await fixture({ ttl: 120000, accessHandler: (_call, authorization) => authorization?.startsWith('Basic ')
+    ? { status: 401, body: { error: 'invalid device credential' } }
+    : { body: { server_url: 'https://machine.test', machine_id: 'machine-a', machine_name: 'Mac', device_id: 'device-session', device_secret: 'secret-session', expires_at: new Date(Date.now() + 3600000).toISOString() } } });
+  await settleReact();
+  assert.deepEqual(f.accessAuth.map((value) => value?.split(' ')[0]), ['Basic', 'Bearer']);
+  assert.equal(f.accesses, 2);
+  assert.equal(f.claims, 1, 'A rejected device credential recovers through one store claim.');
+  assert.equal(await f.profiles.getProfilePassword(f.profile.id), 'secret-session');
+  f.runtime.unmount();
+}
+// A legacy Bearer session steps up to the stored device credential.
+{
+  const f = await fixture({ expired: true, accessHandler: (_call, authorization) => authorization?.startsWith('Bearer ')
+    ? { status: 403, body: { error: 'legacy session requires device credential step-up', code: 'legacy_session_step_up_required' } }
+    : { body: { server_url: 'https://machine.test', machine_id: 'machine-a', machine_name: 'Mac', device_id: 'device-step', device_secret: 'secret-step', expires_at: new Date(Date.now() + 3600000).toISOString() } } });
+  await settleReact();
+  await f.clock.advance(1000); await settleReact();
+  assert.deepEqual(f.accessAuth.map((value) => value?.split(' ')[0]), ['Bearer', 'Basic']);
+  assert.equal(f.accesses, 2);
+  assert.equal(f.claims, 0, 'The step-up uses the stored credential without claiming the store.');
+  assert.equal(await f.profiles.getProfilePassword(f.profile.id), 'secret-step');
+  f.runtime.unmount();
+}
+// A claim without a device credential recovers the store session and then access.
+{
+  const credentialless = { server_url: 'https://machine.test', machine_id: 'machine-a', machine_name: 'Mac' };
+  const f = await fixture({ manual: true, missing: true, claimResponse: credentialless });
+  await settleReact();
+  const claimsBefore = f.claims;
+  await invoke(() => f.runtime.result.current.connectSetup.pairLink('opencodemobile://pair?v=1&cp=https%3A%2F%2Fapi.opencodecloud.link&id=no-secret&t=one-use-token&n=Mac'));
+  await settleReact(); await settleReact();
+  assert.equal(f.pairClaims, 1);
+  assert.equal(f.claims, claimsBefore + 1, 'One store claim recovers the mobile session.');
+  assert.equal(f.accesses, 1, 'Access recovers the device credential.');
+  const stored = await f.profiles.loadConnectionProfiles();
+  assert.equal(stored.length, 1);
+  assert.equal(stored[0].username, 'device-1');
+  assert.equal(await f.profiles.getProfilePassword(stored[0].id), 'secret-1');
+  assert.equal(f.runtime.result.current.connectSetup.error, undefined);
+  f.runtime.unmount();
+}
+// A claim replacement with a new machine_id and server_url replaces the old profile.
+{
+  const replacement = { server_url: 'https://replacement.test', machine_id: 'machine-b', machine_name: 'Mac', device_id: 'device-replacement', device_secret: 'secret-replacement', expires_at: new Date(Date.now() + 3600000).toISOString() };
+  const f = await fixture({ manual: true, claimResponse: replacement });
+  await settleReact();
+  await invoke(() => f.runtime.result.current.connectSetup.pairLink('opencodemobile://pair?v=1&cp=https%3A%2F%2Fapi.opencodecloud.link&id=replacement&t=one-use-token&n=Mac'));
+  await settleReact(); await settleReact();
+  const stored = await f.profiles.loadConnectionProfiles();
+  assert.equal(stored.length, 1);
+  assert.equal(stored[0].id, f.profile.id, 'The replacement keeps the user-visible profile identity.');
+  assert.equal(stored[0].connect?.machineId, 'machine-b');
+  assert.equal(stored[0].serverUrl, 'https://replacement.test');
+  assert.equal(await f.profiles.getProfilePassword(f.profile.id), 'secret-replacement');
+  assert.equal(f.accesses, 0);
+  f.runtime.unmount();
+}
+// A renewal response with a new machine_id and server_url also replaces the profile.
+{
+  const f = await fixture({ ttl: 120000, accessHandler: () => ({ body: { server_url: 'https://replacement-access.test', machine_id: 'machine-b', machine_name: 'Mac', device_id: 'device-access', device_secret: 'secret-access', expires_at: new Date(Date.now() + 3600000).toISOString() } }) });
+  await settleReact();
+  const stored = await f.profiles.loadConnectionProfiles();
+  assert.equal(stored.length, 1);
+  assert.equal(stored[0].id, f.profile.id);
+  assert.equal(stored[0].connect?.machineId, 'machine-b');
+  assert.equal(stored[0].serverUrl, 'https://replacement-access.test');
+  assert.equal(await f.profiles.getProfilePassword(f.profile.id), 'secret-access');
+  f.runtime.unmount();
+}
+// An expired credential recovers once through the store and does not loop.
+{
+  let access = 0;
+  const f = await fixture({ expired: true, accessHandler: () => {
+    access += 1;
+    if (access === 1) return { status: 401, body: { error: 'invalid device credential' } };
+    return { body: { server_url: 'https://machine.test', machine_id: 'machine-a', machine_name: 'Mac', device_id: 'device-recovered', device_secret: 'secret-recovered', expires_at: new Date(Date.now() + 3600000).toISOString() } };
+  } });
+  await settleReact();
+  await f.clock.advance(1000); await settleReact();
+  assert.equal(f.accesses, 2);
+  assert.equal(f.claims, 1, 'One store claim recovers an expired credential, without a loop.');
+  assert.equal(await f.profiles.getProfilePassword(f.profile.id), 'secret-recovered');
   f.runtime.unmount();
 }
 
@@ -593,6 +732,14 @@ const approvalQR = 'opencodemobile://pair?v=1&cp=https%3A%2F%2Fapi.opencodecloud
   assert.equal(f.accesses, 1);
   assert.equal(f.runtime.result.current.connection.status, 'connected');
   f.runtime.unmount();
+}
+
+// Tokens and device secrets never reach telemetry or console logs.
+{
+  const logged = [...metrics.logs, ...consoleLogs].join(' ');
+  for (const secret of ['user-token', 'secret-a', 'secret-basic', 'secret-session', 'secret-step', 'secret-replacement', 'secret-access', 'secret-recovered', 'secret-1']) {
+    assert.equal(logged.includes(secret), false, `Logs must not contain ${secret}.`);
+  }
 }
 
   }, 120_000);

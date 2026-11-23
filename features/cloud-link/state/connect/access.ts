@@ -3,7 +3,7 @@ import { Platform } from 'react-native';
 
 import { accessConnectMachine, claimConnectPairing, ConnectApiError } from '@/shared/protocol/cloud-link/connect';
 import { withSpan } from '@/shared/observability/client';
-import { getConnectCredentialError, hasConnectSession, isConnectEntitlement, type ConnectClaim, type ConnectPairing, type ConnectSession, type ConnectStore } from '@/shared/contracts/cloud-link';
+import { getConnectCredentialError, getConnectRenewalAt, hasConnectClaimCredential, hasConnectSession, isConnectEntitlement, type ConnectAccess, type ConnectClaim, type ConnectPairing, type ConnectSession, type ConnectStore } from '@/shared/contracts/cloud-link';
 import { getConnectSession, saveConnectSession } from '@/shared/storage/cloud-link';
 import { getProfilePassword, loadConnectionProfiles, saveConnectProfile } from '@/shared/storage/connection-profiles';
 import type { ConnectionProfile } from '@/shared/contracts/connection-profiles';
@@ -49,6 +49,84 @@ export type AccessDeps = {
   waitForInitialization: () => Promise<void>;
 };
 
+type EntitlementDeps = Pick<AccessDeps, 'controlPlaneUrl' | 'store' | 'sessionRef' | 'setSession'>;
+
+async function clearConnectEntitlement({ controlPlaneUrl, store, sessionRef, setSession }: EntitlementDeps) {
+  const saved = sessionRef.current;
+  if (!saved) return;
+  const inactive = { ...saved, entitlements: saved.entitlements.filter((entry) => !isConnectEntitlement(entry)) };
+  sessionRef.current = inactive;
+  setSession(inactive);
+  await saveConnectSession(controlPlaneUrl, store, inactive);
+}
+
+const retryDelays = [1_000, 2_000] as const;
+
+async function retryTransient<T>(run: () => Promise<T>, retryable: (reason: ConnectApiError) => boolean): Promise<T> {
+  for (let attempt = 0; ; attempt += 1) {
+    try { return await run(); }
+    catch (reason) {
+      if (!(reason instanceof ConnectApiError) || attempt >= retryDelays.length || !retryable(reason)) throw reason;
+      await new Promise<void>((resolve) => setTimeout(resolve, retryDelays[attempt]));
+    }
+  }
+}
+
+const retryAccess = (reason: ConnectApiError) => reason.status === 503 || reason.status === 409;
+// A machine-id 409/503 is a provisioning checkpoint with its own access
+// recovery; replaying the claim would consume the QR again.
+const retryClaim = (reason: ConnectApiError) => reason.status === 503
+  ? !reason.machineId
+  : reason.status === 409 && !reason.machineId && !reason.pairingExpired && !reason.invalidPairingToken && !reason.activationUnsupported;
+
+async function recoverConnectAccess(deps: AccessDeps, machineId: string, invalidateEntitlement: boolean): Promise<ConnectAccess> {
+  if (invalidateEntitlement) await clearConnectEntitlement(deps);
+  const session = await deps.recoverSession();
+  deps.sessionRef.current = session;
+  deps.setSession(session);
+  deps.entitlementRecovery.current = false;
+  return accessConnectMachine(deps.controlPlaneUrl, machineId, { token: session.user_token });
+}
+
+async function renewConnectAccess(deps: AccessDeps, machineId: string, previous: ConnectionProfile | undefined, recoverEntitlement: boolean): Promise<ConnectAccess> {
+  const password = previous ? await getProfilePassword(previous.id) : '';
+  const credential = previous?.connect && password ? { deviceId: previous.connect.deviceId, deviceSecret: password } : undefined;
+  // The stored expiry schedules renewal only. The server decides whether the
+  // credential still authenticates, including after local clock skew.
+  const basicFirst = Boolean(credential && previous?.connect && Date.parse(previous.connect.expiresAt) > Date.now());
+  if (basicFirst && credential) {
+    try {
+      return await accessConnectMachine(deps.controlPlaneUrl, machineId, credential);
+    } catch (reason) {
+      if (!(reason instanceof ConnectApiError)) throw reason;
+      // Never replay a rejected device credential. A valid session can still
+      // recover access without a new store claim; otherwise verify the purchase.
+      if (reason.status === 401) return recoverConnectAccess(deps, machineId, false);
+      if (reason.status === 403) {
+        if (reason.testPurchase || (reason.noActiveSubscription && !recoverEntitlement)) throw reason;
+        return recoverConnectAccess(deps, machineId, reason.noActiveSubscription);
+      }
+      throw reason;
+    }
+  }
+  try {
+    return await authenticateConnectRequest(deps, async (token) => {
+      try {
+        return await accessConnectMachine(deps.controlPlaneUrl, machineId, { token });
+      } catch (reason) {
+        if (credential && reason instanceof ConnectApiError && reason.legacySessionStepUpRequired) return accessConnectMachine(deps.controlPlaneUrl, machineId, credential);
+        throw reason;
+      }
+    }, { recoverEntitlement });
+  } catch (reason) {
+    // A web session cannot use the Bearer path, and an expired credential may no
+    // longer step up. Verify the store once, then retry access with a mobile
+    // session instead of looping on the rejected authorization.
+    if (reason instanceof ConnectApiError && reason.status === 403 && !reason.noActiveSubscription && !reason.testPurchase) return recoverConnectAccess(deps, machineId, false);
+    throw reason;
+  }
+}
+
 export async function authenticateConnectRequest<T>({
   controlPlaneUrl,
   store,
@@ -59,14 +137,7 @@ export async function authenticateConnectRequest<T>({
   finishPurchase,
   recoverSession,
 }: AccessDeps, request: (token: string) => Promise<T>, options?: { recoverEntitlement?: boolean }): Promise<T> {
-  const invalidateEntitlement = async () => {
-    const saved = sessionRef.current;
-    if (!saved) return;
-    const inactive = { ...saved, entitlements: saved.entitlements.filter((entry) => !isConnectEntitlement(entry)) };
-    sessionRef.current = inactive;
-    setSession(inactive);
-    await saveConnectSession(controlPlaneUrl, store, inactive);
-  };
+  const invalidateEntitlement = () => clearConnectEntitlement({ controlPlaneUrl, store, sessionRef, setSession });
   if (pendingPurchase.current) await finishPurchase(pendingPurchase.current.purchase);
   let current = sessionRef.current ?? await getConnectSession(controlPlaneUrl, store);
   if (!hasConnectSession(current)) current = await recoverSession();
@@ -116,17 +187,20 @@ async function saveConnectAccess({
 }: AccessDeps) {
   const pending = pendingClaim.current;
   if (!pending) throw new Error('No connection is waiting to be saved.');
+  if (!hasConnectClaimCredential(pending.response)) throw new Error('The machine did not return a device credential. Retry access.');
+  const response = pending.response;
   setPhase('saving');
+  const previous = pending.previous;
+  const sameMachine = previous?.connect?.machineId === response.machine_id && previous.connect.controlPlaneUrl === pending.controlPlaneUrl;
   let rollbackScope: (() => Promise<void>) | undefined;
-  if (pending.previous) {
-    const next = { ...pending.previous, serverUrl: pending.response.server_url, username: pending.response.device_id };
-    if (new URL(next.serverUrl).hostname !== new URL(pending.previous.serverUrl).hostname) throw new Error('machine_hostname_mismatch: Access returned a different hostname.');
-    rollbackScope = await migrateConnectConnectionScope(pending.previous, next);
+  if (previous && sameMachine) {
+    const next = { ...previous, serverUrl: response.server_url, username: response.device_id };
+    rollbackScope = await migrateConnectConnectionScope(previous, next);
   }
   let profile: ConnectionProfile;
-  try { profile = await saveConnectProfile(pending.controlPlaneUrl, pending.response); }
+  try { profile = await saveConnectProfile(pending.controlPlaneUrl, response, previous && !sameMachine ? previous : undefined); }
   catch { await rollbackScope?.(); throw new Error('Access succeeded, but secure saving failed. Retry saving without claiming or purchasing again.'); }
-  if (pending.previous) onProfileRefreshed(pending.previous, profile);
+  if (previous) onProfileRefreshed(previous, profile);
   if (pending.fromPairing) await clearPairing();
   pendingClaim.current = undefined;
   setProfiles(await loadConnectionProfiles());
@@ -145,19 +219,39 @@ export function requestConnectAccess(deps: AccessDeps, machineId: string, fromPa
   const request = withSpan('cloudlink.access', { source: fromPairing ? 'pairing' : 'renewal' }, async (span) => {
     await Promise.allSettled(preceding);
     recoveryMachineId.current = machineId;
+    let previous: ConnectionProfile | undefined;
+    let partial: PendingAccess | undefined;
     if (pendingClaim.current) {
       if (pendingClaim.current.controlPlaneUrl !== controlPlaneUrl || pendingClaim.current.response.machine_id !== machineId) throw new Error('Finish saving the pending machine before reconnecting another machine.');
-    } else {
-      await beforeProfileRefresh();
-      const previous = (await loadConnectionProfiles(true)).find((profile) => profile.connect?.controlPlaneUrl === controlPlaneUrl && profile.connect.machineId === machineId);
-      const response = await authenticateConnectRequest(deps, (token) => accessConnectMachine(controlPlaneUrl, machineId, token), { recoverEntitlement });
-      if (previous && new URL(previous.serverUrl).hostname !== new URL(response.server_url).hostname) throw new Error('machine_hostname_mismatch: Access returned a different hostname.');
-      if (hintActivation && response.activation) deps.activationHints.current.set(machineId, {
-        activation: response.activation,
-        ...(fromPairing && deps.pairingRef.current ? { pairingId: deps.pairingRef.current.pairingId } : {}),
-      });
-      pendingClaim.current = { controlPlaneUrl, response, previous, fromPairing };
+      if (hasConnectClaimCredential(pendingClaim.current.response)) {
+        const saved = await saveConnectAccess(deps);
+        recoveryMachineId.current = undefined;
+        deps.setPhase('idle');
+        span.setAttribute('result', 'saved');
+        return saved;
+      }
+      // A claim without a device credential is not a failure. Keep its
+      // replacement checkpoint and recover the credential through access.
+      partial = pendingClaim.current;
+      previous = partial.previous;
+      pendingClaim.current = undefined;
     }
+    let response: ConnectAccess;
+    try {
+      await beforeProfileRefresh();
+      if (!previous) previous = (await loadConnectionProfiles(true)).find((profile) => profile.connect?.controlPlaneUrl === controlPlaneUrl && profile.connect.machineId === machineId);
+      response = await retryTransient(() => renewConnectAccess(deps, machineId, previous, recoverEntitlement), retryAccess);
+    } catch (reason) {
+      // Keep the credentialless claim so an explicit retry resumes access
+      // instead of redeeming the one-use QR again.
+      if (partial) pendingClaim.current = partial;
+      throw reason;
+    }
+    if (hintActivation && response.activation) deps.activationHints.current.set(response.machine_id, {
+      activation: response.activation,
+      ...(fromPairing && deps.pairingRef.current ? { pairingId: deps.pairingRef.current.pairingId } : {}),
+    });
+    pendingClaim.current = { controlPlaneUrl, response, previous, fromPairing, ...(fromPairing && deps.pairingRef.current ? { pairingId: deps.pairingRef.current.pairingId } : {}) };
     const saved = await saveConnectAccess(deps);
     recoveryMachineId.current = undefined;
     deps.setPhase('idle');
@@ -179,7 +273,9 @@ export async function prepareConnectSettings(deps: AccessDeps, settings: Opencod
     const credentialError = getConnectCredentialError(connect, password);
     const activating = deps.activation.current?.startup && deps.activation.current.profile.connect?.machineId === connect.machineId && deps.activation.current.profile.connect.controlPlaneUrl === connect.controlPlaneUrl;
     if (activating && credentialError) throw new Error(credentialError);
-    const refresh = credentialError || (!activating && Date.parse(connect.expiresAt) - Date.now() <= 5 * 60_000 && Date.now() - (lastAccess.current.get(connect.machineId) ?? 0) > 60_000);
+    const storedRenewAt = connect.renewAt ? Date.parse(connect.renewAt) : NaN;
+    const renewAt = Number.isFinite(storedRenewAt) ? storedRenewAt : Date.parse(getConnectRenewalAt(connect.expiresAt) ?? connect.expiresAt);
+    const refresh = credentialError || (!activating && renewAt <= Date.now() && Date.now() - (lastAccess.current.get(connect.machineId) ?? 0) > 60_000);
     if (!initialized && (pendingPurchase.current || refresh)) {
       await deps.waitForInitialization();
       initialized = true;
@@ -213,7 +309,7 @@ export async function claimConnectAction(deps: AccessDeps, isCurrent = () => tru
   if (pendingClaim.current) {
     const pending = pendingClaim.current;
     const hint = pending.response.activation ? { activation: pending.response.activation, ...(pending.pairingId ? { pairingId: pending.pairingId } : {}) } : undefined;
-    return activateConnectProfile(deps, await requestConnectAccess(deps, pending.response.machine_id), pending.fromPairing, isCurrent, hint, authenticate);
+    return activateConnectProfile(deps, await requestConnectAccess(deps, pending.response.machine_id, pending.fromPairing ?? false), pending.fromPairing, isCurrent, hint, authenticate);
   }
   const current = pairingRef.current;
   if (!current) throw new Error('Scan or open a pairing link first.');
@@ -223,7 +319,7 @@ export async function claimConnectAction(deps: AccessDeps, isCurrent = () => tru
   let response: ConnectClaim;
   try {
     const deviceName = Platform.OS === 'ios' ? 'iPhone' : Platform.OS === 'android' ? 'Android phone' : 'Web test device';
-    response = await authenticateConnectRequest(deps, (token) => claimConnectPairing(current, token, deviceName));
+    response = await retryTransient(() => authenticateConnectRequest(deps, (token) => claimConnectPairing(current, token, deviceName)), retryClaim);
   } catch (reason) {
     if (reason instanceof ConnectApiError && reason.machineId) {
       const hint = reason.activation ? { activation: reason.activation, pairingId: current.pairingId } : undefined;
@@ -232,7 +328,21 @@ export async function claimConnectAction(deps: AccessDeps, isCurrent = () => tru
     if (reason instanceof ConnectApiError && (reason.status === 404 || reason.invalidPairingToken || reason.pairingExpired)) await clearPairing();
     throw reason;
   }
-  const previous = (await loadConnectionProfiles(true)).find((profile) => profile.connect?.controlPlaneUrl === current.controlPlaneUrl && profile.connect.machineId === response.machine_id);
+  const stored = await loadConnectionProfiles(true);
+  const exact = stored.find((profile) => profile.connect?.controlPlaneUrl === current.controlPlaneUrl && profile.connect.machineId === response.machine_id);
+  // A retired connector may be replaced by a new machine_id. Replace the one
+  // same-named profile only when the match is unambiguous.
+  const names = [response.machine_name, current.machineName].map((name) => name.trim());
+  const sameName = exact ? [] : stored.filter((profile) => profile.connect?.controlPlaneUrl === current.controlPlaneUrl && names.includes(profile.connect.machineName.trim()));
+  const previous = exact ?? (sameName.length === 1 ? sameName[0] : undefined);
+  if (!hasConnectClaimCredential(response)) {
+    // A claim may omit the device credential. Verify the store silently so the
+    // following access request uses a mobile session instead of reporting a
+    // malformed pairing response.
+    const session = await deps.recoverSession();
+    deps.sessionRef.current = session;
+    deps.setSession(session);
+  }
   pendingClaim.current = { controlPlaneUrl: current.controlPlaneUrl, response, previous, fromPairing: true, pairingId: current.pairingId };
   const hint = response.activation ? { activation: response.activation, pairingId: current.pairingId } : undefined;
   return activateConnectProfile(deps, await requestConnectAccess(deps, response.machine_id, true), true, isCurrent, hint, authenticate);

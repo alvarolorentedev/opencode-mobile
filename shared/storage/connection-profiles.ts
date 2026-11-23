@@ -10,7 +10,7 @@ import { getConnectionCertificate, getProfileCertificate } from '@/shared/storag
 import type { ConnectionCertificate } from '@/shared/contracts/connection-certificate';
 import type { ConnectionHeaders } from '@/shared/contracts/connection-headers';
 import { parseConnectionOidc, type ConnectionOidc } from '@/shared/contracts/connection-oidc';
-import { getConnectCredentialError, parseConnectMetadata, type ConnectMetadata } from '@/shared/contracts/cloud-link';
+import { getConnectCredentialError, getConnectRenewalAt, parseConnectMetadata, type ConnectAccess, type ConnectMetadata } from '@/shared/contracts/cloud-link';
 import { getConnectTestSecret, setConnectTestSecret } from '@/shared/storage/cloud-link';
 import { getConnectionScope, type ConnectionIdentity } from '@/shared/contracts/connection-scope';
 import { CONNECTION_PROFILES_STORAGE_KEY, SETTINGS_STORAGE_KEY } from '@/shared/storage/keys';
@@ -168,24 +168,34 @@ export async function deleteProfilePassword(profileId: string) {
   await SecureStore.deleteItemAsync(passwordKey(profileId));
 }
 
-export async function saveConnectProfile(controlPlaneUrl: string, claim: import('@/shared/contracts/cloud-link').ConnectClaim) {
+export async function saveConnectProfile(controlPlaneUrl: string, claim: ConnectAccess, replace?: ConnectionProfile) {
   return mutateConnectionProfiles(async (profiles, save) => {
-    const previous = profiles.filter((profile) => profile.connect?.controlPlaneUrl === controlPlaneUrl && profile.connect.machineId === claim.machine_id);
-    if (previous[0] && new URL(previous[0].serverUrl).hostname !== new URL(claim.server_url).hostname) throw new Error('machine_hostname_mismatch: Access returned a different hostname.');
+    const matched = profiles.filter((profile) => profile.connect?.controlPlaneUrl === controlPlaneUrl && profile.connect.machineId === claim.machine_id);
+    // A retired machine may be replaced by a new machine_id; the caller names the
+    // profile being renewed so the old row and secret are removed in the same write.
+    // Ignore a stale name if that profile changed or disappeared meanwhile.
+    const replaced = replace ? profiles.find((profile) => profile.id === replace.id
+      && profile.connect?.controlPlaneUrl === controlPlaneUrl
+      && profile.connect.machineId === replace.connect?.machineId) : undefined;
+    const replacement = replaced && !matched.some((profile) => profile.id === replaced.id) ? replaced : undefined;
+    const targets = replacement ? [...matched, replacement] : matched;
+    const previous = targets[0];
+    const renewAt = getConnectRenewalAt(claim.expires_at);
     const profile: ConnectionProfile = {
-      id: previous[0]?.id ?? createProfileId(), name: previous[0]?.name ?? claim.machine_name, serverUrl: claim.server_url, username: claim.device_id,
-      ...(previous[0]?.modelPreferences ? { modelPreferences: previous[0].modelPreferences } : {}),
-      connect: { controlPlaneUrl, machineId: claim.machine_id, machineName: claim.machine_name, deviceId: claim.device_id, expiresAt: claim.expires_at },
+      id: previous?.id ?? createProfileId(), name: previous?.name ?? claim.machine_name, serverUrl: claim.server_url, username: claim.device_id,
+      ...(previous?.modelPreferences ? { modelPreferences: previous.modelPreferences } : {}),
+      connect: { controlPlaneUrl, machineId: claim.machine_id, machineName: claim.machine_name, deviceId: claim.device_id, expiresAt: claim.expires_at, ...(renewAt ? { renewAt } : {}) },
     };
-    const oldPassword = previous[0] ? await getProfilePassword(profile.id) : '';
+    const oldPassword = previous ? await getProfilePassword(profile.id) : '';
+    const removed = new Set(targets.map((item) => item.id));
     await saveProfilePassword(profile.id, claim.device_secret, true);
     try {
-      await save([...profiles.filter((item) => !previous.includes(item)), profile]);
+      await save([...profiles.filter((item) => !removed.has(item.id)), profile]);
     } catch (error) {
       await saveProfilePassword(profile.id, oldPassword, true).catch(() => undefined);
       throw error;
     }
-    await Promise.all(previous.filter((item) => item.id !== profile.id).map((item) => deleteProfilePassword(item.id)));
+    await Promise.all(targets.filter((item) => item.id !== profile.id).map((item) => deleteProfilePassword(item.id)));
     return profile;
   });
 }

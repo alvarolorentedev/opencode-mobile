@@ -337,6 +337,16 @@ verification fails or the retry is rejected, the UI shows recovery instead of a
 stale active-subscription banner. Other `403` errors and invalid QR tokens never
 trigger this subscription recovery.
 
+Machine access renewal prefers the stored device credential (`Authorization:
+Basic base64(device_id:device_secret)`). The Bearer session remains the fallback
+for a newly restored device or a credential that is missing. A `403` with
+`code: "legacy_session_step_up_required"` retries once with Basic. A rejected
+`401` device credential, or a session that cannot renew access, silently
+verifies the store proof and retries access with the mobile session. `503` and
+transient `409` responses retry with bounded backoff and keep the saved profile.
+The provider reacts to the runtime `403` code; deployment deadlines are not app
+constants. See [ADR 0053](../adr/0053-cloud-link-device-credential-renewal.md).
+
 Pairing `403` responses with `code=capacity_reached` show machine provisioning/
 cleanup guidance. Only the exact `no active subscription` response is displayed
 as a rejected entitlement; other access denials use a generic denial message.
@@ -356,14 +366,17 @@ sends the bearer session and JSON `{pairing_token,device_name}`. Default device
 names are iPhone or Android phone; the backend assigns credential identifiers.
 
 Completed pairing/access responses are saved before normal connection switching.
-Secure-save retries retain the completed response in memory and do not redeem or
-purchase again. Restart during an ambiguous pairing can repeat the same claim;
-owner-visible `machine_id` in `409`/`503` recovers through authenticated machine
-access. Provisioning locks remain retryable. Explicit expiry/invalid-token errors
-clear pending QR data and request a fresh scan, preserving the subscription and
-session. The older backend's combined conflict/expiry/lock message is ambiguous;
-retain that QR for explicit retry or replacement rather than guessing its age.
-A new scan replaces pending QR data; closing the pairing flow clears it.
+A pairing claim may omit the device credential; that is not a hard failure. The
+provider keeps the saved profile, verifies the store proof, requests machine
+access, and persists the rotated credential. Secure-save retries retain the
+completed response in memory and do not redeem or purchase again. Restart during
+an ambiguous pairing can repeat the same claim; owner-visible `machine_id` in
+`409`/`503` recovers through authenticated machine access. Provisioning locks
+remain retryable. Explicit expiry/invalid-token errors clear pending QR data and
+request a fresh scan, preserving the subscription and session. The older
+backend's combined conflict/expiry/lock message is ambiguous; retain that QR for
+explicit retry or replacement rather than guessing its age. A new scan replaces
+pending QR data; closing the pairing flow clears it.
 
 Scanner permission is requested on every native pairing entry before the camera
 surface renders; denial cancels pairing. Deep links skip that gate because they already
@@ -373,13 +386,18 @@ before onboarding completion.
 
 ## Machines, secure profiles and transport
 
-`machine_id` is durable ownership identity. `/v1/machines/:id/access` must return
-that exact ID; a mismatch is rejected before credentials are saved or state is
-migrated. Existing machine hostnames and profile IDs/names/catalog and routing
-preferences are preserved. Device credentials may rotate. The provider copies validated
-connection-scoped caches and migrates favorites and pending notification
-references to the new credential scope before switching. Old non-secret cache
-copies remain for interruption-safe recovery.
+`machine_id` is durable ownership identity. A claim or access response may carry
+a replacement `machine_id`, `server_url`, or hostname when an old connector could
+not prove tunnel ownership. The provider replaces the affected profile and its
+secret atomically, reusing the user-visible profile id/name when a previous
+profile is known. An access replacement uses the requested machine as the
+previous profile. A claim replacement uses a unique same-control-plane machine
+name; an ambiguous or absent match adds a new profile instead of deleting a
+working one. Existing hostnames and profile IDs/names are otherwise preserved.
+Device credentials may rotate. Same-machine rotations copy validated
+connection-scoped caches and migrate favorites and pending notification
+references to the new credential scope before switching. A replacement machine
+keeps old non-secret cache copies for interruption-safe recovery.
 
 `GET /v1/machines` exposes owned machines and `access_enabled`, including after
 subscription expiry. Second-device Restore recovers store ownership and obtains
@@ -388,14 +406,15 @@ Purchase/Restore reactivates the same machine/tunnel/hostname. A completed
 purchase refreshes only the focused Cloud Link machine; when another connection
 is active, Restore still recovers the saved Cloud Link machines. Other saved
 machines refresh lazily when selected. Reconnect paths prepare Cloud Link
-credentials centrally. Foreground access refresh starts five minutes before
-expiry (jittered per device) as a best-effort renewal attempt, avoids repeatedly
-refreshing unchanged paid-through credentials, and retries transient failures.
-A pre-expiry refresh that fails for any reason while the credential is still
-valid keeps that credential and entitlement; hard recovery runs only after the
-credential expires or is missing. A pending purchase environment switch is never
-swallowed by this fallback. Expiry still closes SSE/terminal sockets and blocks
-all SDK/polling/background traffic.
+credentials centrally. Foreground access refresh starts at two thirds of the
+credential lifetime (day 60 for a 90-day credential), capped at a 30-day lead
+with a five-minute floor. It is jittered per device, avoids
+repeatedly refreshing unchanged paid-through credentials, and retries transient
+failures. A pre-expiry refresh that fails for any reason while the credential is
+still valid keeps that credential and entitlement; hard recovery runs only after
+the credential expires or is missing. A pending purchase environment switch is
+never swallowed by this fallback. Expiry still closes SSE/terminal sockets and
+blocks all SDK/polling/background traffic.
 
 Concurrent reconnect triggers (boot, foreground refresh, activation retry,
 manual Reconnect, profile switch) join one in-flight connect when the server,
@@ -504,8 +523,11 @@ and Google identities never merge. Session/pending-QR storage requires an
 unlocked device and uses device-only iOS accessibility. Profile credentials use
 the existing device-only, after-first-unlock storage for background notifications.
 Native backup exclusions remain. AsyncStorage contains only profile metadata:
-`{controlPlaneUrl,machineId,machineName,deviceId,expiresAt}` plus ordinary
-connection metadata/preferences, never bearer/proof/pairing/device secrets.
+`{controlPlaneUrl,machineId,machineName,deviceId,expiresAt,renewAt?}` plus
+ordinary connection metadata/preferences, never bearer/proof/pairing/device
+secrets. `renewAt` is local scheduling metadata; it never authorizes a request.
+Renewal sends the session token or device credential only in the request
+`Authorization` header; neither value is logged.
 
 HTTP, SSE and native WebSockets talk directly to `server_url` using device
 Basic auth. User sessions never reach the data plane and credentials never enter
@@ -531,8 +553,12 @@ failures, retries, rediscovered transactions, and bounded Cloudflare 1033 tunnel
 startup recovery after pairing. It also tests catalog/base-plan/
 offer selection, native JWS forwarding, Family Sharing exclusion, DEFERRED
 replacement, URL safety, app identity/camera/build variants and WebSocket headers.
+`features/cloud-link/__tests__/connect-recovery.test.ts` covers Basic-first
+renewal, legacy session step-up, a credentialless claim recovering through the
+store proof and access, replacement machine/server persistence, bounded expired
+credential recovery, and absence of session tokens or device secrets in logs.
 `shared/storage/__tests__/connection-profiles.test.ts` checks stable profile identity, credential rotation,
-hostname preservation, rollback, secret exclusion and expiry.
+hostname preservation, replacement, rollback, secret exclusion and expiry.
 Control-plane checks cover the fixed allowlist, URL normalization/rejection,
 explicit pairing trust, and environment-isolated sessions and pending QR records.
 Actual provider-hook checks on both stores cover automatic purchase routing,
@@ -541,7 +567,9 @@ isolation during secure-save/finalization failures. Cloud Link E2E covers real b
 returning to production from a remembered staging preference, test buyers routing
 to staging through Purchase/Restore/restart, exact staging QR continuation, and the
 absence of manual URL configuration. Updated E2E assertions and real Android
-license-test recovery still require explicit human validation.
+license-test recovery still require explicit human validation. Exercise the
+legacy-session step-up against staging before the production session deadline;
+staging enforces it earlier than production.
 
 `tests/e2e/connect.spec.mjs` intercepts the trusted API, supplies deterministic
 native-store metadata/events and forwards HTTPS connector REST to the existing
