@@ -1,0 +1,3 @@
+- Mission Control hides the server filter and refresh button when only one connection is attached and restores them with a second.
+- New chats inherit the agent, model and configuration of your latest session.
+- Icons now follow the active palette consistently in light, dark and disabled states.
