@@ -91,7 +91,7 @@ export function WorktreeSwitcher({ onClose }: { onClose: () => void }) {
           return (
             <View key={checkout.directory}>
               <View className={cn("items-center flex-row")}>
-                <ListRow testID={`worktree-manage-${checkout.directory}`} className={cn("flex-1")} title={name} description={description} left={(props) => <Icon {...props} color={checkout.isMain ? palette.tint : palette.muted} name={checkout.isMain ? 'home-outline' : 'source-branch'}></Icon>}></ListRow>
+                <ListRow testID={`worktree-manage-${checkout.directory}`} className={cn("flex-1")} title={name} description={description} left={(props) => <Icon {...props} color={checkout.isMain ? palette.text : palette.muted} name={checkout.isMain ? 'home-outline' : 'source-branch'}></Icon>}></ListRow>
                 <Button accessibilityLabel={t('project:worktrees.removeLabel', { name })} disabled={protectedCheckout || Boolean(busy)} onPress={() => remove(checkout.directory)} variant={"ghost"} size="icon"><Icon name={"delete-outline"} size={24} /></Button>
               </View>
               {selected && !checkout.isMain ? <Text className={cn("text-muted-foreground px-4 pb-2")}>{t('project:worktrees.cannotRemoveActive')}</Text> : null}
@@ -101,7 +101,7 @@ export function WorktreeSwitcher({ onClose }: { onClose: () => void }) {
         }
         return (
           <View key={checkout.directory}>
-            <ListRow testID={`worktree-option-${checkout.directory}`} accessibilityRole="button" accessibilityState={{ selected, disabled: Boolean(busy) }} accessibilityLabel={t('project:picker.selectLabel', { name })} title={name} description={description} left={(props) => <Icon {...props} color={selected ? palette.tint : palette.muted} name={selected ? 'check-circle' : checkout.isMain ? 'home-outline' : 'source-branch'}></Icon>} disabled={Boolean(busy)} onPress={() => void select(checkout.directory)}></ListRow>
+            <ListRow testID={`worktree-option-${checkout.directory}`} accessibilityRole="button" accessibilityState={{ selected, disabled: Boolean(busy) }} accessibilityLabel={t('project:picker.selectLabel', { name })} title={name} description={description} left={(props) => <Icon {...props} color={selected ? palette.text : palette.muted} name={selected ? 'check-circle' : checkout.isMain ? 'home-outline' : 'source-branch'}></Icon>} disabled={Boolean(busy)} onPress={() => void select(checkout.directory)}></ListRow>
             <Separator></Separator>
           </View>
         );

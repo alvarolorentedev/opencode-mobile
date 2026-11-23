@@ -442,7 +442,7 @@ export function TranscriptList({
           <Card style={[styles.emptyCard, { backgroundColor: palette.surface }]}><CardContent style={styles.emptyContent}><Text style={[styles.emptyTitle, { color: palette.text }]} variant="display">{t('chat:starter.title')}</Text><Text style={{ color: palette.muted }} variant="description">{t('chat:starter.description')}</Text><View style={styles.promptStack}>
                 {STARTER_PROMPT_KEYS.map((key) => (
                   <Pressable accessibilityRole="button" accessibilityLabel={t(key)} key={key} style={[styles.promptCard, { borderColor: palette.border, backgroundColor: palette.background }]} onPress={() => onSelectStarterPrompt(key === 'chat:starter.prompts.implement' ? `${t(key)}\n${t('chat:starter.bugSymptoms')}` : t(key))}><View style={styles.promptCardInner}>
-                      <MaterialCommunityIcons name="lightning-bolt" size={18} color={palette.tint} />
+                      <MaterialCommunityIcons name="lightning-bolt" size={18} color={palette.text} />
                       <Text style={{ color: palette.text }} variant="description">{t(key)}</Text>
                     </View></Pressable>
                 ))}

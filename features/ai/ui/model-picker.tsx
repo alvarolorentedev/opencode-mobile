@@ -154,7 +154,7 @@ export function ModelPicker({ disabled = false, models, onSelect, recentModelIds
             {model.supportsReasoning ? t('chat:modelPicker.reasoningSupported') : t('chat:modelPicker.standardModel')}
           </Text>
         </View>
-        {isSelected ? <MaterialCommunityIcons name="check" size={20} color={palette.tint} /> : null}
+        {isSelected ? <MaterialCommunityIcons name="check" size={20} color={palette.text} /> : null}
       </Pressable>
     );
   };
@@ -177,7 +177,7 @@ export function ModelPicker({ disabled = false, models, onSelect, recentModelIds
         <Button variant={visible ? 'secondary' : 'outline'} disabled={disabled || (models.length === 0 && !inheritChoice)}
           onPress={open} className={cn('flex-1 min-w-0', slim && 'px-2')}
           testID={`${testID}-trigger`} accessibilityLabel={selectedModelLabel}>
-          {renderProviderIcon(selected?.providerID, slim ? 14 : 16, palette.tint)}
+          {renderProviderIcon(selected?.providerID, slim ? 14 : 16, palette.text)}
           <UiText numberOfLines={1} maxFontSizeMultiplier={1.5}>{selectedModelLabel}</UiText>
         </Button>
       )}
@@ -185,7 +185,7 @@ export function ModelPicker({ disabled = false, models, onSelect, recentModelIds
               {inheritChoice ? <Pressable accessibilityRole="radio" accessibilityState={{ checked: inheritChoice.selected }}
                 onPress={() => { discardAndClose(); inheritChoice.onSelect(); }} className="min-h-row flex-row items-center gap-3 rounded-control border border-border bg-background p-3 m-3">
                 <View className="flex-1 gap-1"><UiText>{inheritChoice.label}</UiText><UiText variant="description" className="text-muted-foreground">{inheritChoice.description}</UiText></View>
-                {inheritChoice.selected ? <MaterialCommunityIcons name="check" size={20} color={palette.tint} /> : null}
+                {inheritChoice.selected ? <MaterialCommunityIcons name="check" size={20} color={palette.text} /> : null}
               </Pressable> : null}
               {onAutoRoutingChange ? (
                 <Pressable
@@ -215,7 +215,7 @@ export function ModelPicker({ disabled = false, models, onSelect, recentModelIds
                   <MaterialCommunityIcons
                     name={autoRoutingEnabled ? 'check-circle-outline' : 'circle-outline'}
                     size={22}
-                    color={autoRoutingEnabled ? palette.tint : palette.muted}
+                    color={autoRoutingEnabled ? palette.text : palette.muted}
                   />
                 </Pressable>
               ) : null}
@@ -265,7 +265,7 @@ export function ModelPicker({ disabled = false, models, onSelect, recentModelIds
                 renderSectionHeader={({ section }) => section.providerID ? (
                     <View className={cn(stylesClasses.groupHeader)}>
                       <View className={cn(stylesClasses.groupIcon)} style={[{ backgroundColor: withAlpha(palette.tint, 0x14 / 255) }]}>
-                        {renderProviderIcon(section.providerID, 18, palette.tint)}
+                        {renderProviderIcon(section.providerID, 18, palette.text)}
                       </View>
                       <Text className={cn("text-foreground")} style={[styles.groupTitle]}>{section.title}</Text>
                     </View>

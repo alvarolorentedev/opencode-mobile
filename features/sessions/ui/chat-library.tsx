@@ -75,9 +75,9 @@ export function ChatLibrary({ visible, onClose, onNewChat }: { visible: boolean;
           onPress={() => void run(key, () => registry.navigate(row), close)}
           className={cn(stylesClasses.row)} style={[{ borderColor: row.current ? palette.tint : palette.border, backgroundColor: row.current ? palette.background : 'transparent' }]}>
           {inFlight ? <Spinner size={20} color={palette.tint} testID="chat-library-busy" />
-            : <MaterialCommunityIcons name={row.current ? 'check-circle' : row.favorite ? 'star' : running ? 'progress-clock' : 'message-outline'} size={20} color={row.current || running || row.favorite ? palette.tint : palette.muted} />}
+            : <MaterialCommunityIcons name={row.current ? 'check-circle' : row.favorite ? 'star' : running ? 'progress-clock' : 'message-outline'} size={20} color={row.current || running || row.favorite ? palette.text : palette.muted} />}
           <View className={cn(stylesClasses.copy)}>
-            <View className={cn(stylesClasses.titleLine)}>{row.favorite && row.current ? <MaterialCommunityIcons name="star" size={14} color={palette.tint} /> : null}<Text numberOfLines={1} className={cn(stylesClasses.title, "text-foreground")}>{label}</Text></View>
+            <View className={cn(stylesClasses.titleLine)}>{row.favorite && row.current ? <MaterialCommunityIcons name="star" size={14} color={palette.text} /> : null}<Text numberOfLines={1} className={cn(stylesClasses.title, "text-foreground")}>{label}</Text></View>
             <View className={cn(stylesClasses.metaLine)}>
               {multipleServers ? <Text testID="chat-library-server-chip" numberOfLines={1} className={cn(stylesClasses.chip, "text-muted-foreground border-border")}>{row.serverName}</Text> : null}
               <Text numberOfLines={1} className={cn(stylesClasses.metaText, "text-muted-foreground")}>{row.projectPath.split('/').pop()}{' · '}{row.preview || (running ? t('chat:library.running') : formatRelativeTime(row.session.time.updated))}</Text>

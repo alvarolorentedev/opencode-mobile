@@ -170,13 +170,13 @@ export function ChangesOverlay({
 
       <OverlaySheet visible={changesVisible && diffSourcesVisible} testID="diff-source-overlay" title={t('chat:diff.sourceTitle')} fitContent onClose={() => setDiffSourcesVisible(false)}>
         {DIFF_SCOPE_OPTIONS.map((option) => <Pressable key={option.value} accessibilityRole="button" onPress={() => { onSelectDiffScope(option.value); if (option.value !== 'turn' || diffTurns.length <= 1) setDiffSourcesVisible(false); }} className={cn(stylesClasses.sessionPickerItemRow)} style={[{ borderWidth: 1, borderRadius: 16, borderColor: currentDiffScope === option.value ? palette.tint : palette.border }]}>
-          <MaterialCommunityIcons name={currentDiffScope === option.value ? 'check-circle' : 'circle-outline'} size={20} color={currentDiffScope === option.value ? palette.tint : palette.muted} />
+          <MaterialCommunityIcons name={currentDiffScope === option.value ? 'check-circle' : 'circle-outline'} size={20} color={currentDiffScope === option.value ? palette.text : palette.muted} />
           <Text className={cn("text-foreground")}>{t(option.labelKey)}</Text>
         </Pressable>)}
         {currentDiffScope === 'turn' && diffTurns.length > 1 ? <>
           <Text className={cn("text-muted-foreground")} variant="description">{t('chat:diff.turn')}</Text>
           {diffTurns.map((turn) => <Pressable key={turn.id} accessibilityRole="button" onPress={() => { onSelectDiffMessage(turn.id); setDiffSourcesVisible(false); }} className={cn(stylesClasses.sessionPickerItemRow)} style={[{ borderWidth: 1, borderRadius: 16, borderColor: selectedDiffMessageId === turn.id ? palette.tint : palette.border }]}>
-            <MaterialCommunityIcons name={selectedDiffMessageId === turn.id ? 'check-circle' : 'circle-outline'} size={20} color={selectedDiffMessageId === turn.id ? palette.tint : palette.muted} />
+            <MaterialCommunityIcons name={selectedDiffMessageId === turn.id ? 'check-circle' : 'circle-outline'} size={20} color={selectedDiffMessageId === turn.id ? palette.text : palette.muted} />
             <Text className={cn("text-foreground")}>{t('chat:diff.turnNumber', { number: turn.number })}</Text>
           </Pressable>)}
         </> : null}

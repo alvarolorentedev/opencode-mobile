@@ -119,7 +119,7 @@ function CopyText({ palette, value }: { palette: Palette; value: string }) {
         accessibilityLabel={t('common:actions.copy')}
         hitSlop={8}
         onPress={() => void copy(value)}>
-        <MaterialCommunityIcons name={copied ? 'check' : 'content-copy'} size={20} color={copied ? palette.tint : palette.muted} />
+        <MaterialCommunityIcons name={copied ? 'check' : 'content-copy'} size={20} color={copied ? palette.text : palette.muted} />
       </Pressable>
     </View>
   );
@@ -138,7 +138,7 @@ function PairingCode({ code, palette }: { code: string; palette: Palette }) {
           accessibilityLabel={t('common:actions.copy')}
           hitSlop={8}
           onPress={() => void copy(code)}>
-          <MaterialCommunityIcons name={copied ? 'check' : 'content-copy'} size={22} color={copied ? palette.tint : palette.muted} />
+          <MaterialCommunityIcons name={copied ? 'check' : 'content-copy'} size={22} color={copied ? palette.text : palette.muted} />
         </Pressable>
       </View>
     </View>

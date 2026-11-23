@@ -26,7 +26,7 @@ export function ProjectPickerButton({ onPress }: { onPress: () => void }) {
   const { t } = useTranslation();
   const palette = usePalette();
   return <Pressable testID="chat-library-project-button" accessibilityRole="button" accessibilityLabel={t('project:picker.changeProject')} onPress={onPress} className={cn(stylesClasses.button)}>
-    <MaterialCommunityIcons name="folder-swap-outline" size={20} color={palette.tint} />
+    <MaterialCommunityIcons name="folder-swap-outline" size={20} color={palette.text} />
     <NativeText className={cn("text-primary")}>{t('common:tabs.projects')}</NativeText>
   </Pressable>;
 }
@@ -130,7 +130,7 @@ export function ProjectPicker({ visible, onClose, activePath, onSelected, testID
             className={cn("flex-1 min-w-0")}
             left={(props) => <Icon {...props} name="archive-outline" />} style={{ paddingHorizontal: 0 }} />
           <Button testID={`project-restore-hidden-${project.path}`} onPress={() => registry.restoreProject({ connectionId: group.id, projectPath: project.path })} variant="outline" size="sm">
-            <Icon name="restore" size={18} color={palette.tint} />
+            <Icon name="restore" size={18} color={palette.text} />
             <Text>{t('project:picker.restore')}</Text>
           </Button>
         </View>)}

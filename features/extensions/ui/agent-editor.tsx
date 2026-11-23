@@ -35,7 +35,7 @@ export function AgentEditor({ row, readOnly = false, context, scope, onClose, sa
       <View accessibilityRole="radiogroup" className="rounded-group border border-border overflow-hidden">
         {(['primary', 'subagent', 'all'] as const).map((mode) => <Pressable key={mode} disabled={disabled} accessibilityRole="radio" accessibilityState={{ checked: values.mode === mode, disabled }}
           onPress={() => form.setValue('mode', mode, { shouldDirty: true })} className="min-h-row flex-row items-center gap-3 border-b border-border p-3">
-          <Icon name={values.mode === mode ? 'radiobox-marked' : 'radiobox-blank'} className="text-primary" />
+          <Icon name={values.mode === mode ? 'radiobox-marked' : 'radiobox-blank'} />
           <View className="flex-1 gap-1"><Text>{t(`settings:extensions.editor.mode.${mode}`)}</Text><Text variant="description" className="text-muted-foreground">{t(`settings:extensions.editor.modeHint.${mode}`)}</Text></View>
         </Pressable>)}
       </View></SettingTarget>

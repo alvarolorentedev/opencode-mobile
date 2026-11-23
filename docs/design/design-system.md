@@ -39,6 +39,11 @@ Use semantic palette roles rather than literal colors:
 - `bubbleUser`, `onBubbleUser`, `bubbleAssistant`, `onBubbleAssistant`, `code`:
   conversation-specific roles; do not repurpose them for settings.
 
+Icons are monochrome: use `text` for primary glyphs and `muted` for secondary or
+disabled glyphs. Never tint a glyph with `tint`, `success`, `warning` or `danger`;
+status color belongs to text, badges and surfaces. A glyph inside a filled control
+uses that surface's on-color so it stays legible.
+
 Support system/light/dark and green/blue/red/purple/pink/gray. Resolve colors
 through `usePalette()`, not direct `Colors.light` reads. Use semantic Tailwind classes for shared controls. Status always has text or an icon as well as color. Target
 4.5:1 text contrast and 3:1 essential control/focus contrast; verify the actual
@@ -83,6 +88,7 @@ be smaller because the entire row is interactive.
 Use MaterialCommunityIcons from the installed icon library. A trailing chevron
 means navigation or disclosure; a switch changes a boolean immediately. Icons
 beside a complete label are decorative. Never substitute letter glyphs for icons.
+Selection is shown by the filled shape or the label, not by tinting the glyph.
 
 ## Components and interaction patterns
 

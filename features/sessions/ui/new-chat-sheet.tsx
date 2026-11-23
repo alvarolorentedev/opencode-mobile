@@ -157,7 +157,7 @@ export function NewChatSheet({ target: initial, onClose }: { target?: WorkspaceT
           onChange={selectProject} />
 
         <Text className={cn("mt-1.5")} variant="label">{t('chat:newChat.runIn')}</Text>
-        <ListRow testID="new-chat-new-worktree" accessibilityRole="button" accessibilityState={{ selected: createMode, disabled: Boolean(busy) }} title={t('chat:newChat.newWorktree')} left={(props) => <Icon {...props} color={createMode ? palette.tint : palette.muted} name={"plus"}></Icon>} right={(props) => <Icon {...props} color={createMode ? palette.tint : palette.muted} name={createMode ? 'check-circle' : 'circle-outline'}></Icon>} disabled={Boolean(busy)} onPress={() => {
+        <ListRow testID="new-chat-new-worktree" accessibilityRole="button" accessibilityState={{ selected: createMode, disabled: Boolean(busy) }} title={t('chat:newChat.newWorktree')} left={(props) => <Icon {...props} color={createMode ? palette.text : palette.muted} name={"plus"}></Icon>} right={(props) => <Icon {...props} color={createMode ? palette.text : palette.muted} name={createMode ? 'check-circle' : 'circle-outline'}></Icon>} disabled={Boolean(busy)} onPress={() => {
           setCreateMode(true);
           setError(undefined);
           setNotice(undefined);
@@ -173,7 +173,7 @@ export function NewChatSheet({ target: initial, onClose }: { target?: WorkspaceT
           const label = checkout.isMain ? t('project:worktrees.local') : checkout.name;
           return (
             <View key={checkout.directory}>
-              <ListRow testID={`new-chat-checkout-${checkout.directory}`} accessibilityRole="button" accessibilityState={{ selected, disabled: Boolean(busy) }} accessibilityLabel={t('project:picker.selectLabel', { name: label })} title={label} description={checkout.isMain ? t('project:worktrees.localHint') : [checkout.branch, checkout.directory].filter(Boolean).join(' · ')} left={(props) => <Icon {...props} color={selected ? palette.tint : palette.muted} name={checkout.isMain ? 'home-outline' : 'source-branch'}></Icon>} right={(props) => <Icon {...props} color={selected ? palette.tint : palette.muted} name={selected ? 'check-circle' : 'circle-outline'}></Icon>} disabled={Boolean(busy)} onPress={() => {
+              <ListRow testID={`new-chat-checkout-${checkout.directory}`} accessibilityRole="button" accessibilityState={{ selected, disabled: Boolean(busy) }} accessibilityLabel={t('project:picker.selectLabel', { name: label })} title={label} description={checkout.isMain ? t('project:worktrees.localHint') : [checkout.branch, checkout.directory].filter(Boolean).join(' · ')} left={(props) => <Icon {...props} color={selected ? palette.text : palette.muted} name={checkout.isMain ? 'home-outline' : 'source-branch'}></Icon>} right={(props) => <Icon {...props} color={selected ? palette.text : palette.muted} name={selected ? 'check-circle' : 'circle-outline'}></Icon>} disabled={Boolean(busy)} onPress={() => {
                 setCheckoutPath(checkout.directory);
                 setCreateMode(false);
                 setError(undefined);

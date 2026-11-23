@@ -52,7 +52,7 @@ export function AgentPicker({ agents, onClose, onSelect, selectedValue, visible,
               <Text className={cn("text-foreground")} style={[styles.optionLabel]}>{agent.label}</Text>
               {description ? <Text numberOfLines={2} ellipsizeMode="tail" className={cn("text-muted-foreground")} style={[styles.optionDescription]}>{description}</Text> : null}
             </View>
-            {selected ? <Icon name="check" size={20} color={palette.tint} /> : null}
+            {selected ? <Icon name="check" size={20} color={palette.text} /> : null}
           </Pressable>
         );
       })}

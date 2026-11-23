@@ -44,7 +44,7 @@ export function SettingsHome({ sections, onOpen }: {
         {sections.filter((section) => section.group === group).map((section, index) => <Pressable key={section.id}
           testID={`settings-category-${section.id}`} accessibilityRole="button" accessibilityLabel={`${section.title}. ${section.summary}`}
           onPress={() => onOpen(section)} style={({ pressed }) => [styles.category, index > 0 && { borderTopColor: palette.border, borderTopWidth: StyleSheet.hairlineWidth }, pressed && { backgroundColor: palette.surfaceAlt }]}>
-          <View className={cn(stylesClasses.icon, "bg-surface-alt")}><MaterialCommunityIcons name={section.icon} size={22} color={palette.tint} /></View>
+          <View className={cn(stylesClasses.icon, "bg-surface-alt")}><MaterialCommunityIcons name={section.icon} size={22} color={palette.text} /></View>
           <View className={cn(stylesClasses.rowText)}><Text className={cn("text-foreground")} variant="title">{section.title}</Text>
             <Text className={cn("text-muted-foreground")} variant="description">{section.summary}</Text></View>
           <Icon size={20} color={palette.muted} name={"chevron-right"}></Icon>

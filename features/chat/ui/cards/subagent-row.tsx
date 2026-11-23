@@ -33,7 +33,7 @@ export function SubagentRow({ detail, flat = false, onPress, palette }: {
   const status = t(`chat:subagent.${detail.status}`);
   const open = t('chat:subagent.open');
   const icon = detail.status === 'running' ? undefined : STATUS_ICONS[detail.status];
-  const iconColor = icon?.tone === 'danger' ? palette.danger : icon?.tone === 'muted' ? palette.muted : palette.tint;
+  const iconColor = icon?.tone === 'muted' ? palette.muted : palette.text;
 
   return (
     <Pressable

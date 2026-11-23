@@ -26,10 +26,10 @@ export default function OnboardingWelcomeScreen() {
         <Button testID="onboarding-welcome-start" onPress={navigation.next} variant="default"><Text>{t('onboarding:welcome.start')}</Text></Button>
       }>
       <View className={cn(stylesClasses.card, "bg-surface border-border")}>
-        <MaterialCommunityIcons name="server-network" size={28} color={palette.tint} />
+        <MaterialCommunityIcons name="server-network" size={28} color={palette.text} />
         <Text className={cn("text-foreground")} variant="description">{t('onboarding:welcome.body')}</Text>
       </View>
-      <View><ListRow title={t('onboarding:welcome.points.server.title')} description={t('onboarding:welcome.points.server.description')} titleStyle={{ color: palette.text }} descriptionStyle={{ color: palette.muted }} left={(props) => <Icon {...props} color={palette.tint} name={"server"}></Icon>}></ListRow><ListRow title={t('onboarding:welcome.points.project.title')} description={t('onboarding:welcome.points.project.description')} titleStyle={{ color: palette.text }} descriptionStyle={{ color: palette.muted }} left={(props) => <Icon {...props} color={palette.tint} name={"folder-outline"}></Icon>}></ListRow><ListRow title={t('onboarding:welcome.points.optional.title')} description={t('onboarding:welcome.points.optional.description')} titleStyle={{ color: palette.text }} descriptionStyle={{ color: palette.muted }} left={(props) => <Icon {...props} color={palette.tint} name={"microphone-outline"}></Icon>}></ListRow></View>
+      <View><ListRow title={t('onboarding:welcome.points.server.title')} description={t('onboarding:welcome.points.server.description')} titleStyle={{ color: palette.text }} descriptionStyle={{ color: palette.muted }} left={(props) => <Icon {...props} color={palette.text} name={"server"}></Icon>}></ListRow><ListRow title={t('onboarding:welcome.points.project.title')} description={t('onboarding:welcome.points.project.description')} titleStyle={{ color: palette.text }} descriptionStyle={{ color: palette.muted }} left={(props) => <Icon {...props} color={palette.text} name={"folder-outline"}></Icon>}></ListRow><ListRow title={t('onboarding:welcome.points.optional.title')} description={t('onboarding:welcome.points.optional.description')} titleStyle={{ color: palette.text }} descriptionStyle={{ color: palette.muted }} left={(props) => <Icon {...props} color={palette.text} name={"microphone-outline"}></Icon>}></ListRow></View>
     </OnboardingStep>
   );
 }

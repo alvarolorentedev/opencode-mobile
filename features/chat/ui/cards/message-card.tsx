@@ -81,7 +81,7 @@ function TranscriptMessageImpl({
               <Button accessibilityLabel={t('common:actions.copy')} onPress={() => onCopy(entry)} variant="ghost" size="icon" className={cn(stylesClasses.messageActionButton)} ><Icon name={"content-copy"} size={slim ? 14 : 16} color={palette.muted} /></Button>
               {copied ? (
                 <View className={cn(stylesClasses.copiedPill)} style={[{ backgroundColor: flat ? withAlpha(palette.tint, 0x18 / 255) : isUser ? withAlpha(palette.onBubbleUser, 0x20 / 255) : withAlpha(palette.tint, 0x18 / 255) }]}>
-                  <MaterialCommunityIcons name="check" size={12} color={accentColor} />
+                  <MaterialCommunityIcons name="check" size={12} color={textColor} />
                   <Text style={{ color: accentColor }} variant="label">{t('chat:cards.copied')}</Text>
                 </View>
               ) : null}

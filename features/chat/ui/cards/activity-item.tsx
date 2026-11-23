@@ -133,7 +133,7 @@ export function ActivityItemRow({ fontSize, item, palette }: { fontSize: number;
         {toolStatus === 'running' || toolStatus === 'pending' ? (
           <Spinner size={12} color={palette.tint} />
         ) : toolStatus === 'error' ? (
-          <MaterialCommunityIcons name="alert-circle-outline" size={14} color={palette.danger} />
+          <MaterialCommunityIcons name="alert-circle-outline" size={14} color={palette.text} />
         ) : null}
         <Text numberOfLines={1} className={cn(stylesClasses.label, "text-muted-foreground")} variant="label">{label}</Text>
         {secondary ? (

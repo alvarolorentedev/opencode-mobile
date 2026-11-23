@@ -67,7 +67,7 @@ export function PendingInteractions({
       {currentPermission && !currentQuestion ? (
         <View className={cn("max-h-[90%] gap-3 border-border bg-surface px-4 py-3")} style={[styles.todoOverlay]}>
           <View className={cn(stylesClasses.permissionHeader)}>
-            <Icon name="message-alert-outline" size={18} color={palette.warning} />
+            <Icon name="message-alert-outline" size={18} color={palette.text} />
             <Text className={cn("text-foreground")} variant="title">{t('chat:cards.respondToContinue')}</Text>
             {currentPendingPermissions.length > 1 ? (
               <Text className={cn("text-muted-foreground", stylesClasses.permissionCount)} variant="label">{t('chat:cards.stepOfTotal', { current: 1, total: currentPendingPermissions.length })}</Text>

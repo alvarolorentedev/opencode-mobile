@@ -99,7 +99,7 @@ export function FilesPanel({ statuses, browser, projectLabel, onOpen, header, co
     getItemType={(row) => row.kind} renderItem={({ item }) => {
       if (item.kind === 'changed') {
         const file = item.file;
-        const tone = file.status === 'deleted' ? palette.danger : file.status === 'added' ? palette.success : palette.warning;
+        const tone = file.status === 'deleted' ? palette.muted : palette.text;
         const glyph = file.status === 'deleted' ? 'delete-outline' : file.status === 'added' ? 'plus-circle-outline' : 'pencil-outline';
         return <View>
           <ListRow testID={`project-changed-file-${file.path}`} title={file.path} description={file.status === 'deleted' ? `${t('project:files.deleted')} · ${t('project:files.deletedUnavailable')}` : t(`project:files.${file.status}`)} left={(props) => <Icon {...props} color={tone} name={glyph}></Icon>} accessibilityRole="button" accessibilityState={{ disabled: file.status === 'deleted' }} disabled={file.status === 'deleted'} onPress={file.status === 'deleted' ? undefined : () => onOpen(file.path)}></ListRow>
@@ -113,7 +113,7 @@ export function FilesPanel({ statuses, browser, projectLabel, onOpen, header, co
           { label: t('project:files.actions.rename'), icon: 'pencil-outline', disabled: actions.busy || !actions.available, onPress: () => show(entry, 'rename'), testID: `project-entry-rename-${entry.path}` },
           { label: t('project:files.actions.more'), icon: 'dots-horizontal', disabled: actions.busy, onPress: () => show(entry, 'actions'), testID: `project-entry-more-${entry.path}` },
         ] : []}>
-        <ListRow accessibilityRole="button" testID={`project-entry-${entry.path}`} title={entry.name} accessibilityLabel={t(entry.type === 'directory' ? 'project:files.openFolder' : 'project:files.openFile', { path: entry.path })} accessibilityHint={t('project:files.actions.swipeHint')} accessibilityActions={[{ name: 'longpress', label: t('project:files.actions.more') }]} onAccessibilityAction={() => show(entry, 'actions')} onLongPress={() => { longPressHaptic(); show(entry, 'actions'); }} left={(props) => <Icon {...props} color={entry.type === 'directory' ? palette.tint : palette.muted} name={entry.type === 'directory' ? 'folder-outline' : 'file-document-outline'}></Icon>} right={entry.type === 'directory' ? (props) => <Icon {...props} name={"chevron-right"}></Icon> : undefined} onPress={() => { if (entry.type === 'directory') { setQuery(''); void openDirectory(entry.path); } else onOpen(entry.path); }}></ListRow>
+        <ListRow accessibilityRole="button" testID={`project-entry-${entry.path}`} title={entry.name} accessibilityLabel={t(entry.type === 'directory' ? 'project:files.openFolder' : 'project:files.openFile', { path: entry.path })} accessibilityHint={t('project:files.actions.swipeHint')} accessibilityActions={[{ name: 'longpress', label: t('project:files.actions.more') }]} onAccessibilityAction={() => show(entry, 'actions')} onLongPress={() => { longPressHaptic(); show(entry, 'actions'); }} left={(props) => <Icon {...props} color={entry.type === 'directory' ? palette.text : palette.muted} name={entry.type === 'directory' ? 'folder-outline' : 'file-document-outline'}></Icon>} right={entry.type === 'directory' ? (props) => <Icon {...props} name={"chevron-right"}></Icon> : undefined} onPress={() => { if (entry.type === 'directory') { setQuery(''); void openDirectory(entry.path); } else onOpen(entry.path); }}></ListRow>
         </SwipeRow>
         <Separator></Separator>
       </View>;

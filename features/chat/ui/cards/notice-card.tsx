@@ -44,7 +44,7 @@ function NoticeCardImpl({ copied = false, entry, flat = false, fontSize, onCopy,
           <View className={cn(stylesClasses.headerRight)}>
             {copied ? (
               <View className={cn(stylesClasses.copiedPill)} style={{ backgroundColor: withAlpha(palette.tint, 0x18 / 255) }}>
-                <MaterialCommunityIcons name="check" size={12} color={palette.tint} />
+                <MaterialCommunityIcons name="check" size={12} color={palette.text} />
                 <Text style={{ color: palette.tint }} variant="label">{t('chat:cards.copied')}</Text>
               </View>
             ) : (

@@ -36,15 +36,15 @@ export function CloudLinkSection({ setup, services, palette, onManageMachines, o
   const status = setup.initialization === 'loading'
     ? t('settings:connect.progress.idle')
     : setup.entitled ? t('common:labels.active') : t('settings:subscription.inactive');
-  const actionColor = disabled ? palette.muted : palette.tint;
+  const actionColor = disabled ? palette.muted : palette.text;
 
   return <View testID="subscription-section" className={cn(stylesClasses.section)}>
     <View className={cn(stylesClasses.summary, "bg-surface-alt")}>
       <View className={cn(stylesClasses.summaryHeader)}>
-        <Icon size={28} color={palette.tint} name={"cloud-outline"}></Icon>
+        <Icon size={28} color={palette.text} name={"cloud-outline"}></Icon>
         <Text className={cn(stylesClasses.name, "text-foreground")} variant="title">{t('settings:connect.title')}</Text>
         <View className={cn(stylesClasses.status)}>
-          {setup.initialization === 'loading' ? <Spinner size="small" /> : <Icon size={10} color={setup.entitled ? palette.success : palette.muted} name={"circle"}></Icon>}
+          {setup.initialization === 'loading' ? <Spinner size="small" /> : <Icon size={10} color={setup.entitled ? palette.text : palette.muted} name={"circle"}></Icon>}
           <Text testID="subscription-status" className={cn("text-foreground shrink")}>{status}</Text>
         </View>
       </View>
@@ -69,10 +69,10 @@ export function CloudLinkSection({ setup, services, palette, onManageMachines, o
 
     <View>
       <Text className={cn(stylesClasses.groupTitle, "text-muted-foreground")} variant="description">{t('settings:subscription.machines')}</Text>
-      <SettingTarget label={t('settings:connect.machines')}><ListRow testID="subscription-machines" accessibilityRole="button" disabled={pending} onPress={onManageMachines} title={t('settings:connect.machines')} description={t('settings:subscription.machinesDescription')} titleStyle={{ color: palette.text }} descriptionStyle={{ color: palette.muted }} style={{ opacity: pending ? 0.45 : 1 }} left={(props) => <Icon {...props} color={pending ? palette.muted : palette.tint} name={"monitor"}></Icon>} right={(props) => <Icon {...props} color={palette.muted} name={"chevron-right"}></Icon>}></ListRow></SettingTarget>
+      <SettingTarget label={t('settings:connect.machines')}><ListRow testID="subscription-machines" accessibilityRole="button" disabled={pending} onPress={onManageMachines} title={t('settings:connect.machines')} description={t('settings:subscription.machinesDescription')} titleStyle={{ color: palette.text }} descriptionStyle={{ color: palette.muted }} style={{ opacity: pending ? 0.45 : 1 }} left={(props) => <Icon {...props} color={pending ? palette.muted : palette.text} name={"monitor"}></Icon>} right={(props) => <Icon {...props} color={palette.muted} name={"chevron-right"}></Icon>}></ListRow></SettingTarget>
     </View>
 
-    <ListRow testID="cloud-link-learn-more" accessibilityRole="button" onPress={() => void Linking.openURL(CONNECT_LEARN_MORE_URL).catch(() => undefined)} title={t('settings:connect.learnMore')} titleStyle={{ color: palette.text }} left={(props) => <Icon {...props} color={palette.tint} name={"information-outline"}></Icon>} right={(props) => <Icon {...props} color={palette.muted} name={"open-in-new"}></Icon>}></ListRow>
+    <ListRow testID="cloud-link-learn-more" accessibilityRole="button" onPress={() => void Linking.openURL(CONNECT_LEARN_MORE_URL).catch(() => undefined)} title={t('settings:connect.learnMore')} titleStyle={{ color: palette.text }} left={(props) => <Icon {...props} color={palette.text} name={"information-outline"}></Icon>} right={(props) => <Icon {...props} color={palette.muted} name={"open-in-new"}></Icon>}></ListRow>
   </View>;
 }
 

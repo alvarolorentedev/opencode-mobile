@@ -185,7 +185,7 @@ function TerminalContent({ target }: { target: WorkspaceTarget }) {
             <Pressable accessibilityRole="button" accessibilityState={{ selected: active, busy: inFlight, disabled }}
               accessibilityLabel={`${t('terminal:sessions.openLabel', { terminal: title })}${active ? `, ${t('common:labels.active')}` : ''}`}
               disabled={disabled} onPress={() => void open()} className={cn(stylesClasses.terminalOption)} style={[{ borderColor: active ? palette.tint : palette.border, opacity: disabled && !inFlight ? 0.6 : 1 }]}>
-              {inFlight ? <Spinner size={20} color={palette.tint} /> : <MaterialCommunityIcons name={active ? 'check-circle' : 'console'} size={20} color={active ? palette.tint : palette.muted} />}
+              {inFlight ? <Spinner size={20} color={palette.tint} /> : <MaterialCommunityIcons name={active ? 'check-circle' : 'console'} size={20} color={active ? palette.text : palette.muted} />}
               <View className={cn(stylesClasses.terminalOptionText)}>
                 <View className={cn(stylesClasses.terminalTitleLine)}>
                   <Text numberOfLines={1} className={cn(stylesClasses.terminalOptionText)}>{terminal.title || terminal.command}</Text>

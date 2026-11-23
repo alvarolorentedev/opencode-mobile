@@ -82,7 +82,7 @@ export function ActivityGroupRow({
     <>
       <Text numberOfLines={2} className={cn(stylesClasses.label, "text-muted-foreground")} variant="description">{label}</Text>
       <View className={cn(stylesClasses.spacer)} />
-      {group.status === 'error' ? <MaterialCommunityIcons name="alert-circle-outline" size={15} color={palette.danger} /> : null}
+      {group.status === 'error' ? <MaterialCommunityIcons name="alert-circle-outline" size={15} color={palette.text} /> : null}
       {showProgress ? <Spinner size={12} color={palette.tint} /> : null}
       {statusOnly ? null : <Icon name={expanded ? 'chevron-down' : 'chevron-right'} size={16} color={palette.muted} />}
     </>

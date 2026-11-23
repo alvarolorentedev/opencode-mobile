@@ -21,7 +21,7 @@ export function MissionSummary({ counts, onOpen }: {
     {MISSION_JOB_STATUSES.map((key, index) => <Pressable key={key}
       className={cn('min-h-target flex-1 min-w-0 flex-row items-center justify-center gap-1 px-1 py-2 active:bg-muted', index > 0 && 'border-s border-border')}
       accessibilityRole="button" accessibilityLabel={`${counts[key]} ${t(`mission.${key}`)}`} onPress={() => onOpen(key)}>
-      <Icon name={icons[key]} size={16} color={colors[key]} />
+      <Icon name={icons[key]} size={16} color={palette.text} />
       <Text variant="label" style={{ color: colors[key] }}>{counts[key]}</Text>
       <Text variant="label" numberOfLines={1} className="shrink text-muted-foreground">{t(key === 'attention' ? 'mission.attentionShort' : `mission.${key}`)}</Text>
     </Pressable>)}
@@ -43,7 +43,7 @@ export function MissionSessionRow({ row, error, busy, progress, onOpen }: {
     accessibilityLabel={[title, t(`mission.${row.status}`), ...badges, location, when,
       progress && t('mission.progress', progress), error && t('mission.openFailed')].filter(Boolean).join(', ')}
     accessibilityState={{ busy, disabled: busy }} disabled={busy} onPress={onOpen}>
-    {row.status === 'attention' ? <Icon name={row.permission ? 'shield-outline' : 'help-circle-outline'} size={24} color={palette.warning} /> : null}
+    {row.status === 'attention' ? <Icon name={row.permission ? 'shield-outline' : 'help-circle-outline'} size={24} color={palette.text} /> : null}
     <View className="flex-1 min-w-0 gap-1">
       <Text variant="title">{title}</Text>
       {badges.length ? <View className="flex-row flex-wrap gap-1.5">

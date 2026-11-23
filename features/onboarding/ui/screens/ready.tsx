@@ -53,7 +53,7 @@ export default function OnboardingReadyScreen() {
       }>
       <SetupSummary />
       <View className={cn(stylesClasses.footerNote)}>
-        <MaterialCommunityIcons name="check-circle" size={18} color={palette.success} />
+        <MaterialCommunityIcons name="check-circle" size={18} color={palette.text} />
         <Text className={cn("text-muted-foreground")} variant="label">{t('onboarding:ready.footnote')}</Text>
       </View>
     </OnboardingStep>

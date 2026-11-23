@@ -98,8 +98,8 @@ export function VoiceInputSetup({ chatPreferences: prefs, initialStep = 1, local
     {step === 1 ? <>
       <View className={cn(stylesClasses.card, "bg-surface border-border")}>
         <View className={cn(stylesClasses.sequence)} aria-hidden accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
-          <Icon size={32} color={palette.tint} name={"microphone-outline"}></Icon><Icon size={20} color={palette.muted} name={"chevron-right"}></Icon>
-          <Icon size={32} color={palette.tint} name={"message-processing-outline"}></Icon><Icon size={20} color={palette.muted} name={"chevron-right"}></Icon><Icon size={32} color={palette.tint} name={"send"}></Icon>
+          <Icon size={32} color={palette.text} name={"microphone-outline"}></Icon><Icon size={20} color={palette.muted} name={"chevron-right"}></Icon>
+          <Icon size={32} color={palette.text} name={"message-processing-outline"}></Icon><Icon size={20} color={palette.muted} name={"chevron-right"}></Icon><Icon size={32} color={palette.text} name={"send"}></Icon>
         </View>
         <Text className={cn("text-foreground text-center")} variant="title">{t('settings:voice.setup.sequence')}</Text>
         <Text className={cn("text-muted-foreground")} variant="description">{t('settings:voice.setup.serverNote')}</Text>

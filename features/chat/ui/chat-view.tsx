@@ -69,7 +69,7 @@ export function ChatView() {
   }, [handleSpeakEntry]);
 
   const progressAction = !content.awaitingUserInput && content.currentTodos.length > 0 ? (
-    <Button testID="chat-progress-button" accessibilityLabel={t('chat:content.openProgressLabel', { completed: content.completedTodoCount, total: content.currentTodos.length })} onPress={() => actions.setProgressVisible(true)} variant="ghost" size="icon" className={cn("absolute right-3 bottom-2 z-2 rounded-3xl w-12 h-12 items-center justify-center bg-surface-alt", content.diffCount > 0 && stylesClasses.progressFabInline)}><Icon name={content.progressIcon} size={24} color={palette.tint} /></Button>
+    <Button testID="chat-progress-button" accessibilityLabel={t('chat:content.openProgressLabel', { completed: content.completedTodoCount, total: content.currentTodos.length })} onPress={() => actions.setProgressVisible(true)} variant="ghost" size="icon" className={cn("absolute right-3 bottom-2 z-2 rounded-3xl w-12 h-12 items-center justify-center bg-surface-alt", content.diffCount > 0 && stylesClasses.progressFabInline)}><Icon name={content.progressIcon} size={24} color={palette.text} /></Button>
   ) : null;
 
   return (

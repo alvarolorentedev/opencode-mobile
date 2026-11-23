@@ -129,7 +129,7 @@ export function AiDefaultsSection({
                   description={models.length > 0 ? t('settings:providers.selectedCount', { selected: selectedCount, total: models.length }) : undefined}
                   left={() => (
                     <View className={cn(stylesClasses.providerAccordionIconWrap, "bg-surface-alt border-border")}>
-                      {renderProviderIcon(provider.id, 20, palette.tint)}
+                      {renderProviderIcon(provider.id, 20, palette.text)}
                     </View>
                   )}
                   right={() => (

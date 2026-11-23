@@ -44,7 +44,7 @@ export function CatalogSelect<T extends string>({ block, disabled = false, onVal
   const trigger = renderTrigger({ disabled: blocked, open: () => { if (!blocked) changeOpen(true); }, openState: open, selectedOption: selected });
   if (!searchable) return <Select onOpenChange={changeOpen} value={selected} onValueChange={(option) => { if (option) choose(option.value as T); }}>
     <SelectTrigger asChild disabled={blocked}>{trigger}</SelectTrigger>
-    <SelectContent><SelectGroup>{options.map((option) => <SelectItem key={option.value} value={option.value} label={option.label} accessibilityLabel={option.label} description={option.description} leadingIcon={option.leadingIcon?.({ size: 18, color: palette.tint, selected: option.value === selectedValue })} />)}</SelectGroup></SelectContent>
+    <SelectContent><SelectGroup>{options.map((option) => <SelectItem key={option.value} value={option.value} label={option.label} accessibilityLabel={option.label} description={option.description} leadingIcon={option.leadingIcon?.({ size: 18, color: palette.text, selected: option.value === selectedValue })} />)}</SelectGroup></SelectContent>
   </Select>;
   return <>{trigger}<OverlaySheet visible={open} title={title || t('common:select.chooseOption')} onClose={() => changeOpen(false)} fitContent>
     <Input value={query} onChangeText={setQuery} accessibilityLabel={title || t('common:select.chooseOption')} placeholder={title} autoCapitalize="none" autoCorrect={false} />
@@ -52,7 +52,7 @@ export function CatalogSelect<T extends string>({ block, disabled = false, onVal
       {heading ? <Text variant="title" className="text-muted-foreground pt-2">{heading}</Text> : null}
       <Pressable accessibilityRole="radio" accessibilityLabel={option.label}
         accessibilityState={{ checked: option.value === selectedValue }} className="min-h-field flex-row items-center gap-3 rounded-control p-3 active:bg-accent" onPress={() => choose(option.value)}>
-        {option.leadingIcon?.({ size: 18, color: palette.tint, selected: option.value === selectedValue })}
+        {option.leadingIcon?.({ size: 18, color: palette.text, selected: option.value === selectedValue })}
         <View className="flex-1 min-w-0"><Text>{option.label}</Text>{option.description ? <Text variant="description" className="text-muted-foreground">{option.description}</Text> : null}</View>
         {option.value === selectedValue ? <Icon name="check" /> : null}
       </Pressable>

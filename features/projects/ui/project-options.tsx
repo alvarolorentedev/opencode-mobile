@@ -47,7 +47,7 @@ export function ProjectOptions({
             <MaterialCommunityIcons
               name={project.path === activePath ? 'check-circle' : 'folder-outline'}
               size={20}
-              color={project.path === activePath ? palette.tint : palette.muted}
+              color={project.path === activePath ? palette.text : palette.muted}
             />
             <View className={cn(stylesClasses.projectText)}>
               <NativeText className={cn(stylesClasses.projectTitle, "text-foreground")}>{project.label}</NativeText>
