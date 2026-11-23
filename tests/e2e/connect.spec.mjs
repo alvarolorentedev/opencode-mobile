@@ -647,16 +647,24 @@ test('renewal rotates credentials while preserving profile, machine, hostname an
   state.paidThrough += 3600000;
   await page.goto('/pair'); await showGuidedSubscription(page); await expect(page.getByTestId('connect-restore')).toBeEnabled();
   await page.evaluate((previousUsername) => {
-    const original = Storage.prototype.setItem; let fail = true;
-    Storage.prototype.setItem = function (key, value) { if (key === 'opencode-mobile.connection-profiles' && fail && JSON.parse(value).find((profile) => profile.connect)?.username !== previousUsername) { fail = false; throw new Error('storage unavailable'); } return original.call(this, key, value); };
+    const original = Storage.prototype.setItem;
+    globalThis.__connectProfileSaveFailure = true;
+    Storage.prototype.setItem = function (key, value) {
+      if (key === 'opencode-mobile.connection-profiles'
+        && globalThis.__connectProfileSaveFailure
+        && JSON.parse(value).find((profile) => profile.connect)?.username !== previousUsername) {
+        throw new Error('storage unavailable');
+      }
+      return original.call(this, key, value);
+    };
   }, previous.username);
   const scopeBeforeRestore = await page.evaluate(() => JSON.parse(localStorage.getItem('opencode-mobile.favorite-sessions'))[0].connectionScope);
   await page.getByTestId('connect-restore').click();
   await expect(page.getByTestId('connect-error')).toContainText('secure saving failed');
-  // A background renewal can rotate the scope before this explicit restore.
-  // Compare against the immediate pre-restore scope so the rollback contract is
-  // still asserted without depending on an earlier connection's timing.
+  // Keep the write failing across the automatic save retry so the rollback is
+  // observable instead of racing a successful background save.
   await expect.poll(() => page.evaluate(() => JSON.parse(localStorage.getItem('opencode-mobile.favorite-sessions'))[0].connectionScope)).toBe(scopeBeforeRestore);
+  await page.evaluate(() => { globalThis.__connectProfileSaveFailure = false; });
   await page.getByTestId('connect-retry').click();
   await expect(page).toHaveURL(/\/projects$/, { timeout: 30_000 });
   const updated = await page.evaluate(() => ({ profile: JSON.parse(localStorage.getItem('opencode-mobile.connection-profiles')).find((profile) => profile.connect), favorites: JSON.parse(localStorage.getItem('opencode-mobile.favorite-sessions')) }));
