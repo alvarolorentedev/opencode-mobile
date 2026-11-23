@@ -1,0 +1,3 @@
+- Cloud Link renews device access before expiry and recovers automatically when credentials expire or a session needs step-up.
+- Pairing now recovers silently when a machine omits its device credential, and replacement machines are saved automatically.
+- Temporary Cloud Link outages retry with backoff instead of dropping the saved connection.
