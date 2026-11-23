@@ -433,7 +433,6 @@
     "tab": "Mission",
     "title": "Missionskontrolle",
     "badge": "Mission. Unterhaltungen mit Handlungsbedarf: {{count}}",
-    "refresh": "Aktivität aktualisieren",
     "coverage": "{{checked}} von {{total}} Servern geprüft",
     "offlineServer": "{{name}} ist offline",
     "unsupportedServer": "{{name}} benötigt OpenCode 2 für die Missionskontrolle",

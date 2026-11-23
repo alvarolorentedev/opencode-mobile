@@ -279,6 +279,11 @@ test('V2 single-server mode hides redundant context and restores it when a secon
   await projects.getByTestId('project-directory-path').fill('/workspace/secondary-project');
   await projects.getByTestId('project-directory-add').click();
   await expect(projects).not.toBeVisible();
+  await page.getByTestId('mission-tab').click();
+  const mission = page.getByTestId('mission-control');
+  await expect(mission).toBeVisible();
+  await expect(mission.getByTestId('mission-server-filter')).toHaveCount(0);
+  await expect(mission.getByTestId('mission-project-filter')).toBeVisible();
   await goToTab(page, 'Terminal');
   await page.getByTestId('terminal-create-button').click();
   await expect(page.getByTestId('terminal-server-picker')).toHaveCount(0);
@@ -313,6 +318,8 @@ test('V2 single-server mode hides redundant context and restores it when a secon
   await expect(advancedOverlay.getByTestId('settings-project-picker')).toHaveCount(0);
   await expect(advancedOverlay.getByTestId('settings-server-picker')).toHaveCount(0);
   await advancedOverlay.getByRole('button', { name: 'Close', exact: true }).click();
+  await page.getByTestId('mission-tab').click();
+  await expect(page.getByTestId('mission-control').getByTestId('mission-server-filter')).toBeVisible();
   await goToTab(page, 'Chat');
   await openChatLibrary(page);
   await expect(library.getByTestId('chat-server-filter')).toBeVisible();

@@ -6,8 +6,6 @@ import { useTranslation } from 'react-i18next';
 
 import { MISSION_JOB_STATUSES, type MissionJobStatus } from '@/shared/contracts/mission-control';
 import { sessionKey, type SessionTarget } from '@/shared/contracts/workspace';
-import { Button } from '@/shared/ui/button';
-import { Icon } from '@/shared/ui/icon';
 import { ListRow } from '@/shared/ui/list-row';
 import { HeaderTitle, ScreenHeader } from '@/shared/ui/screen-header';
 import { Text } from '@/shared/ui/text';
@@ -49,7 +47,8 @@ export function MissionControlScreen() {
     router.setParams({ filter: '' });
   }, [linkedFilter, router]));
 
-  const selectedServer = mission.servers.some(({ id }) => id === server) ? server : ALL;
+  const multipleServers = mission.servers.length > 1;
+  const selectedServer = multipleServers && mission.servers.some(({ id }) => id === server) ? server : ALL;
   const serverRows = useMemo(() => mission.rows.filter((row) => !selectedServer || row.target.connectionId === selectedServer), [mission.rows, selectedServer]);
   const projectOptions = useMemo(() => [...new Map(serverRows.map((row) => [row.projectKey, {
     value: row.projectKey, label: row.project, description: selectedServer ? undefined : row.server,
@@ -83,18 +82,14 @@ export function MissionControlScreen() {
   return <View className="flex-1 bg-background" testID="mission-control">
     <ScreenHeader>
       <HeaderTitle title={t('mission.title')} />
-      <Button variant="ghost" size="icon" accessibilityLabel={t('mission.refresh')} disabled={!servers.length}
-        onPress={() => { servers.forEach((entry) => entry.refresh?.()); setRefreshedAt(Date.now()); }}>
-        <Icon name="refresh" size={24} />
-      </Button>
     </ScreenHeader>
     <ScrollView contentContainerStyle={{ flexGrow: 1, gap: 8, paddingHorizontal: 16, paddingVertical: 8 }}>
       <View className="flex-row gap-2">
-        <View className="flex-1 min-w-0">
+        {multipleServers ? <View className="flex-1 min-w-0">
           <WorkspaceSelect title={t('common:servers.allServers')} value={selectedServer} testID="mission-server-filter"
             options={[{ value: ALL, label: t('common:servers.allServers') }, ...mission.servers.map(({ id, name }) => ({ value: id, label: name }))]}
             onChange={(value) => { setServer(value); setProject(ALL); setRefreshedAt(Date.now()); }} />
-        </View>
+        </View> : null}
         <View className="flex-1 min-w-0">
           <WorkspaceSelect title={t('common:servers.allProjects')} value={selectedProject?.value ?? ALL} testID="mission-project-filter"
             options={[{ value: ALL, label: t('common:servers.allProjects') }, ...projectOptions]}

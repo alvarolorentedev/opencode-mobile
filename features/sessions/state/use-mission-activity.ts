@@ -289,7 +289,7 @@ export function useMissionActivity(input: {
       : !catalogCheckedAt && !catalogError ? 'checking'
       : catalogError && !current.checkedAt ? 'offline'
       : catalogError || catalogStale || incomplete || current.partial || current.statusFailed ? 'partial' : 'ready';
-    return { ...current, phase, refresh, authorized, projects, revision: entry.revision,
+    return { ...current, phase, authorized, projects, revision: entry.revision,
       catalogAt: catalogError || current.statusFailed || catalogStale ? undefined : catalogCheckedAt };
-  }, [authorized, catalog.sessions, catalog.statuses, catalogCheckedAt, catalogError, connected, connectionFailed, current, entry.enabled, entry.revision, knownDirectories, online, projects, refresh, supported]);
+  }, [authorized, catalog.sessions, catalog.statuses, catalogCheckedAt, catalogError, connected, connectionFailed, current, entry.enabled, entry.revision, knownDirectories, online, projects, supported]);
 }

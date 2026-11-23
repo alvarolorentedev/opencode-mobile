@@ -433,7 +433,6 @@
     "tab": "ミッション",
     "title": "ミッション管理",
     "badge": "ミッション。対応が必要な会話は{{count}}件",
-    "refresh": "アクティビティを更新",
     "coverage": "{{total}}台中{{checked}}台のサーバーを確認済み",
     "offlineServer": "{{name}}はオフラインです",
     "unsupportedServer": "{{name}}でミッション管理を使うにはOpenCode 2が必要です",

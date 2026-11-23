@@ -433,7 +433,6 @@
     "tab": "任务",
     "title": "任务控制台",
     "badge": "任务。需要处理的对话：{{count}}",
-    "refresh": "刷新活动",
     "coverage": "已检查 {{total}} 台服务器中的 {{checked}} 台",
     "offlineServer": "{{name}} 已离线",
     "unsupportedServer": "{{name}} 需要 OpenCode 2 才能使用任务控制台",

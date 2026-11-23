@@ -445,7 +445,6 @@
     "tab": "المهام",
     "title": "مركز التحكم بالمهام",
     "badge": "المهام. المحادثات التي تتطلب الانتباه: {{count}}",
-    "refresh": "تحديث النشاط",
     "coverage": "تم التحقق من {{checked}} من أصل {{total}} خادم",
     "offlineServer": "{{name}} غير متصل",
     "unsupportedServer": "يتطلب {{name}} الإصدار OpenCode 2 لاستخدام مركز التحكم بالمهام",

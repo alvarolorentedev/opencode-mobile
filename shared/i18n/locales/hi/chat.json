@@ -433,7 +433,6 @@
     "tab": "मिशन",
     "title": "मिशन कंट्रोल",
     "badge": "मिशन। ध्यान देने वाली बातचीत: {{count}}",
-    "refresh": "गतिविधि रीफ़्रेश करें",
     "coverage": "{{total}} में से {{checked}} सर्वर जाँचे गए",
     "offlineServer": "{{name}} ऑफ़लाइन है",
     "unsupportedServer": "{{name}} पर मिशन कंट्रोल के लिए OpenCode 2 चाहिए",

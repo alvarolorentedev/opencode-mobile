@@ -35,5 +35,4 @@ export type MissionConnectionActivity = {
   running?: { ids: ReadonlySet<string>; at: number };
   checkedAt?: number;
   stats?: SessionStatsSource;
-  refresh: () => void;
 };

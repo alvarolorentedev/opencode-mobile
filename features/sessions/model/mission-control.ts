@@ -107,7 +107,7 @@ export function selectMission(connections: readonly Pick<ConnectionRecord, 'id' 
       }
       if (live && activity.checkedAt) checkedAt = Math.min(checkedAt ?? Infinity, activity.checkedAt);
     }
-    servers.push({ id: connection.id, name: connection.name, phase, refresh: activity?.refresh, authorized: activity?.authorized, stats: activity?.stats,
+    servers.push({ id: connection.id, name: connection.name, phase, authorized: activity?.authorized, stats: activity?.stats,
       requests: global.permissions.size + global.questions.size, globalTarget });
   }
   rows.sort((a, b) => order.indexOf(a.status) - order.indexOf(b.status) || b.updatedAt - a.updatedAt || a.key.localeCompare(b.key));

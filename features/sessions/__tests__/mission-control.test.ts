@@ -10,7 +10,7 @@ const chat = (id: string, options: Partial<Session> = {}): Session => ({ id, tit
 const catalog = (sessions: Session[], mission: Partial<MissionConnectionActivity> = {}, statuses: WorkspaceCatalog['statuses'] = {}): WorkspaceCatalog => ({
   sessions, statuses, refresh: async () => undefined, removeSession: () => undefined,
   mission: { phase: 'ready', revision: 1, authorized: true, projects: [], approvals: {}, execution: {}, supplemental: [], removed: new Set(),
-    catalogAt: now, refresh: () => undefined, ...mission },
+    catalogAt: now, ...mission },
 });
 
 describe('Mission Control', () => {

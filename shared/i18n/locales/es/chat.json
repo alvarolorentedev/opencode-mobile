@@ -433,7 +433,6 @@
     "tab": "Misión",
     "title": "Control de misiones",
     "badge": "Misión. Conversaciones que requieren atención: {{count}}",
-    "refresh": "Actualizar actividad",
     "coverage": "{{checked}} de {{total}} servidores consultados",
     "offlineServer": "{{name}} está sin conexión",
     "unsupportedServer": "{{name}} requiere OpenCode 2 para el control de misiones",
