@@ -1,5 +1,6 @@
 import type { ProviderOption } from '@/features/ai/index';
 import { getEffectiveSessionModel, getInitialMode, getSelectedModelParts, routePrompt } from '@/features/ai/runtime';
+import { resolveSessionChatConfig } from '@/features/sessions/runtime';
 import { clearPendingTaskFinishedNotification, pendingNotificationKey, trackPendingTaskFinishedNotification } from '@/features/notifications/runtime';
 import { buildSystemPrompt } from '@/features/chat/model/system-prompt';
 import { getConnectionScope, getConnectionUiScope } from '@/shared/contracts/connection-scope';
@@ -12,7 +13,7 @@ import type { OpencodeConnectionSettings, ScopedOpencodeClient } from '@/shared/
 import type { SessionRefreshOptions } from '@/shared/protocol/opencode/event-dispatch';
 import type { PendingPrompt, PromptContextItem, PromptDelivery, PromptInput } from '@/shared/protocol/opencode/prompt-inbox';
 import type { Config, FilePartInput, Session, SessionStatus, TextPartInput } from '@/shared/protocol/opencode/types';
-import { interruptSession, switchSessionModel as switchSessionModelService } from '@/shared/protocol/services/session-service';
+import { interruptSession, switchSessionAgent as switchSessionAgentService, switchSessionModel as switchSessionModelService } from '@/shared/protocol/services/session-service';
 
 export type PromptSubmission = { active: true; sessionId: string; requestedAt: number; owner: string };
 
@@ -76,6 +77,7 @@ export function createPromptSubmissionActions({
     const ownsSubmission = () => operations.owns(submission) && isCurrentClient(client);
 
     const currentSession = sessions.find((session) => session.id === sessionId);
+    const isV2 = client.__opencode?.contract === 'v2';
     let promptAccepted = false;
     const trackingKey = pendingNotificationKey(connectionScope, sessionId);
     const canceled = async () => {
@@ -88,7 +90,8 @@ export function createPromptSubmissionActions({
     };
 
     try {
-      const agent = getInitialMode(availableAgents, currentConfig, chatPreferences.mode);
+      const sessionConfig = resolveSessionChatConfig(currentSession, messagesBySession[sessionId]);
+      const agent = getInitialMode(availableAgents, currentConfig, (isV2 ? sessionConfig.agent : undefined) ?? chatPreferences.mode);
       if (!agent) throw new Error(i18n.t('chat:composer.noEligibleAgent'));
       const routingPromise = routePrompt({ sessionId, prompt: trimmedPrompt, attachments }, {
         client, isCurrentClient, currentConfig, availableModels, availableProviders, availableAgents, chatPreferences,
@@ -141,7 +144,7 @@ export function createPromptSubmissionActions({
         availableModels,
         currentConfig,
         availableAgents,
-        currentSession,
+        sessionConfig,
         agent,
       );
       const effectiveModelId = routed?.model.id ?? (effectiveModel ? `${effectiveModel.providerID}/${effectiveModel.id}` : undefined);
@@ -167,7 +170,6 @@ export function createPromptSubmissionActions({
         }
       }
 
-      const isV2 = client.__opencode?.contract === 'v2';
       const variant = isV2 && routed && !routed.sameAsCurrent ? routed.variant : undefined;
       const root = activeProjectPath?.replace(/\/+$/, '');
       const resolvedContext = context?.map((item) => item.kind === 'file' && root && !item.path.startsWith('/')
@@ -248,5 +250,12 @@ export function createPromptSubmissionActions({
     await refreshSessions().catch(() => undefined);
   }
 
-  return { sendPrompt, abortSession, switchSessionModel };
+  async function switchSessionAgent(sessionId: string, agent: string) {
+    if (!isCurrentClient(client)) throw new Error('The connection changed before updating the session agent.');
+    await switchSessionAgentService(client, sessionId, agent);
+    if (!isCurrentClient(client)) throw new Error('The connection changed before refreshing the session agent.');
+    await refreshSessions().catch(() => undefined);
+  }
+
+  return { sendPrompt, abortSession, switchSessionModel, switchSessionAgent };
 }

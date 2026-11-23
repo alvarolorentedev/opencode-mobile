@@ -41,6 +41,7 @@ type ChatComposerProps = {
   isUpdatingAutoApprove: boolean;
   autoApproveAvailable?: boolean;
   onAttach: (anchor?: number) => void;
+  onAgentSelect: (agent: string) => void;
   onDraftChange: (value: string) => void;
   onRemoveAttachment: (index: number) => void;
   onSend: () => void;
@@ -62,7 +63,6 @@ type ChatComposerProps = {
   slim?: boolean;
   currentSessionId?: string;
   visibleModels: ModelOption[];
-  updateChatPreferences: (patch: Partial<ChatPreferences>) => void;
   commands: Command[];
   isV2: boolean;
   suggestions: ComposerSuggestionGroup[];
@@ -111,7 +111,7 @@ export function ChatComposer({
   onAutoRoutingChange,
   slim = false,
   visibleModels,
-  updateChatPreferences,
+  onAgentSelect,
   isV2,
   suggestions,
   suggestionsActive,
@@ -252,7 +252,7 @@ export function ChatComposer({
         onClose={() => setAgentPickerVisible(false)}
         onSelect={(mode) => {
           setAgentPickerVisible(false);
-          updateChatPreferences({ mode });
+          onAgentSelect(mode);
         }}
         selectedValue={selectedAgent}
         loading={agentsLoading}

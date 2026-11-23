@@ -11,6 +11,7 @@ export type SessionExecutionInput = {
   availableAgents: AgentOption[];
   currentConfig?: Config;
   chatPreferences: Pick<ChatPreferences, 'mode'>;
+  sessions: Session[];
   refreshMessages: (sessionId: string, silent?: boolean, options?: TranscriptReadOptions) => Promise<unknown>;
   refreshSessions: () => Promise<Session[]>;
 };

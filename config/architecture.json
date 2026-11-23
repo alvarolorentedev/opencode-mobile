@@ -190,6 +190,7 @@
       "SessionDeepLinkScreen",
       "SessionLibraryContextValue",
       "missionBadge",
+      "resolveSessionChatConfig",
       "useQuickActionRoute"
     ],
     "features/projects/runtime.ts": [
@@ -298,6 +299,8 @@
       "parseFavoriteSessions",
       "pendingInteractionsKey",
       "projectSessionsKey",
+      "resolveNewSessionConfig",
+      "resolveSessionChatConfig",
       "savedPermissionOptions",
       "serializeFavoriteSessions",
       "sessionCatalogOptions",
@@ -308,6 +311,7 @@
       "ApprovalsCatalog",
       "MissionOverview",
       "SessionCatalog",
+      "SessionChatConfig",
       "useMissionActivity",
       "useMissionOverview",
       "useLibrarySessions",

@@ -1,11 +1,11 @@
 import { MutationObserver, type QueryClient } from '@tanstack/react-query';
 
-import type { ModelOption } from '@/shared/contracts/model-options';
 import type { ScopedOpencodeClient } from '@/shared/protocol/opencode/client';
 import type { Session } from '@/shared/protocol/opencode/types';
-import { createSession as createRemoteSession, forkSession as forkRemoteSession, switchSessionModel } from '@/shared/protocol/services/session-service';
+import { createSession as createRemoteSession, forkSession as forkRemoteSession } from '@/shared/protocol/services/session-service';
 import type { QueryIdentity } from '@/shared/server-data/keys';
 
+import type { SessionChatConfig } from '../model/chat-config';
 import { projectSessionsKey } from './queries';
 import { sessionCatalogAccess } from './session-catalog-access';
 
@@ -32,13 +32,13 @@ export function forgetSessionCreation(cache: QueryClient, identity: QueryIdentit
   }
 }
 
-export function sessionCreationCommands({ cache, identity, client, isCurrent, clock, recentModel }: {
+export function sessionCreationCommands({ cache, identity, client, isCurrent, clock, inheritedConfig }: {
   cache: QueryClient;
   identity: QueryIdentity;
   client: ScopedOpencodeClient;
   isCurrent: () => boolean;
   clock: () => number;
-  recentModel: () => ModelOption | undefined;
+  inheritedConfig: () => SessionChatConfig;
 }) {
   const catalog = sessionCatalogAccess(cache, identity, client);
 
@@ -69,18 +69,13 @@ export function sessionCreationCommands({ cache, identity, client, isCurrent, cl
     createSession(title?: string) {
       const error = 'The active project changed before the session was created.';
       return publishCreated(async () => {
-        const created = await createRemoteSession(client, title?.trim());
+        const created = await createRemoteSession(client, {
+          ...(title?.trim() ? { title: title.trim() } : {}),
+          ...inheritedConfig(),
+        });
         if (!created) throw new Error('OpenCode did not return the created session.');
         if (!isCurrent()) throw new Error(error);
-        const preferred = recentModel();
-        if (!preferred || client.__opencode.contract !== 'v2' || !client.api) return created;
-        const model = { providerID: preferred.providerID, id: preferred.modelID };
-        try {
-          await switchSessionModel(client, created.id, model);
-          return { ...created, model };
-        } catch {
-          return created;
-        }
+        return created;
       }, error);
     },
     forkSession(sessionId: string, messageId?: string) {

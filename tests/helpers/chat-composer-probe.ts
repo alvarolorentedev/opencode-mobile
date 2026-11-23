@@ -55,7 +55,7 @@ export function chatComposerProbe(overrides: Partial<Props> = {}) {
     autoRoutingEnabled: false,
     onAutoRoutingChange: vi.fn(),
     visibleModels: [],
-    updateChatPreferences: vi.fn(),
+    onAgentSelect: vi.fn(),
     isV2: true,
     suggestions: [],
     suggestionsActive: false,

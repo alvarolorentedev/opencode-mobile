@@ -34,6 +34,7 @@ vi.mock('@/features/sessions/runtime', async () => ({
   ...(await import('@/features/sessions/services/session-creation')),
   ...(await import('@/features/sessions/services/session-editing')),
   ...(await import('@/features/sessions/services/queries')),
+  resolveNewSessionConfig: (await import('@/features/sessions/model/chat-config')).resolveNewSessionConfig,
 }));
 vi.mock('@/shared/protocol/services/session-service', () => ({
   createSession: protocol.createSession,
@@ -379,12 +380,11 @@ describe('app core', () => {
     queryClient.setQueryData(['capabilities'], { models: [{ id: 'provider/model', providerID: 'provider', modelID: 'model' }] });
     protocol.createSession.mockResolvedValueOnce({ id: 'created' });
     protocol.forkSession.mockResolvedValueOnce({ id: 'forked' });
-    protocol.switchSessionModel.mockResolvedValueOnce(undefined);
     const creation = commands.session.creation(target, scopeKey, 3);
-    await expect(creation.createSession(' Title ')).resolves.toMatchObject({
-      id: 'created', model: { providerID: 'provider', id: 'model' },
+    await expect(creation.createSession(' Title ')).resolves.toMatchObject({ id: 'created' });
+    expect(protocol.createSession).toHaveBeenCalledExactlyOnceWith(client, {
+      title: 'Title', model: { providerID: 'provider', id: 'model' },
     });
-    expect(protocol.createSession).toHaveBeenCalledExactlyOnceWith(client, 'Title');
     await expect(creation.forkSession('created', 'later')).resolves.toMatchObject({ id: 'forked' });
     expect(protocol.forkSession).toHaveBeenCalledExactlyOnceWith(client, 'created', 'later');
     expect(core.store.getState().selection[scopeKey].currentSessionId).toBe('forked');

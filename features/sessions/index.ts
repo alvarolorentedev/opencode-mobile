@@ -5,6 +5,7 @@ export { OpeningScreenField } from './ui/opening-screen-field';
 export { missionBadge } from './model/mission-control';
 export type { CurrentSessionContextValue } from './model/types';
 export { NewChatSheet } from './ui/new-chat-sheet';
+export { resolveSessionChatConfig } from './model/chat-config';
 export { PermissionActions, PermissionRequestCard, PermissionRequestDetails } from './ui/approvals/permission-request-card';
 export { PermissionsSection } from './ui/settings/permissions-section';
 export { QuestionFlow } from './ui/approvals/question-flow';

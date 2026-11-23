@@ -2,6 +2,7 @@ export { approvalsAccess } from './services/approvals';
 export { clearMissionStatsCaches } from './services/mission-stats-cache';
 export { createInteractionCommands } from './services/interaction-commands';
 export { collectDescendantSessionIds } from './model/session-utils';
+export { resolveNewSessionConfig, resolveSessionChatConfig, type SessionChatConfig } from './model/chat-config';
 export { getActiveSessions } from './model/active-sessions';
 export { getCurrentPendingRequests } from './model/selectors';
 export { getSessionPreviewById } from './model/selectors';

@@ -1,6 +1,6 @@
 # ADR 0047: New sessions start on the last picked model
 
-- Status: Accepted
+- Status: Superseded by ADR 0054
 - Date: 2026-11-20
 - Deciders: maintainers
 - Supersedes: [ADR 0046](0046-session-owned-model-selection.md)

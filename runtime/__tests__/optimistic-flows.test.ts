@@ -11,7 +11,7 @@ import { forgetSessionCreation, recentlyCreatedSessionIds, sessionCreationComman
 import { sessionCatalogAccess } from '@/features/sessions/services/session-catalog-access';
 import { sessionEditCommands } from '@/features/sessions/services/session-editing';
 import { sessionRefreshCommands } from '@/features/sessions/services/session-refresh';
-import type { ModelOption } from '@/shared/contracts/model-options';
+import type { SessionChatConfig } from '@/features/sessions/model/chat-config';
 import { createAppStore } from '@/runtime/core/store';
 import type { CommandContext } from '@/runtime/core/commands/context';
 import type { RealtimeScopeInput } from '@/runtime/realtime/create-realtime';
@@ -34,10 +34,15 @@ function sessionData(id: string) {
   return { id, title: '', time: { created: 1_000, updated: 1_000 } };
 }
 
-function sessionCreationFixture({ preferred = false }: { preferred?: boolean } = {}) {
+function sessionCreationFixture({ inherited = {} }: { inherited?: SessionChatConfig } = {}) {
   const api = {
     session: {
-      create: vi.fn(async () => sessionData('new')), fork: vi.fn(async () => sessionData('fork')),
+      create: vi.fn(async (input?: SessionChatConfig & { title?: string }) => ({
+        ...sessionData('new'),
+        ...(input?.agent ? { agent: input.agent } : {}),
+        ...(input?.model ? { model: input.model } : {}),
+      })),
+      fork: vi.fn(async () => sessionData('fork')),
       switchModel: vi.fn(async () => {}), list: vi.fn(async () => ({ data: [] as ReturnType<typeof sessionData>[] })),
       active: vi.fn(async () => ({})), remove: vi.fn(async () => {}),
       update: vi.fn(async () => {}), get: vi.fn(async () => sessionData('s')),
@@ -51,8 +56,7 @@ function sessionCreationFixture({ preferred = false }: { preferred?: boolean } =
   const identity = { connectionId: 'server', connectionScope: 'scope', authRevision: 0 };
   const client = { __opencode: { contract: 'v2', directory: '/repo' }, api } as unknown as ScopedOpencodeClient;
   const catalog = sessionCatalogAccess(cache, identity, client);
-  const model = { id: 'openai/gpt-5', providerID: 'openai', modelID: 'gpt-5' } as ModelOption;
-  const commands = sessionCreationCommands({ cache, identity, client, isCurrent: () => true, clock: () => 1_000, recentModel: () => preferred ? model : undefined });
+  const commands = sessionCreationCommands({ cache, identity, client, isCurrent: () => true, clock: () => 1_000, inheritedConfig: () => inherited });
   return { ...commands, cache, catalog, client, identity, api };
 }
 
@@ -126,6 +130,7 @@ function sessionExecutionFixture() {
     refreshSessions: async () => [],
     refreshMessages: async () => [],
     chatPreferences: { ...defaultChatPreferences, mode: 'build' },
+    sessions: [],
   };
   return { input, session };
 }
@@ -247,20 +252,33 @@ describe('local-first session selection', () => {
     cache.clear();
   });
 
-  it('createSession starts on the model the user last picked', async () => {
-    const fixture = sessionCreationFixture({ preferred: true });
-    const model = { providerID: 'openai', id: 'gpt-5' };
-    await expect(fixture.createSession()).resolves.toEqual({ ...sessionData('new'), model });
-    expect(fixture.api.session.switchModel).toHaveBeenCalledWith({ sessionID: 'new', model });
-    expect(fixture.catalog.readSessions()[0].model).toEqual(model);
+  it('createSession creates with the inherited agent, model, and permissions', async () => {
+    const inherited: SessionChatConfig = {
+      agent: 'plan',
+      model: { providerID: 'openai', id: 'gpt-5', variant: 'high' },
+      permissions: [{ action: 'edit', resource: '*', effect: 'allow' }],
+    };
+    const fixture = sessionCreationFixture({ inherited });
+    await expect(fixture.createSession()).resolves.toEqual({
+      ...sessionData('new'),
+      agent: 'plan',
+      model: inherited.model,
+    });
+    expect(fixture.api.session.create).toHaveBeenCalledExactlyOnceWith({
+      location: { directory: '/repo' },
+      model: inherited.model,
+      agent: 'plan',
+      permissions: inherited.permissions,
+    });
+    expect(fixture.api.session.switchModel).not.toHaveBeenCalled();
+    expect(fixture.catalog.readSessions()[0]).toMatchObject({ agent: 'plan', model: inherited.model });
     fixture.cache.clear();
   });
 
-  it('createSession keeps the server default when the last model cannot be applied', async () => {
-    const fixture = sessionCreationFixture({ preferred: true });
-    fixture.api.session.switchModel.mockRejectedValueOnce(new Error('model unavailable'));
-
+  it('createSession keeps the server defaults without inherited configuration', async () => {
+    const fixture = sessionCreationFixture();
     await expect(fixture.createSession()).resolves.toEqual(sessionData('new'));
+    expect(fixture.api.session.create).toHaveBeenCalledExactlyOnceWith({ location: { directory: '/repo' } });
     expect(fixture.catalog.readSessions()[0].model).toBeUndefined();
     fixture.cache.clear();
   });
@@ -493,6 +511,18 @@ describe('optimistic interaction replies', () => {
 });
 
 describe('command agent eligibility', () => {
+  it('uses the V2 session agent before the connection preference', async () => {
+    const { input, session } = sessionExecutionFixture();
+    const actions = createSessionExecutionActions({
+      ...input,
+      chatPreferences: { ...input.chatPreferences, mode: 'build' },
+      availableAgents: [{ id: 'build', label: 'Build', mode: 'primary' }, { id: 'plan', label: 'Plan', mode: 'all' }],
+      sessions: [{ id: 's', title: '', agent: 'plan', time: { created: 1, updated: 1 } }],
+    });
+    await actions.executeCommand('s', 'review', '');
+    expect(session.switchAgent).toHaveBeenCalledWith({ sessionID: 's', agent: 'plan' });
+  });
+
   it('repairs stale selections at execution and refuses an unverifiable agent', async () => {
     const { input, session } = sessionExecutionFixture();
     const selected: typeof input = { ...input, chatPreferences: { ...input.chatPreferences, mode: 'summary' },

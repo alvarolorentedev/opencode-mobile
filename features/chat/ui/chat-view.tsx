@@ -255,6 +255,7 @@ export function ChatView() {
           isUpdatingAutoApprove={composer.isUpdatingAutoApprove}
           onToggleConversationMode={() => void actions.toggleConversationMode()}
           onAttach={(anchor) => void actions.handleAttach(anchor)}
+          onAgentSelect={composer.onAgentSelect}
           onDraftChange={actions.handleDraftChange}
           isV2={composer.isV2}
           suggestions={composer.suggestions}
@@ -302,7 +303,6 @@ export function ChatView() {
           autoRoutingAvailable={composer.autoRoutingAvailable}
           onAutoRoutingChange={composer.onAutoRoutingChange}
           slim={header.slim}
-          updateChatPreferences={actions.updateChatPreferences}
           visibleModels={composer.visibleModels}
         />
       </KeyboardAvoidingView>

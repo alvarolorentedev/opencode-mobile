@@ -24,6 +24,7 @@ import { useChatViewVoice } from '@/features/chat/ui/use-chat-view-voice';
 import { useComposerSubmission } from '@/features/chat/ui/use-composer-submission';
 import { useComposerSuggestions } from '@/features/chat/ui/use-composer-suggestions';
 import { useApprovals, useAutoApprove, useCurrentSession, useSessionLibrary } from '@/features/sessions/context';
+import { resolveSessionChatConfig } from '@/features/sessions/index';
 import { useCapabilities } from '@/features/ai/context';
 import { useChat, useChatBootstrap } from '@/features/chat/context';
 import { useConnection } from '@/features/connections/context';
@@ -55,7 +56,7 @@ export function useChatViewController() {
     currentPendingPermissions, currentPendingQuestions, currentTodos, currentTranscript, currentUsage,
     diffTurns, isRefreshingDiffs, isRefreshingMessages,
     latestAssistantTurnUsage, promptError, refreshDiffs, rejectQuestion,
-    replyToPermission, replyToQuestion, retryTranscript, selectDiffMessage, selectedDiffMessageId, sendPrompt, switchSessionModel,
+    replyToPermission, replyToQuestion, retryTranscript, selectDiffMessage, selectedDiffMessageId, sendPrompt, switchSessionAgent, switchSessionModel,
     sendingState, setDiffScope, transcriptPaging, transcriptReadError,
     availableSkills, availableReferences,
   } = view;
@@ -143,9 +144,6 @@ export function useChatViewController() {
     : 0);
   const diffAdditions = currentDiffs.reduce((sum, diff) => sum + diff.additions, 0);
   const diffDeletions = currentDiffs.reduce((sum, diff) => sum + diff.deletions, 0);
-  const selectedAgent = getInitialMode(availableAgents, currentConfig, chatPreferences.mode);
-  const selectedAgentLabel = availableAgents.find((agent) => agent.id === selectedAgent)?.label
-    ?? t('chat:composer.chooseAgent');
   const pendingInteractions = currentPendingPermissions.length + currentPendingQuestions.length;
   const awaitingUserInput = pendingInteractions > 0;
   const completedTodoCount = currentTodos.filter((todo) => todo.status === 'completed').length;
@@ -177,7 +175,14 @@ export function useChatViewController() {
     () => sessions.find((session) => session.id === currentSessionId) || activeSession,
     [activeSession, currentSessionId, sessions],
   );
-  const effectiveSessionModel = getEffectiveSessionModel(availableModels, currentConfig, availableAgents, selectedSession, selectedAgent);
+  const sessionConfig = useMemo(
+    () => resolveSessionChatConfig(selectedSession, currentMessages),
+    [currentMessages, selectedSession],
+  );
+  const selectedAgent = getInitialMode(availableAgents, currentConfig, (isV2 ? sessionConfig.agent : undefined) ?? chatPreferences.mode);
+  const selectedAgentLabel = availableAgents.find((agent) => agent.id === selectedAgent)?.label
+    ?? t('chat:composer.chooseAgent');
+  const effectiveSessionModel = getEffectiveSessionModel(availableModels, currentConfig, availableAgents, sessionConfig, selectedAgent);
   const selectedModelId = effectiveSessionModel ? `${effectiveSessionModel.providerID}/${effectiveSessionModel.id}` : undefined;
   const selectedModelVariant = getSelectedModelVariant(effectiveSessionModel, availableModels);
   const contextTokens = useMemo(() => getLatestContextTokens(currentMessages) ?? 0, [currentMessages]);
@@ -209,6 +214,24 @@ export function useChatViewController() {
   const handleModelSelect = useCallback((model: ModelOption, variant?: string) => {
     void setSessionModel(model, variant);
   }, [setSessionModel]);
+  const setSessionAgent = useCallback(async (agent: string) => {
+    if (!isV2) {
+      updateChatPreferences({ mode: agent });
+      return;
+    }
+    const sessionId = currentSessionId || await ensureActiveSession();
+    if (!sessionId) return;
+    setSendFeedback(undefined);
+    try {
+      await switchSessionAgent(sessionId, agent);
+      updateChatPreferences({ mode: agent });
+    } catch (error) {
+      setSendFeedback(error instanceof Error ? error.message : t('chat:view.couldNotSend'));
+    }
+  }, [currentSessionId, ensureActiveSession, isV2, setSendFeedback, switchSessionAgent, t, updateChatPreferences]);
+  const handleAgentSelect = useCallback((agent: string) => {
+    void setSessionAgent(agent);
+  }, [setSessionAgent]);
   // The provider scopes promptError to the active session tree, so a failing
   // subagent is already surfaced here; no local session gate is needed.
   const visiblePromptError = promptError?.message;
@@ -387,6 +410,7 @@ export function useChatViewController() {
       showSendAction, visibleModels,
       isV2, suggestions, suggestionsActive, suggestionsSearching, suggestionsError,
       shellMode, focusRequest,
+      onAgentSelect: handleAgentSelect,
       onModelSelect: handleModelSelect,
     },
     overlay: {

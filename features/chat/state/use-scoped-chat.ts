@@ -43,6 +43,7 @@ export function useChatCommands({ client, directory, isCurrentClient, manager, r
       executeCommand: async (...args) => requireCommands().executeCommand(...args),
       executeShell: async (...args) => requireCommands().executeShell(...args),
       switchSessionModel: async (...args) => requireCommands().switchSessionModel(...args),
+      switchSessionAgent: async (...args) => requireCommands().switchSessionAgent(...args),
       sendPrompt: async (...args) => requireCommands().sendPrompt(...args),
       abortSession: async (...args) => requireCommands().abortSession(...args),
       clearPromptError: () => read()?.clearPromptError(),

@@ -80,13 +80,13 @@ All current decisions are `Accepted`.
 | [0043](0043-react-native-chart-kit.md) | ChartKit for the Mission Control usage chart |
 | [0044](0044-shared-session-links.md) | Shared OpenCode session links |
 | [0045](0045-queue-only-unsent-prompts.md) | Queue only unsent prompts |
-| [0047](0047-new-session-last-used-model.md) | New sessions start on the last picked model |
 | [0048](0048-system-and-local-wake-detection.md) | Retain System and On-device wake detection |
 | [0049](0049-bounded-mission-stats-snapshots.md) | Bounded Mission Control statistics snapshots |
 | [0050](0050-live-v2-transcript-with-reconciliation.md) | Live V2 transcript with boundary reconciliation |
 | [0051](0051-app-core-state-tiers.md) | App core with Query for server facts and Zustand for device facts |
 | [0052](0052-explicit-overlay-dependencies.md) | Feature ownership and explicit overlay dependencies |
 | [0053](0053-cloud-link-device-credential-renewal.md) | Cloud Link device-credential renewal and session step-up |
+| [0054](0054-session-chat-configuration-inheritance.md) | Session chat configuration inheritance |
 
 ## Superseded history
 
@@ -104,4 +104,5 @@ past decision: [0002](0002-provider-centric-orchestration.md),
 [0032](0032-web-parity-project-picker.md),
 [0034](0034-device-local-project-archive.md),
 [0037](0037-per-agent-model-memory.md),
-[0046](0046-session-owned-model-selection.md).
+[0046](0046-session-owned-model-selection.md),
+[0047](0047-new-session-last-used-model.md).

@@ -136,6 +136,7 @@ export function createProjectBinding(dependencies: ProjectRuntimeDependencies, m
   function execution() {
     return createSessionExecutionActions({ ...commandContext(), client, isCurrentClient,
       commands: queryClient.getQueryData(commandsOptions(identity, client).queryKey) ?? [],
+      sessions: sessions.readSessions(),
       refreshMessages, refreshSessions: refresh.refreshSessions });
   }
   const commandBinding: { revision?: number; isCurrent: () => boolean; commands: ChatCommands } = {
@@ -153,6 +154,7 @@ export function createProjectBinding(dependencies: ProjectRuntimeDependencies, m
       sendPrompt: (id, ...args) => promptActions(id).sendPrompt(id, ...args),
       abortSession: (id: string) => promptActions(id).abortSession(id),
       switchSessionModel: (id, model) => promptActions(id).switchSessionModel(id, model),
+      switchSessionAgent: (id, agent) => promptActions(id).switchSessionAgent(id, agent),
     },
   };
   const catalogBinding = { revision, isCurrent, actions: catalog };

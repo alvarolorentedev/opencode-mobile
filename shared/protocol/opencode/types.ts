@@ -47,6 +47,7 @@ export type Session = {
     };
     metadata?: Record<string, unknown>;
     permission?: PermissionRuleset;
+    permissions?: SessionPermissionRule[];
     summary?: {
         additions: number;
         deletions: number;
@@ -98,6 +99,11 @@ export type PermissionRuleset = {
     pattern: string;
     action: 'allow' | 'deny' | 'ask';
 }[];
+export type SessionPermissionRule = {
+    action: string;
+    resource: string;
+    effect: 'allow' | 'deny' | 'ask';
+};
 export type Agent = {
     name: string;
     description?: string;

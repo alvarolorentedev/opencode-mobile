@@ -17,6 +17,12 @@ import { resolvePromptContext } from '@/shared/protocol/opencode/prompt-context'
 
 export type ResolvedProjectLocation = Project & { directory?: string };
 export type SessionMessagePage = { records: SessionMessageRecord[]; hasMore: boolean; nextBefore?: string };
+export type CreateSessionInput = {
+  title?: string;
+  agent?: string;
+  model?: NonNullable<Session['model']>;
+  permissions?: NonNullable<Session['permissions']>;
+};
 export const TRANSCRIPT_PAGE_LIMIT = 20;
 export const LATEST_MESSAGE_LIMIT = 3;
 // The native message.list query validates `limit` as 1..200 and rejects larger
@@ -38,7 +44,7 @@ export type SessionAdapter = {
   messages: (sessionId: string, options?: { limit?: number; before?: string; fresh?: boolean }) => Promise<SessionMessagePage>;
   diff: (sessionId: string, messageId?: string, messages?: SessionMessageRecord[]) => Promise<FileDiff[]>;
   todos: (sessionId: string) => Promise<Todo[]>;
-  create: (title?: string) => Promise<Session>;
+  create: (input?: CreateSessionInput) => Promise<Session>;
   remove: (sessionId: string) => Promise<unknown>;
   updateTitle: (sessionId: string, title: string) => Promise<unknown>;
   fork: (sessionId: string, messageId?: string) => Promise<Session>;
@@ -198,9 +204,16 @@ export function createSessionAdapter(client: ScopedOpencodeClient): SessionAdapt
           : toFileDiffs(await client.api!.session.diff({ sessionID: sessionId, from: target })));
     },
     todos: (sessionId) => compatibility ? v1.getSessionTodos(compatibility, sessionId) : Promise.resolve([]),
-    create: async (title?: string) => {
+    create: async (input?: CreateSessionInput) => {
+      const title = input?.title;
       if (compatibility) return (await compatibility.session.create(title ? { title } : undefined)).data as Session;
-      return toSessionView(await client.api!.session.create({ ...(title ? { title } : {}), ...(directory ? { location: { directory } } : {}) })) as unknown as Session;
+      return toSessionView(await client.api!.session.create({
+        ...(title ? { title } : {}),
+        ...(input?.agent ? { agent: input.agent } : {}),
+        ...(input?.model ? { model: input.model } : {}),
+        ...(input?.permissions ? { permissions: input.permissions } : {}),
+        ...(directory ? { location: { directory } } : {}),
+      })) as unknown as Session;
     },
     remove: (sessionId) => compatibility ? v1.deleteSession(compatibility, sessionId) : client.api!.session.remove({ sessionID: sessionId }),
     updateTitle: async (sessionId, title) => {

@@ -6,7 +6,7 @@ import { compactSession as svcCompactSession, executeCommand as svcExecuteComman
 import type { SessionExecutionInput } from '@/features/sessions/model/action-inputs';
 
 export function createSessionExecutionActions({
-  client, isCurrentClient, availableAgents, commands, currentConfig, refreshMessages, refreshSessions, chatPreferences,
+  client, isCurrentClient, availableAgents, commands, currentConfig, refreshMessages, refreshSessions, chatPreferences, sessions,
 }: SessionExecutionInput) {
   const executeCommand = async (sessionId: string, command: string, args: string, input?: Pick<CommandOptions, 'attachments' | 'context'>): Promise<SideQuestionAnswer | void> => {
     if (!isCurrentClient(client)) throw new Error(i18n.t('chat:composer.noEligibleAgent'));
@@ -24,7 +24,9 @@ export function createSessionExecutionActions({
       const answer = await svcGenerateSessionText(client, sessionId, buildSideQuestionPrompt(question));
       return { question, answer };
     }
-    const agent = getInitialMode(availableAgents, currentConfig, chatPreferences.mode);
+    const session = sessions.find((item) => item.id === sessionId);
+    const agent = getInitialMode(availableAgents, currentConfig,
+      (client.__opencode?.contract === 'v2' ? session?.agent : undefined) ?? chatPreferences.mode);
     if (!agent) throw new Error(i18n.t('chat:composer.noEligibleAgent'));
     await svcExecuteCommand(client, sessionId, command, args, {
       ...input,

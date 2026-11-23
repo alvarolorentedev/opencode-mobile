@@ -9,7 +9,9 @@ import {
   getSessionMessages,
   getSessionDiff,
   listSessions,
+  createSession,
   executeCommand,
+  switchSessionAgent,
   switchSessionModel,
   compactSession,
   generateSessionText,
@@ -66,6 +68,31 @@ describe('session reads', () => {
     await switchSessionModel(client, 's', model);
     expect(switchModel).toHaveBeenCalledWith({ sessionID: 's', model });
     expect(() => switchSessionModel({ api: undefined } as never, 's', model)).toThrow('OpenCode 2');
+  });
+
+  it('switches a session agent through the SDK and rejects unsupported clients', async () => {
+    const switchAgent = vi.fn(async () => undefined);
+    const client = { api: { session: { switchAgent } } } as never;
+
+    await switchSessionAgent(client, 's', 'plan');
+    expect(switchAgent).toHaveBeenCalledWith({ sessionID: 's', agent: 'plan' });
+    expect(() => switchSessionAgent({ api: undefined } as never, 's', 'plan')).toThrow('OpenCode 2');
+  });
+
+  it('creates a V2 session with the inherited agent, model, and permissions', async () => {
+    const create = vi.fn(async () => ({
+      id: 's', projectID: 'p', time: { created: 0, updated: 0 }, location: { directory: '/repo' },
+    }));
+    const client = { __opencode: { contract: 'v2', directory: '/repo' }, api: { session: { create } } } as never;
+    const input = {
+      title: 'Inherited',
+      agent: 'plan',
+      model: { providerID: 'openai', id: 'gpt-5', variant: 'high' },
+      permissions: [{ action: 'edit', resource: '*', effect: 'ask' as const }],
+    };
+
+    await createSession(client, input);
+    expect(create).toHaveBeenCalledWith({ ...input, location: { directory: '/repo' } });
   });
 
   it('treats a session lookup 404 as missing and propagates other failures', async () => {

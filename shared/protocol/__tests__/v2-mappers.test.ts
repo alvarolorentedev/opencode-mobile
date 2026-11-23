@@ -23,12 +23,14 @@ describe('v2 response mappers', () => {
       title: 'Chat',
       agent: 'build',
       model: { id: 'sonnet', providerID: 'anthropic' },
+      permissions: [{ action: 'edit', resource: '*', effect: 'ask' }],
       cost: 0.42,
       tokens: { input: 1200, output: 240, reasoning: 10, cache: { read: 800, write: 100 } },
       time: { created: 1, updated: 2 },
     } as never);
     expect(session.model).toEqual({ id: 'sonnet', providerID: 'anthropic' });
     expect(session.agent).toBe('build');
+    expect(session.permissions).toEqual([{ action: 'edit', resource: '*', effect: 'ask' }]);
     expect(session.cost).toBe(0.42);
     expect(session.tokens).toEqual({ input: 1200, output: 240, reasoning: 10, cache: { read: 800, write: 100 } });
     expect(session.title).toBe('Chat');

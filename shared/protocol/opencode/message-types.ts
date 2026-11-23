@@ -19,6 +19,7 @@ type MessageBase = {
     model?: {
         providerID: string;
         modelID: string;
+        variant?: string;
     };
     metadata?: Record<string, unknown>;
 };

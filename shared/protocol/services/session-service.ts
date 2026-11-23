@@ -1,6 +1,6 @@
 import type { ScopedOpencodeClient } from '@/shared/protocol/opencode/client';
 import { listPendingPermissions, listPendingQuestions } from '@/shared/protocol/opencode/client/interactions';
-import { createSessionAdapter, LATEST_MESSAGE_LIMIT, type PromptInput, type ResolvedProjectLocation, type SessionMessagePage } from '@/shared/protocol/opencode/contracts/session-adapter';
+import { createSessionAdapter, LATEST_MESSAGE_LIMIT, type CreateSessionInput, type PromptInput, type ResolvedProjectLocation, type SessionMessagePage } from '@/shared/protocol/opencode/contracts/session-adapter';
 import type { SessionMessageRecord } from '@/shared/presentation/format';
 import { coalesceRead } from '@/shared/protocol/opencode/in-flight';
 import type { Project, Session, SessionStatus } from '@/shared/protocol/opencode/types';
@@ -155,8 +155,8 @@ export function getSessionDiff(client: ScopedOpencodeClient, sessionId: string, 
 export function getSessionTodos(client: ScopedOpencodeClient, sessionId: string) {
   return createSessionAdapter(client).todos(sessionId);
 }
-export function createSession(client: ScopedOpencodeClient, title?: string): Promise<Session> {
-  return createSessionAdapter(client).create(title);
+export function createSession(client: ScopedOpencodeClient, input?: CreateSessionInput): Promise<Session> {
+  return createSessionAdapter(client).create(input);
 }
 export function deleteSession(client: ScopedOpencodeClient, sessionId: string) {
   return createSessionAdapter(client).remove(sessionId);
@@ -179,6 +179,10 @@ export function interruptSession(client: ScopedOpencodeClient, sessionID: string
 export function switchSessionModel(client: ScopedOpencodeClient, sessionID: string, model: NonNullable<Session['model']>) {
   if (!client.api) throw new Error('Session model selection requires OpenCode 2.');
   return client.api.session.switchModel({ sessionID, model });
+}
+export function switchSessionAgent(client: ScopedOpencodeClient, sessionID: string, agent: string) {
+  if (!client.api) throw new Error('Session agent selection requires OpenCode 2.');
+  return client.api.session.switchAgent({ sessionID, agent });
 }
 export function waitForSessionIdle(client: ScopedOpencodeClient, sessionID: string) {
   return createSessionAdapter(client).waitForIdle(sessionID);

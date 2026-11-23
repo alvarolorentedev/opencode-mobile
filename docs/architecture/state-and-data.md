@@ -383,7 +383,7 @@ Current fields:
 
 The TTS engine, pack, and speaker are device-local and also excluded from `serverPreferences`. Downloaded voice models live under `opencode-tts/<packId>/` in the document directory and are not represented in preferences; Settings derives their status from the filesystem. Removing a pack deletes that directory, releases the native TTS model, and switches to the system engine when it was active. Temporary synthesis WAVs live in the cache directory and are deleted after playback, on cancel, and on the next Settings visit.
 
-These values combine application behavior settings and output-style preferences that are sent to the model as prompt instructions. An explicit model and variant belong to `Session.model`; the composer changes them with the V2 `session.switchModel` operation, and session refresh/event updates restore each choice when switching sessions. When a session has no explicit model, OpenCode resolves the agent and configuration defaults. Legacy app-level model/provider/variant selections are ignored during preference hydration; they are not migrated because one old value cannot determine choices for multiple sessions. See [ADR 0047](../adr/0047-new-session-last-used-model.md).
+These values combine application behavior settings and output-style preferences that are sent to the model as prompt instructions. An explicit model and variant belong to `Session.model`; the composer changes them with the V2 `session.switchModel` operation, and session refresh/event updates restore each choice when switching sessions. Session `agent` and model/variant are the first source for an open chat, with the newest user message as a field-level fallback. A new session is created with the newest same-project root session's agent, model/variant and, unless auto-approve is on, its V2 permission ruleset. Legacy app-level model/provider/variant selections are ignored during preference hydration; they are not migrated because one old value cannot determine choices for multiple sessions. See [ADR 0054](../adr/0054-session-chat-configuration-inheritance.md).
 
 `autoModel` is server-scoped with the rest of the catalog and routing preferences. Its tier
 values are `auto` or a model ID; `tierVariants` adds an optional thinking level
@@ -1098,11 +1098,12 @@ Preference reconciliation then determines safe values for:
 - enabled models
 - auto-approve UI state
 
-The active session model is read from `Session.model`; when absent, the server's
-agent/config defaults supply the effective model. A newly created session switches
-to the last picked model for that server when the catalog still has it, then the
-server owns the value. No provider or model default is reconciled from app
-preferences.
+The active session model is read from `Session.model`; when absent, the session
+agent, newest user message, then server defaults supply the effective model. A
+newly created session inherits the newest same-project session's agent and model
+(including its variant) and, unless auto-approve is on, its permission rules.
+The server owns the stored value; no provider or model default is reconciled
+from app preferences.
 
 Reconnect reads are not always complete: a server can briefly expose no
 providers, models, or agents while it starts up, and capability discovery returns
@@ -1387,8 +1388,8 @@ updates stop when Android suspends JS; timestamps explicitly represent cached da
 
 The assistant writes language and delivery through `updateChatPreferences`,
 immediately using the existing persistence path. It does not save a default
-model; session model choices belong to Chat, new sessions switch to the last
-picked model when it is still available, and otherwise use OpenCode's
+model; session model choices belong to Chat, new sessions inherit the newest
+same-project session's agent and model/variant, and otherwise use OpenCode's
 agent/config defaults. Skip does not revert earlier choices. Navigation omits
 AI and project without a connection; message delivery is hidden on V1. No
 onboarding preferences, credentials or step progress are duplicated in the

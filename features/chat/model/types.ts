@@ -58,6 +58,7 @@ export type ChatContextValue = {
   availableSkills: import('@/shared/protocol/opencode/types').Skill[];
   availableReferences: import('@/shared/protocol/opencode/types').Reference[];
   switchSessionModel: (sessionId: string, model: NonNullable<import('@/shared/protocol/opencode/types').Session['model']>) => Promise<void>;
+  switchSessionAgent: (sessionId: string, agent: string) => Promise<void>;
   sendPrompt: SendPrompt;
   abortSession: (sessionId: string) => Promise<void>;
   sendingState: SendingState;
@@ -69,7 +70,7 @@ export type ChatContextValue = {
 
 export type ChatCommands = Pick<ChatContextValue,
   'cancelPrompt' | 'setDiffScope' | 'selectDiffMessage' | 'refreshDiffs' | 'retryTranscript' |
-  'replyToPermission' | 'replyToQuestion' | 'rejectQuestion' | 'switchSessionModel' | 'sendPrompt' |
+  'replyToPermission' | 'replyToQuestion' | 'rejectQuestion' | 'switchSessionModel' | 'switchSessionAgent' | 'sendPrompt' |
   'abortSession' | 'clearPromptError'
 > & {
   executeCommand: ChatContextValue['commands']['execute'];

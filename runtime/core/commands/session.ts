@@ -1,11 +1,10 @@
 import type { CommandContext } from '@/runtime/core/commands/context';
 import { agentsOptions, capabilitiesOptions } from '@/features/ai/runtime';
 import { forgetSessionContent } from '@/features/chat/runtime';
-import { approvalsAccess, createInteractionCommands, forgetSessionCreation, pendingInteractionsKey, savedPermissionOptions, sessionCatalogOptions, sessionCreationCommands, sessionEditCommands, sessionRefreshCommands } from '@/features/sessions/runtime';
+import { approvalsAccess, createInteractionCommands, forgetSessionCreation, pendingInteractionsKey, projectSessionsKey, resolveNewSessionConfig, savedPermissionOptions, sessionCatalogOptions, sessionCreationCommands, sessionEditCommands, sessionRefreshCommands } from '@/features/sessions/runtime';
 import type { PendingQuestionAnswer, ScopedOpencodeClient } from '@/shared/protocol/opencode/client';
 import type { WorkspaceTarget } from '@/shared/contracts/workspace';
 import type { QueryIdentity } from '@/shared/server-data/keys';
-import { configurationOptions } from '@/shared/server-data/catalogs';
 import { createSessionNavigationCommands } from './session-navigation';
 
 const permissionReplyKey = (queryKey: readonly unknown[], id: string) => [...queryKey, 'permission-reply', id];
@@ -55,13 +54,16 @@ export function createSessionCommands(context: CommandContext) {
       return sessionCreationCommands({
         cache: queryClient, identity, client, clock,
         isCurrent: () => access.isCurrent() && Boolean(sources()),
-        recentModel() {
-          if (!sources()?.demanded) return undefined;
+        inheritedConfig() {
+          if (!sources()?.demanded) return {};
           const preferences = store.getState().registry.connections.find(({ id }) => id === target.connectionId)?.preferences;
-          const model = preferences?.recentModelIds?.[0];
-          if (!model || !queryClient.getQueryData(configurationOptions(identity, client).queryKey)
-            || !queryClient.getQueryData(agentsOptions(identity, client).queryKey)) return undefined;
-          return queryClient.getQueryData(capabilitiesOptions(identity, client).queryKey)?.models.find(({ id }) => id === model);
+          return resolveNewSessionConfig({
+            sessions: queryClient.getQueryData(projectSessionsKey(identity, client)) ?? [],
+            agents: queryClient.getQueryData(agentsOptions(identity, client).queryKey) ?? [],
+            models: queryClient.getQueryData(capabilitiesOptions(identity, client).queryKey)?.models ?? [],
+            recentModelIds: preferences?.recentModelIds,
+            autoApprove: preferences?.autoApprove === true,
+          });
         },
       });
     }

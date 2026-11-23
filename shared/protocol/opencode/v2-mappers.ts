@@ -33,6 +33,7 @@ export function toSessionView(session: SessionInfo): Session {
     cost: session.cost,
     agent: session.agent,
     metadata: session.metadata,
+    ...(session.permissions ? { permissions: [...session.permissions] } : {}),
   };
 }
 

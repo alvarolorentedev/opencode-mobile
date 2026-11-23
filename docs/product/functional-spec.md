@@ -149,7 +149,7 @@ Behavior:
 - remote `http` and `https` attachment URLs are passed through unchanged
 - the active session's effective model must advertise attachment support
 - local files larger than 10 MB are rejected before base64 encoding
-- submission includes the selected agent and generated system prompt; the session's model comes from `Session.model`, with explicit composer choices already stored through `session.switchModel`
+- submission uses the session's agent when one is stored, otherwise the selected agent, plus the generated system prompt; the session's model comes from `Session.model`, with explicit composer choices already stored through `session.switchModel`
 
 After submission:
 
@@ -444,7 +444,7 @@ Behavior:
 - the picker shows the provider alongside the selected model, groups results by provider, and searches provider/model names and IDs
 - the picker pins the currently selected model and the recently used models at the top; these sections hide while a search query is active
 - the picker reflects the active session's model and variant. Choosing a model keeps the sheet open so its reasoning level stays reachable; the staged model and variant are applied together through `session.switchModel` once the sheet is dismissed, and the chosen model is recorded in the recent list
-- when the session has no explicit model, the picker reflects the server's effective agent/config default. New sessions start on the last model picked for that server when it is still available; otherwise they keep the server default
+- when the session has no explicit model, the picker reflects the server's effective agent/config default. New sessions inherit the newest same-project session's agent, model/variant and (unless auto-approve is on) permission rules; otherwise they keep the server default
 - legacy app-level model defaults are ignored; they are not copied into a session because they cannot be assigned safely across existing sessions
 - OpenCode 1 does not expose the supported session model-switch operation, so manual model and variant selection is available on OpenCode 2 only
 - discovered model metadata comes from nested attachment/input modality, tool-call, reasoning, status, and context/output limit capabilities
@@ -452,10 +452,12 @@ Behavior:
 - commands and prompts use the session's stored model. Auto-routing may temporarily switch the session for a routed turn; the server records the resulting session model
 - on OpenCode 1, the existing Low/Default/High reasoning control continues to affect the generated system prompt; OpenCode 2 reasoning selection is a server model variant, not a prompt hint
 
-The session's model choice takes precedence over agent and config defaults. A
-new session starts on the last model picked in the picker for that server when it
-is still available, and otherwise follows OpenCode's defaults. See
-[ADR 0047](../adr/0047-new-session-last-used-model.md).
+The session's agent and model choice take precedence over config defaults. A
+new session inherits the newest same-project session's agent and model
+(including its variant), and otherwise follows OpenCode's defaults. Opening an
+existing chat uses the session first and the newest user message only as a
+fallback; auto-approve keeps precedence over session permission rules. See
+[ADR 0054](../adr/0054-session-chat-configuration-inheritance.md).
 
 ## Session Title Summarization
 

@@ -97,7 +97,7 @@ it('discovers, runs, and reloads commands from a real OpenCode V2 server', async
     assert.equal(driver.result.current.groups[0].items[0].description, 'Echo from the server plugin');
     driver.unmount();
 
-    const session = await adapter.create('Plugin integration');
+    const session = await adapter.create({ title: 'Plugin integration' });
     const args = ' "two words"\nnext  ';
     await adapter.executeCommand(session.id, 'mobile-echo', args, {
       agent: 'build',

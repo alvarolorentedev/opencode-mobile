@@ -136,7 +136,7 @@ declared once, at the leaves.
   draft, keyboard, and Back behavior stay local to the composer
 - open the model picker from the selected model/reasoning summary, with a reasoning slider above model search for the chosen model
 - reflect the active session's model and variant; the sheet stages model and effort choices and applies them together when dismissed, and switching sessions restores each server-owned choice
-- use OpenCode's agent/config defaults for sessions without an explicit model, except that a newly created session starts on the last model picked for that server when it is still available; model selection is available on OpenCode 2, which exposes `session.switchModel`
+- use OpenCode's agent/config defaults for sessions without explicit configuration, except that a newly created session inherits the newest same-project session's agent, model/variant and (when auto-approve is off) V2 permission rules; model selection is available on OpenCode 2, which exposes `session.switchModel`
 - when a classifier is available, the picker exposes the Auto-routing switch;
   the trigger reads `Auto-routing` while it is enabled, and explicit model
   selection turns it off
@@ -219,7 +219,7 @@ type ChatComposerProps = {
 
 - renders the agent-mode overlay sheet opened from the composer mode icon
 - lists eligible server-provided agents with descriptions, the effective selection, and a check mark; see [ADR 0026](../../adr/0026-metadata-driven-agent-selection.md)
-- selecting a mode persists it through updateChatPreferences({ mode }) and closes the sheet without clearing the draft
+- selecting a mode updates the session through `session.switchAgent` on OpenCode 2 (falling back to `updateChatPreferences({ mode })` on V1), stores the preference, and closes the sheet without clearing the draft
 - Back/Escape, backdrop, header swipe and Close all dismiss the sheet through the shared OverlaySheet
 
 ### `features/chat/ui/composer-suggestions.tsx` and `use-composer-suggestions.ts`
