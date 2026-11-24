@@ -41,8 +41,9 @@ Use semantic palette roles rather than literal colors:
 
 Icons are monochrome: use `text` for primary glyphs and `muted` for secondary or
 disabled glyphs. Never tint a glyph with `tint`, `success`, `warning` or `danger`;
-status color belongs to text, badges and surfaces. A glyph inside a filled control
-uses that surface's on-color so it stays legible.
+status color belongs to text, badges and surfaces. The Mission Control status
+summary is the exception: its status glyphs mirror their count color. A glyph
+inside a filled control uses that surface's on-color so it stays legible.
 
 Support system/light/dark and green/blue/red/purple/pink/gray. Resolve colors
 through `usePalette()`, not direct `Colors.light` reads. Use semantic Tailwind classes for shared controls. Status always has text or an icon as well as color. Target
