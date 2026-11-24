@@ -742,5 +742,7 @@ const approvalQR = 'opencodemobile://pair?v=1&cp=https%3A%2F%2Fapi.opencodecloud
   }
 }
 
-  }, 120_000);
+  // One harness covers ~40 recovery scenarios and shares the runner with lint
+  // and typecheck, so the cap needs headroom over the ~60s standalone run.
+  }, 300_000);
 });
