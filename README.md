@@ -32,7 +32,7 @@
 
 OpenCode Mobile is an independent, community-built mobile companion for [OpenCode](https://opencode.ai/).
 
-It connects to the OpenCode server you already run and gives you a focused mobile control surface for the moments when you need to check, guide, approve, or continue agent work away from your desk.
+It connects directly to individual OpenCode servers and can continue existing sessions. It gives you a focused mobile control surface for the moments when you need to check, guide, approve, or steer agent work away from your desk.
 
 It is not trying to put a desktop IDE on a smaller screen.
 
@@ -53,7 +53,7 @@ It is designed around the things that actually matter on mobile.
 - **Approve, review, and edit** — answer permission requests, inspect diffs, browse files, and open terminals.
 - **Talk to it** — dictate prompts, read replies aloud, or use hands-free conversation mode.
 - **Shape your setup** — providers, models, MCP servers, agents, commands, plugins, and visualizations like [Flowgraph](https://github.com/alvarolorentedev/opencode-flowgraph).
-- **Manage and personalize** — multiple servers, projects, and sessions; themes, languages, text size, and widgets.
+- **Manage and personalize** — multiple saved servers, projects, and sessions; themes, languages, text size, and widgets.
 
 ## How it works
 
@@ -64,7 +64,7 @@ OpenCode Mobile connects to that server remotely:
 ```text
 Your phone
     │
-    │ HTTPS / secure tunnel
+    │ LAN / VPN / HTTPS tunnel
     ▼
 OpenCode server
     │
@@ -74,21 +74,19 @@ Your workspace + models
 
 A typical setup looks like this:
 
-### 1. Expose Server Securely
+### 1. Pair your OpenCode 2 server
 
-Keep the server protected with authentication and connect through a secure HTTPS tunnel, VPN, or reverse proxy. Then expose the pairing capability or use CloudLink.
-
-For example:
+Pair from **OpenCode Desktop → Settings → Pairing → Pair device**, or run:
 
 ```bash
 opencode pair --url http://<ip-or-domain>:<port>
 ```
 
-Tailscale, Cloudflare Tunnel, and other secure networking options work well.
+`--url` should point to an address your phone can reach — your local network, a VPN such as Tailscale, or an authenticated HTTPS tunnel.
 
 ### 2. Connect from OpenCode Mobile
 
-Scan the QR code or paste the pairing link. The link expires after five minutes and works once; the connection lasts 30 days, so run `opencode pair` again when it expires. For other routes and the full setup, see the [Getting Started guide](https://getopencode.app/docs/getting-started/).
+Scan the QR code or paste the pairing link. The link expires after five minutes and works once; the connection lasts 30 days, so pair again when it expires. For detailed connection methods, multi-server limits, networking, authentication, and troubleshooting, see the [documentation](https://getopencode.app/docs/).
 
 ### 3. Connect an AI provider
 
