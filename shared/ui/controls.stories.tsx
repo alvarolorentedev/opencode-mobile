@@ -14,6 +14,7 @@ import { CatalogSelect } from '@/shared/ui/catalog-select';
 import { OverlaySheet } from '@/shared/ui/overlay-sheet';
 import { Feedback } from '@/shared/ui/feedback';
 import { useConfirmation } from '@/shared/ui/use-confirmation';
+import { HeaderTitle, ScreenHeader } from '@/shared/ui/screen-header';
 
 function Controls() {
   const [checked, setChecked] = useState(false);
@@ -73,9 +74,17 @@ function ExpandableOverlay() {
   </View>;
 }
 
+function Headers() {
+  return <View className="gap-4">
+    <ScreenHeader className="border border-border rounded-xl"><Button variant="ghost" size="icon" accessibilityLabel="Back"><Icon name="arrow-left" size={24} /></Button><HeaderTitle title="Chat" subtitle="mobile / main" /><Button variant="ghost" size="icon" accessibilityLabel="New chat"><Icon name="plus" size={24} /></Button></ScreenHeader>
+    <ScreenHeader className="border border-border rounded-xl"><HeaderTitle title="Settings" /></ScreenHeader>
+  </View>;
+}
+
 const meta = { title: 'Controls/Shared primitives', component: Controls, parameters: { layout: 'fullscreen' } } satisfies Meta<typeof Controls>;
 export default meta;
 type Story = StoryObj<typeof meta>;
 export const Default: Story = {};
+export const ScreenHeaders: Story = { render: () => <Headers /> };
 export const DialogsAndFeedback: Story = { render: () => <Overlays /> };
 export const ExpandableSheet: Story = { render: () => <ExpandableOverlay /> };

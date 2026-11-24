@@ -7,7 +7,7 @@ import { useTranslation } from 'react-i18next';
 import { MISSION_JOB_STATUSES, type MissionJobStatus } from '@/shared/contracts/mission-control';
 import { sessionKey, type SessionTarget } from '@/shared/contracts/workspace';
 import { ListRow } from '@/shared/ui/list-row';
-import { HeaderTitle, ScreenHeader } from '@/shared/ui/screen-header';
+import { APP_HEADER_TITLE_STYLE, HeaderTitle, ScreenHeader } from '@/shared/ui/screen-header';
 import { Text } from '@/shared/ui/text';
 import { useWorkspaces } from '@/runtime/workspace';
 import { countMissionRows } from '@/features/sessions/model/mission-control';
@@ -81,7 +81,7 @@ export function MissionControlScreen() {
 
   return <View className="flex-1 bg-background" testID="mission-control">
     <ScreenHeader>
-      <HeaderTitle title={t('mission.title')} />
+      <HeaderTitle title={t('mission.title')} textStyle={APP_HEADER_TITLE_STYLE} />
     </ScreenHeader>
     <ScrollView contentContainerStyle={{ flexGrow: 1, gap: 8, paddingHorizontal: 16, paddingVertical: 8 }}>
       <View className="flex-row gap-2">

@@ -2,15 +2,13 @@ import { UpdateBlockingSheet as OverlaySheet } from '@/features/updates/index';
 import type { WorkspaceTarget } from '@/shared/contracts/workspace';
 import { cn } from '@/shared/ui/cn';
 import { Text } from '@/shared/ui/text';
-import { ScreenHeader } from '@/shared/ui/screen-header';
+import { APP_HEADER_TITLE_STYLE, ScreenHeader } from '@/shared/ui/screen-header';
 import { Feedback } from '@/shared/ui/feedback';
 import { useCallback, useMemo, useRef, useState } from 'react';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { ActivityIndicator, Platform, StyleSheet, View } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { Fonts } from '@/shared/ui/theme/theme';
 import { useResolvedWorkspaceTarget, useWorkspacePreferences, useWorkspaces } from '@/runtime/workspace';
 import { ServerContextPicker } from '@/features/settings/ui/server-context-picker';
 import { getConnectionUiScope } from '@/shared/contracts/connection-scope';
@@ -41,7 +39,6 @@ export default function SettingsScreen() {
 }
 
 function SettingsContent({ target }: { target: WorkspaceTarget }) {
-  const insets = useSafeAreaInsets();
   const palette = usePalette();
   const { t } = useTranslation();
   const { configuredProviders, currentConfig, availableModels, modelRouting } = useCapabilities(target);
@@ -180,8 +177,8 @@ function SettingsContent({ target }: { target: WorkspaceTarget }) {
 
   return (
     <>
-      <ScreenHeader style={[styles.header, { backgroundColor: palette.surface, paddingTop: insets.top, height: 64 + insets.top }]} safeArea={false}><View className={cn(stylesClasses.headerMain)}>
-          <Text maxFontSizeMultiplier={1.5} className={cn("text-foreground")} style={[styles.headerTitle]} variant="title">{t('common:tabs.settings')}</Text>
+      <ScreenHeader style={[styles.header, { backgroundColor: palette.surface }]}><View className={cn(stylesClasses.headerMain)}>
+          <Text maxFontSizeMultiplier={1.5} className={cn("text-foreground")} style={APP_HEADER_TITLE_STYLE} variant="title">{t('common:tabs.settings')}</Text>
         </View></ScreenHeader>
       <SettingsHome sections={sections} onOpen={(section, target) => { setSearchTarget(target); section.onPress(); }} />
 
@@ -200,10 +197,9 @@ function SettingsContent({ target }: { target: WorkspaceTarget }) {
 }
 
 const styles = StyleSheet.create({
-  header: { elevation: 0 },
-  headerTitle: { fontFamily: Fonts.display, fontWeight: '700' }
+  header: { elevation: 0 }
 });
 
 const stylesClasses = {
-  "headerMain": "self-stretch flex-1 justify-center min-w-0"
+  "headerMain": "self-stretch flex-1 justify-center min-w-0 pl-3"
 } as const;

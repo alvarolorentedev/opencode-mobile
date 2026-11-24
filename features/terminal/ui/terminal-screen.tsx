@@ -3,7 +3,7 @@ import { cn } from '@/shared/ui/cn';
 import { Text } from '@/shared/ui/text';
 import { Button } from '@/shared/ui/button';
 import { Icon } from '@/shared/ui/icon';
-import { ScreenHeader } from '@/shared/ui/screen-header';
+import { APP_HEADER_TITLE_STYLE, ScreenHeader } from '@/shared/ui/screen-header';
 import { Spinner } from '@/shared/ui/spinner';
 import { CardHeader, CardTitle, CardDescription, CardContent, Card } from '@/shared/ui/card';
 import { Feedback } from '@/shared/ui/feedback';
@@ -12,9 +12,6 @@ import { useTranslation } from 'react-i18next';
 import { ActivityIndicator, KeyboardAvoidingView, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useRouter, useIsFocused } from 'expo-router';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-
-import { Fonts } from '@/shared/ui/theme/theme';
 import { RetainedTerminals } from '@/features/terminal/ui/retained-terminals';
 import { NewTerminalSheet } from '@/features/terminal/ui/new-terminal-sheet';
 import { useWorkspaceTerminals } from '@/features/terminal/state/use-workspace-terminals';
@@ -38,7 +35,6 @@ function TerminalContent({ target }: { target: WorkspaceTarget }) {
   const { confirmAction, confirmation } = useConfirmation();
   const { t } = useTranslation();
   const router = useRouter();
-  const insets = useSafeAreaInsets();
   const palette = usePalette();
   const visible = useIsFocused();
   const { activeProject } = useProjects(target);
@@ -99,7 +95,7 @@ function TerminalContent({ target }: { target: WorkspaceTarget }) {
       <KeyboardAvoidingView
         className={cn(stylesClasses.screen, "bg-background")}
         behavior="padding">
-        <ScreenHeader style={[styles.header, { backgroundColor: palette.surface, paddingTop: insets.top, height: 52 + insets.top }]} safeArea={false}><View className={cn(stylesClasses.headerMain)}>
+        <ScreenHeader style={[styles.header, { backgroundColor: palette.surface }]}><View className={cn(stylesClasses.headerMain)}>
             <Pressable
               testID="terminal-selector"
               accessibilityRole="button"
@@ -110,7 +106,7 @@ function TerminalContent({ target }: { target: WorkspaceTarget }) {
               }}
               style={({ pressed }) => [styles.headerSelector, pressed && styles.headerSelectorPressed]}>
               <View className={cn(stylesClasses.headerCopy)}>
-                <Text numberOfLines={1} className={cn("text-foreground")} style={[styles.headerTitle]} variant="title">{activeTerminal?.title || activeTerminal?.command || t('terminal:console.selectTerminal')}</Text>
+                <Text maxFontSizeMultiplier={1.5} numberOfLines={1} className={cn("text-foreground")} style={APP_HEADER_TITLE_STYLE} variant="title">{activeTerminal?.title || activeTerminal?.command || t('terminal:console.selectTerminal')}</Text>
                 <Text numberOfLines={1} className={cn("text-muted-foreground")} variant="label">{multipleServers ? `${registry.connections.find((entry) => entry.id === (registry.terminalTarget ?? registry.focus)?.connectionId)?.name} / ` : ''}{activeProject?.path ?? '—'}{' '}|  {t(`terminal:status.${terminalConnection}`)}</Text>
               </View>
               <MaterialCommunityIcons name="chevron-down" size={20} color={palette.muted} />
@@ -211,14 +207,13 @@ const styles = StyleSheet.create({
   header: { elevation: 0 },
   headerSelector: { alignItems: 'center', alignSelf: 'stretch', borderRadius: 14, flexDirection: 'row', gap: 8, justifyContent: 'center', marginRight: 8, minHeight: 48, paddingRight: 4 },
   headerSelectorPressed: { opacity: 0.82 },
-  headerTitle: { fontFamily: Fonts.display, fontWeight: '700' },
   outputContent: { flexGrow: 1, padding: 16 },
   pickerContent: { gap: 8 }
 });
 
 const stylesClasses = {
   "screen": "flex-1",
-  "headerMain": "self-stretch flex-1 justify-center min-w-0",
+  "headerMain": "self-stretch flex-1 justify-center min-w-0 pl-3",
   "headerCopy": "flex-1 min-w-0",
   "headerActions": "items-center flex-row shrink-0",
   "output": "flex-1",

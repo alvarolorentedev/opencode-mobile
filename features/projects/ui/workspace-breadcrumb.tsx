@@ -37,7 +37,7 @@ export function WorkspaceBreadcrumb({ testIDPrefix = 'workspace' }: { testIDPref
           onPress={() => setProjectVisible(true)}
           style={({ pressed }) => [styles.control, pressed && styles.pressed]}>
           <MaterialCommunityIcons name="folder-outline" size={15} color={palette.muted} />
-          <Text numberOfLines={1} ellipsizeMode="tail" className={cn("text-foreground")} style={[styles.projectLabel]}>{projectLabel}</Text>
+          <Text maxFontSizeMultiplier={1.5} numberOfLines={1} ellipsizeMode="tail" className={cn("text-foreground")} style={[styles.projectLabel]}>{projectLabel}</Text>
           <MaterialCommunityIcons name="chevron-down" size={16} color={palette.muted} />
         </Pressable>
         {multiple && worktreeLabel ? (
@@ -50,15 +50,15 @@ export function WorkspaceBreadcrumb({ testIDPrefix = 'workspace' }: { testIDPref
               onPress={() => setWorktreeVisible(true)}
               style={({ pressed }) => [styles.control, pressed && styles.pressed]}>
               <MaterialCommunityIcons name="source-branch" size={14} color={palette.muted} />
-              <Text numberOfLines={1} ellipsizeMode="tail" className={cn(stylesClasses.worktreeLabel, "text-foreground")}>{worktreeLabel}</Text>
-              {branch ? <Text numberOfLines={1} ellipsizeMode="tail" className={cn(stylesClasses.branchText, "text-muted-foreground")}>{`· ${branch}`}</Text> : null}
+              <Text maxFontSizeMultiplier={1.5} numberOfLines={1} ellipsizeMode="tail" className={cn(stylesClasses.worktreeLabel, "text-foreground")}>{worktreeLabel}</Text>
+              {branch ? <Text maxFontSizeMultiplier={1.5} numberOfLines={1} ellipsizeMode="tail" className={cn(stylesClasses.branchText, "text-muted-foreground")}>{`· ${branch}`}</Text> : null}
               <MaterialCommunityIcons name="chevron-down" size={16} color={palette.muted} />
             </Pressable>
           </>
         ) : branch ? (
           <View className={cn(stylesClasses.branchPill, "border-border")}>
             <MaterialCommunityIcons name="source-branch" size={11} color={palette.muted} />
-            <Text numberOfLines={1} ellipsizeMode="tail" className={cn(stylesClasses.branchText, "text-muted-foreground")}>{branch}</Text>
+            <Text maxFontSizeMultiplier={1.5} numberOfLines={1} ellipsizeMode="tail" className={cn(stylesClasses.branchText, "text-muted-foreground")}>{branch}</Text>
           </View>
         ) : null}
       </View>

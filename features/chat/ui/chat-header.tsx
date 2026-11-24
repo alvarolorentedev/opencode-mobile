@@ -3,7 +3,7 @@ import { cn } from '@/shared/ui/cn';
 import { Text } from '@/shared/ui/text';
 import { Button } from '@/shared/ui/button';
 import { Icon } from '@/shared/ui/icon';
-import { ScreenHeader } from '@/shared/ui/screen-header';
+import { APP_HEADER_TITLE_STYLE, ScreenHeader } from '@/shared/ui/screen-header';
 import { Portal } from '@/shared/ui/portal';
 import { Progress } from '@/shared/ui/progress';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
@@ -82,7 +82,7 @@ export function ChatHeader({
           : 'circle-slice-4';
   return (
     <>
-      <ScreenHeader style={[styles.header, { backgroundColor: palette.surface, paddingTop: insetsTop, height: 52 + insetsTop }]} safeArea={false}><View className={cn(stylesClasses.headerMain)}>
+      <ScreenHeader style={[styles.header, { backgroundColor: palette.surface }]}><View className={cn(stylesClasses.headerMain)}>
           <View className={cn(stylesClasses.headerSessionTextWrap)}>
             <Pressable
               accessibilityRole="button"
@@ -92,7 +92,7 @@ export function ChatHeader({
               style={({ pressed }) => [styles.headerSessionAnchor, pressed && styles.headerSessionAnchorPressed]}>
               <View className={cn(stylesClasses.headerCopy)}>
                 <View className={cn(stylesClasses.headerTitleRow)}>
-                  <Text maxFontSizeMultiplier={1.5} numberOfLines={1} className={cn("text-foreground")} style={[styles.headerTitle]} variant="title">{selectedSession?.title || t('chat:header.untitledChat')}</Text>
+                  <Text maxFontSizeMultiplier={1.5} numberOfLines={1} className={cn("text-foreground")} style={[styles.headerTitle, APP_HEADER_TITLE_STYLE]} variant="title">{selectedSession?.title || t('chat:header.untitledChat')}</Text>
                   <MaterialCommunityIcons name="chevron-down" size={20} color={palette.muted} />
                 </View>
                 <ChatWorkspaceContext />

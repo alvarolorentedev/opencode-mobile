@@ -10,9 +10,8 @@ import { useFocusEffect } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { BackHandler, Platform, ScrollView, StyleSheet, View } from 'react-native';
 
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-
-import { WorkspaceBreadcrumb } from '@/features/projects/ui/workspace-breadcrumb';import { FilesPanel } from '@/features/projects/ui/files-panel';
+import { WorkspaceBreadcrumb } from '@/features/projects/ui/workspace-breadcrumb';
+import { FilesPanel } from '@/features/projects/ui/files-panel';
 import { FilePreview } from '@/features/projects/ui/file-preview';
 import { usePalette } from '@/shared/ui/theme/use-palette';
 import { useRetainedState } from '@/runtime/workspace';
@@ -22,7 +21,6 @@ import { useProjects, useProjectFiles } from '@/features/projects/context';
 
 export default function ProjectsScreen() {
   const { t } = useTranslation();
-  const insets = useSafeAreaInsets();
   const palette = usePalette();
   const { connection, serverCapabilities, settings, connect } = useConnection();
   const { activeProject, refreshProjectCatalog, refreshProjectStatus } = useProjects();
@@ -48,7 +46,7 @@ export default function ProjectsScreen() {
     finally { setRefreshing(false); }
   }
   return <>
-    <ScreenHeader style={{ backgroundColor: palette.surface, paddingTop: insets.top, height: 52 + insets.top }} safeArea={false}><View className={cn(stylesClasses.breadcrumbHeader)}>
+    <ScreenHeader style={{ backgroundColor: palette.surface }}><View className={cn(stylesClasses.breadcrumbHeader)}>
         <WorkspaceBreadcrumb testIDPrefix="projects-workspace" />
       </View><Button testID="project-refresh-button" disabled={refreshing || connection.status !== 'connected'} accessibilityLabel={t('project:screen.refreshProject')} onPress={() => void refresh()} variant="ghost" size="icon"><Icon name={"refresh"} size={24} /></Button></ScreenHeader>
     {ready ? <FilesPanel key={scope} browser={browser} projectLabel={activeProject!.label} statuses={serverCapabilities.fileStatus ? projectFileStatuses : []}
@@ -77,5 +75,5 @@ const styles = StyleSheet.create({
 });
 
 const stylesClasses = {
-  "breadcrumbHeader": "flex-1 justify-center min-w-0 px-4"
+  "breadcrumbHeader": "flex-1 justify-center min-w-0 px-2"
 } as const;

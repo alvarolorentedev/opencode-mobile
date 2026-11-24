@@ -43,7 +43,7 @@ export const stylesClasses = {
   "composerActionButton": "m-0",
   "composerModelSummary": "flex-1 min-w-0",
   "composerPrimaryButton": "m-0 w-11 h-11 rounded-full self-center",
-  "headerMain": "flex-1 min-w-0 self-stretch justify-center",
+  "headerMain": "flex-1 min-w-0 self-stretch justify-center pl-3",
   "headerCopy": "flex-1 min-w-0",
   "headerTitleRow": "flex-row items-center gap-1",
   "headerSessionTextWrap": "flex-1 min-w-0 justify-center",

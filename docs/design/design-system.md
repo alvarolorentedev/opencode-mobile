@@ -80,6 +80,10 @@ chrome retains its documented scaling limits.
 24 between groups, 12 between related controls, and 4 between label and value.
 Constrain wide settings content to 800 points and center it.
 
+Screen headers share one compact 52-point minimum content height above the top
+safe-area inset, with tab titles starting at the 16-point gutter. The header grows
+with accessibility text scaling instead of clipping.
+
 `Shape` supplies 14-point controls, 18-point groups and 24-point sheets. Prefer
 borders and theme surfaces to additional shadows, gradients or nested cards.
 `ControlSize` supplies 48-point minimum interactive targets, 56-point fields and
