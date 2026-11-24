@@ -1,0 +1,2 @@
+- Unread chats now clear when you open them, and unread chats are tinted in the library.
+- Ending conversation mode stops right away instead of showing a confirmation, and dialogs no longer collapse on wide displays.
