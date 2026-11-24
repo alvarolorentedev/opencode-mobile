@@ -76,17 +76,17 @@ A typical setup looks like this:
 
 ### 1. Pair your OpenCode 2 server
 
-Pair from **OpenCode Desktop → Settings → Pairing → Pair device**, or run:
+Pair from **OpenCode Desktop → Settings → Pairing → Show details**, or run:
 
 ```bash
 opencode pair --url http://<ip-or-domain>:<port>
 ```
 
-`--url` should point to an address your phone can reach — your local network, a VPN such as Tailscale, or an authenticated HTTPS tunnel.
+`--url` should point to an address your phone can reach — your local network, a VPN such as Tailscale, or an authenticated HTTPS tunnel. Use the port printed by `opencode service status`; OpenCode does not require a fixed port.
 
 ### 2. Connect from OpenCode Mobile
 
-Scan the QR code or paste the pairing link. The link expires after five minutes and works once; the connection lasts 30 days, so pair again when it expires. For detailed connection methods, multi-server limits, networking, authentication, and troubleshooting, see the [documentation](https://getopencode.app/docs/).
+Scan the QR code with the app. Native pairing links are scanned, not pasted; if the camera is unavailable, add the server manually with its URL and password. The link expires after five minutes and works once; the connection lasts 30 days, so pair again when it expires. For detailed connection methods, multi-server limits, networking, authentication, and troubleshooting, see the [documentation](https://getopencode.app/docs/).
 
 ### 3. Connect an AI provider
 
