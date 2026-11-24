@@ -15,7 +15,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { WorkspaceBreadcrumb } from '@/features/projects/ui/workspace-breadcrumb';import { FilesPanel } from '@/features/projects/ui/files-panel';
 import { FilePreview } from '@/features/projects/ui/file-preview';
 import { usePalette } from '@/shared/ui/theme/use-palette';
-import { useRetainedState , useWorkspacePreferences } from '@/runtime/workspace';
+import { useRetainedState } from '@/runtime/workspace';
 import { getConnectionUiScope } from '@/shared/contracts/connection-scope';
 import { useConnection } from '@/features/connections/context';
 import { useProjects, useProjectFiles } from '@/features/projects/context';
@@ -25,8 +25,6 @@ export default function ProjectsScreen() {
   const insets = useSafeAreaInsets();
   const palette = usePalette();
   const { connection, serverCapabilities, settings, connect } = useConnection();
-  const { chatPreferences } = useWorkspacePreferences();
-  const slim = chatPreferences.slimInterface === true;
   const { activeProject, refreshProjectCatalog, refreshProjectStatus } = useProjects();
   const { browser, projectFile, projectFileStatuses, vcsInfo } = useProjectFiles();
 
@@ -50,14 +48,14 @@ export default function ProjectsScreen() {
     finally { setRefreshing(false); }
   }
   return <>
-    <ScreenHeader style={{ backgroundColor: palette.surface, paddingTop: insets.top, height: (slim ? 52 : 64) + insets.top }} safeArea={false}><View className={cn(stylesClasses.breadcrumbHeader)}>
-        <WorkspaceBreadcrumb compact={slim} testIDPrefix="projects-workspace" />
+    <ScreenHeader style={{ backgroundColor: palette.surface, paddingTop: insets.top, height: 52 + insets.top }} safeArea={false}><View className={cn(stylesClasses.breadcrumbHeader)}>
+        <WorkspaceBreadcrumb testIDPrefix="projects-workspace" />
       </View><Button testID="project-refresh-button" disabled={refreshing || connection.status !== 'connected'} accessibilityLabel={t('project:screen.refreshProject')} onPress={() => void refresh()} variant="ghost" size="icon"><Icon name={"refresh"} size={24} /></Button></ScreenHeader>
     {ready ? <FilesPanel key={scope} browser={browser} projectLabel={activeProject!.label} statuses={serverCapabilities.fileStatus ? projectFileStatuses : []}
-      contentStyle={[styles.content, slim && { padding: 10 }]}
+      contentStyle={styles.content}
       header={<Text className={cn("font-bold text-foreground")} variant="display">{t('project:screen.filesTab')}</Text>}
       onOpen={(path) => { void projectFile.open(path).then(() => setFileVisible(true)).catch((reason) => setError(reason instanceof Error ? reason.message : t('project:errors.openFile'))); }} />
-      : <ScrollView className={cn("flex-1 bg-background")} contentContainerStyle={[styles.content, slim && { padding: 10 }]}
+      : <ScrollView className={cn("flex-1 bg-background")} contentContainerStyle={styles.content}
         keyboardDismissMode="on-drag" keyboardShouldPersistTaps="handled">
         <Text className={cn("font-bold text-foreground")} variant="display">{t('project:screen.filesTab')}</Text>
       <View className={cn("gap-3")}>
@@ -68,14 +66,14 @@ export default function ProjectsScreen() {
       </View>
       </ScrollView>}
     {ready && fileVisible && projectFile.selected ? <FilePreview key={`${scope}:${projectFile.selected.path}`} file={projectFile.selected}
-      projectPath={activeProject!.path} branch={vcsInfo?.branch} canSave={serverCapabilities.fileSave} slim={slim}
+      projectPath={activeProject!.path} branch={vcsInfo?.branch} canSave={serverCapabilities.fileSave}
       onClose={() => { projectFile.close(); setFileVisible(false); }} onSave={projectFile.save} onDownload={projectFile.download} /> : null}
     <Feedback  open={Boolean(error)} onOpenChange={() => (() => setError(undefined))()}>{error}</Feedback>
   </>;
 }
 
 const styles = StyleSheet.create({
-  content: { padding: 16, gap: 12, paddingBottom: 28, width: '100%', maxWidth: 1100, alignSelf: 'center' }
+  content: { padding: 10, gap: 12, paddingBottom: 28, width: '100%', maxWidth: 1100, alignSelf: 'center' }
 });
 
 const stylesClasses = {

@@ -57,7 +57,6 @@ function listProps(overrides: Overrides = {}): Props {
     onToggleSpeak: vi.fn(),
     palette: Colors.light,
     pendingInteractions: 0,
-    slim: false,
     transcriptFontSize: 16,
     ...overrides,
   } as Props;

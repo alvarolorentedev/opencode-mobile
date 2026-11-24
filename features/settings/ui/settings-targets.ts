@@ -15,7 +15,7 @@ export function settingsTargets(t: TFunction, section: string, options: {
   });
   switch (section) {
     case 'appearance': return [field('appearance.theme.label', undefined, 'appearance.theme.description'), field('general.openingScreen'),
-      field('appearance.accent.label', undefined, 'appearance.accent.description'), field('appearance.slimInterface.title', undefined, 'appearance.slimInterface.description')];
+      field('appearance.accent.label', undefined, 'appearance.accent.description')];
     case 'responses': return [
       field('appearance.timelineDetail.label', undefined, 'appearance.timelineDetail.description'),
       field('appearance.chatTextSize', undefined, 'appearance.chatTextSizeDescription'),

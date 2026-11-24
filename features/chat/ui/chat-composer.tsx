@@ -17,7 +17,7 @@ import { ChatPromptInput } from '@/features/chat/ui/chat-prompt-input';
 import { ComposerSuggestions } from '@/features/chat/ui/composer-suggestions';
 import type { ComposerSuggestion, ComposerSuggestionGroup } from '@/features/chat/ui/composer-suggestion-types';
 import { ModelPicker , getModelVariantLabel } from '@/features/ai/index';
-import { styles, slimStylesClasses, stylesClasses } from '@/features/chat/ui/chat-view-styles';
+import { styles, stylesClasses } from '@/features/chat/ui/chat-view-styles';
 import { getAutoApproveIcon } from '@/features/chat/ui/chat-view-utils';
 import type { AgentOption, ModelOption } from '@/shared/contracts/model-options';
 import type { ChatPreferences } from '@/shared/preferences/opencode-preferences';
@@ -60,7 +60,6 @@ type ChatComposerProps = {
   autoRoutingEnabled: boolean;
   autoRoutingAvailable: boolean;
   onAutoRoutingChange: (enabled: boolean) => void;
-  slim?: boolean;
   currentSessionId?: string;
   visibleModels: ModelOption[];
   commands: Command[];
@@ -109,7 +108,6 @@ export function ChatComposer({
   autoRoutingEnabled,
   autoRoutingAvailable,
   onAutoRoutingChange,
-  slim = false,
   visibleModels,
   onAgentSelect,
   isV2,
@@ -124,9 +122,9 @@ export function ChatComposer({
 }: ChatComposerProps) {
   const { t } = useTranslation();
   const { fontScale } = useWindowDimensions();
-  // Keep the established composer floor while iOS sizes the multiline input.
-  const minInputHeight = slim ? 40 : 44;
-  const maxInputHeight = slim ? 90 : 110;
+  // Keep the compact composer floor while iOS sizes the multiline input.
+  const minInputHeight = 40;
+  const maxInputHeight = 90;
   const hasComposerContent = Boolean(draft.trim()) || attachments.length > 0;
   const primaryAction = !showSendAction ? 'stop' : hasComposerContent ? 'send' : 'voice';
   // Conversation mode runs locally without the OS recognizer in on-device mode.
@@ -146,7 +144,6 @@ export function ChatComposer({
   const [inputHeight, setInputHeight] = useState(minInputHeight);
   const [agentPickerVisible, setAgentPickerVisible] = useState(false);
   const displayedInputHeight = draft ? Math.min(maxInputHeight, Math.max(minInputHeight, inputHeight)) : minInputHeight;
-  const inputTextStyle = [styles.composerTextArea, slim && { fontSize: 15 }];
   // iOS sizes the multiline input itself, but it can keep the last tall frame
   // after the draft is cleared (send, delete-all), so the empty state pins the
   // floor height with an explicit height instead of min/max bounds.
@@ -169,7 +166,6 @@ export function ChatComposer({
       onSelect={onModelSelect}
       recentModelIds={chatPreferences.recentModelIds}
       selectedModelId={selectedModelId}
-      slim={slim}
       autoRoutingEnabled={autoRoutingActive}
       autoRoutingAvailable={autoRoutingAvailable}
       onAutoRoutingChange={autoRoutingAvailable ? onAutoRoutingChange : undefined}
@@ -177,7 +173,7 @@ export function ChatComposer({
   );
 
   return (
-    <View className={cn(stylesClasses.composer, slim && slimStylesClasses.composer, "bg-background")}>{conversation.active ? (
+    <View className={cn(stylesClasses.composer, "bg-background")}>{conversation.active ? (
         <View className={cn(stylesClasses.conversationBanner)} style={[{ backgroundColor: withAlpha(palette.tint, 0x10 / 255), borderColor: withAlpha(palette.tint, 0x28 / 255) }]}>
           <View className={cn(stylesClasses.conversationBannerHeader)}>
             <Text className={cn("text-foreground")} variant="description">{t('chat:composer.conversationMode')}</Text>
@@ -215,7 +211,7 @@ export function ChatComposer({
         <View className={cn(stylesClasses.voiceStatusRow)}>
           <Badge className={cn(stylesClasses.voiceStatusChip)} style={[{ backgroundColor: withAlpha(palette.tint, 0x14 / 255) }]} variant="secondary"><Icon name={"microphone"} size={18} /><Text>{conversation.active ? t('chat:composer.conversationActive') : t('chat:composer.listening')}</Text></Badge>
         </View>
-      ) : null}<View testID="chat-composer-card" className={cn(stylesClasses.composerCard, slim && "rounded-[22px]", "bg-surface-alt")}>
+      ) : null}<View testID="chat-composer-card" className={cn(stylesClasses.composerCard, "bg-surface-alt")}>
         <ChatPromptInput
           editable={!isSpeechInputListening}
           focusRequest={focusRequest}
@@ -226,7 +222,7 @@ export function ChatComposer({
           placeholderTextColor={palette.muted}
           scrollEnabled={Platform.OS === 'ios' ? true : displayedInputHeight >= maxInputHeight}
           style={[[
-            inputTextStyle,
+            styles.composerTextArea,
             inputSizingStyle,
             { color: palette.text },
           ], Platform.OS === 'ios' ? [styles.inputContentCompact, inputSizingStyle] : styles.inputContentCompact]}

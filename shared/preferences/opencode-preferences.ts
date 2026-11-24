@@ -47,9 +47,6 @@ export type ChatPreferences = {
   // Flat transcript renders messages full-width without bubble chrome so more
   // of the conversation is visible at once. Defaults to the bubble layout.
   flatTranscript: boolean;
-  // Slim interface reduces control sizes, paddings, and header heights on the
-  // text-heavy screens so the transcript/output/code gets more room.
-  slimInterface: boolean;
   // App UI language preference. `undefined` follows the OS locale; it is stored
   // alongside chat preferences because it is global and not connection-scoped.
   language?: string;
@@ -110,7 +107,6 @@ export const defaultChatPreferences: ChatPreferences = {
   transcriptFontSize: DEFAULT_TRANSCRIPT_FONT_SIZE,
   timelineDetail: 'everything',
   flatTranscript: false,
-  slimInterface: false,
   openingScreen: 'chat',
   enabledModelIds: [],
   knownModelIds: [],

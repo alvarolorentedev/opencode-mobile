@@ -683,10 +683,6 @@
     "flatThread": {
       "title": "Flat conversation",
       "description": "Show messages full-width without bubbles so more of the conversation fits on screen."
-    },
-    "slimInterface": {
-      "title": "Slim interface",
-      "description": "Shrink buttons, spacing, and headers in chat, terminal, and project so more text fits on screen."
     }
   },
   "connect": {

@@ -967,9 +967,9 @@ Responsibilities:
 - show the Cloud Link section directly below AI & Providers, and only for store installs, with status → exposed services → subscription → machines ordering
 - inspect and enable notification setup
 - manage voice and response-style preferences
-- adjust the chat transcript text size, bubble/flat layout, and slim interface density
+- adjust the chat transcript text size and bubble/flat layout; the dense interface is the only layout
 - choose the app interface language
-- group chat text size, flat conversation and V2 Steer/Append delivery under Advanced → Editor; group slim interface, language and Reset onboarding under Advanced → General; expose the app update preference under Advanced → Update checks
+- group chat text size, flat conversation and V2 Steer/Append delivery under Advanced → Editor; group language and Reset onboarding under Advanced → General; expose the app update preference under Advanced → Update checks
 - launch Reset onboarding at the presentation screen, with permissions, connection, providers, project and general preferences seeded from current state without wiping configuration
 
 ### Terminal Screen

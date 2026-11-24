@@ -347,7 +347,6 @@ Current fields:
 - `transcriptFontSize` (global chat message text size in pixels; defaults to 16 and is clamped to 12–24)
 - `timelineDetail` (`messages`, `reasoning`, or `everything`; defaults to `everything`. It controls rendered activity only, not which transcript records are fetched or retained)
 - `flatTranscript` (renders the transcript full-width without bubble chrome; defaults to `false`)
-- `slimInterface` (shrinks control sizes, spacing, and headers on the text-heavy screens; defaults to `false`)
 - `language` (optional; `undefined` follows the OS locale)
 - `enabledModelIds`
 - `knownModelIds` and `autoEnableNewModels` (whether newly discovered models are enabled by default; true by default)

@@ -57,7 +57,6 @@ const ChatPreferencesSchema = z.object({
   localTtsPackId: optionalString,
   localTtsSpeakerId: optionalNumber((value) => Math.min(999, Math.max(0, Math.trunc(value)))).optional(),
   flatTranscript: optionalBoolean,
-  slimInterface: optionalBoolean,
   autoApprove: optionalBoolean,
   autoPlayAssistantReplies: optionalBoolean,
   preferOnDeviceRecognition: optionalBoolean,

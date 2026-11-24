@@ -267,19 +267,27 @@ Responsibility:
 #### `AppearanceSection`
 
 `features/settings/ui/sections/appearance-section.tsx`, rendered inside
-the Appearance category above the slim-interface switch.
+the Appearance category.
 Its Opening screen field is shared with onboarding and applies when launching
 at the app root.
 
 Responsibility:
 
 - choose the app theme mode (`follow system`, `light`, `dark`)
-- choose a color theme (`green` default plus blue, red, purple, pink, gray)
-  from accessible preview tiles that show the themed background, surface,
-  border, and accent
+- reuse `shared/ui/theme/accent-color-field.tsx` for the color theme; the same
+  field is rendered first on onboarding's General step
 - persist both through `updateChatPreferences`; `shared/ui/theme/use-palette.ts` and
   `shared/ui/theme/use-color-scheme.ts` consume the provider-published appearance context
 - expose `settings-theme-mode` and `settings-accent-<name>` test IDs
+
+#### `AccentColorField`
+
+`shared/ui/theme/accent-color-field.tsx` renders the color-theme label, six
+accessible preview tiles (`green` default plus blue, red, purple, pink, gray),
+and its description. Each tile shows the themed background, surface, border and
+accent; the selected one is marked with a check and `aria-checked`. Callers own
+the value and persist the choice through `updateChatPreferences`, so the same
+control is used in Settings and onboarding without importing a feature.
 
 #### `UpdateSection`
 

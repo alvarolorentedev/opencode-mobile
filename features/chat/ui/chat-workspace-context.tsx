@@ -6,7 +6,7 @@ import { useProjectCheckouts } from '@/features/projects/index';
 
 // Read-only workspace line under the session title. Workspace changes belong to
 // Projects and New chat; the chat header must not expose another selector.
-export function ChatWorkspaceContext({ compact = false }: { compact?: boolean }) {
+export function ChatWorkspaceContext() {
   const { t } = useTranslation();
 
   const { activeProject, activeCheckout, multiple } = useProjectCheckouts();
@@ -20,7 +20,7 @@ export function ChatWorkspaceContext({ compact = false }: { compact?: boolean })
       maxFontSizeMultiplier={1.5}
       numberOfLines={1}
       ellipsizeMode="tail"
-      className={cn(compact && stylesClasses.contextCompact, "text-muted-foreground")}
+      className={cn(stylesClasses.context, "text-muted-foreground")}
       variant="label">
       {context}
     </Text>
@@ -28,5 +28,5 @@ export function ChatWorkspaceContext({ compact = false }: { compact?: boolean })
 }
 
 const stylesClasses = {
-  "contextCompact": "text-[10.5px]"
+  "context": "text-[10.5px]"
 } as const;

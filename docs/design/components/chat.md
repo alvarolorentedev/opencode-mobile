@@ -41,8 +41,9 @@ editing, so the notice only carries status and the cancel affordance.
 
 Steer/Append selection lives at the top of
 Chat & responses, alongside timeline detail, chat text size, and flat
-conversation. The General group contains slim interface, language and Reset
-onboarding, which reopens the existing setup review without clearing settings.
+conversation. Appearance holds the theme mode and color theme; language is its
+own category and Reset onboarding sits under Support, reopening the existing
+setup review without clearing settings.
 
 ## Chat Components
 
@@ -147,12 +148,12 @@ declared once, at the leaves.
 - render the prompt through `chat-prompt-input.tsx`: native uses the live
   markdown input so `@` mentions and leading `/` commands are bold in the accent
   color; web keeps the plain input
-- On iOS the native multiline input grows itself between 44 and 110 px (40 to
-  90 px in slim mode) and scrolls at the cap, so height never lags a layout pass
-  behind the text. An empty draft pins that floor height with an explicit height,
-  because iOS can otherwise keep the last tall frame after the draft is cleared
-  (send or delete-all). The native slim input retains its 40-point minimum.
-  Android and web retain content-size events and the explicit measured height.
+- On iOS the native multiline input grows itself between 40 and 90 px and
+  scrolls at the cap, so height never lags a layout pass behind the text. An
+  empty draft pins that floor height with an explicit height, because iOS can
+  otherwise keep the last tall frame after the draft is cleared (send or
+  delete-all). Android and web retain content-size events and the explicit
+  measured height.
 - keep a 12-point gap between the prompt input and the bottom action row so a
   cursor-placement tap near the end of the last line cannot trigger send
 
@@ -246,7 +247,7 @@ type ChatComposerProps = {
 - own local modal visibility, search-query state and the staged model/variant until dismissal
 - return the staged `ModelOption` and variant to the composer on dismissal; the composer persists them through the session model switch
 - render the shared numeric slider for the staged model's server variants without a per-step round trip
-- render the trigger with the local `ControlButton`, including slim sizing for the slim-interface preference
+- render the trigger with the local `ControlButton` in its compact or full variant
 - the transparent `Modal` sheet wraps its content in `GestureHandlerRootView` and dismisses on a downward header drag via the shared `useSwipeDismiss` helper, matching `OverlaySheet`
 
 ### `features/chat/ui/chat-header.tsx`
@@ -273,7 +274,6 @@ type ChatHeaderProps = {
   contextLimit?: number
   contextTokens?: number
   latestAssistantTurnUsage?: SessionUsage
-  slim?: boolean
   usage: SessionUsage
 }
 ```
@@ -364,7 +364,7 @@ Responsibility:
 
 - render one display transcript bubble
 - in flat mode (chat preference), drop the bubble chrome and side margins, render full-width rows with condensed spacing and a shared text color; the role label still distinguishes user and assistant
-- with the slim-interface preference, reduce bubble padding and action-button sizes
+- bubbles use compact padding and 14-point action icons so more of the transcript fits; this density is fixed
 - show copy state, optional TTS button, fork/revert actions for user messages, timestamp, markdown text, error, and summary chips
 - keep only the time for messages from today and include the date for older messages, so the header stays readable on narrow screens
 - an explicit copy button keeps copying available without capturing table-scroll gestures; taps still dismiss the keyboard
@@ -376,7 +376,7 @@ Responsibility:
 - render plugin-posted command reports (`noticeKind: 'plugin'`) as a distinct inline notice, not a user or assistant message bubble
 - show an information icon, a localized `Notice` label, timestamp, copy action, and Markdown body
 - never show a model label, read-aloud, fork, or revert action
-- in flat mode, drop the card chrome and side margins and use a left accent rule; in slim mode, reduce padding and icon size
+- in flat mode, drop the card chrome and side margins and use a left accent rule; otherwise use compact padding and a 14-point information icon
 - keep the existing `transcript-message-<id>` test ID and expose `transcript-notice-<id>` for notice-specific assertions
 - existing synthetic server notices keep the `TranscriptMessage` rendering; only plugin notices use this card
 
@@ -469,7 +469,7 @@ Current values used by the UI:
 #### Responsibility
 
 - centralized style sheet for most chat surfaces
-- export `slimStyles`, parallel overrides applied on top of the base sheet when the slim-interface preference is on
+- the base sheet already carries the compact spacing used everywhere; there is no alternate density sheet
 
 This is important to parity because the chat layout is intentionally dense and highly composed, especially around:
 

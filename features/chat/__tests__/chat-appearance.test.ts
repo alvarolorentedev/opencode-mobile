@@ -5,7 +5,7 @@ import { defaultChatPreferences, normalizeTranscriptFontSize } from '@/shared/pr
 
 // Migrated from the standalone tests/chat-appearance.test.mjs Node script.
 describe('chat appearance preferences', () => {
-  it('normalizes transcript font size and keeps flat/slim defaults off', async () => {
+  it('normalizes transcript font size and keeps the flat default off', async () => {
     assert.equal(normalizeTranscriptFontSize(16), 16);
     assert.equal(normalizeTranscriptFontSize(12.4), 12);
     assert.equal(normalizeTranscriptFontSize(11), 12);
@@ -14,7 +14,6 @@ describe('chat appearance preferences', () => {
     assert.equal(normalizeTranscriptFontSize(undefined), 16);
 
     assert.equal(defaultChatPreferences.flatTranscript, false);
-    assert.equal(defaultChatPreferences.slimInterface, false);
     assert.equal(defaultChatPreferences.timelineDetail, 'everything');
     assert.equal(defaultChatPreferences.themeMode, 'system');
     assert.equal(defaultChatPreferences.accentColor, 'green');

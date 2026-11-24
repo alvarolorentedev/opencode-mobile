@@ -41,7 +41,6 @@ export function useChatViewController() {
   const { forkSession, revertSession, sessionStatuses, sessions, unrevertSession } = useSessionLibrary();
   const { availableAgents, availableModels, configuredProviders, currentConfig, modelRouting } = useCapabilities();
   const { chatPreferences, updateChatPreferences } = useWorkspacePreferences();
-  const slim = chatPreferences.slimInterface === true;
   const { connection, settings, serverCapabilities } = useConnection();
   const connectionScope = getConnectionScope(settings);
   const { approvals } = useApprovals();
@@ -382,7 +381,7 @@ export function useChatViewController() {
     sharedDraft: { connectionScope, projectPath: activeProject?.path, sessionId: currentSessionId, apply: applySharedDraft },
     header: {
       activeProject, connection, contextModel, contextTokens, conversation,
-      currentUsage, latestAssistantTurnUsage, selectedSession, slim,
+      currentUsage, latestAssistantTurnUsage, selectedSession,
     },
     content: {
       workspaceId,

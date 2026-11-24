@@ -127,6 +127,6 @@ this mitigation based solely on a development build or a lifecycle callback.
 On a public App Store installation, verify the configured ID and storefront,
 matching/newer/equal versions and explicit store navigation. Verify TestFlight,
 signed-out/unverifiable and offline cases quietly suppress the offer. Check
-light/dark, slim, large text, screen readers and native safe areas on both platforms.
+light/dark, the compact layout, large text, screen readers and native safe areas on both platforms.
 Web fixtures verify orchestration, not real store eligibility or installation.
 Changes to E2E contracts require explicit human validation under AGENTS.md.

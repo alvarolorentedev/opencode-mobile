@@ -74,31 +74,23 @@ Your workspace + models
 
 A typical setup looks like this:
 
-### 1. Start OpenCode
+### 1. Expose Server Securely
 
-```bash
-opencode serve --port 4096
-```
-
-### 2. Expose it securely
-
-Keep the server protected with authentication and connect through a secure HTTPS tunnel, VPN, or reverse proxy.
+Keep the server protected with authentication and connect through a secure HTTPS tunnel, VPN, or reverse proxy. Then expose the pairing capability or use CloudLink.
 
 For example:
 
 ```bash
-cloudflared tunnel --url localhost:4096
+opencode pair --url http://<ip-or-domain>:<port>
 ```
 
 Tailscale, Cloudflare Tunnel, and other secure networking options work well.
 
-### 3. Connect from OpenCode Mobile
+### 2. Connect from OpenCode Mobile
 
-Enter the protected server URL in the app, authenticate, choose your workspace, and continue your sessions.
+Scan the QR code or paste the pairing link. The link expires after five minutes and works once; the connection lasts 30 days, so run `opencode pair` again when it expires. For other routes and the full setup, see the [Getting Started guide](https://getopencode.app/docs/getting-started/).
 
-For the complete setup flow, see the [Getting Started guide](https://getopencode.app/docs/getting-started/).
-
-### 4. Connect an AI provider
+### 3. Connect an AI provider
 
 Open **Settings → AI & providers → Add provider**, choose your provider,
 select **API key** if multiple login methods are offered, paste the key, and

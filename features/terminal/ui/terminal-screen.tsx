@@ -18,7 +18,7 @@ import { Fonts } from '@/shared/ui/theme/theme';
 import { RetainedTerminals } from '@/features/terminal/ui/retained-terminals';
 import { NewTerminalSheet } from '@/features/terminal/ui/new-terminal-sheet';
 import { useWorkspaceTerminals } from '@/features/terminal/state/use-workspace-terminals';
-import { useResolvedWorkspaceTarget, useWorkspacePreferences, useWorkspaces } from '@/runtime/workspace';
+import { useResolvedWorkspaceTarget, useWorkspaces } from '@/runtime/workspace';
 import type { WorkspaceTarget } from '@/shared/contracts/workspace';
 import { SwipeRow } from '@/shared/ui/swipe-row';
 import { useUpdateBlocker } from '@/features/updates/context';
@@ -47,8 +47,6 @@ function TerminalContent({ target }: { target: WorkspaceTarget }) {
   const multipleServers = registry.connections.length > 1;
   const [creating, setCreating] = useState(false);
   const { connection } = useConnection(target);
-  const { chatPreferences } = useWorkspacePreferences(target);
-  const slim = chatPreferences.slimInterface === true;
   const {
     activeTerminalId,
     openTerminal,
@@ -101,7 +99,7 @@ function TerminalContent({ target }: { target: WorkspaceTarget }) {
       <KeyboardAvoidingView
         className={cn(stylesClasses.screen, "bg-background")}
         behavior="padding">
-        <ScreenHeader style={[styles.header, { backgroundColor: palette.surface, paddingTop: insets.top, height: (slim ? 52 : 64) + insets.top }]} safeArea={false}><View className={cn(stylesClasses.headerMain)}>
+        <ScreenHeader style={[styles.header, { backgroundColor: palette.surface, paddingTop: insets.top, height: 52 + insets.top }]} safeArea={false}><View className={cn(stylesClasses.headerMain)}>
             <Pressable
               testID="terminal-selector"
               accessibilityRole="button"
@@ -122,7 +120,7 @@ function TerminalContent({ target }: { target: WorkspaceTarget }) {
           </View></ScreenHeader>
 
         <View className={cn(stylesClasses.output)}>
-          <RetainedTerminals target={target} connected={connection.status === 'connected'} visible={visible} slim={slim} palette={palette} dismissKeyboard={terminalPickerVisible || creating} onCopied={() => setCopied(true)} onError={setError} />
+          <RetainedTerminals target={target} connected={connection.status === 'connected'} visible={visible} palette={palette} dismissKeyboard={terminalPickerVisible || creating} onCopied={() => setCopied(true)} onError={setError} />
         {connection.status !== 'connected' || !activeProject ? (
           <View className={cn(stylesClasses.emptyScreen)}>
             <View className={cn(stylesClasses.emptyPanel, "bg-surface")}><Text  variant="display">{connection.status !== 'connected' ? t('terminal:screen.connectTitle') : t('terminal:screen.chooseProject')}</Text><Text>{connection.status !== 'connected' ? connection.message : t('terminal:screen.selectProject')}</Text><Button onPress={() => {

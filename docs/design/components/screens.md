@@ -168,7 +168,7 @@ screen-reader mode is enabled. Native screen-reader/input validation remains req
   Retry instead of a permanent refresh action. Creation is owned by New chat;
   inventory and lifecycle actions remain provider-owned.
 
-These surfaces reuse the existing palette, theme, slim preference, inputs and
+These surfaces reuse the existing palette, theme, compact layout, inputs and
 picker overlay. Projects retains its tab label and route. Chat reports the
 workspace read-only; its chat library keeps the shared picker and provider
 selection action. Terminal follows that directory.

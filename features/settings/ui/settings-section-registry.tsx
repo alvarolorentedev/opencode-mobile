@@ -215,10 +215,7 @@ export function buildSettingsSections({
     },
     {
       id: 'appearance', group: 'app', icon: 'palette-outline', title: t('settings:screen.categories.appearance'), summary: t('settings:screen.summaries.appearance'),
-      onPress: () => setOpenSection('appearance'), render: () => <>
-        <AppearanceSection chatPreferences={chatPreferences} palette={palette} updateChatPreferences={updateChatPreferences} />
-        <SettingSwitchRow title={t('settings:appearance.slimInterface.title')} description={t('settings:appearance.slimInterface.description')} value={chatPreferences.slimInterface === true} palette={palette} onValueChange={(slimInterface) => updateChatPreferences({ slimInterface })} />
-      </>,
+      onPress: () => setOpenSection('appearance'), render: () => <AppearanceSection chatPreferences={chatPreferences} palette={palette} updateChatPreferences={updateChatPreferences} />,
     },
     {
       id: 'language', group: 'app', icon: 'translate', title: t('settings:language.title'), summary: t('settings:language.description'),

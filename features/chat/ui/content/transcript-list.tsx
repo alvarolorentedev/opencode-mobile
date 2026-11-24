@@ -17,7 +17,7 @@ import { NoticeCard, TranscriptMessage } from '@/features/chat/ui/chat-cards';
 import { ActivityGroupRow } from '@/features/chat/ui/cards/activity-group';
 import { CompactionDivider } from '@/features/chat/ui/cards/compaction-divider';
 import { SubagentRow } from '@/features/chat/ui/cards/subagent-row';
-import { styles, slimStyles, stylesClasses } from '@/features/chat/ui/chat-view-styles';
+import { styles, stylesClasses } from '@/features/chat/ui/chat-view-styles';
 import { getCurrentTurnActivityKey, getEntryModelLabel, getPinnedActivityKey, STARTER_PROMPT_KEYS } from '@/features/chat/ui/chat-view-utils';
 import { TranscriptSkeleton } from '@/features/chat/ui/content/transcript-skeleton';
 import { useTranscriptTailSettle } from '@/features/chat/ui/content/use-transcript-tail-settle';
@@ -44,8 +44,8 @@ const ACTIVITY_STATUS_GROUP: ActivityGroup = {
   status: 'running',
 };
 
-function TranscriptRowFrame({ children, flatTranscript, slim }: { children: ReactNode; flatTranscript: boolean; slim: boolean }) {
-  return <View style={[styles.transcriptItem, slim && slimStyles.transcriptItem, flatTranscript && (slim ? slimStyles.transcriptItemFlat : styles.transcriptItemFlat)]}>{children}</View>;
+function TranscriptRowFrame({ children, flatTranscript }: { children: ReactNode; flatTranscript: boolean }) {
+  return <View style={[styles.transcriptItem, flatTranscript && styles.transcriptItemFlat]}>{children}</View>;
 }
 
 // Stable reference so FlashList does not treat every parent render as a prop
@@ -90,7 +90,6 @@ type TranscriptListProps = {
   palette: Palette;
   pendingInteractions: number;
   speakingMessageId?: string;
-  slim: boolean;
   transcriptFontSize: number;
   transcriptReadError?: string;
 };
@@ -121,7 +120,6 @@ export function TranscriptList({
   palette,
   pendingInteractions,
   speakingMessageId,
-  slim,
   transcriptFontSize,
   transcriptReadError,
 }: TranscriptListProps) {
@@ -318,7 +316,6 @@ export function TranscriptList({
       style={styles.scroll}
       contentContainerStyle={[
         styles.content,
-        slim && slimStyles.content,
         pendingInteractions > 0 ? { paddingBottom: 110 } : null,
       ]}
       extraData={extraData}
@@ -338,7 +335,7 @@ export function TranscriptList({
       renderItem={({ item: row }) => {
         if (row.type === 'activityStatus') {
           return (
-            <TranscriptRowFrame flatTranscript={flatTranscript} slim={slim}>
+            <TranscriptRowFrame flatTranscript={flatTranscript}>
               <ActivityGroupRow
                 expanded={false}
                 flat={flatTranscript}
@@ -354,7 +351,7 @@ export function TranscriptList({
 
         if (row.type === 'activity') {
           return (
-            <TranscriptRowFrame flatTranscript={flatTranscript} slim={slim}>
+            <TranscriptRowFrame flatTranscript={flatTranscript}>
               <ActivityGroupRow
                 expanded={expandedActivityKeys.has(row.group.key)}
                 flat={flatTranscript}
@@ -370,7 +367,7 @@ export function TranscriptList({
 
         if (row.type === 'subagent') {
           return (
-            <TranscriptRowFrame flatTranscript={flatTranscript} slim={slim}>
+            <TranscriptRowFrame flatTranscript={flatTranscript}>
               <SubagentRow detail={row.detail} flat={flatTranscript} onPress={onOpenSubagent} palette={palette} />
             </TranscriptRowFrame>
           );
@@ -378,7 +375,7 @@ export function TranscriptList({
 
         if (row.type === 'compaction') {
           return (
-            <TranscriptRowFrame flatTranscript={flatTranscript} slim={slim}>
+            <TranscriptRowFrame flatTranscript={flatTranscript}>
               <CompactionDivider detail={row.detail} palette={palette} />
             </TranscriptRowFrame>
           );
@@ -386,14 +383,13 @@ export function TranscriptList({
 
         const entry = row.entry;
         return (
-          <TranscriptRowFrame flatTranscript={flatTranscript} slim={slim}>
+          <TranscriptRowFrame flatTranscript={flatTranscript}>
             {entry.noticeKind === 'plugin' ? (
               <NoticeCard
                 copied={copiedMessageId === entry.id}
                 entry={entry}
                 flat={flatTranscript}
                 fontSize={transcriptFontSize}
-                slim={slim}
                 onCopy={onCopyMessage}
               />
             ) : (
@@ -408,7 +404,6 @@ export function TranscriptList({
                   modelLabels,
                   entry.model?.variant ? getModelVariantLabel(entry.model.variant, t) : undefined,
                 )}
-                slim={slim}
                 onCopy={onCopyMessage}
                 onFork={entry.role === 'user' ? onForkMessage : undefined}
                 onRevert={entry.role === 'user' ? onRevertMessage : undefined}
@@ -456,7 +451,7 @@ export function TranscriptList({
         </View>
       ) : null}
       {pinnedRow && pinnedRow.type === 'activity' && expandedActivityKeys.has(pinnedRow.group.key) ? (
-        <View pointerEvents="box-none" style={[styles.pinnedActivity, { backgroundColor: palette.background, paddingHorizontal: slim ? 8 : 12 }]}>
+        <View pointerEvents="box-none" style={[styles.pinnedActivity, { backgroundColor: palette.background, paddingHorizontal: 8 }]}>
           <ActivityGroupRow
             expanded
             headerOnly

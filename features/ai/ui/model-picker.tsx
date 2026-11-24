@@ -29,7 +29,6 @@ type ModelPickerProps = {
   onSelect: (model: ModelOption, variant?: string) => void;
   recentModelIds?: string[];
   selectedModelId?: string;
-  slim?: boolean;
   autoRoutingEnabled?: boolean;
   autoRoutingAvailable?: boolean;
   onAutoRoutingChange?: (enabled: boolean) => void;
@@ -40,7 +39,7 @@ function getSelectedModelLabel(models: ModelOption[], selectedModelId: string | 
   return selected ? `${selected.label} · ${selected.providerLabel}` : fallback;
 }
 
-export function ModelPicker({ disabled = false, models, onSelect, recentModelIds, selectedModelId, slim = false, compact = false, reasoningLabel, selectedVariant, autoRoutingEnabled = false, autoRoutingAvailable = false, onAutoRoutingChange, testID = 'chat-model-picker', fallbackLabel, inheritChoice }: ModelPickerProps) {
+export function ModelPicker({ disabled = false, models, onSelect, recentModelIds, selectedModelId, compact = false, reasoningLabel, selectedVariant, autoRoutingEnabled = false, autoRoutingAvailable = false, onAutoRoutingChange, testID = 'chat-model-picker', fallbackLabel, inheritChoice }: ModelPickerProps) {
   const { t } = useTranslation();
   const palette = usePalette();
   const [visible, setVisible] = useState(false);
@@ -175,9 +174,9 @@ export function ModelPicker({ disabled = false, models, onSelect, recentModelIds
         </Pressable>
       ) : (
         <Button variant={visible ? 'secondary' : 'outline'} disabled={disabled || (models.length === 0 && !inheritChoice)}
-          onPress={open} className={cn('flex-1 min-w-0', slim && 'px-2')}
+          onPress={open} className={cn('flex-1 min-w-0')}
           testID={`${testID}-trigger`} accessibilityLabel={selectedModelLabel}>
-          {renderProviderIcon(selected?.providerID, slim ? 14 : 16, palette.text)}
+          {renderProviderIcon(selected?.providerID, 16, palette.text)}
           <UiText numberOfLines={1} maxFontSizeMultiplier={1.5}>{selectedModelLabel}</UiText>
         </Button>
       )}

@@ -683,10 +683,6 @@
     "flatThread": {
       "title": "Conversa plana",
       "description": "Mostra as mensagens em largura total sem balões para caber mais conversa na tela."
-    },
-    "slimInterface": {
-      "title": "Interface compacta",
-      "description": "Reduz botões, espaçamento e cabeçalhos no chat, terminal e project para caber mais texto na tela."
     }
   },
   "connect": {

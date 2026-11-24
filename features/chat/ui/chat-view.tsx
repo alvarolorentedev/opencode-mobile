@@ -89,7 +89,6 @@ export function ChatView() {
           palette={palette}
           selectedSession={header.selectedSession}
           latestAssistantTurnUsage={header.latestAssistantTurnUsage}
-          slim={header.slim}
           usage={header.currentUsage}
         />
 
@@ -126,7 +125,6 @@ export function ChatView() {
             palette={palette}
             pendingInteractions={content.pendingInteractions}
             speakingMessageId={content.speakingMessageId}
-            slim={header.slim}
             transcriptFontSize={normalizeTranscriptFontSize(composer.chatPreferences.transcriptFontSize)}
             transcriptReadError={content.transcriptReadError}
           />
@@ -302,7 +300,6 @@ export function ChatView() {
           autoRoutingEnabled={composer.autoRoutingEnabled}
           autoRoutingAvailable={composer.autoRoutingAvailable}
           onAutoRoutingChange={composer.onAutoRoutingChange}
-          slim={header.slim}
           visibleModels={composer.visibleModels}
         />
       </KeyboardAvoidingView>

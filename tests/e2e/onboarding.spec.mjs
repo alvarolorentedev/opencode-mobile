@@ -213,10 +213,9 @@ test('settings categories separate everyday preferences and review setup without
   const sheet = page.getByTestId('settings-section-overlay');
   await expect(sheet.getByRole('slider', { name: 'Chat text size', exact: true })).toBeVisible();
   await expect(sheet.getByRole('switch', { name: 'Flat conversation', exact: true })).toBeVisible();
-  await expect(sheet.getByRole('switch', { name: 'Slim interface', exact: true })).toHaveCount(0);
   await sheet.getByRole('button', { name: 'Close', exact: true }).click();
   await page.getByTestId('settings-category-appearance').click();
-  await expect(sheet.getByRole('switch', { name: 'Slim interface', exact: true })).toBeVisible();
+  await expect(page.getByTestId('settings-accent-green')).toBeVisible();
   await expect(page.getByTestId('settings-theme-mode')).toBeVisible();
   await sheet.getByRole('button', { name: 'Close', exact: true }).click();
   await page.getByTestId('settings-category-language').click();
@@ -320,6 +319,8 @@ test('onboarding embeds provider setup and persists the reviewed preferences', a
   await enterAiStep(page);
   await addOpenRouter(page);
   await enterGeneralStep(page);
+  await page.getByTestId('settings-accent-purple').click();
+  await expect(page.getByTestId('settings-accent-purple')).toHaveAttribute('aria-checked', 'true');
   await selectPreference(page, 'settings-language', 'English');
   await selectPreference(page, 'settings-prompt-delivery', 'Append');
   await page.getByTestId('onboarding-general-continue').click();
@@ -344,7 +345,7 @@ test('onboarding embeds provider setup and persists the reviewed preferences', a
   await page.getByTestId('onboarding-ready-start').click();
   await expect(page.getByTestId('chat-model-picker-trigger')).toBeVisible();
   await expect.poll(async () => JSON.parse(await page.evaluate(() => localStorage.getItem('opencode-mobile.chat-preferences')))).toMatchObject({
-    language: 'en', promptDelivery: 'queue',
+    accentColor: 'purple', language: 'en', promptDelivery: 'queue',
   });
 });
 

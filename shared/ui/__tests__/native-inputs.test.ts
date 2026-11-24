@@ -118,14 +118,13 @@ describe('native input regressions', () => {
     input = () => findByType(runtime.result.current, ChatPromptInput)!;
   });
 
-  it.each([[false, 44, 110], [true, 40, 90]])('lets iOS grow the native input between its caps (slim=%s)', (slim, min, max) => {
-    runtime.update({ slim });
+  it('lets iOS grow the native input between the compact caps', () => {
     expect(find(runtime.result.current, 'chat-prompt-measurement')).toBeUndefined();
     expect(input().props.onContentSizeChange).toBeUndefined();
     expect(input().props.scrollEnabled).toBe(true);
     const style = flatten(input().props.style);
     expect(style.height).toBeUndefined();
-    expect(style).toMatchObject({ minHeight: min, maxHeight: max, fontSize: slim ? 15 : 17 });
+    expect(style).toMatchObject({ minHeight: 40, maxHeight: 90, fontSize: 15 });
     expect(input().props.value).toBe('hello');
   });
 
@@ -136,7 +135,7 @@ describe('native input regressions', () => {
     act(() => input().props.onContentSizeChange(80));
     expect(flatten(input().props.style).height).toBe(80);
     act(() => input().props.onContentSizeChange(200));
-    expect(flatten(input().props.style).height).toBe(110);
+    expect(flatten(input().props.style).height).toBe(90);
     expect(input().props.scrollEnabled).toBe(true);
   });
 

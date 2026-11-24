@@ -9,9 +9,9 @@ import { useTerminal } from '@/features/terminal/context';
 import TerminalDOM, { type TerminalDOMRef } from '@/features/terminal/ui/terminal-dom';
 import { pasteNeedsConfirmation } from '@/features/terminal/ui/terminal-keys';
 
-export function TerminalView({ target, visible, slim, palette, dismissKeyboard = false, onCopied, onError }: {
+export function TerminalView({ target, visible, palette, dismissKeyboard = false, onCopied, onError }: {
   target: WorkspaceTarget;
-  visible: boolean; slim: boolean;
+  visible: boolean;
   palette: Palette;
   dismissKeyboard?: boolean;
   onCopied?: () => void;
@@ -88,7 +88,7 @@ export function TerminalView({ target, visible, slim, palette, dismissKeyboard =
     armed: t('terminal:accessory.armed'), locked: t('terminal:accessory.locked'), off: t('terminal:accessory.off'),
   }), [t]);
 
-  return <>{confirmation}{<TerminalDOM ref={bridge} instances={terminalRuntime.instances} activeId={activeTerminalId} visible={visible} slim={slim} theme={theme} accent={palette.tint} onAccent={palette.onTint} labels={labels}
+  return <>{confirmation}{<TerminalDOM ref={bridge} instances={terminalRuntime.instances} activeId={activeTerminalId} visible={visible} theme={theme} accent={palette.tint} onAccent={palette.onTint} labels={labels}
     dom={{ style: { flex: 1 }, scrollEnabled: false, keyboardDisplayRequiresUserAction: true, automaticallyAdjustContentInsets: false }}
     onReady={onReady} onWritten={onWritten} onInput={onInput} onResize={onResize} onPaste={onPaste} onCopy={onCopy} onError={reportError} />}</>;
 }

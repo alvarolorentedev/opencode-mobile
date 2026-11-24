@@ -286,15 +286,11 @@ test('appearance changes persist and settings remain usable at narrow widths', a
   await page.getByRole('option', { name: 'Light', exact: true }).click();
   await page.getByTestId('settings-accent-purple').click();
   await expect(page.getByTestId('settings-accent-purple')).toHaveAttribute('aria-checked', 'true');
-  const slim = sheet.getByRole('switch', { name: 'Slim interface', exact: true });
-  await slim.click();
-  await expect(slim).toHaveAttribute('aria-checked', 'true');
   await sheet.getByRole('button', { name: 'Close', exact: true }).click();
   await page.reload();
   await page.getByTestId('settings-category-appearance').click();
   await expect(page.getByTestId('settings-theme-mode')).toContainText('Light');
   await expect(page.getByTestId('settings-accent-purple')).toHaveAttribute('aria-checked', 'true');
-  await expect(sheet.getByRole('switch', { name: 'Slim interface', exact: true })).toHaveAttribute('aria-checked', 'true');
   expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(320);
   await page.screenshot({ path: test.info().outputPath('settings-appearance-narrow-light.png') });
   await expect(page.getByTestId('opening-screen-picker')).toHaveAccessibleName('Opening screen. Chat');

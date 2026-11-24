@@ -18,10 +18,9 @@ type NoticeCardProps = {
   flat?: boolean;
   fontSize: number;
   onCopy: (entry: TranscriptEntry) => void;
-  slim?: boolean;
 };
 
-function NoticeCardImpl({ copied = false, entry, flat = false, fontSize, onCopy, slim = false }: NoticeCardProps) {
+function NoticeCardImpl({ copied = false, entry, flat = false, fontSize, onCopy }: NoticeCardProps) {
   const { t } = useTranslation();
   const palette = usePalette();
 
@@ -31,15 +30,14 @@ function NoticeCardImpl({ copied = false, entry, flat = false, fontSize, onCopy,
       onTouchEnd={Keyboard.dismiss}
       style={[
         styles.card,
-        slim ? styles.cardSlim : null,
         flat
           ? { ...styles.cardFlat, borderLeftColor: palette.border }
           : { backgroundColor: palette.surfaceAlt, borderColor: palette.border },
       ]}
     >
-      <View testID={`transcript-notice-${entry.id}`} className={cn(stylesClasses.inner, slim && stylesClasses.innerSlim)}>
+      <View testID={`transcript-notice-${entry.id}`} className={stylesClasses.inner}>
         <View className={cn(stylesClasses.header)}>
-          <Icon name="information-outline" size={slim ? 14 : 16} color={palette.muted} />
+          <Icon name="information-outline" size={14} color={palette.muted} />
           <Text className={cn('text-muted-foreground')} style={{ color: palette.muted }} variant="label">{t('chat:cards.notice')}</Text>
           <View className={cn(stylesClasses.headerRight)}>
             {copied ? (
@@ -55,7 +53,7 @@ function NoticeCardImpl({ copied = false, entry, flat = false, fontSize, onCopy,
                 size="icon"
                 className={cn(stylesClasses.actionButton)}
               >
-                <Icon name="content-copy" size={slim ? 14 : 16} color={palette.muted} />
+                <Icon name="content-copy" size={14} color={palette.muted} />
               </Button>
             )}
             <Text style={{ color: palette.muted }} variant="label">{formatMessageTime(entry.createdAt)}</Text>
@@ -82,7 +80,6 @@ function areNoticeCardPropsEqual(prev: NoticeCardProps, next: NoticeCardProps) {
     prev.entry === next.entry &&
     prev.copied === next.copied &&
     prev.flat === next.flat &&
-    prev.slim === next.slim &&
     prev.fontSize === next.fontSize &&
     prev.onCopy === next.onCopy
   );
@@ -95,10 +92,10 @@ const styles = StyleSheet.create({
     alignSelf: 'stretch',
     minWidth: 0,
     marginHorizontal: 8,
-    borderRadius: 16,
+    borderRadius: 14,
     borderWidth: 1,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
   },
   cardFlat: {
     marginHorizontal: 0,
@@ -109,16 +106,10 @@ const styles = StyleSheet.create({
     paddingVertical: 4,
     backgroundColor: 'transparent',
   },
-  cardSlim: {
-    borderRadius: 14,
-    paddingHorizontal: 10,
-    paddingVertical: 8,
-  },
 });
 
 const stylesClasses = {
-  inner: 'gap-2 min-w-0',
-  innerSlim: 'gap-1.5',
+  inner: 'gap-1.5 min-w-0',
   header: 'flex-row items-center gap-1.5',
   headerRight: 'flex-row flex-wrap justify-end items-center shrink min-w-0 gap-0.5',
   actionButton: 'm-0',

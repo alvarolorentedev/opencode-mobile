@@ -47,7 +47,6 @@ type ChatHeaderProps = {
   contextLimit?: number;
   contextTokens?: number;
   latestAssistantTurnUsage?: SessionUsage;
-  slim?: boolean;
   usage: SessionUsage;
 };
 
@@ -63,7 +62,6 @@ export function ChatHeader({
   palette,
   selectedSession,
   latestAssistantTurnUsage,
-  slim = false,
   usage,
 }: ChatHeaderProps) {
   const { t } = useTranslation();
@@ -84,7 +82,7 @@ export function ChatHeader({
           : 'circle-slice-4';
   return (
     <>
-      <ScreenHeader style={[styles.header, { backgroundColor: palette.surface, paddingTop: insetsTop, height: (slim ? 52 : 64) + insetsTop }]} safeArea={false}><View className={cn(stylesClasses.headerMain)}>
+      <ScreenHeader style={[styles.header, { backgroundColor: palette.surface, paddingTop: insetsTop, height: 52 + insetsTop }]} safeArea={false}><View className={cn(stylesClasses.headerMain)}>
           <View className={cn(stylesClasses.headerSessionTextWrap)}>
             <Pressable
               accessibilityRole="button"
@@ -97,7 +95,7 @@ export function ChatHeader({
                   <Text maxFontSizeMultiplier={1.5} numberOfLines={1} className={cn("text-foreground")} style={[styles.headerTitle]} variant="title">{selectedSession?.title || t('chat:header.untitledChat')}</Text>
                   <MaterialCommunityIcons name="chevron-down" size={20} color={palette.muted} />
                 </View>
-                <ChatWorkspaceContext compact={slim} />
+                <ChatWorkspaceContext />
               </View>
             </Pressable>
           </View>

@@ -683,10 +683,6 @@
     "flatThread": {
       "title": "Conversation à plat",
       "description": "Affiche les messages sur toute la largeur sans bulles pour afficher davantage de conversation à l'écran."
-    },
-    "slimInterface": {
-      "title": "Interface compacte",
-      "description": "Réduit les boutons, les espacements et les en-têtes dans le chat, le terminal et le projet pour afficher plus de texte à l'écran."
     }
   },
   "connect": {

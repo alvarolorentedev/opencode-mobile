@@ -27,8 +27,6 @@ export const Copied: Story = { args: { copied: true } };
 
 export const Flat: Story = { args: { flat: true } };
 
-export const Slim: Story = { args: { slim: true } };
-
 export const LongReport: Story = {
   args: {
     entry: {

@@ -11,9 +11,9 @@ export const styles = StyleSheet.create({
   pinnedActivity: { position: 'absolute', left: 0, right: 0, top: 0, zIndex: 2 },
   jumpToLatestWrap: { position: 'absolute', left: 0, right: 0, bottom: 12, alignItems: 'center', zIndex: 3 },
   scroll: { flex: 1 },
-  content: { padding: 12, gap: 12, paddingBottom: 20 },
-  transcriptItem: { marginBottom: 12 },
-  transcriptItemFlat: { marginBottom: 4 },
+  content: { padding: 8, gap: 8, paddingBottom: 14 },
+  transcriptItem: { marginBottom: 6 },
+  transcriptItemFlat: { marginBottom: 2 },
   skeletonRow: { height: 14, borderRadius: 7, marginTop: 8 },
   skeletonUser: { alignSelf: 'flex-end' },
   skeletonAssistant: { alignSelf: 'flex-start' },
@@ -24,29 +24,21 @@ export const styles = StyleSheet.create({
   promptStack: { gap: 10 },
   promptCard: { borderWidth: 1, borderRadius: 18 },
   promptCardInner: { flexDirection: 'row', gap: 12, alignItems: 'center', padding: 14 },
-  composerTextArea: { backgroundColor: 'transparent', borderWidth: 0, fontSize: 17, marginHorizontal: 8, paddingVertical: 0 },
+  composerTextArea: { backgroundColor: 'transparent', borderWidth: 0, fontSize: 15, marginHorizontal: 8, paddingVertical: 0 },
   inputContentCompact: { paddingHorizontal: 0, paddingTop: 0, paddingBottom: 0, fontFamily: Fonts.sans },
   changesList: { paddingBottom: 12 },
   todoOverlay: { position: 'absolute', left: 12, right: 12, bottom: 12, zIndex: 2, borderRadius: 16, borderWidth: 1, overflow: 'hidden' }
 });
 
-// Slim overrides applied on top of `styles` when the slim-interface preference
-// is on. Kept parallel to the base sheet so slim never changes the default UI.
-export const slimStyles = StyleSheet.create({
-  content: { padding: 8, gap: 8, paddingBottom: 14 },
-  transcriptItem: { marginBottom: 6 },
-  transcriptItemFlat: { marginBottom: 2 }
-});
-
 export const stylesClasses = {
-  "composer": "px-2 pt-1.5 pb-1.5 gap-1.5",
+  "composer": "px-1.5 pt-1 pb-1 gap-1",
   "conversationBanner": "border rounded-[18px] px-3.5 py-3 gap-2",
   "conversationBannerHeader": "flex-row justify-between gap-3 items-center",
   "attachmentRow": "flex-row flex-wrap gap-2 px-0.5",
   "shellBanner": "border rounded-[14px] px-3 py-2.25 gap-0.5",
   "voiceStatusRow": "px-0.5",
   "voiceStatusChip": "self-start",
-  "composerCard": "rounded-[28px] px-2 pt-2 pb-1",
+  "composerCard": "rounded-[22px] px-2 pt-2 pb-1",
   "composerToolbar": "flex-row items-center gap-0 mt-3",
   "composerActionButton": "m-0",
   "composerModelSummary": "flex-1 min-w-0",
@@ -81,9 +73,5 @@ export const stylesClasses = {
   "todoStatusIcon": "m-0",
   "todoTextWrap": "flex-1",
   "transcriptContainer": "flex-1",
-  "transcriptItem": "mb-3"
-} as const;
-
-export const slimStylesClasses = {
-  "composer": "px-1.5 pt-1 pb-1 gap-1"
+  "transcriptItem": "mb-1.5"
 } as const;

@@ -22,7 +22,7 @@ export type TerminalDOMRef = {
 };
 type Props = {
   ref?: Ref<TerminalDOMRef>; dom?: DOMProps;
-  instances: TerminalInstance[]; activeId?: string; visible: boolean; slim: boolean;
+  instances: TerminalInstance[]; activeId?: string; visible: boolean;
   theme: ITheme; accent: string; onAccent: string; labels: AccessoryLabels;
   onReady: (id: string) => Promise<void>;
   onWritten: (id: string, acknowledgement: number) => Promise<void>;
@@ -34,7 +34,7 @@ type Props = {
 };
 type Display = { terminal: Terminal; fit: FitAddon; paste: (text: string) => void; dispose: () => void };
 
-export default function TerminalDOM({ ref, instances, activeId, visible, slim, theme, accent, onAccent, labels, onReady, onWritten, onInput, onResize, onPaste, onCopy, onError }: Props) {
+export default function TerminalDOM({ ref, instances, activeId, visible, theme, accent, onAccent, labels, onReady, onWritten, onInput, onResize, onPaste, onCopy, onError }: Props) {
   const displays = useRef(new Map<string, Display>());
   const root = useRef<HTMLDivElement>(null);
   const callbacks = useRef({ onReady, onWritten, onInput, onResize, onPaste, onCopy, onError });
@@ -190,7 +190,7 @@ export default function TerminalDOM({ ref, instances, activeId, visible, slim, t
     '--terminal-accent': accent,
     '--terminal-on-accent': onAccent,
   };
-  return <div className={`terminal-surface${slim ? ' terminal-slim' : ''}`} aria-hidden={!visible} inert={!visible} style={terminalStyle}>
+  return <div className="terminal-surface" aria-hidden={!visible} inert={!visible} style={terminalStyle}>
     <div ref={root} className="terminal-displays" data-testid="terminal-displays">
       {instances.map((entry) => <div key={entry.id} data-pty={entry.id} data-testid={visible && entry.id === activeId ? 'terminal-output' : undefined} className="terminal-display" style={{ display: entry.id === activeId ? 'block' : 'none' }} />)}
       {scrolled && <button className="terminal-latest" type="button" onClick={() => getDisplay()?.terminal.scrollToBottom()}>{labels.latest}</button>}

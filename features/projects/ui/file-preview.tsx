@@ -26,12 +26,11 @@ import { formatDataUsage } from '@/shared/network/data-usage';
 import { MAX_PROJECT_PREVIEW_BYTES } from '@/shared/contracts/project-preview';
 import { type ProjectFile } from '@/shared/protocol/opencode/project-file';
 
-export function FilePreview({ file, projectPath, branch, canSave, slim, onClose, onSave, onDownload }: {
+export function FilePreview({ file, projectPath, branch, canSave, onClose, onSave, onDownload }: {
   file: ProjectFile;
   projectPath: string;
   branch?: string;
   canSave: boolean;
-  slim: boolean;
   onClose: () => void;
   onSave: (path: string, original: string, value: string) => Promise<void>;
   onDownload: (path: string, signal?: AbortSignal) => Promise<void>;
@@ -149,8 +148,8 @@ export function FilePreview({ file, projectPath, branch, canSave, slim, onClose,
 
   return <ModalSurface accessibilityLabel={filename} visible animationType="slide" presentationStyle="fullScreen" onRequestClose={close}>
     <KeyboardAvoidingView className={cn("flex-1 bg-background")} behavior="padding">
-      <ScreenHeader style={{ backgroundColor: palette.surface, paddingTop: insets.top, height: (slim ? 52 : 64) + insets.top }} safeArea={0 !== 0}><Button disabled={saving} accessibilityLabel={t('project:files.close')} onPress={close} variant={"ghost"} size="icon"><Icon name={"arrow-left"} size={24} /></Button><HeaderTitle title={filename} subtitle={file.path} maxFontSizeMultiplier={1.5}></HeaderTitle>{isText && file.canDownload ? <Button disabled={downloading} accessibilityLabel={t('project:files.download')} onPress={download} variant={"ghost"} size="icon"><Icon name={"download"} size={24} /></Button> : null}{isText && canSave && !draft ? <Button onPress={() => setDraft({ original: file.content.content, value: file.content.content })} variant={"ghost"}><Text>{t('common:actions.edit')}</Text></Button> : null}</ScreenHeader>
-      <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={{ padding: slim ? 10 : 16, gap: 16, paddingBottom: Math.max(insets.bottom, 16), flexGrow: 1 }}>
+      <ScreenHeader style={{ backgroundColor: palette.surface, paddingTop: insets.top, height: 52 + insets.top }} safeArea={0 !== 0}><Button disabled={saving} accessibilityLabel={t('project:files.close')} onPress={close} variant={"ghost"} size="icon"><Icon name={"arrow-left"} size={24} /></Button><HeaderTitle title={filename} subtitle={file.path} maxFontSizeMultiplier={1.5}></HeaderTitle>{isText && file.canDownload ? <Button disabled={downloading} accessibilityLabel={t('project:files.download')} onPress={download} variant={"ghost"} size="icon"><Icon name={"download"} size={24} /></Button> : null}{isText && canSave && !draft ? <Button onPress={() => setDraft({ original: file.content.content, value: file.content.content })} variant={"ghost"}><Text>{t('common:actions.edit')}</Text></Button> : null}</ScreenHeader>
+      <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={{ padding: 10, gap: 16, paddingBottom: Math.max(insets.bottom, 16), flexGrow: 1 }}>
         <View className={cn("gap-1.5")}>
           <Text className={cn("text-muted-foreground")}>{projectPath}</Text>
           {branch ? <Text className={cn("text-muted-foreground")}>{t('project:files.branch', { branch })}</Text> : null}
