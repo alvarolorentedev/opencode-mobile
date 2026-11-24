@@ -94,14 +94,14 @@ const iapPlugin: PluginList = ['expo-iap'];
 const config: ExpoConfig = {
   name: isDevelopmentVariant ? 'OpenCode Mobile Dev' : 'OpenCode Mobile',
   slug: 'opencode-mobile',
-  version: '1.0.171',
+  version: '1.0.172',
   orientation: 'default',
   icon: './assets/images/icon.png',
   scheme: 'opencodemobile',
   userInterfaceStyle: 'automatic',
   android: {
     package: androidPackage,
-    versionCode: 171,
+    versionCode: 172,
     ...(isDevelopmentVariant ? {} : { blockedPermissions: ['android.permission.SYSTEM_ALERT_WINDOW'] }),
     intentFilters: [{
       action: 'VIEW',
@@ -121,7 +121,7 @@ const config: ExpoConfig = {
   },
   ios: {
     bundleIdentifier: iosBundleIdentifierOverride ?? (isDevelopmentVariant ? 'app.getopencode.mobile.dev' : 'app.getopencode.mobile'),
-    buildNumber: '171',
+    buildNumber: '172',
     scheme: 'opencode',
     infoPlist: {
       ITSAppUsesNonExemptEncryption: false,

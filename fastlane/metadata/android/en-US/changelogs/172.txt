@@ -1,0 +1,3 @@
+- Files changed scrolls smoothly again with virtualized rows, and Android drag scrolling works.
+- Mission Control status icons use their semantic colors in the summary and attention rows.
+- The unused slim interface option is gone from chat preferences; Appearance keeps accent color selection.
