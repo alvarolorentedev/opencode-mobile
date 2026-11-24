@@ -39,7 +39,7 @@ type ChatHeaderProps = {
     wakePhrase: string;
   };
   insetsTop: number;
-  onConfirmStopConversation: () => void;
+  onStopConversation: () => void;
   onCreateSession: () => void;
   onOpenSessionMenu: () => void;
   palette: Palette;
@@ -56,7 +56,7 @@ export function ChatHeader({
   contextLimit,
   contextTokens,
   insetsTop,
-  onConfirmStopConversation,
+  onStopConversation,
   onCreateSession,
   onOpenSessionMenu,
   palette,
@@ -68,7 +68,7 @@ export function ChatHeader({
   const formatCost = (value: number) => formatEstimatedCost(value, 'USD', getFormatLocale());
   const [usageVisible, setUsageVisible] = useState(false);
   // Android back stops conversation mode instead of leaving the screen.
-  useDismissOnBack(conversation.active, onConfirmStopConversation);
+  useDismissOnBack(conversation.active, onStopConversation);
   const usageLabel = usage.costStatus === 'pricing-unavailable' ? t('chat:header.pricingUnavailable') : t('chat:header.estimatedCost', { cost: formatCost(usage.cost) });
   const contextProgress = contextLimit && contextTokens !== undefined ? Math.min(contextTokens / contextLimit, 1) : undefined;
   const usageIcon = contextProgress === undefined
@@ -113,7 +113,7 @@ export function ChatHeader({
             insetsTop={insetsTop}
             latestUserText={conversation.latestHeardText}
             level={conversation.level}
-            onStop={onConfirmStopConversation}
+            onStop={onStopConversation}
             phase={conversation.phase}
             readbackPhase={conversation.readbackPhase}
             sessionTitle={selectedSession?.title || t('chat:header.untitledChat')}

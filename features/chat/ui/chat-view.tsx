@@ -73,7 +73,7 @@ export function ChatView() {
   ) : null;
 
   return (
-    <>{actions.confirmation}<ShareDraftReceiver {...sharedDraft} />
+    <><ShareDraftReceiver {...sharedDraft} />
       <KeyboardAvoidingView
         className={cn(stylesClasses.screen, "bg-background")}
         behavior="padding">
@@ -83,7 +83,7 @@ export function ChatView() {
           contextLimit={header.contextModel?.contextLimit}
           contextTokens={header.contextTokens}
           insetsTop={insets.top}
-          onConfirmStopConversation={actions.handleConfirmStopConversation}
+          onStopConversation={actions.handleStopConversation}
           onCreateSession={() => setNewChatVisible(true)}
           onOpenSessionMenu={() => actions.setSessionMenuVisible(true)}
           palette={palette}

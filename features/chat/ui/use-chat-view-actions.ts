@@ -1,4 +1,3 @@
-import { useUpdateBlockingConfirmation as useConfirmation } from '@/features/updates/index';
 import { ActionSheetIOS, Platform } from 'react-native';
 import type { Dispatch, SetStateAction } from 'react';
 
@@ -41,7 +40,6 @@ export function useChatViewActions({
   setSpeakingMessageId,
   setVoiceFeedback,
 }: ChatViewActionsInput) {
-  const { confirmAction, confirmation } = useConfirmation();
   const { block } = useUpdates();
   async function handleSpeakEntry(entry: TranscriptEntry) {
     if (speakingMessageId === entry.id) {
@@ -152,14 +150,14 @@ export function useChatViewActions({
     }
   }
 
-  function handleConfirmStopConversation() {
-    confirmAction(t('chat:view.stopConversationTitle'), t('chat:view.stopConversationMessage'), t('common:actions.stop'), t('chat:view.keepGoing'), () => { void toggleConversationMode(); });
+  function handleStopConversation() {
+    void toggleConversationMode();
   }
 
-  return { confirmation,
+  return {
     handleSpeakEntry,
     handleAttach,
     handleAbort,
-    handleConfirmStopConversation,
+    handleStopConversation,
   };
 }

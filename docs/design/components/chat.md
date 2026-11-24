@@ -258,7 +258,7 @@ type ChatComposerProps = {
 - top app bar with New chat and usage actions; New chat opens the server/project sheet instead of creating immediately, and voice chat starts from the composer waveform only
 - active session title that opens the Chats overlay, with read-only project/worktree context below it
 - compact current-session usage summary and usage breakdown sheet
-- mounting point for conversation overlay
+- mounting point for conversation overlay; Android back and the overlay's End action stop the mode immediately without a confirmation dialog
 
 #### Prop contract
 
@@ -267,7 +267,7 @@ type ChatHeaderProps = {
   connectionStatus: 'idle' | 'connecting' | 'connected' | 'error'
   conversation: { active: boolean; confirmation?: ConversationConfirmationState; feedback?: string; inputPhase: ConversationInputPhase; latestHeardText?: string; level: number; phase: ConversationPhase; readbackPhase: ConversationReadbackPhase; wakePhrase: string }
   insetsTop: number
-  onConfirmStopConversation: () => void
+  onStopConversation: () => void
   onCreateSession: () => void
   onOpenSessionMenu: () => void
   palette: Palette

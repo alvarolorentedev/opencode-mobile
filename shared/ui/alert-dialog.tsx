@@ -62,7 +62,7 @@ function AlertDialogContent({
       <AlertDialogOverlay>
         <AlertDialogPrimitive.Content
           className={cn(
-            'bg-background border-border z-50 flex flex-col gap-4 rounded-lg border p-6 shadow-lg shadow-foreground/5 sm:max-w-lg',
+            'bg-background border-border z-50 flex w-full max-w-lg flex-col gap-4 rounded-lg border p-6 shadow-lg shadow-foreground/5',
             Platform.select({
               web: '   web:max-w-[calc(100%-2rem)] duration-200',
             }),

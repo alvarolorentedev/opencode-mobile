@@ -278,7 +278,9 @@ preferences, searches, pairing-link fields, editor buffers and chat drafts
 keep their existing local/provider ownership. Validation messages are localized.
 
 Generic confirmations use the shared AlertDialog and local useConfirmation
-hook. OS permission and store dialogs remain native integrations. Full-screen
+hook. The dialog takes the available width up to `max-w-lg` so wide screens
+cannot collapse it into a content-width column. OS permission and store dialogs
+remain native integrations. Full-screen
 native modals preserve their window behavior and provide a named local portal
 host; nested overlays dismiss before the containing form. Sheets share the
 existing header-drag gesture and RN Primitives dialog semantics. NumericSlider
