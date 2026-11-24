@@ -334,16 +334,12 @@ that workspace.
 - the Show archived projects switch is off by default and reveals both device-local hidden projects under "Archived on this device (N)" and, on OpenCode 2, server-archived projects under "Archived on OpenCode". Both sections use Restore and neither is collapsible; a stale hidden marker renders nothing. Nothing about project selection is recorded locally
 - owns no domain state or persistence; hidden markers and actions come from the workspace registry
 
-### `features/chat/ui/chat-cards.tsx`
+### `features/chat/ui/chat-cards.tsx` and `features/chat/ui/cards/diff-cards.tsx`
 
 #### Exported components
 
-- `SessionDiffHeader`
-- `SessionDiffLineRow`
-- `SessionDiffCollapsedRow`
-- `ChangedFilesCard`
-- `TranscriptMessage`
-- `NoticeCard`
+- `features/chat/ui/chat-cards.tsx`: `ChangedFilesCard`, `TranscriptMessage`, `NoticeCard`
+- `features/chat/ui/cards/diff-cards.tsx`: `SessionDiffHeader`, `SessionDiffLineRow`, `SessionDiffCollapsedRow`
 
 #### `SessionDiffHeader` / diff rows
 

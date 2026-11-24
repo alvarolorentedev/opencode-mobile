@@ -5,7 +5,7 @@ import { cn } from '@/shared/ui/cn';
 import { Text } from '@/shared/ui/text';
 import { usePalette } from '@/shared/ui/theme/use-palette';
 
-import { SessionDiffCollapsedRow, SessionDiffHeader, SessionDiffLineRow } from '@/features/chat/ui/chat-cards';
+import { SessionDiffCollapsedRow, SessionDiffHeader, SessionDiffLineRow } from '@/features/chat/ui/cards/diff-cards';
 import type { DiffListRow } from '@/features/chat/ui/chat-diff';
 
 // One flat list keeps the file headers, their lines and the collapsed context
