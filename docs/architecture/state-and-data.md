@@ -223,6 +223,9 @@ Meaning:
 - `currentSessionId` is the selected/open session, stored per workspace key in
   the app store so navigation does not wait for a React render. Selection
   persists across tab switches for a retained workspace.
+- V2 unread is derived from each session's server-owned `time.idle` and
+  `time.viewed` watermarks in Query. A focused, foreground chat reports
+  `session.view`; no separate local read store is kept.
 - an explicit selection stays selected while the project session list catches up with a catalog row; once the list includes it, normal reconciliation handles later removal
 - opening a project with no explicit selection picks the newest session in the server list; nothing remembers the previous chat
 

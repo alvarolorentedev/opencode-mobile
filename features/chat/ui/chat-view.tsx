@@ -7,7 +7,7 @@ import { Feedback } from '@/shared/ui/feedback';
 import { withAlpha } from '@/shared/ui/theme/color';
 import * as Clipboard from '@/shared/platform/clipboard';
 import { useCallback, useEffect, useState } from 'react';
-import { usePathname } from 'expo-router';
+import { useIsFocused, usePathname } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { KeyboardAvoidingView, Linking, Pressable, View } from 'react-native';
 
@@ -17,7 +17,7 @@ import { ChatComposer } from '@/features/chat/ui/chat-composer';
 import { PendingPrompts } from '@/features/chat/ui/pending-prompts';
 import { RevertNotice } from '@/features/chat/ui/revert-notice';
 import { ChatHeader } from '@/features/chat/ui/chat-header';
-import { ChatLibrary , NewChatSheet } from '@/features/sessions/index';
+import { ChatLibrary , NewChatSheet, useSessionViewed } from '@/features/sessions/index';
 import { styles, stylesClasses } from '@/features/chat/ui/chat-view-styles';
 import { ChangesOverlay } from '@/features/chat/ui/content/changes-overlay';
 import { SideQuestionOverlay } from '@/features/chat/ui/side-question-overlay';
@@ -34,6 +34,7 @@ export function ChatView() {
   const { t } = useTranslation();
   const palette = usePalette();
   const insets = useSafeAreaInsets();
+  useSessionViewed(useIsFocused());
   const { focus } = useWorkspaceActions();
   const presentation = useWorkspacePresentation();
   const { header, content, composer, overlay, actions, sharedDraft } = useChatViewController();

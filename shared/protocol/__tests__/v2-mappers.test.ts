@@ -26,7 +26,7 @@ describe('v2 response mappers', () => {
       permissions: [{ action: 'edit', resource: '*', effect: 'ask' }],
       cost: 0.42,
       tokens: { input: 1200, output: 240, reasoning: 10, cache: { read: 800, write: 100 } },
-      time: { created: 1, updated: 2 },
+      time: { created: 1, updated: 2, idle: 3, viewed: 2 },
     } as never);
     expect(session.model).toEqual({ id: 'sonnet', providerID: 'anthropic' });
     expect(session.agent).toBe('build');
@@ -34,7 +34,7 @@ describe('v2 response mappers', () => {
     expect(session.cost).toBe(0.42);
     expect(session.tokens).toEqual({ input: 1200, output: 240, reasoning: 10, cache: { read: 800, write: 100 } });
     expect(session.title).toBe('Chat');
-    expect(session.time).toEqual({ created: 1, updated: 2 });
+    expect(session.time).toEqual({ created: 1, updated: 2, idle: 3, viewed: 2 });
 
     const minimalSession = toSessionView({ id: 'ses_2', projectID: 'project-1', cost: 0, tokens: { input: 0, output: 0, reasoning: 0, cache: { read: 0, write: 0 } }, time: { created: 0, updated: 0 } } as never);
     expect(minimalSession.title).toBe('');

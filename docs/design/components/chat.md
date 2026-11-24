@@ -301,6 +301,7 @@ that workspace.
 
 - Chats overlay with search, favorites, and swipe-left session actions
 - active, favorite, and current-project rows share one FlashList scroll owner; search, filters, and New Chat stay outside the virtualized list
+- tints the row icon for the current, running, favorite or unread state; V2 unread derives from the server's idle/viewed watermarks, and a focused foreground chat reports `session.view`
 - "Active across projects" group above Favorites listing up to four running/recent sessions from the whole connection; listed IDs are removed from the Chat list below, and tapping one switches project and opens it through the workspace navigation action (`navigate`), not the external deep-link resolver. Project-scoped actions (rename/delete) appear only on the current-project rows
 - re-seeds the cross-project snapshot when the overlay opens
 - derives cross-project rows only while visible, and mounts the shared project picker only while its nested overlay is open, so a closed library does no per-publish catalog work

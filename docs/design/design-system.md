@@ -40,9 +40,10 @@ Use semantic palette roles rather than literal colors:
   conversation-specific roles; do not repurpose them for settings.
 
 Icons are monochrome: use `text` for primary glyphs and `muted` for secondary or
-disabled glyphs. Never tint a glyph with `tint`, `success`, `warning` or `danger`;
-status color belongs to text, badges and surfaces. The Mission Control status
-summary is the exception: its status glyphs mirror their count color. A glyph
+disabled glyphs. Never tint a decorative glyph with `tint`, `success`, `warning`
+or `danger`; status color belongs to text, badges and surfaces. State-bearing
+glyphs are the exception: the Mission Control status summary mirrors its count
+color, and active, running, favorite or unread chat rows use `tint`. A glyph
 inside a filled control uses that surface's on-color so it stays legible.
 
 Support system/light/dark and green/blue/red/purple/pink/gray. Resolve colors

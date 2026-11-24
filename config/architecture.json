@@ -191,7 +191,8 @@
       "SessionLibraryContextValue",
       "missionBadge",
       "resolveSessionChatConfig",
-      "useQuickActionRoute"
+      "useQuickActionRoute",
+      "useSessionViewed"
     ],
     "features/projects/runtime.ts": [
       "HIDDEN_PROJECTS_MAX",

@@ -245,6 +245,7 @@
     "swipeChatActions": "Glissez vers la gauche pour les actions du chat",
     "newChat": "Nouveau chat",
     "running": "En cours",
+    "unread": "Non lu",
     "noMatchingChats": "Aucun chat ne correspond à votre recherche."
   },
   "overlay": {

@@ -29,6 +29,13 @@ export function mergeSessionStatuses(
   return next;
 }
 
+/** The idle watermark to report as viewed, or undefined when the session has none. */
+export function sessionUnreadAt(session?: Pick<Session, 'time'>): number | undefined {
+  const time = session?.time;
+  if (!time || time.idle === undefined) return undefined;
+  return time.viewed === undefined || time.idle > time.viewed ? time.idle : undefined;
+}
+
 // Equality guards so a no-op poll refresh keeps the previous state identity and
 // does not wake every consumer of the session contexts.
 export function areSessionListsEqual(previous: Session[], next: Session[]): boolean {
@@ -43,6 +50,7 @@ export function areSessionListsEqual(previous: Session[], next: Session[]): bool
     const right = next[index];
     if (left.id !== right.id || left.time.updated !== right.time.updated || left.title !== right.title
       || left.directory !== right.directory || left.outcome !== right.outcome || left.time.idle !== right.time.idle
+      || left.time.viewed !== right.time.viewed
       || left.agent !== right.agent || JSON.stringify(left.model) !== JSON.stringify(right.model)
       || left.cost !== right.cost || JSON.stringify(left.tokens) !== JSON.stringify(right.tokens)
       || JSON.stringify(left.revert) !== JSON.stringify(right.revert)) {

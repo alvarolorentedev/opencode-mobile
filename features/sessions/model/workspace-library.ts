@@ -3,6 +3,7 @@ import type { ConnectionRecord, WorkspaceCatalog, WorkspaceTarget } from '@/shar
 import { sessionKey } from '@/shared/contracts/workspace';
 import { getConnectionScope } from '@/shared/contracts/connection-scope';
 import type { FavoriteSession } from './types';
+import { sessionUnreadAt } from './session-utils';
 
 type ConnectionStates = ReadonlyMap<string, { connection: { status: string } }>;
 export type ProjectSessions = {
@@ -15,7 +16,7 @@ export type ProjectSessions = {
 
 export type LibrarySession = WorkspaceTarget & {
   sessionId: string; session: Session; status: SessionStatus; serverName: string; preview?: string;
-  current: boolean; favorite: boolean;
+  current: boolean; favorite: boolean; unread: boolean;
 };
 export function connectedConnections(connections: ConnectionRecord[], lifecycles: ConnectionStates) {
   return connections.filter((entry) => entry.enabled && lifecycles.get(entry.id)?.connection.status === 'connected');
@@ -71,14 +72,18 @@ export function librarySessions(connections: ConnectionRecord[], projectSessions
         const target = { connectionId: entry.id, projectPath, sessionId: session.id };
         const key = sessionKey(target);
         const local = localByProject.get(projectPath);
+        const status = catalog?.statuses[session.id] ?? { type: 'idle' };
+        const current = focus?.connectionId === entry.id && (!focus.projectPath || focus.projectPath === projectPath) && local?.currentSessionId === session.id;
+        const resolved = liveSessionsByProject.get(projectPath)?.get(session.id) ?? session;
         rows.set(key, {
           ...target,
-          session: liveSessionsByProject.get(projectPath)?.get(session.id) ?? session,
+          session: resolved,
           serverName: label,
-          status: catalog?.statuses[session.id] ?? { type: 'idle' },
+          status,
           preview: local?.previews?.[session.id],
-          current: focus?.connectionId === entry.id && (!focus.projectPath || focus.projectPath === projectPath) && local?.currentSessionId === session.id,
+          current,
           favorite: favoriteKeys.has(`${projectPath}\u0000${session.id}`),
+          unread: !current && status.type === 'idle' && sessionUnreadAt(resolved) !== undefined,
         });
       }
     }
@@ -99,6 +104,7 @@ export function librarySessions(connections: ConnectionRecord[], projectSessions
         status: { type: 'idle' },
         current: false,
         favorite: true,
+        unread: false,
       });
     }
   }

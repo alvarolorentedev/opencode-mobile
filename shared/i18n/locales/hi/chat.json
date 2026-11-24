@@ -245,6 +245,7 @@
     "swipeChatActions": "चैट कार्रवाइयों के लिए बाएँ स्वाइप करें",
     "newChat": "नई चैट",
     "running": "चल रहा है",
+    "unread": "अपठित",
     "noMatchingChats": "आपकी खोज से कोई चैट मेल नहीं खाती।"
   },
   "overlay": {

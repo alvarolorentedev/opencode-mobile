@@ -253,6 +253,7 @@
     "swipeChatActions": "اسحب لليسار لإجراءات الدردشة",
     "newChat": "دردشة جديدة",
     "running": "الجري",
+    "unread": "غير مقروء",
     "noMatchingChats": "لا توجد محادثات تطابق بحثك."
   },
   "overlay": {

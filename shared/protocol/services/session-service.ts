@@ -20,6 +20,11 @@ export function getSessionMessage(client: ScopedOpencodeClient, sessionId: strin
   return client.api.session.message.get({ sessionID: sessionId, messageID: messageId });
 }
 
+/** V2 only: reports the session's latest completed run as viewed. */
+export function viewSession(client: ScopedOpencodeClient, sessionID: string, idle: number) {
+  return client.api ? client.api.session.view({ sessionID, idle }) : Promise.resolve();
+}
+
 export function getSessionInbox(client: ScopedOpencodeClient, sessionId: string) {
   return coalesceRead(client, `inbox:${sessionId}`, () => client.promptInbox!.list(sessionId));
 }

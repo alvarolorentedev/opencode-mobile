@@ -916,6 +916,22 @@ const server = http.createServer(async (req, res) => {
       return notFound(res);
     }
 
+    const viewPath = pathname.match(/^\/api\/session\/([^/]+)\/view$/);
+    if (req.method === 'POST' && viewPath) {
+      const session = helpers.getSession(viewPath[1]); if (!session) return notFound(res);
+      const body = await readJson(req);
+      const idle = Number(body?.idle);
+      if (!Number.isFinite(idle)) {
+        sendJson(res, 400, { _tag: 'BadRequest', message: 'idle must be a number' });
+        return;
+      }
+      session.time.viewed = Math.max(session.time.viewed ?? 0, idle);
+      emitV2Event(event('session.viewed', { sessionID: session.id, idle: session.time.viewed }));
+      res.writeHead(204, { 'Access-Control-Allow-Origin': '*' });
+      res.end();
+      return;
+    }
+
     if (req.method === 'GET' && /^\/api\/session\/[^/]+$/.test(pathname)) {
       const session = helpers.getSession(pathname.split('/')[3]);
       if (!session) return notFound(res);

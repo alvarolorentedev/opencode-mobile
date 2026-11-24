@@ -245,6 +245,7 @@
     "swipeChatActions": "Nach links wischen für Chat-Aktionen",
     "newChat": "Neuer Chat",
     "running": "Läuft",
+    "unread": "Ungelesen",
     "noMatchingChats": "Keine Chats entsprechen deiner Suche."
   },
   "overlay": {

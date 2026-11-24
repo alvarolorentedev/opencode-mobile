@@ -245,6 +245,7 @@
     "swipeChatActions": "Deslize para a esquerda para ver ações do chat",
     "newChat": "Novo chat",
     "running": "Em execução",
+    "unread": "Não lida",
     "noMatchingChats": "Nenhum chat corresponde à sua busca."
   },
   "overlay": {

@@ -12,4 +12,5 @@ export { QuestionFlow } from './ui/approvals/question-flow';
 export { default as SessionDeepLinkScreen } from './ui/session-link-screen';
 export type { SessionLibraryContextValue } from './model/types';
 export { useQuickActionRoute } from './state/use-quick-action-route';
+export { useSessionViewed } from './state/use-session-viewed';
 export type { ActiveSessionItem, FavoriteSession, SessionDeepLinkTarget } from './model/types';

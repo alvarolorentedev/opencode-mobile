@@ -462,6 +462,15 @@ try {
   const v2Listed = (await v2request('/api/session')).data.find((entry) => entry.id === v2Session.id);
   assert(v2Listed.tokens.input === 1200 && v2Listed.cost > 0, 'V2 session usage did not accumulate');
   assert(v2Listed.model?.id === 'openai/gpt-4.1-mini', 'V2 session list dropped the model');
+  assert(v2Listed.time.idle !== undefined && v2Listed.time.viewed === undefined, 'V2 completed sessions must start unread');
+  const viewEventsController = new AbortController();
+  const viewReader = (await fetch(`${v2Origin}/api/event`, { signal: viewEventsController.signal })).body.getReader();
+  const viewedEvent = nextEvent(viewReader, (event) => event.type === 'session.viewed' && event.data.sessionID === v2Session.id);
+  await v2Api.session.view({ sessionID: v2Session.id, idle: v2Listed.time.idle });
+  assert((await viewedEvent).data.idle === v2Listed.time.idle, 'V2 view must report the idle watermark');
+  viewEventsController.abort();
+  const viewedListed = (await v2request('/api/session')).data.find((entry) => entry.id === v2Session.id);
+  assert(viewedListed.time.viewed === v2Listed.time.idle, 'V2 view must advance the viewed watermark');
   assert((await v2request('/api/skill')).data.some((skill) => skill.id === 'opencode' && skill.description), 'V2 skill discovery missing');
   const catalog = (await v2request('/api/agent')).data;
   assert(catalog.filter((agent) => agent.mode !== 'subagent' && !agent.hidden).map((agent) => agent.id).join(',') === 'build,plan', 'V2 primary catalog must exclude subagents and hidden maintenance agents');

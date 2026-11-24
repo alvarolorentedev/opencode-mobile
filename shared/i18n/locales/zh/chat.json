@@ -245,6 +245,7 @@
     "swipeChatActions": "左滑查看聊天操作",
     "newChat": "新建聊天",
     "running": "运行中",
+    "unread": "未读",
     "noMatchingChats": "没有与搜索匹配的聊天。"
   },
   "overlay": {

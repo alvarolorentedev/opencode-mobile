@@ -34,6 +34,7 @@ export type Session = {
         created: number;
         updated: number;
         idle?: number;
+        viewed?: number;
         archived?: number;
         compacting?: number;
     };

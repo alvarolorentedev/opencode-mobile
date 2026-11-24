@@ -183,6 +183,7 @@ test('chat library lists recently used sessions from other projects and switches
   await expect(page.getByText('Running & recent', { exact: true })).toHaveCount(0);
   await expect(page.getByTestId('chat-library').getByText('Recent Secondary Session', { exact: true })).toBeVisible();
   await expect(page.getByTestId('chat-library').getByText('secondary-project', { exact: false }).first()).toBeVisible();
+  await expect(page.getByTestId('chat-library').getByRole('button', { name: /Unread/ })).toHaveCount(1);
 
   await page.getByTestId('chat-library').getByRole('button', { name: 'Open Recent Secondary Session' }).first().click();
 
@@ -195,6 +196,7 @@ test('chat library lists recently used sessions from other projects and switches
   await openChatLibrary(page);
   await expect(page.getByText('Running & recent', { exact: true })).toHaveCount(0);
   await expect(page.getByTestId('chat-library').getByRole('button', { name: 'Open Recent Secondary Session' })).toHaveCount(1);
+  await expect(page.getByTestId('chat-library').getByRole('button', { name: /Unread/ })).toHaveCount(0);
 });
 
 test('chat library navigation does not wait for the session list', async ({ page, request }) => {

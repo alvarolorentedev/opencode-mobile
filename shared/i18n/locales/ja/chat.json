@@ -245,6 +245,7 @@
     "swipeChatActions": "左にスワイプでチャット操作",
     "newChat": "新しいチャット",
     "running": "実行中",
+    "unread": "未読",
     "noMatchingChats": "検索に一致するチャットがありません。"
   },
   "overlay": {
