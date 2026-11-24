@@ -102,7 +102,8 @@ setup review without clearing settings.
 #### Responsibility
 
 - `transcript-list.tsx`: render the transcript area, empty states, connection issues, and load older history on scroll-up; running progress lives on the newest activity header (including after its tools complete) and the active child row instead of a separate footer. When no activity row exists yet, it appends one transient non-interactive activity row in the same position; this is also the only activity visible at `Messages only` while a turn is working. Subagent calls render as top-level `SubagentRow` chips that open the child session. Plugin notices (`entry.noticeKind === 'plugin'`) render with `NoticeCard`; all other messages use `TranscriptMessage`. Revert status and cancellation live in the composer notice
-- `changes-overlay.tsx`: render the Files changed overlay with refresh, scope selection, and diff accordions; the diff list is virtualized line by line
+- `changes-overlay.tsx`: render the Files changed overlay with refresh, scope selection, and diff accordions
+- `diff-file-list.tsx`: render the diff as one flat virtualized list of file headers, diff lines and collapsed-context rows; file headers stick to the top of the list and are pushed away by the next file header
 - `side-question-overlay.tsx`: render a transient `/btw` answer without adding it to the transcript
 - `pending-interactions.tsx`: render server-owned tasks, permissions, and questions, including the compact progress view. The first pending permission fills a floating panel: its details scroll while `Allow once`, `Always allow`, and `Deny` stay pinned below them; the header shows `1 of N` when more requests are queued and the next request surfaces after the current one is resolved. The requesting session's title is shown as `Requested by {{name}}` when the permission came from a subagent/nested session. The shared card and action row live in `features/sessions/ui/approvals/permission-request-card.tsx` and are also used by Settings. Questions open a full-screen step-by-step flow; drafts survive dismissal, and V2 form fields, conditions, defaults, and retry errors are preserved
 
@@ -120,7 +121,7 @@ declared once, at the leaves.
 - The transcript renders the selected timeline detail: `Messages only` keeps message bubbles, attachments, and errors; `Reasoning` adds reasoning activity; `Everything` (the default) renders the full native timeline. Independent of that filter, a live non-expandable activity row appears while work is running and the transcript has no real activity row to carry the progress spinner. It shows `Sending…`, `Waiting for OpenCode…`, `OpenCode is working…`, or `OpenCode is retrying…`, coexists with the pending-prompt stack, and disappears when the session settles or a real activity row can show the spinner. Details are first-class activity rows (`features/chat/ui/cards/activity-group.tsx` + `features/chat/ui/cards/activity-item.tsx`): at full detail, contiguous reasoning, tool, and patch details merge into one two-level run whose content grows as streamed details arrive, and a message bubble breaks the run. The level-one header keeps the total tool-call count and lists every rendered type once, including `Thought` when reasoning is present, or `Thought · N` for a reasoning-only run; runs start collapsed, active work only shows the progress affordance, and an explicit manual toggle is the only thing that expands them. While an expanded run covers the viewport top, its level-one header stays pinned there until the run ends; tapping the pinned header collapses the run and returns the list to that run's header. Level-two rows: thoughts expand markdown; shells show the command collapsed and a selectable, copyable code block expanded; grep stays a one-line pattern plus match count; consecutive reads collapse to one non-expandable comma-separated filename list; edit/write/patch tools render per-file diff cards with `+N −N` and an expandable unified diff. Subagent calls render as top-level chips outside the run: the task description, the agent, and a running spinner or a settled check/error/cancel icon; tapping a chip opens the child session, and a completion notice updates it in place instead of adding a row. Background shell completion folds into the matching shell row by `shellID`; a native user-shell record suppresses its synthetic echo. Run rows use the assistant bubble width. V1-only subtask/step/agent details and the `step-finish` usage marker are never rendered.
 - A compaction record renders as a centered session divider (`features/chat/ui/cards/compaction-divider.tsx`) between message and activity rows, not as a bubble or activity run: `Session compaction started`, `Session compacted · 97.3K in · 858 out` when the summary usage is reported, or `Session compaction failed`. The divider stays visible at every timeline-detail setting because it explains a context boundary.
 - An assistant bubble's header row centers the `OpenCode` author label with its actions and timestamp. The model recorded on that message, plus the reasoning variant used for that reply when the server reports one, renders on a full-width line at the bottom of the bubble so it does not push the reply body down; it resolves from the model catalog and falls back to the raw model ID. The label makes auto-routed turns identifiable after the session model changes. User bubbles and messages without a recorded model (shell/compaction) show only the author label.
-- A centered changes chip above the composer shows file count and green additions/red deletions for the selected scope. It hides at zero files and omits line totals for filename-only patches. Tapping opens the Files changed overlay with diff accordions and a three-dot source button. The sheet opens at 55% of the viewport where safe areas permit. Its height button sits in the sheet header and switches between compact and tall sizes, and the list and expanded diff share one scroll surface; each file header stays pinned under the sheet header while its diff scrolls and is pushed away by the next file.
+- A centered changes chip above the composer shows file count and green additions/red deletions for the selected scope. It hides at zero files and omits line totals for filename-only patches. Tapping opens the Files changed overlay with diff accordions and a three-dot source button. The sheet opens at 55% of the viewport where safe areas permit. Its height button sits in the sheet header and switches between compact and tall sizes, and the file headers, expanded diff and collapsed context share one flat virtualized list; each file header stays pinned under the sheet header while its diff scrolls and is pushed away by the next file.
 - Changes overlay scopes: `Turn` (per-turn snapshot diff, with a picker when multiple turns have diffs), `Uncommitted`, and `Branch` (VCS working tree / default-branch diffs)
 - displays starter prompts only when the selected session has no transcript content at all; native model/agent switch markers are not content
 
@@ -338,17 +339,18 @@ that workspace.
 #### Exported components
 
 - `SessionDiffHeader`
-- `SessionDiffBody`
+- `SessionDiffLineRow`
+- `SessionDiffCollapsedRow`
 - `ChangedFilesCard`
 - `TranscriptMessage`
 - `NoticeCard`
 
-#### `SessionDiffHeader` / `SessionDiffBody`
+#### `SessionDiffHeader` / diff rows
 
 Responsibility:
 
-- `SessionDiffHeader` renders the compact full-width file row with a left expansion chevron, filename, and green/red line totals; the Files changed overlay makes it a sticky scroll child so it stays pinned while its diff scrolls and is pushed away by the next file
-- `SessionDiffBody` renders the expanded preview, wrapping code within the sheet, using one old/new line-number gutter and existing collapsed-context blocks
+- `SessionDiffHeader` renders the compact full-width file row with a left expansion chevron, filename, and green/red line totals; `DiffFileList` makes it a sticky list child so it stays pinned while its diff scrolls and is pushed away by the next file
+- `SessionDiffLineRow` and `SessionDiffCollapsedRow` render one code line and one collapsed-context block with one old/new line-number gutter; neither uses selectable text because selectable text swallows Android drags inside a list
 - show a preview-unavailable line when the server reported changes without exposing patch content, and a no-line-changes line when a patch produced no renderable hunks
 
 #### `ChangedFilesCard`
@@ -444,12 +446,15 @@ V2 mapper and never render as transcript text.
 
 - parse current unified `patch` hunks into line diff previews
 - collapse large unchanged context sections
+- build the flat file/line row model and sticky header indices for `DiffFileList`
 - derive diff palette by line kind
 
 #### Important behavior
 
 - treats the common prefix and suffix as context and the middle as one changed block
 - preserves context/add/remove rows with line numbers
+- parses only the expanded file's patch; collapsed files contribute one header row
+- keeps an expanded file with no renderable patch content as an empty-preview row instead of an invisible accordion body
 
 ### `features/chat/ui/chat-view-utils.ts`
 

@@ -1,3 +1,4 @@
+import type { FileDiff } from '@/shared/protocol/opencode/types';
 import type { Colors } from '@/shared/ui/theme/theme';
 
 export type DiffLine = {
@@ -149,4 +150,37 @@ export function buildDiffDisplayRows(patch: string): DiffDisplayRow[] {
     for (const line of block.lines) rows.push({ type: 'line', line });
   }
   return rows;
+}
+
+export type DiffListRow =
+  | { type: 'file'; key: string; accordionId: string; diff: FileDiff; expanded: boolean }
+  | { type: 'line'; key: string; line: DiffLine }
+  | { type: 'collapsed'; key: string; block: CollapsedDiffBlock }
+  | { type: 'empty'; key: string; messageKey: 'chat:cards.noLineChanges' | 'chat:cards.previewUnavailable' };
+
+// Files and lines share one flat list so the overlay has a single scroll
+// surface. Only the expanded patch is parsed; collapsed files stay one row.
+export function buildDiffList(diffs: FileDiff[], scope: string, expandedDiffId?: string) {
+  const rows: DiffListRow[] = [];
+  const stickyHeaderIndices: number[] = [];
+
+  diffs.forEach((diff, fileIndex) => {
+    const accordionId = `diff:${scope}:${diff.file ?? `file-${fileIndex}`}`;
+    const expanded = expandedDiffId === accordionId;
+    stickyHeaderIndices.push(rows.length);
+    rows.push({ type: 'file', key: `${accordionId}:header:${fileIndex}`, accordionId, diff, expanded });
+    if (!expanded) return;
+    const displayRows = buildDiffDisplayRows(diff.patch || '');
+    if (displayRows.length === 0) {
+      rows.push({ type: 'empty', key: `${accordionId}:empty`, messageKey: diff.patch ? 'chat:cards.noLineChanges' : 'chat:cards.previewUnavailable' });
+      return;
+    }
+    displayRows.forEach((row, index) => {
+      rows.push(row.type === 'collapsed'
+        ? { type: 'collapsed', key: `${accordionId}:collapsed:${index}`, block: row.block }
+        : { type: 'line', key: `${accordionId}:line:${index}`, line: row.line });
+    });
+  });
+
+  return { rows, stickyHeaderIndices };
 }

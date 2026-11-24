@@ -61,6 +61,7 @@ export function ActivityDiffCard({ diff, fontSize, palette }: { diff: Transcript
               );
             }
 
+            // Selectable text swallows Android drags inside a list (react-native#33419).
             return block.lines.map((line, index) => {
               const tone = getDiffPalette(line.kind, palette);
               return (
@@ -69,7 +70,7 @@ export function ActivityDiffCard({ diff, fontSize, palette }: { diff: Transcript
                   style={[styles.lineRow, { backgroundColor: tone.backgroundColor, borderLeftColor: tone.accentColor }]}>
                   <Text className={cn(stylesClasses.lineNumber, "text-muted-foreground")} variant="label">{line.rightNumber ?? line.leftNumber ?? ''}</Text>
                   <Text style={[styles.marker, { color: tone.accentColor || palette.muted }]}>{line.kind === 'added' ? '+' : line.kind === 'removed' ? '-' : ' '}</Text>
-                  <Text selectable className={cn(stylesClasses.lineText)} style={[styles.code, { color: palette.muted, fontSize: Math.max(11, fontSize - 2) }]}>{line.text || ' '}</Text>
+                  <Text className={cn(stylesClasses.lineText)} style={[styles.code, { color: palette.muted, fontSize: Math.max(11, fontSize - 2) }]}>{line.text || ' '}</Text>
                 </View>
               );
             });

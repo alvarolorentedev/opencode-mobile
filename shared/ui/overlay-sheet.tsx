@@ -65,7 +65,10 @@ export function OverlaySheet({ visible, title, onClose, children, headerAction, 
         {dismissible ? <Pressable accessibilityLabel={t('common:actions.closeWithName', { title })} onPress={onClose} style={StyleSheet.absoluteFill}>
           <Animated.View style={[styles.backdrop, { backgroundColor: palette.backdrop }, backdropStyle]} />
         </Pressable> : null}
-        <DialogFrame asChild aria-describedby={undefined}><Animated.View
+        {/* rn-primitives' Dialog.Content claims every touch start to protect an
+            Overlay parent. Our backdrop is a sibling, so that claim only steals
+            Android drags from lists inside the sheet. */}
+        <DialogFrame asChild aria-describedby={undefined} onStartShouldSetResponder={() => false}><Animated.View
           testID={testID ? `${testID}-sheet` : undefined}
           accessibilityLabel={title}
           accessibilityViewIsModal

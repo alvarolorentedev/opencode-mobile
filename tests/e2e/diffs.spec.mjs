@@ -39,6 +39,7 @@ test('files changed follows the latest user turn', async ({ page, request }) => 
 
   const overlay = page.getByTestId('changes-overlay');
   const sheet = overlay.getByTestId('changes-overlay-sheet');
+  const list = overlay.getByTestId('changes-diff-list');
   const file = overlay.getByRole('button', { name: /src\/feature\.ts/ });
   const firstLine = overlay.getByText('Added line 1', { exact: true });
   const lastLine = overlay.getByText('Added line 75', { exact: true });
@@ -48,7 +49,9 @@ test('files changed follows the latest user turn', async ({ page, request }) => 
     return Boolean(box && viewport && box.y >= viewport.y && box.y + box.height <= viewport.y + viewport.height);
   };
   const scrollIntoSheet = async (locator) => {
-    for (let attempt = 0; attempt < 12 && !(await inSheet(locator)); attempt += 1) {
+    for (let attempt = 0; attempt < 20 && !(await inSheet(locator)); attempt += 1) {
+      // Virtualized lines are not mounted until the scroll window reaches them.
+      await list.hover();
       await page.mouse.wheel(0, 600);
     }
   };

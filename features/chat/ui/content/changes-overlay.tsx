@@ -6,10 +6,11 @@ import { Icon } from '@/shared/ui/icon';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Pressable, SectionList, View } from 'react-native';
+import { Pressable, ScrollView, View } from 'react-native';
 
-import { ChangedFilesCard, SessionDiffCollapsedRow, SessionDiffHeader, SessionDiffLineRow } from '@/features/chat/ui/chat-cards';
-import { buildDiffDisplayRows, type CollapsedDiffBlock, type DiffLine } from '@/features/chat/ui/chat-diff';
+import { ChangedFilesCard } from '@/features/chat/ui/chat-cards';
+import { buildDiffList } from '@/features/chat/ui/chat-diff';
+import { DiffFileList } from '@/features/chat/ui/content/diff-file-list';
 import { styles, stylesClasses } from '@/features/chat/ui/chat-view-styles';
 import { Colors } from '@/shared/ui/theme/theme';
 import type { TranscriptEntry } from '@/shared/presentation/format';
@@ -20,18 +21,6 @@ import type { DiffTurn } from '@/features/chat/model/types';
 type Palette = typeof Colors.light;
 type Connection = { status: 'idle' | 'connecting' | 'connected' | 'error'; message: string };
 type DiffDetail = Extract<TranscriptEntry['details'][number], { kind: 'patch' }>;
-
-type DiffLineRow =
-  | { type: 'line'; key: string; line: DiffLine }
-  | { type: 'collapsed'; key: string; block: CollapsedDiffBlock };
-
-type DiffSection = {
-  key: string;
-  diff: FileDiff;
-  accordionId: string;
-  expanded: boolean;
-  data: DiffLineRow[];
-};
 
 const DIFF_SCOPE_OPTIONS: { value: DiffScope; labelKey: string }[] = [
   { value: 'turn', labelKey: 'chat:diff.turn' },
@@ -107,16 +96,10 @@ export function ChangesOverlay({
     }
   }, [changesVisible, currentSessionId]);
 
-  const sections = useMemo<DiffSection[]>(() => currentDiffs.map((diff) => {
-    const accordionId = `diff:${currentDiffScope}:${diff.file}`;
-    const expanded = expandedDiffId === accordionId;
-    const data: DiffLineRow[] = expanded
-      ? buildDiffDisplayRows(diff.patch || '').map((row, index) => row.type === 'collapsed'
-        ? { type: 'collapsed', key: `${accordionId}:collapsed:${index}`, block: row.block }
-        : { type: 'line', key: `${accordionId}:line:${index}`, line: row.line })
-      : [];
-    return { key: accordionId, diff, accordionId, expanded, data };
-  }), [currentDiffScope, currentDiffs, expandedDiffId]);
+  const diffList = useMemo(
+    () => buildDiffList(currentDiffs, currentDiffScope, expandedDiffId),
+    [currentDiffScope, currentDiffs, expandedDiffId],
+  );
 
   if (!changesVisible && expanded) setExpanded(false);
 
@@ -132,40 +115,22 @@ export function ChangesOverlay({
         onToggleExpanded={() => setExpanded((value) => !value)}
         scrollable={false}
         headerAction={<Button accessibilityLabel={`${t('chat:diff.changeSourceLabel', { source: scopeLabel })}. ${scopeTitle}${isTurnScope ? ` · ${selectedTurnLabel}` : ''}`} onPress={() => setDiffSourcesVisible(true)} variant="ghost" size="icon"><Icon name={"dots-vertical"} size={24} color={palette.text} /></Button>}>
-        <SectionList<DiffLineRow, DiffSection>
-          sections={sections}
-          extraData={onExpandDiff}
-          keyExtractor={(row) => row.key}
-          keyboardDismissMode="on-drag"
-          contentContainerStyle={styles.changesList}
-          ListHeaderComponent={
-            <>
-              {connection.status === 'error' ? (
-                <View className={cn(stylesClasses.changesNotice)}>
-                  <Text className={cn("text-foreground")} variant="title">{t('chat:content.connectionIssue')}</Text>
-                  <Text className={cn("text-muted-foreground")} variant="description">{connection.message}</Text>
-                </View>
-              ) : null}
-              {currentDiffs.length === 0 && !(showDiffDetails && changedFiles.length > 0) ? (
-                <Text className={cn(stylesClasses.changesNotice, "text-muted-foreground")} variant="description">{scopeEmptyMessage}</Text>
-              ) : null}
-            </>
-          }
-          ListFooterComponent={showDiffDetails && changedFiles.length > 0 ? <ChangedFilesCard files={changedFiles} /> : undefined}
-          removeClippedSubviews={false}
-          renderItem={({ item }) => item.type === 'collapsed'
-            ? <SessionDiffCollapsedRow block={item.block} />
-            : <SessionDiffLineRow line={item.line} />}
-          renderSectionHeader={({ section }) => (
-            <SessionDiffHeader
-              diff={section.diff}
-              expanded={section.expanded}
-              onPress={() => onExpandDiff(section.expanded ? undefined : section.accordionId)}
-            />
-          )}
-          stickySectionHeadersEnabled
-          style={[styles.scroll, { backgroundColor: palette.background }]}
-        />
+        {connection.status === 'error' ? (
+          <View className={cn(stylesClasses.changesNotice)}>
+            <Text className={cn("text-foreground")} variant="title">{t('chat:content.connectionIssue')}</Text>
+            <Text className={cn("text-muted-foreground")} variant="description">{connection.message}</Text>
+          </View>
+        ) : null}
+        {currentDiffs.length === 0 && !(showDiffDetails && changedFiles.length > 0) ? (
+          <Text className={cn(stylesClasses.changesNotice, "text-muted-foreground")} variant="description">{scopeEmptyMessage}</Text>
+        ) : null}
+        {currentDiffs.length > 0 ? (
+          <DiffFileList rows={diffList.rows} stickyHeaderIndices={diffList.stickyHeaderIndices} onToggleFile={onExpandDiff} />
+        ) : showDiffDetails && changedFiles.length > 0 ? (
+          <ScrollView style={styles.scroll} contentContainerStyle={styles.changesList}>
+            <ChangedFilesCard files={changedFiles} />
+          </ScrollView>
+        ) : null}
       </OverlaySheet>
 
       <OverlaySheet visible={changesVisible && diffSourcesVisible} testID="diff-source-overlay" title={t('chat:diff.sourceTitle')} fitContent onClose={() => setDiffSourcesVisible(false)}>

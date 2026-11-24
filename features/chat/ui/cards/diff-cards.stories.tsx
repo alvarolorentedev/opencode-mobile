@@ -1,7 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import type { FileDiff } from '@/shared/protocol/opencode/types';
-import { View } from 'react-native';
-import { SessionDiffBody, SessionDiffHeader } from './diff-cards';
+import { SessionDiffHeader } from './diff-cards';
 
 const diff: FileDiff = {
   file: 'features/settings/ui/settings-search.ts',
@@ -23,10 +22,4 @@ export const Collapsed: Story = {};
 
 export const Expanded: Story = {
   args: { expanded: true },
-  render: (args) => (
-    <View className="bg-background">
-      <SessionDiffHeader {...args} />
-      <SessionDiffBody diff={args.diff} />
-    </View>
-  ),
 };

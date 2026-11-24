@@ -1,11 +1,10 @@
 import { cn } from '@/shared/ui/cn';
 import { Text } from '@/shared/ui/text';
 import { Icon } from '@/shared/ui/icon';
-import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Pressable, StyleSheet, View } from 'react-native';
 
-import { buildDiffDisplayRows, getDiffPalette, type CollapsedDiffBlock, type DiffLine } from '@/features/chat/ui/chat-diff';
+import { getDiffPalette, type CollapsedDiffBlock, type DiffLine } from '@/features/chat/ui/chat-diff';
 import type { FileDiff } from '@/shared/protocol/opencode/types';
 import { usePalette } from '@/shared/ui/theme/use-palette';
 
@@ -55,24 +54,6 @@ export function SessionDiffCollapsedRow({ block }: { block: CollapsedDiffBlock }
   );
 }
 
-export function SessionDiffBody({ diff }: { diff: FileDiff }) {
-  const { t } = useTranslation();
-  const rows = useMemo(() => buildDiffDisplayRows(diff.patch || ''), [diff.patch]);
-  // A patch that yields no lines is a genuinely empty hunk. No patch at all
-  // means the server reported changes without content the viewer can render.
-  const emptyPreviewKey = diff.patch ? 'chat:cards.noLineChanges' : 'chat:cards.previewUnavailable';
-
-  return (
-    <View className={cn(stylesClasses.diffViewer, "border-b border-border")}>
-      {rows.length === 0 ? <Text className={cn("text-muted-foreground")} variant="label">{t(emptyPreviewKey)}</Text> : rows.map((row, index) => (
-        row.type === 'collapsed'
-          ? <SessionDiffCollapsedRow key={`collapsed-${index}`} block={row.block} />
-          : <SessionDiffLineRow key={`line-${index}-${row.line.leftNumber ?? 'x'}-${row.line.rightNumber ?? 'x'}`} line={row.line} />
-      ))}
-    </View>
-  );
-}
-
 // Filename-only fallback for a turn whose structured diff the server did not
 // provide. It is a file list, not a diff, so it is never rendered as one.
 export function ChangedFilesCard({ files }: { files: string[] }) {
@@ -82,7 +63,7 @@ export function ChangedFilesCard({ files }: { files: string[] }) {
     <View testID="changed-files-card" className={cn("bg-surface border-border")} style={[styles.changedFilesCard]}>
       <Text className={cn("text-foreground")} variant="description">{t('chat:cards.filesChanged')}</Text>
       {files.map((file) => (
-        <Text key={file} selectable className={cn("text-foreground")} style={[styles.code]} variant="label">{file}</Text>
+        <Text key={file} className={cn("text-foreground")} style={[styles.code]} variant="label">{file}</Text>
       ))}
       <Text className={cn("text-muted-foreground")} variant="label">{t('chat:diff.changedFilesNote')}</Text>
     </View>
@@ -107,7 +88,6 @@ const styles = StyleSheet.create({
 const stylesClasses = {
   "diffFileRow": "flex-row items-center gap-2 min-h-target px-3 py-2.5",
   "diffFileName": "flex-1 min-w-0 font-bold",
-  "diffViewer": "w-full py-1",
   "diffCollapsedRow": "rounded-[8px] mx-2 my-1 px-2.5 py-2",
   "diffLineNumber": "w-7.5 text-right",
   "diffLineText": "flex-1 min-w-0"

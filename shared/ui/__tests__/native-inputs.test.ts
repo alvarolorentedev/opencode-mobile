@@ -4,6 +4,7 @@ import { chatComposerProbe } from '../../../tests/helpers/chat-composer-probe';
 import { act, createElement } from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { Content as DialogFrame } from '@rn-primitives/dialog';
 import { ChatPromptInput } from '@/features/chat/ui/chat-prompt-input';
 import { Input } from '@/shared/ui/input';
 import { OverlaySheet } from '@/shared/ui/overlay-sheet';
@@ -72,6 +73,12 @@ describe('keyboard sheet layout', () => {
     expect(flatten(panel.props.style)).toMatchObject({ flexShrink: 1 });
     expect(flatten(panel.props.style).position).toBeUndefined();
     expect(flatten(panel.props.style).flex).toBe(fitContent ? undefined : 1);
+  });
+
+  it('does not claim touch starts from the sheet body', () => {
+    const root = sheet({ visible: true, title: 'Files', testID: 'files', onClose: () => {}, children: 'Content' });
+    const content = findByType(root!, DialogFrame)!;
+    expect(content.props.onStartShouldSetResponder?.()).toBe(false);
   });
 
   it('keeps the safe-area insets when a compact sheet expands', () => {
