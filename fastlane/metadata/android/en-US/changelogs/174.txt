@@ -1,0 +1,2 @@
+- Import a pairing QR code from your photos during the scan flow.
+- Tab headers are now consistent in height across screens.
