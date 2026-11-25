@@ -246,11 +246,20 @@ describe('v2 response mappers', () => {
       description: 'Loaded AGENTS.md',
       metadata: { instruction: { paths: ['/repo/AGENTS.md'] } },
     } as never, 'ses_1');
+    const update = toMessageRecord({
+      id: 'msg_update',
+      type: 'synthetic',
+      sessionID: 'ses_1',
+      time: { created: 3 },
+      text: '<system-update>You are in Plan mode.\n\nDo not modify files.</system-update>',
+    } as never, 'ses_1');
 
     expect(reminder?.parts).toEqual([]);
     expect(toTranscriptEntry(reminder!).text).toBe('');
     expect(instructions?.parts).toEqual([]);
     expect(toTranscriptEntry(instructions!).text).toBe('');
+    expect(update?.parts).toEqual([]);
+    expect(toTranscriptEntry(update!).text).toBe('');
   });
 
   it('shares one inbox read between pending prompts and notices', async () => {
@@ -262,6 +271,7 @@ describe('v2 response mappers', () => {
       { id: 'reminder-1', type: 'synthetic', sessionID: 'session-1', time: { created: 5 }, delivery: 'steer', payload: { text: '<system-reminder>Plan mode.</system-reminder>' } },
       { id: 'instructions-1', type: 'synthetic', sessionID: 'session-1', time: { created: 6 }, delivery: 'steer', payload: { text: 'Instructions from: /repo/AGENTS.md', metadata: { instruction: { paths: ['/repo/AGENTS.md'] } } } },
       { id: 'shell-notice-1', type: 'synthetic', sessionID: 'session-1', time: { created: 7 }, delivery: 'steer', payload: { text: '<shell id="sh_1" state="completed" command="ls">ok</shell>', metadata: { source: 'shell', shellID: 'sh_1', state: 'completed' } } },
+      { id: 'update-1', type: 'synthetic', sessionID: 'session-1', time: { created: 8 }, delivery: 'steer', payload: { text: '<system-update>Plan mode.</system-update>' } },
     ]);
     h.api = { session: { inbox: { list } } };
     const client = buildV2Client({ serverUrl: 'http://test', directory: '/repo', username: '', password: '' } as never);

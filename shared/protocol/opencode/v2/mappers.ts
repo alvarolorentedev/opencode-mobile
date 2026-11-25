@@ -84,12 +84,15 @@ function toToolDetail(messageId: string, sessionID: string, index: number, tool:
   };
 }
 
-// Instruction loads and mode reminders are model-facing prompt context, not
-// transcript content.
-// shortcut: mode reminders carry no metadata, so detection depends on the
-// server's <system-reminder> wrapper; replace with a display flag when exposed.
+// Harness prompt context is one tagged wrapper; its tag name is not a stable
+// contract, the shape is. Instruction loads carry metadata instead.
+// shortcut: prompt context sent as unwrapped plain text would still render;
+// replace with a display flag when exposed.
+const WRAPPER_ONLY = /^<([a-z][a-z0-9:_-]*)(?:\s[^>]*)?>[\s\S]*<\/\1>$/i;
+
 export function isInternalSyntheticNotice(input: { metadata?: Record<string, unknown>; text?: string }) {
-  return Boolean(input.metadata?.instruction) || (input.text ?? '').trimStart().startsWith('<system-reminder>');
+  const text = (input.text ?? '').trim();
+  return Boolean(input.metadata?.instruction) || (text.startsWith('<') && WRAPPER_ONLY.test(text));
 }
 
 // A plugin may post a command report as a user message with its own metadata.
@@ -285,11 +288,6 @@ export function toMessageRecord(message: V2Message, sessionID: string): SessionM
     const record = message as Record<string, unknown>;
     const text = stringField(record.text);
     const metadata = record.metadata as Record<string, unknown> | undefined;
-    if (isInternalSyntheticNotice({ metadata, text })) {
-      // Keep the record in the paginated window so inbox notices still resolve
-      // as delivered, but render nothing.
-      return { info: { ...baseInfo, role: 'assistant', providerID: '', modelID: '' }, parts: [] };
-    }
     const source = syntheticNoticeSource(text, metadata);
     if (source) {
       const description = stringField(record.description);
@@ -299,6 +297,11 @@ export function toMessageRecord(message: V2Message, sessionID: string): SessionM
           ? shellNoticePart(message, sessionID, text, metadata, description)
           : subagentNoticePart(message, sessionID, text, metadata, description)],
       };
+    }
+    if (isInternalSyntheticNotice({ metadata, text })) {
+      // Keep the record in the paginated window so inbox notices still resolve
+      // as delivered, but render nothing.
+      return { info: { ...baseInfo, role: 'assistant', providerID: '', modelID: '' }, parts: [] };
     }
     return {
       info: { ...baseInfo, role: 'assistant', providerID: '', modelID: '', synthetic: true },
