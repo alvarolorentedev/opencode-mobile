@@ -7,7 +7,9 @@ Read the [design system](../../docs/design/design-system.md),
 Keep controls feature-independent; domain preference fields belong to features.
 Reuse source-owned primitives, CVA and `cn()`. `shared/ui/theme/ui-tokens.json` is the sole token
 source. Preserve provenance, accessibility, modal hosts, text scaling and keyboard/Back.
-Keep portal hosts and dismissal mechanics in shared controls. Accept explicit
+Keep portal hosts and dismissal mechanics in shared controls. Size native portal
+panels with flex stretch or `useOverlayWidth`, never percentage classes; web
+keeps the Tailwind widths. Accept explicit
 interaction registration callbacks where a feature needs them. Shared controls
 use only shared dependencies.
 

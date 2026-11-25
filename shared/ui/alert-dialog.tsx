@@ -4,9 +4,10 @@ import { buttonTextVariants, buttonVariants } from '@/shared/ui/button';
 import { NativeOnlyAnimatedView } from '@/shared/ui/native-only-animated-view';
 import { TextClassContext } from '@/shared/ui/text';
 import { cn } from '@/shared/ui/cn';
+import { useOverlayWidth } from '@/shared/ui/hooks/use-overlay-width';
 import * as AlertDialogPrimitive from '@rn-primitives/alert-dialog';
 import * as React from 'react';
-import { Platform, View, type ViewProps } from 'react-native';
+import { Platform, StyleSheet, View, type ViewProps } from 'react-native';
 import { FadeIn, FadeOut, ReduceMotion } from 'react-native-reanimated';
 import { FullWindowOverlay as RNFullWindowOverlay } from 'react-native-screens';
 
@@ -21,6 +22,7 @@ const FullWindowOverlay = Platform.OS === 'ios' ? RNFullWindowOverlay : React.Fr
 function AlertDialogOverlay({
   className,
   children,
+  style,
   ...props
 }: Omit<React.ComponentProps<typeof AlertDialogPrimitive.Overlay>, 'asChild'> & {
     children?: React.ReactNode;
@@ -36,6 +38,7 @@ function AlertDialogOverlay({
           className
         )}
         {...props}
+        style={[Platform.select({ native: StyleSheet.absoluteFill }), style]}
         asChild={Platform.OS !== 'web'}>
         <NativeOnlyAnimatedView
           entering={FadeIn.duration(200).delay(50).reduceMotion(ReduceMotion.System)}
@@ -51,6 +54,7 @@ function AlertDialogOverlay({
 function AlertDialogContent({
   className,
   portalHost,
+  style,
   ...props
 }: React.ComponentProps<typeof AlertDialogPrimitive.Content> & {
     portalHost?: string;
@@ -58,6 +62,8 @@ function AlertDialogContent({
   const host = usePortalHost();
   const { open, onOpenChange } = AlertDialogPrimitive.useRootContext();
   useOverlayDismiss(open, () => onOpenChange(false));
+  // Native panels need an explicit width: a percentage collapses in the portal overlay.
+  const width = useOverlayWidth(512);
   const content = (
       <AlertDialogOverlay>
         <AlertDialogPrimitive.Content
@@ -68,6 +74,7 @@ function AlertDialogContent({
             }),
             className
           )}
+          style={Platform.OS === 'web' ? style : [{ width }, style]}
           {...props}
         />
       </AlertDialogOverlay>

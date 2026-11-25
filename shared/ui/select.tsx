@@ -1,5 +1,6 @@
 import { useOverlayDismiss, usePortalHost } from '@/shared/ui/portal';
 // Source: founded-labs/react-native-reusables @ 385834c2196f8a303cbc9057d1ac768f3bde0a3b (Uniwind, MIT).
+import { useOverlayWidth } from '@/shared/ui/hooks/use-overlay-width';
 import { Icon } from '@/shared/ui/icon';
 import { NativeOnlyAnimatedView } from '@/shared/ui/native-only-animated-view';
 import { Text, TextClassContext } from '@/shared/ui/text';
@@ -9,7 +10,6 @@ import * as SelectPrimitive from '@rn-primitives/select';
 import * as React from 'react';
 import { Platform, ScrollView, StyleSheet, useWindowDimensions, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Spacing } from '@/shared/ui/theme/design-tokens';
 import { getLanguageDirection } from '@/shared/i18n/languages';
 import { FadeIn, FadeOut, ReduceMotion } from 'react-native-reanimated';
 import { FullWindowOverlay as RNFullWindowOverlay } from 'react-native-screens';
@@ -87,6 +87,7 @@ function SelectContent({
   const { open, onOpenChange, triggerPosition } = SelectPrimitive.useRootContext();
   const dimensions = useWindowDimensions();
   const safeArea = useSafeAreaInsets();
+  const availableWidth = useOverlayWidth();
   const { i18n } = useTranslation();
   const direction = getLanguageDirection(i18n.resolvedLanguage || i18n.language);
   useOverlayDismiss(open, () => onOpenChange(false));
@@ -125,7 +126,7 @@ function SelectContent({
                 position={position}
                 insets={Platform.OS === 'web' ? undefined : safeArea}
                 style={Platform.OS === 'web' ? style : {
-                  width: Math.min(triggerPosition?.width ?? dimensions.width, dimensions.width - safeArea.left - safeArea.right - Spacing.lg),
+                  width: Math.min(triggerPosition?.width ?? dimensions.width, availableWidth),
                   ...style,
                 }}
                 {...props}>
