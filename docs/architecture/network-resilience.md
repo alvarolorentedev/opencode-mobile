@@ -35,8 +35,11 @@ normalized device status into the app store. Diagnostics selects it alongside
 retry and stream status from the owning connection manager.
 
 Offline pauses SSE retries and polling. Online cancels a pending reconnect
-timer, reopens the stream, and runs a critical reconcile. Link-type changes do
-not overwrite the selected connection or clear server-derived caches.
+timer, reopens the stream, and runs a critical reconcile. The safety poll also
+pauses while the app is backgrounded, because foreground return runs the
+authoritative reconcile; SSE stays connected so background alerts and widget
+snapshots keep their events. Link-type changes do not overwrite the selected
+connection or clear server-derived caches.
 
 ## Request policy
 
@@ -143,6 +146,9 @@ and discards dependent reads when a project binding is cleared.
   call does not restart a healthy stream.
 - Foregrounding still performs the authoritative reconcile and cycles a stream
   that was backgrounded for 15 s or more.
+- While backgrounded, project events are not dispatched into Query or transcript
+  reads and reconnect retries are parked; the stream stays connected for the
+  alert and widget observers, and foreground return reconciles and retries.
 - Auth/entitlement failures stop retrying and surface recovery, as before.
 
 Polling is state-driven:

@@ -8,6 +8,7 @@ import { runInNewContext } from 'node:vm';
 import { transformSync } from '@babel/core';
 import type { SessionStatus } from '@/shared/protocol/opencode/types';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { AppState } from 'react-native';
 import { controlledClock, deferred, settleReact } from '../../../tests/helpers/controlled-clock';
 import { renderHook } from '../../../tests/helpers/render-hook';
 import { useWidgetState } from '@/features/widgets/state/use-widget-state';
@@ -39,6 +40,7 @@ vi.mock('expo-router', () => ({ usePathname: () => '/' }));
 vi.mock('expo-constants', () => ({ default: {} }));
 vi.mock('expo-localization', () => ({ getLocales: () => [{ languageTag: 'en' }] }));
 vi.mock('react-native', () => ({ Platform: { OS: 'android' }, AppState: {
+  currentState: 'active',
   addEventListener: (_: string, callback: (state: string) => void) => {
     h.resume = callback;
     return { remove() { h.resume = undefined; } };
@@ -258,6 +260,13 @@ describe('widget provider lifecycle', () => {
     const count = read.mock.calls.length;
     act(() => { runtime.value.handleWidgetEvent({ type: 'session.text.delta', location: { directory: '/other' } } as OpencodeEvent); });
     await clock.advance(1500); await runtime.settle(); expect(read).toHaveBeenCalledTimes(count + 1);
+    // Background streaming does not redraw per token; resuming repaints from the
+    // full refresh instead.
+    const backgrounded = read.mock.calls.length;
+    (AppState as { currentState: string }).currentState = 'background';
+    act(() => { runtime.value.handleWidgetEvent({ type: 'session.text.delta', location: { directory: '/other' } } as OpencodeEvent); });
+    await clock.advance(1500); await runtime.settle(); expect(read).toHaveBeenCalledTimes(backgrounded);
+    (AppState as { currentState: string }).currentState = 'active';
     await refresh(); await runtime.settle();
     act(() => { h.resume?.('active'); }); await runtime.settle(); expect(read.mock.calls.length).toBe(count + 3);
     runtime.unmount();

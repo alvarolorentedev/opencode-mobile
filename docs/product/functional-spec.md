@@ -929,8 +929,10 @@ Parity implication:
   tasks. It shows the active count and selected task's tool, thinking, retry,
   queued, or needs-input state. Subagents count as their root task. Notification
   taps open the owning connection, project, and session.
-- While work is monitored, an Android foreground service keeps provider SSE and
-  polling alive when the app is backgrounded or locked. Android 16+ is asked to
+- While work is monitored, an Android foreground service keeps the provider
+  stream connected and the task-activity check running when the app is
+  backgrounded or locked. The UI safety poll is paused while backgrounded and
+  resumes on foreground return. Android 16+ is asked to
   promote the notification to a status-bar chip; OS settings and device support
   determine whether it appears. Older devices use a normal ongoing notification.
 - Once all tasks finish, monitoring stops and the same notification becomes a

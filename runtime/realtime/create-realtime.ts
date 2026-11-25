@@ -37,6 +37,8 @@ export function createRealtime(foreground: Foreground, onFatalError: Parameters<
   let transport: Transport | undefined;
   let stopTransport: (() => void) | undefined;
   const notifyProjects = () => { for (const listener of projectListeners) listener(); };
+  // Polling is off-screen battery use; foreground return reconciles anyway.
+  const stopForeground = foreground.subscribe(() => { for (const scope of scopes) scope.syncPolling(); });
 
   function publish(next: StreamStatus) {
     if (status === next) return;
@@ -62,7 +64,9 @@ export function createRealtime(foreground: Foreground, onFatalError: Parameters<
       stopPoll?.();
       stopPoll = undefined;
       const streamConnected = status === 'connected';
-      if (!input?.projectPath || !transport || !shouldPoll(streamConnected, input.busy)) return;
+      // Backgrounded there is no UI to keep current, and foreground return runs
+      // the authoritative reconcile. Skip the safety poll off-screen.
+      if (!foreground.isActive() || !input?.projectPath || !transport || !shouldPoll(streamConnected, input.busy)) return;
       const constrained = input.constrained ?? false;
       let failures = 0;
       let stopped = false;
@@ -135,6 +139,10 @@ export function createRealtime(foreground: Foreground, onFatalError: Parameters<
       getStatus: () => status,
       isBusy: () => [...scopes].some((scope) => scope.isBusy()),
       dispatch(event) {
+        // Off-screen there is no visible transcript or list to keep current,
+        // and foreground return runs the authoritative reconcile. Raw connection
+        // observers (alert and widget hooks) still see the shared stream.
+        if (!foreground.isActive()) return;
         onEvent?.(event);
         for (const scope of scopes) scope.dispatch(event);
       },
@@ -171,6 +179,7 @@ export function createRealtime(foreground: Foreground, onFatalError: Parameters<
       }
     },
     dispose() {
+      stopForeground();
       setTransport();
       for (const scope of scopes) scope.dispose();
       listeners.clear();

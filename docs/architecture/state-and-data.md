@@ -1384,7 +1384,10 @@ check persisted preferences so a newer privacy choice overrides an older queued
 snapshot; unreadable preferences hide excerpts. Widget locales do not mutate app
 language. Legacy title/
 status snapshots remain readable. Headless rendering has no API access. Live
-updates stop when Android suspends JS; timestamps explicitly represent cached data.
+updates stop when Android suspends JS; timestamps explicitly represent cached
+data. Backgrounded per-token stream events do not redraw the widget; completion
+and interaction events still do, and foreground return repaints from a full
+refresh.
 
 ## Onboarding preference selections
 

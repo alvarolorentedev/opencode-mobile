@@ -95,7 +95,9 @@ export function startRealtimeTransport({
       stableSince = 0;
       await new Promise<void>((resolve) => {
         resumeRetry = resolve;
-        retryTimer = setTimeout(wake, jitterRetryDelay(retryDelay));
+        // Backgrounded there is nothing to recover for; foreground return
+        // aborts the wait and starts a fresh attempt immediately.
+        if (foreground.isActive()) retryTimer = setTimeout(wake, jitterRetryDelay(retryDelay));
       });
       if (restart) {
         restart = false;
@@ -106,6 +108,10 @@ export function startRealtimeTransport({
   const unsubscribe = foreground.subscribe((active) => {
     if (!active) {
       if (!backgroundedAt) backgroundedAt = Date.now();
+      // An off-screen retry only wakes the radio. Foreground return restarts
+      // the stream through the cycle below.
+      clearTimeout(retryTimer);
+      retryTimer = undefined;
       return;
     }
     const backgroundedFor = backgroundedAt ? Date.now() - backgroundedAt : 0;

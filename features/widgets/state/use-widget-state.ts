@@ -172,8 +172,11 @@ export function useWidgetState(input: Input) {
     else seed.current = true;
     eventRevision.current++;
     clearTimeout(eventTimer.current);
+    // Streaming updates only redraw the widget; off-screen that read is wasted
+    // because resuming repaints from a full refresh. Status and interaction
+    // events still reach the widget while backgrounded.
     if (status || /^(permission\.|question\.|form\.)/.test(type)) void refreshRef.current();
-    else eventTimer.current = setTimeout(() => { void refreshRef.current(); }, 1500);
+    else if (AppState.currentState === 'active') eventTimer.current = setTimeout(() => { void refreshRef.current(); }, 1500);
   }, []);
   return { refreshWidgets, handleWidgetEvent, busy };
 }

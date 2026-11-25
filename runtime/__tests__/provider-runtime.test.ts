@@ -414,7 +414,7 @@ wake(null); await settleReact(); realtime.dispose(); assert.equal(realtimeClock.
 // and a reconnect reconcile is queued behind an in-flight safety poll.
 {
 
-  let subscriptions = 0, wake: any, sessions = 0, pending = 0, heldSessions: any;
+  let subscriptions = 0, wake: any, sessions = 0, pending = 0, dispatched = 0, heldSessions: any;
   const messageModes: any[] = [];
   const listeners = new Set<any>();
   const client = { api: { event: { async subscribe({ signal }: any) {
@@ -431,7 +431,7 @@ wake(null); await settleReact(); realtime.dispose(); assert.equal(realtimeClock.
   const socket = realtimeProbe(appState);
   const inputs = {
     projectPath: '/repo', busy: false, currentSessionId: 's',
-    onEvent: () => {}, refreshSessions: async () => { sessions++; await heldSessions?.promise; },
+    onEvent: () => { dispatched++; }, refreshSessions: async () => { sessions++; await heldSessions?.promise; },
     refreshPendingInteractions: async () => { pending++; },
     refreshMessages: async (_id: any, _silent: any, options: any) => { messageModes.push(options?.mode); },
     refreshSessionDiff: async () => {}, refreshSessionTodos: async () => {},
@@ -475,6 +475,43 @@ wake(null); await settleReact(); realtime.dispose(); assert.equal(realtimeClock.
   await settleReact();
   assert.equal(subscriptions, 4, 'a short background return keeps the live stream');
   assert.ok(sessions > sessionsBeforeForeground, 'a foreground return re-asserts sessions without a restart');
+  // Off-screen there is no UI to keep current, so the safety poll must not keep
+  // waking the radio; foreground return resumes it after the authoritative pass.
+  assert.equal(realtimeClock.countTimers(10000), 1, 'a busy foreground workspace arms one safety poll');
+  appState.currentState = 'background';
+  [...listeners].forEach((listener: any) => listener('background'));
+  await settleReact();
+  assert.equal(realtimeClock.countTimers(10000), 0, 'backgrounding stops the safety poll');
+  const sessionsPaused = sessions;
+  await realtimeClock.advance(5000); await settleReact();
+  assert.equal(sessions, sessionsPaused, 'a backgrounded workspace does not poll');
+  appState.currentState = 'active';
+  [...listeners].forEach((listener: any) => listener('active'));
+  await settleReact();
+  assert.equal(subscriptions, 4, 'the short return keeps the live stream');
+  assert.equal(realtimeClock.countTimers(10000), 1, 'foreground return resumes the safety poll');
+  // Backgrounded events must not drive project reads; raw connection observers
+  // (alerts, widgets) still consume the shared stream.
+  const dispatchedBefore = dispatched;
+  appState.currentState = 'background';
+  [...listeners].forEach((listener: any) => listener('background'));
+  wake({ location: { directory: '/repo' }, type: 'session.updated' }); await settleReact();
+  assert.equal(dispatched, dispatchedBefore, 'a backgrounded workspace skips project event dispatch');
+  appState.currentState = 'active';
+  [...listeners].forEach((listener: any) => listener('active'));
+  wake({ location: { directory: '/repo' }, type: 'session.updated' }); await settleReact();
+  assert.equal(dispatched, dispatchedBefore + 1, 'foreground events resume project dispatch');
+  // A stream that dies off-screen waits for foreground instead of retrying.
+  appState.currentState = 'background';
+  [...listeners].forEach((listener: any) => listener('background'));
+  await settleReact();
+  wake(null); await settleReact();
+  assert.equal(socket.getStatus(), 'error');
+  assert.equal(realtimeClock.countTimers(1000), 0, 'a backgrounded reconnect waits for foreground');
+  appState.currentState = 'active';
+  [...listeners].forEach((listener: any) => listener('active'));
+  await settleReact();
+  assert.equal(subscriptions, 5, 'foreground return restarts the parked stream');
   socket.dispose();
 }
 

@@ -93,7 +93,8 @@ describe('connection manager', () => {
     stopConnection?.();
     manager.dispose();
     await vi.advanceTimersByTimeAsync(0);
-    expect(removeForegroundListener).toHaveBeenCalledTimes(3);
+    // Transport, realtime polling and both renewal subscriptions are released.
+    expect(removeForegroundListener).toHaveBeenCalledTimes(4);
     expect(cache.getQueryData(['opencode', 'machine', getConnectionScope(rotated), 1, 'v2', 'sessions', 'catalog']))
       .toEqual({ sessions: [], statuses: {} });
     cache.clear();
