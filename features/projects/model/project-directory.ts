@@ -7,10 +7,18 @@ function isWindowsDirectory(value: string) {
 export function parentDirectory(value: string) {
   const normalized = value.replace(/\\/g, '/').replace(/\/+$/, '');
   if (!normalized) return value.startsWith('/') ? '/' : value;
+  if (/^[a-z]:$/i.test(normalized)) return `${normalized}/`;
   const index = normalized.lastIndexOf('/');
   if (index <= 0) return normalized.startsWith('/') ? '/' : normalized;
   const parent = normalized.slice(0, index);
   return /^[a-z]:$/i.test(parent) ? `${parent}/` : parent;
+}
+
+// The top of the server filesystem for a path, so add-project browsing starts
+// outside any project. Windows drive paths keep their drive root.
+export function rootDirectory(value: string) {
+  const drive = /^([a-z]:)[\\/]/i.exec(value);
+  return drive ? `${drive[1]}/` : '/';
 }
 
 export function childDirectory(root: string, child: string) {

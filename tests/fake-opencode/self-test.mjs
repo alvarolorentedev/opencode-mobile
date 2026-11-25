@@ -390,6 +390,8 @@ try {
   }
   assert((await fetch(`${v2Origin}/api/fs/list`)).status === 400, 'V2 file listing requires location');
   const fileScope = { location: { directory: v2Directory } };
+  const filesystemRootListing = await v2Api.file.list({ ...fileScope, path: '/' });
+  assert(filesystemRootListing.data.some((entry) => entry.name === 'workspace' && entry.type === 'directory'), 'V2 absolute listings must support the filesystem root');
   const browsedDirectory = '/workspace/browse-only';
   const rootListing = await v2Api.file.list({ ...fileScope, path: '/workspace' });
   assert(rootListing.data.some((entry) => entry.name === 'browse-only' && entry.type === 'directory'), 'V2 absolute listings must expose folders outside the location');

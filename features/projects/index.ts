@@ -3,6 +3,7 @@ export type { ProjectFilesContextValue } from './model/types';
 export { ProjectOptions } from './ui/project-options';
 export { ProjectContextPicker } from './ui/project-context-picker';
 export { ProjectDirectoryPicker } from './ui/project-directory-picker';
+export { rootDirectory } from './model/project-directory';
 export { ProjectPicker } from './ui/project-picker';
 export { ProjectPickerButton } from './ui/project-picker';
 export type { ProjectsContextValue } from './model/types';

@@ -810,10 +810,12 @@ from the device-local "Archived on this device" rows. Restoring resolves the
 archived directory with `location.get`, then invalidates the shared `projects`
 query resource so both the normal and archived lists reconcile.
 
-Add-project folder browsing keeps the add session's starting location and lists
-absolute folder paths. Visiting a folder is a read, not a project boot, so the
-browser cannot add unintended projects to the server catalog; only the path
-confirmed with the checkmark is resolved through `location.get`.
+Add-project folder browsing starts at the server filesystem root on V2 (the
+active project on V1 compatibility) and keeps one stable existing-project
+location for the add session while listing absolute folder paths. Visiting a
+folder is a read, not a project boot, so the browser cannot add unintended
+projects to the server catalog; only the path confirmed with the checkmark is
+resolved through `location.get`.
 
 Workspace runtimes mount on demand for the focused project (plus the retained
 placeholder that boots the connection). Switching projects keeps the previous

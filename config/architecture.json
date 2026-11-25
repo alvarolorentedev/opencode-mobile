@@ -136,6 +136,7 @@
       "ProjectContextPicker",
       "ProjectsContextValue",
       "ProjectsScreen",
+      "rootDirectory",
       "useProjectCheckouts",
       "useWorkspaceProjects",
       "WorktreeCatalog"

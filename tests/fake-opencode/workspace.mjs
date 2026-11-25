@@ -14,6 +14,10 @@ export function filesForDirectory(state, directory) {
 // Browse listings must not boot a project. Absolute paths are resolved here
 // without touching the project catalog, matching the V2 fs.list contract.
 export function filesForBrowsing(state, directory) {
+  if (directory === '/') {
+    const top = state.rootPath.split('/').filter(Boolean)[0];
+    return top ? { [`${top}/README.md`]: `# ${top}\n` } : undefined;
+  }
   if (!directory || (directory !== state.rootPath && !directory.startsWith(`${state.rootPath}/`))) return undefined;
   if (directory === state.rootPath) {
     const names = new Set();

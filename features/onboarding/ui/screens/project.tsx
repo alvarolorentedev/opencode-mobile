@@ -10,7 +10,7 @@ import { View } from 'react-native';
 
 import { useOnboardingNavigation } from '@/features/onboarding/ui/use-onboarding-navigation';
 import { OnboardingStep } from '@/features/onboarding/ui/onboarding-step';
-import { ProjectDirectoryPicker, ProjectOptions, useWorkspaceProjects } from '@/features/projects/index';
+import { ProjectDirectoryPicker, ProjectOptions, rootDirectory, useWorkspaceProjects } from '@/features/projects/index';
 
 import { useProjects } from '@/features/projects/context';
 import { useWorkspaces } from '@/runtime/workspace';
@@ -31,14 +31,19 @@ export default function OnboardingProjectScreen() {
   const registry = useWorkspaces();
   const { groups, listDirectories } = useWorkspaceProjects();
   const connectionId = registry.focus?.connectionId ?? groups[0]?.id;
-  const startPath = activeProjectPath || projects[0]?.path;
+  const projectStartPath = activeProjectPath || projects[0]?.path;
+  // V2 starts at the server filesystem root; V1 cannot list outside its location.
+  const startPath = groups.find((group) => group.id === connectionId)?.contract === 'v1'
+    ? projectStartPath
+    : rootDirectory(projectStartPath ?? '');
+  const addBasePath = projects[0]?.path || activeProjectPath;
 
   const [adding, setAdding] = useState(false);
   const [query, setQuery] = useState('');
   const [addError, setAddError] = useState<string>();
   const [isAdding, setIsAdding] = useState(false);
-  // Keep one location for the add session; the first listed path seeds it when
-  // the server has no projects yet.
+  // Keep one location for the add session on an existing project even when
+  // browsing starts at the filesystem root.
   const browseBase = useRef({ connectionId: '', path: '' });
 
   const activeProject = projects.find((project) => project.path === activeProjectPath);
@@ -109,8 +114,7 @@ export default function OnboardingProjectScreen() {
         <View className={cn(stylesClasses.addForm, "border-border")}>
           {connectionId ? <ProjectDirectoryPicker startPath={startPath ?? ''} testID="onboarding-project-directory-picker"
             loadDirectories={(path, signal) => {
-              if (browseBase.current.connectionId !== connectionId) browseBase.current = { connectionId, path: '' };
-              browseBase.current.path ||= path;
+              if (browseBase.current.connectionId !== connectionId) browseBase.current = { connectionId, path: addBasePath ?? '' };
               return listDirectories(connectionId, browseBase.current.path, path, signal);
             }}
             onConfirm={(path) => void submitAdd(path)}

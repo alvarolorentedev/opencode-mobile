@@ -16,6 +16,7 @@ import { splitHiddenProjects } from '@/features/projects/model/hidden-projects';
 import { ProjectOptions } from '@/features/projects/ui/project-options';
 import { ArchivedProjectsSection } from '@/features/projects/ui/archived-projects-section';
 import { ProjectDirectoryPicker } from '@/features/projects/ui/project-directory-picker';
+import { rootDirectory } from '@/features/projects/model/project-directory';
 import type { WorkspaceTarget } from '@/shared/contracts/workspace';
 import { Switch } from '@/shared/ui/switch';
 import { ListRow } from '@/shared/ui/list-row';
@@ -43,8 +44,8 @@ export function ProjectPicker({ visible, onClose, activePath, onSelected, testID
   const registry = useWorkspaces();
   const palette = usePalette();
   const { groups, add, listDirectories } = useWorkspaceProjects();
-  // One stable location per add session. The first listed path seeds it when
-  // no project exists yet, so later navigation stays on the same location.
+  // One stable location per add session. It stays on an existing project even
+  // when browsing starts at the filesystem root, so visiting folders is a read.
   const browseBase = useRef({ connectionId: '', path: '' });
   const multipleServers = groups.length > 1;
   const [server, setServer] = useState('');
@@ -58,7 +59,11 @@ export function ProjectPicker({ visible, onClose, activePath, onSelected, testID
     ? registry.focus?.connectionId ?? ''
     : groups[0]?.id ?? '';
   const addTarget = multipleServers ? addServer : groups[0]?.id;
-  const startPath = activePath || groups.find((group) => group.id === addTarget)?.projects[0]?.path;
+  const addGroup = groups.find((group) => group.id === addTarget);
+  const projectStartPath = activePath || addGroup?.projects[0]?.path;
+  // V2 starts at the server filesystem root; V1 cannot list outside its location.
+  const startPath = addGroup?.contract === 'v1' ? projectStartPath : rootDirectory(projectStartPath ?? '');
+  const addBasePath = addGroup?.projects[0]?.path || activePath;
   const close = () => { setAdding(false); setShowArchived(false); setError(undefined); onClose(); };
   const visibleGroups = groups.filter((group) => !multipleServers || !server || server === group.id);
   // Device-local archive works on every contract; the server-archived read is V2-only.
@@ -81,8 +86,7 @@ export function ProjectPicker({ visible, onClose, activePath, onSelected, testID
       {multipleServers ? <WorkspaceSelect title={t('common:servers.server')} value={addServer} options={groups.map((group) => ({ value: group.id, label: group.name }))} onChange={setAddServer} /> : null}
       {addTarget ? <ProjectDirectoryPicker key={`${addTarget}:${startPath}`} startPath={startPath ?? ''} testID="project-directory-picker"
         loadDirectories={(path, signal) => {
-          if (browseBase.current.connectionId !== addTarget) browseBase.current = { connectionId: addTarget, path: '' };
-          browseBase.current.path ||= path;
+          if (browseBase.current.connectionId !== addTarget) browseBase.current = { connectionId: addTarget, path: addBasePath ?? '' };
           return listDirectories(addTarget, browseBase.current.path, path, signal);
         }}
         onConfirm={(path) => {

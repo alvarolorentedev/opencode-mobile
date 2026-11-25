@@ -44,7 +44,7 @@ Responsibility:
 
 - browse-first server folder picker shared by the project overlay and the onboarding project step
 - pinned editable path row with Up, a checkmark add action, and direct child folders
-- reads with the connection-scoped `file.list` against one stable add-session location and absolute folder paths, so browsing does not register visited folders as projects; an unlistable folder keeps the typed path usable
+- starts at the server filesystem root on V2 (the active project on V1 compatibility) and reads with the connection-scoped `file.list` against one stable add-session location and absolute folder paths, so browsing does not register visited folders as projects; an unlistable folder keeps the typed path usable
 
 ### `features/onboarding/model/onboarding-state.ts`
 

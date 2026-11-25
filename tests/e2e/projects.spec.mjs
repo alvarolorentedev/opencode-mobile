@@ -341,6 +341,15 @@ for (const contract of ['v1', 'v2']) {
       await picker.getByTestId('project-add-button').click();
       // The add form starts on the server folder browser.
       await expect(picker.getByTestId('project-directory-picker')).toBeVisible();
+      if (contract === 'v2') {
+        // V2 starts at the server filesystem root.
+        await expect(picker.getByTestId('project-directory-path')).toHaveValue('/');
+        await expect(picker.getByTestId('project-directory-entry-workspace')).toBeVisible();
+        await picker.getByTestId('project-directory-entry-workspace').click();
+        await expect(picker.getByTestId('project-directory-path')).toHaveValue('/workspace');
+        await picker.getByTestId('project-directory-entry-demo-project').click();
+        await expect(picker.getByTestId('project-directory-path')).toHaveValue('/workspace/demo-project');
+      }
       await expect(picker.getByTestId('project-directory-entry-src')).toBeVisible();
       await picker.getByTestId('project-directory-entry-src').click();
       await expect(picker.getByTestId('project-directory-path')).toHaveValue('/workspace/demo-project/src');
