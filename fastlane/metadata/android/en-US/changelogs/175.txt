@@ -1,0 +1,3 @@
+- Background polling, retries and connection event dispatch on mobile stop using extra power.
+- The cloud link status shows its active color again.
+- Adding a project now starts browsing at the server root.
