@@ -1,0 +1,1 @@
+- Chats no longer show internal plan reminders or other wrapped prompt context.
