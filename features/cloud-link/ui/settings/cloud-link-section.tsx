@@ -44,7 +44,7 @@ export function CloudLinkSection({ setup, services, palette, onManageMachines, o
         <Icon size={28} color={palette.text} name={"cloud-outline"}></Icon>
         <Text className={cn(stylesClasses.name, "text-foreground")} variant="title">{t('settings:connect.title')}</Text>
         <View className={cn(stylesClasses.status)}>
-          {setup.initialization === 'loading' ? <Spinner size="small" /> : <Icon size={10} color={setup.entitled ? palette.text : palette.muted} name={"circle"}></Icon>}
+          {setup.initialization === 'loading' ? <Spinner size="small" /> : <Icon size={10} color={setup.entitled ? palette.success : palette.muted} name={"circle"}></Icon>}
           <Text testID="subscription-status" className={cn("text-foreground shrink")}>{status}</Text>
         </View>
       </View>
