@@ -6,17 +6,21 @@ import { useTranslation } from 'react-i18next';
 import { Platform, View } from 'react-native';
 
 /**
- * Resolves camera permission before a requested scanner renders. Denial returns
- * to the caller's previous surface. Web never requests camera permission.
+ * Resolves camera permission before a requested scanner renders. Denial calls
+ * onDenied, which defaults to returning to the caller's previous surface; a
+ * caller that offers another input keeps its own surface. Web never requests
+ * camera permission.
  */
-export function ConnectCameraGate({ onCancel, children }: { onCancel: () => void; children: ReactNode }) {
+export function ConnectCameraGate({ onCancel, onDenied = onCancel, children }: { onCancel: () => void; onDenied?: () => void; children: ReactNode }) {
   const { t } = useTranslation();
   const native = Platform.OS === 'ios' || Platform.OS === 'android';
   const [permission] = useCameraPermissions({ request: native });
   useEffect(() => {
-    if (native && permission && !permission.granted) onCancel();
-  }, [native, onCancel, permission]);
-  if (!native || permission?.granted) return <>{children}</>;
+    if (native && permission && !permission.granted) onDenied();
+  }, [native, onDenied, permission]);
+  // A resolved denial still renders the caller's children: the scanner itself
+  // stays blank until permission is granted.
+  if (!native || permission) return <>{children}</>;
   return <View className={cn(stylesClasses.screen)}><Spinner accessibilityLabel={t('settings:connect.cameraLoading')} /></View>;
 }
 

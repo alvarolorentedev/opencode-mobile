@@ -132,12 +132,15 @@ Editing uses the same form but saves without automatically reconnecting.
 - reuse `ConnectCameraGate` and `ConnectScanner` full-bleed without a Cloud Link
   entitlement; claiming the code stays in the provider's
   `connectionProfiles.pair`
-- overlay the `opencode pair` instructions, scan progress and recovery messages
+- overlay the `opencode pair` command line, scan progress and recovery messages
   on top of the full-screen camera rather than boxing it into a step layout like
   the Cloud Link scanner
+- redeem a pairing QR from a photo-library image through an icon-only import FAB;
+  a cancelled pick or an image without a code leaves the live scan running
 - save and connect through the caller's submit callback with the redeemed
   credential, retaining it across a failed save/connect so Retry never re-pairs
-- return to the chooser on Back or camera denial, and offer Scan again after an
+- return to the chooser on Back, keep the surface open when camera permission is
+  denied so image import still works, and offer Scan again after an
   invalid/expired/unreachable code
 
 The manual address/details surface stays in `connection-profile-dialog.tsx`; the

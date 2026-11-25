@@ -27,14 +27,16 @@ accepts the code shown by `opencode pair`. The phone and server must share a
 reachable network; the server must listen beyond localhost. It reuses the native
 permission gate and scanner without any Cloud Link subscription, and never falls
 back to the manual address form. The camera fills the screen behind an opaque
-appbar, with the `opencode pair` instructions, scan progress and recovery
-messages overlaid on top instead of sharing a scrollable step layout. FOSS builds
-omit the camera module and keep manual address entry. Camera denial or Back
-returns to the connection method chooser; backgrounding suspends the preview. A
-successful scan saves and connects automatically. Invalid codes allow rescan;
-expired/used codes ask users to run `opencode pair` again. A failed save or
-connect keeps the redeemed credential and offers Retry plus Scan again without
-re-pairing.
+appbar, with a single `opencode pair` command line, scan progress and recovery
+messages overlaid on top instead of sharing a scrollable step layout. An
+icon-only FAB imports a pairing QR from the photo library; a cancelled pick or an
+image without a code leaves the live scan running. FOSS builds omit the camera
+module and keep manual address entry. Back returns to the connection method
+chooser, a denied camera keeps the flow open so image import still works, and
+backgrounding suspends the preview. A successful scan saves and connects
+automatically. Invalid codes allow rescan; expired/used codes ask users to run
+`opencode pair` again. A failed save or connect keeps the redeemed credential and
+offers Retry plus Scan again without re-pairing.
 
 The provider handles pairing and persistence; protocol validation/redemption live
 in `shared/protocol/opencode/pairing.ts`. Current one-use codes become session-token passwords;

@@ -36,7 +36,22 @@ describe('Cloud Link camera permission gate', () => {
     expect(useCameraPermissions).toHaveBeenCalledWith({ request: true });
     expect(requestPermission).toHaveBeenCalledOnce();
     expect(onCancel).toHaveBeenCalledTimes(granted ? 0 : 1);
-    expect(runtime.result.current.type).toBe(granted ? Fragment : 'View');
+    // A denial leaves the caller's surface in place so a non-camera fallback
+    // (the local flow's image import) stays reachable.
+    expect(runtime.result.current.type).toBe(Fragment);
+  });
+
+  it('routes a denial to onDenied when the caller offers another input', async () => {
+    native.platform = 'android';
+    native.useCameraPermissions.mockReset().mockReturnValue([{ status: 'denied', granted: false, canAskAgain: false }, vi.fn()]);
+    const onCancel = vi.fn();
+    const onDenied = vi.fn();
+    const runtime = renderHook(ConnectCameraGate, { onCancel, onDenied, children: 'import-fallback' });
+    await act(async () => {});
+
+    expect(onDenied).toHaveBeenCalledOnce();
+    expect(onCancel).not.toHaveBeenCalled();
+    expect(runtime.result.current.type).toBe(Fragment);
   });
 
   it('passes through web without requesting camera permission', async () => {

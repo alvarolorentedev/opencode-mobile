@@ -1,7 +1,7 @@
 // @vitest-environment happy-dom
 
 import { act } from 'react';
-import { describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import '../../../tests/helpers/native-primitives';
 import { ConnectionScanFlow } from '@/features/connections/ui/connection-scan-flow';
@@ -11,7 +11,7 @@ import { Button } from '@/shared/ui/button';
 import { connectionViewProbe } from '../../../tests/helpers/connection-view-probe';
 import { renderHook } from '../../../tests/helpers/render-hook';
 
-const native = vi.hoisted(() => ({ platform: 'android', foss: false }));
+const native = vi.hoisted(() => ({ platform: 'android', foss: false, launchImageLibraryAsync: vi.fn(), scanFromURLAsync: vi.fn() }));
 vi.mock('react-native', async () => (await import('../../../tests/helpers/native-view-platform')).nativeViewPlatform(native));
 vi.mock('expo-constants', () => ({ default: { expoConfig: { extra: { get foss() { return native.foss; } } } } }));
 vi.mock('expo-router', () => ({ usePathname: () => '/' }));
@@ -24,6 +24,8 @@ vi.mock('expo-secure-store', () => ({}));
 vi.mock('expo-file-system', () => ({}));
 vi.mock('@/shared/platform/camera/connect-camera-gate', () => ({ ConnectCameraGate: 'Gate' }));
 vi.mock('@/shared/platform/camera/connect-scanner', () => ({ ConnectScanner: 'Scanner' }));
+vi.mock('expo-image-picker', () => ({ launchImageLibraryAsync: native.launchImageLibraryAsync }));
+vi.mock('expo-camera', () => ({ scanFromURLAsync: native.scanFromURLAsync }));
 
 type Element = { type: unknown; props: Record<string, any> };
 function find(root: Element | Element[] | null, testID: string | typeof Button): Element | undefined {
@@ -45,18 +47,53 @@ function flow(platform = 'android', foss = false, onSubmit = vi.fn()) {
     if (!value) throw new Error(`Missing ${String(id)}`);
     return value;
   };
-  const press = async (id: string | typeof Button) => act(async () => { element(id).props.onPress(); });
+  const press = async (id: string | typeof Button) => act(async () => { await element(id).props.onPress(); });
   const scan = async (code: string) => act(async () => { element('Scanner').props.onScan(code); });
   return { runtime, pair, onSubmit, onDismiss, onBusyChange, element, press, scan };
 }
 
 describe('local QR scan flow', () => {
+  beforeEach(() => {
+    native.launchImageLibraryAsync.mockReset();
+    native.scanFromURLAsync.mockReset();
+  });
+
   it('pairs a scanned code and saves with the redeemed credentials', async () => {
     const view = await flow();
     expect(view.element('Gate')).toBeDefined();
     await view.scan('one-use-code');
     expect(view.pair).toHaveBeenCalledOnce();
     expect(view.onSubmit).toHaveBeenCalledWith({ name: '', serverUrl: 'http://192.168.1.10:49374', username: '', password: 'session-token', headers: {} });
+  });
+
+  it('imports a QR image and redeems it through the same pairing path', async () => {
+    const view = await flow();
+    native.launchImageLibraryAsync.mockResolvedValue({ canceled: false, assets: [{ uri: 'file:///tmp/qr.png' }] });
+    native.scanFromURLAsync.mockResolvedValue([{ data: 'one-use-code' }]);
+    await view.press('connection-scan-import');
+    expect(native.scanFromURLAsync).toHaveBeenCalledWith('file:///tmp/qr.png', ['qr']);
+    expect(view.pair).toHaveBeenCalledWith('one-use-code', expect.anything());
+    expect(view.onSubmit).toHaveBeenCalledWith({ name: '', serverUrl: 'http://192.168.1.10:49374', username: '', password: 'session-token', headers: {} });
+  });
+
+  it('keeps the camera scanning when the picked image carries no QR code', async () => {
+    const view = await flow();
+    native.launchImageLibraryAsync.mockResolvedValue({ canceled: false, assets: [{ uri: 'file:///tmp/blank.png' }] });
+    native.scanFromURLAsync.mockResolvedValue([]);
+    await view.press('connection-scan-import');
+    expect(view.pair).not.toHaveBeenCalled();
+    expect(find(view.runtime.result.current, 'connection-scan-error')).toBeUndefined();
+    expect(view.element('Scanner').props.enabled).toBe(true);
+    expect(find(view.runtime.result.current, 'connection-scan-import')).toBeDefined();
+  });
+
+  it('does nothing when the image picker is dismissed', async () => {
+    const view = await flow();
+    native.launchImageLibraryAsync.mockResolvedValue({ canceled: true });
+    await view.press('connection-scan-import');
+    expect(native.scanFromURLAsync).not.toHaveBeenCalled();
+    expect(view.pair).not.toHaveBeenCalled();
+    expect(view.element('Scanner').props.enabled).toBe(true);
   });
 
   it('retains the redeemed credential and retries save without pairing again', async () => {

@@ -9,7 +9,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { AppState, Platform, StyleSheet, View } from 'react-native';
 
-export function ConnectScanner({ onScan, enabled, hint }: { onScan: (link: string) => void; enabled: boolean; hint?: string }) {
+export function ConnectScanner({ onScan, enabled, hint }: { onScan: (link: string) => void; enabled: boolean; hint?: string | null }) {
   const { t } = useTranslation();
 
   const [permission] = useCameraPermissions();
@@ -58,7 +58,7 @@ export function ConnectScanner({ onScan, enabled, hint }: { onScan: (link: strin
           <View style={styles.scrim} />
         </View>
         <View style={styles.scrim} />
-        <Text style={styles.hint}>{hint ?? t('settings:connect.scanHint')}</Text>
+        {hint === null ? null : <Text style={styles.hint}>{hint ?? t('settings:connect.scanHint')}</Text>}
       </View>
       {!ready ? <View className={cn(stylesClasses.loading)} pointerEvents="none"><Spinner accessibilityLabel={t('settings:connect.cameraLoading')} /></View> : null}
     </View>
