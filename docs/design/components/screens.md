@@ -146,8 +146,11 @@ system keyboard supplies shifted punctuation and composed text.
 screen-reader mode, without duplicating physical-key or composition input.
 
 Touch long press selects a word, drag extends selection, and Copy uses the
-platform clipboard. Touch scrolling stays local rather than generating shell
-mouse events. The Latest output control appears away from the scrollback bottom.
+platform clipboard. Touch scrolling moves normal-buffer scrollback locally;
+alternate-screen swipes are forwarded as xterm wheel reports so TUIs that
+capture the mouse (for example `codex`) scroll their own transcript, falling
+back to alternate-scroll arrows without mouse reporting. The Latest output
+control appears away from the scrollback bottom.
 Buttons have at least 44-point targets, accessible names and state, and xterm
 screen-reader mode is enabled. Native screen-reader/input validation remains required.
 

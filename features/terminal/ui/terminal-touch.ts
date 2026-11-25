@@ -45,7 +45,16 @@ export function installTerminalTouch(element: HTMLElement, terminal: Terminal) {
       const screen = element.querySelector('.xterm-screen')!.getBoundingClientRect();
       remainder += lastY - current.y;
       const lines = Math.trunc(remainder / (screen.height / terminal.rows));
-      if (lines) { terminal.scrollLines(lines); remainder -= lines * screen.height / terminal.rows; }
+      if (lines) {
+        remainder -= lines * screen.height / terminal.rows;
+        if (terminal.buffer.active.type === 'alternate' && terminal.element) {
+          const touch = event.touches[0];
+          for (let i = 0; i < Math.abs(lines); i++) terminal.element.dispatchEvent(new WheelEvent('wheel', {
+            deltaY: Math.sign(lines), deltaMode: WheelEvent.DOM_DELTA_LINE,
+            clientX: touch.clientX, clientY: touch.clientY, bubbles: true, cancelable: true,
+          }));
+        } else terminal.scrollLines(lines);
+      }
       lastY = current.y;
     }
   };
