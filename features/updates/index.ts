@@ -8,5 +8,4 @@ export {
   UpdateBlockingSettingSelectField,
   UpdateBlockingSheet,
   UpdateBlockingWorkspaceSelect,
-  useUpdateBlockingConfirmation,
 } from './ui/interaction-controls';

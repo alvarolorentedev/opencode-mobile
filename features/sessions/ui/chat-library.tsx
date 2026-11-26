@@ -1,4 +1,4 @@
-import { UpdateBlockingSheet as OverlaySheet, UpdateBlockingWorkspaceSelect as WorkspaceSelect, useUpdateBlockingConfirmation as useConfirmation } from '@/features/updates/index';
+import { UpdateBlockingSheet as OverlaySheet, UpdateBlockingWorkspaceSelect as WorkspaceSelect } from '@/features/updates/index';
 import { cn } from '@/shared/ui/cn';
 import { Spinner } from '@/shared/ui/spinner';
 import { Text } from '@/shared/ui/text';
@@ -25,7 +25,6 @@ import type { LibrarySession } from '@/features/sessions/model/workspace-library
 import { usePalette } from '@/shared/ui/theme/use-palette';
 
 export function ChatLibrary({ visible, onClose, onNewChat }: { visible: boolean; onClose: () => void; onNewChat: () => void }) {
-  const { confirmAction, confirmation } = useConfirmation();
   const { t } = useTranslation();
   const palette = usePalette();
   const { activeProject } = useProjects();
@@ -68,7 +67,7 @@ export function ChatLibrary({ visible, onClose, onNewChat }: { visible: boolean;
       <SwipeRow title={label} actions={[
         { label: t('chat:library.rename'), icon: 'pencil-outline', onPress: () => { setRenaming(row); setTitle(label); setError(undefined); } },
         { label: t(row.favorite ? 'chat:library.unfavorite' : 'chat:library.favorite'), icon: row.favorite ? 'star-off-outline' : 'star-outline', onPress: () => void run(key, () => library.manage(row, 'favorite', row.session.title)) },
-        { label: t('common:actions.delete'), icon: 'delete-outline', onPress: () => confirmAction(t('chat:library.deleteConfirmTitle'), t('chat:library.deleteConfirm', { title: label }), t('common:actions.delete'), t('common:actions.cancel'), () => void run(key, () => library.manage(row, 'delete'))) },
+        { label: t('common:actions.delete'), icon: 'delete-outline', onPress: () => void run(key, () => library.manage(row, 'delete')) },
       ]}>
         <Pressable accessibilityRole="button" accessibilityState={{ selected: row.current, busy: inFlight }}
           accessibilityLabel={`${t('chat:library.open', { title: label })}, ${row.serverName}, ${row.projectPath}${row.unread ? `, ${t('chat:library.unread')}` : ''}`} accessibilityHint={t('chat:library.swipeChatActions')}
@@ -87,7 +86,7 @@ export function ChatLibrary({ visible, onClose, onNewChat }: { visible: boolean;
       </SwipeRow>
     </View>;
   }
-  return <>{confirmation}{<>
+  return <>
     <OverlaySheet visible={visible && !projectVisible} title={t('chat:library.title')} testID="chat-library" scrollable={false} onClose={close}
       headerAction={<ProjectPickerButton onPress={() => setProjectVisible(true)} />}>
       <TextField testID="chat-library-search" label={t('chat:library.searchPlaceholder')} placeholder={t('chat:library.searchPlaceholder')} value={query} onChangeText={setQuery}></TextField>
@@ -119,7 +118,7 @@ export function ChatLibrary({ visible, onClose, onNewChat }: { visible: boolean;
       <Button disabled={Boolean(busy)} onPress={onNewChat} variant="ghost"><Icon name={"plus"} size={20} /><Text>{t('chat:library.newChat')}</Text></Button>
     </OverlaySheet>
     {visible && projectVisible ? <ProjectPicker visible testID="chat-project-picker" activePath={activeProject?.path} onClose={() => setProjectVisible(false)} onSelected={close} /> : null}
-  </>}</>;
+  </>;
 }
 
 const stylesClasses = {

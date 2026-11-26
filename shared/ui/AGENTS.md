@@ -9,7 +9,8 @@ Reuse source-owned primitives, CVA and `cn()`. `shared/ui/theme/ui-tokens.json` 
 source. Preserve provenance, accessibility, modal hosts, text scaling and keyboard/Back.
 Keep portal hosts and dismissal mechanics in shared controls. Size native portal
 panels with flex stretch or `useOverlayWidth`, never percentage classes; web
-keeps the Tailwind widths. Accept explicit
+keeps the Tailwind widths. Destructive actions run immediately; there are no
+confirmation dialogs. Accept explicit
 interaction registration callbacks where a feature needs them. Shared controls
 use only shared dependencies.
 

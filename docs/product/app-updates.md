@@ -71,7 +71,7 @@ Active/sending/queued tasks, conversation mode, pending permissions/questions,
 connection work, terminal creation/open/close and Cloud Link purchase/setup suppress
 offers. Components retain their local drafts, attachments and form contents;
 `useUpdateBlocker` registers the interaction lifetime. The Updates feature
-provides registration callbacks to sheets, pickers and confirmations through
+provides registration callbacks to sheets and pickers through
 its control wrappers. File previews, connection and provider forms, voice
 input and playback, and native attachment selection also suppress offers.
 See [ADR 0052](../adr/0052-explicit-overlay-dependencies.md).

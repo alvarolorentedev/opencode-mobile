@@ -274,8 +274,8 @@ status with remaining time counted from `server_time` while the section is
 visible (ticking every 30 seconds, still refreshed on focus). Actions are Open,
 Copy link, Edit, Remove and Revoke sharing. Copy link and Open use the tokenized
 URL `https://<host>:<port><path>/?cl_share=<share_token>`, and password guidance
-tells the user to send the password separately from the link. Revocation asks
-for confirmation, explains that external access stops immediately while the
+tells the user to send the password separately from the link. Revocation stops
+external access immediately while the
 service stays available to paired devices, then clears the password, deadline
 and token without touching routing. Connector 400/409/429 messages are shown as
 returned — including `connector_update_required` — and the app never retries a

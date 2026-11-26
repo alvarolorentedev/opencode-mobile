@@ -1,4 +1,4 @@
-import { UpdateBlockingSheet as OverlaySheet, useUpdateBlockingConfirmation as useConfirmation } from '@/features/updates/index';
+import { UpdateBlockingSheet as OverlaySheet } from '@/features/updates/index';
 import { cn } from '@/shared/ui/cn';
 import { Text } from '@/shared/ui/text';
 import { Button } from '@/shared/ui/button';
@@ -15,7 +15,6 @@ import { useProjectCheckouts } from '@/features/projects/state/use-project-check
 import { useWorkspaces } from '@/runtime/workspace';
 
 export function WorktreeSwitcher({ onClose }: { onClose: () => void }) {
-  const { confirmAction, confirmation } = useConfirmation();
   const { t } = useTranslation();
   const palette = usePalette();
   const registry = useWorkspaces();
@@ -51,24 +50,16 @@ export function WorktreeSwitcher({ onClose }: { onClose: () => void }) {
   }
 
   function remove(directory: string) {
-    confirmAction(
-      t('project:worktrees.removeTitle'),
-      t('project:worktrees.removeMessage', { directory }),
-      t('common:actions.remove'),
-      t('common:actions.cancel'),
-      () => {
-        setBusy(directory);
-        setError(undefined);
-        void removeWorktree(directory)
-          .catch((reason) => setError(reason instanceof Error ? reason.message : t('project:errors.removeWorktree')))
-          .finally(() => setBusy(undefined));
-      },
-    );
+    setBusy(directory);
+    setError(undefined);
+    void removeWorktree(directory)
+      .catch((reason) => setError(reason instanceof Error ? reason.message : t('project:errors.removeWorktree')))
+      .finally(() => setBusy(undefined));
   }
 
   const title = managing ? t('project:worktrees.manageTitle') : t('project:worktrees.title');
   const linked = checkouts.filter((checkout) => !checkout.isMain);
-  return <>{confirmation}{(
+  return (
     <OverlaySheet
       visible
       title={title}
@@ -115,5 +106,5 @@ export function WorktreeSwitcher({ onClose }: { onClose: () => void }) {
         <Text className={cn("text-muted-foreground")}>{t('project:worktrees.noOther')}</Text>
       ) : null}
     </OverlaySheet>
-  )}</>;
+  );
 }

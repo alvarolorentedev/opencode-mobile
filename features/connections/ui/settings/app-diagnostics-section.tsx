@@ -1,4 +1,4 @@
-import { UpdateBlockingSettingSelectField as SettingSelectField, useUpdateBlockingConfirmation as useConfirmation } from '@/features/updates/index';
+import { UpdateBlockingSettingSelectField as SettingSelectField } from '@/features/updates/index';
 import type { WorkspaceTarget } from '@/shared/contracts/workspace';
 import { cn } from '@/shared/ui/cn';
 import { Badge } from '@/shared/ui/badge';
@@ -31,7 +31,6 @@ export function AppDiagnosticsSection({ workspace }: { workspace: WorkspaceTarge
   const palette = usePalette();
   const { chatPreferences, updateChatPreferences } = useWorkspacePreferences(workspace);
   const snapshot = useObservabilitySnapshot();
-  const { confirmAction, confirmation } = useConfirmation();
   const [severity, setSeverity] = useState<'all' | 'warn' | 'error'>('all');
   const [includeDetails, setIncludeDetails] = useState(true);
   const [busy, setBusy] = useState<'export' | 'clear' | undefined>(undefined);
@@ -62,19 +61,11 @@ export function AppDiagnosticsSection({ workspace }: { workspace: WorkspaceTarge
   }
 
   function clearHistory() {
-    confirmAction(
-      t('settings:diagnostics.clearTitle'),
-      t('settings:diagnostics.clearMessage'),
-      t('settings:diagnostics.clearAction'),
-      t('common:actions.cancel'),
-      () => {
-        setBusy('clear');
-        void observability.clearLocal()
-          .then(() => setFeedback(t('settings:diagnostics.cleared')))
-          .catch(() => setFeedback(t('settings:diagnostics.clearFailed')))
-          .finally(() => setBusy(undefined));
-      },
-    );
+    setBusy('clear');
+    void observability.clearLocal()
+      .then(() => setFeedback(t('settings:diagnostics.cleared')))
+      .catch(() => setFeedback(t('settings:diagnostics.clearFailed')))
+      .finally(() => setBusy(undefined));
   }
 
   return (
@@ -209,7 +200,6 @@ export function AppDiagnosticsSection({ workspace }: { workspace: WorkspaceTarge
         </Button>
       </View>
       {feedback ? <Text className="text-muted-foreground" variant="description" testID="settings-diagnostics-feedback">{feedback}</Text> : null}
-      {confirmation}
     </View>
   );
 }

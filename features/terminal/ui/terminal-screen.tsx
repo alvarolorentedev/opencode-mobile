@@ -1,4 +1,4 @@
-import { useUpdateBlockingConfirmation as useConfirmation, UpdateBlockingSheet as OverlaySheet } from '@/features/updates/index';
+import { UpdateBlockingSheet as OverlaySheet } from '@/features/updates/index';
 import { cn } from '@/shared/ui/cn';
 import { Text } from '@/shared/ui/text';
 import { Button } from '@/shared/ui/button';
@@ -32,7 +32,6 @@ export default function TerminalScreen() {
 }
 
 function TerminalContent({ target }: { target: WorkspaceTarget }) {
-  const { confirmAction, confirmation } = useConfirmation();
   const { t } = useTranslation();
   const router = useRouter();
   const palette = usePalette();
@@ -90,7 +89,7 @@ function TerminalContent({ target }: { target: WorkspaceTarget }) {
 
   const activeTerminal = terminals.find((terminal) => terminal.id === activeTerminalId);
 
-  return <>{confirmation}{(
+  return <>
     <>
       <KeyboardAvoidingView
         className={cn(stylesClasses.screen, "bg-background")}
@@ -162,20 +161,7 @@ function TerminalContent({ target }: { target: WorkspaceTarget }) {
               setOpeningKey(undefined);
             }
           };
-          return <SwipeRow key={entryKey} title={title} actions={[{ label: t('common:actions.close'), icon: 'close', onPress: () => {
-            confirmAction(
-              t('terminal:console.terminateTitle'),
-              t('terminal:console.terminateMessage', {
-                terminal: terminal.title || terminal.command,
-                id: terminal.id.slice(0, 8),
-                server: serverName,
-                project: projectPath,
-              }),
-              t('terminal:console.terminateAction'),
-              t('common:actions.cancel'),
-              () => void actions.closeTerminal(terminal.id).catch((reason) => setError(String(reason))),
-            );
-          } }]}>
+          return <SwipeRow key={entryKey} title={title} actions={[{ label: t('common:actions.close'), icon: 'close', onPress: () => void actions.closeTerminal(terminal.id).catch((reason) => setError(String(reason))) }]}>
             <Pressable accessibilityRole="button" accessibilityState={{ selected: active, busy: inFlight, disabled }}
               accessibilityLabel={`${t('terminal:sessions.openLabel', { terminal: title })}${active ? `, ${t('common:labels.active')}` : ''}`}
               disabled={disabled} onPress={() => void open()} className={cn(stylesClasses.terminalOption)} style={[{ borderColor: active ? palette.tint : palette.border, opacity: disabled && !inFlight ? 0.6 : 1 }]}>
@@ -196,7 +182,7 @@ function TerminalContent({ target }: { target: WorkspaceTarget }) {
       <Feedback duration={1600} open={copied} onOpenChange={() => (() => setCopied(false))()}>{t('terminal:console.copied')}</Feedback>
       <Feedback  open={Boolean(error)} onOpenChange={() => (() => setError(undefined))()}>{error}</Feedback>
     </>
-  )}</>;
+  </>;
 }
 
 function message(reason: unknown, fallback: string) {

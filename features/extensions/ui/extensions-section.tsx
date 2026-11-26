@@ -1,4 +1,3 @@
-import { useUpdateBlockingConfirmation as useConfirmation } from '@/features/updates/index';
 import type { WorkspaceTarget } from '@/shared/contracts/workspace';
 import { useEffect, useState } from 'react';
 import { View } from 'react-native';
@@ -32,7 +31,6 @@ export function ExtensionsSection({ workspace }: { workspace: WorkspaceTarget })
   const { t } = useTranslation();
   const palette = usePalette();
   const target = useSettingsTarget();
-  const { confirmAction, confirmation } = useConfirmation();
   const { activeProjectPath } = useProjects(workspace);
   const { settings } = useConnection(workspace);
   const { extensions } = useExtensions(workspace);
@@ -41,7 +39,6 @@ export function ExtensionsSection({ workspace }: { workspace: WorkspaceTarget })
   const [scope, setScope] = useState<ExtensionScope>(activeProjectPath ? 'project' : 'general');
   const [tab, setTab] = useState<ExtensionTab>(() => tabs.find((entry) => target?.group?.startsWith(`extensions-${entry}`)) ?? 'mcp');
   const [selection, setSelection] = useState<ExtensionSelection | undefined>(() => target && target.label !== t(`settings:extensions.tabs.${tab}`) ? { type: tab } : undefined);
-  const [generalConfirmed, setGeneralConfirmed] = useState(false);
   const [mcpBusy, setMcpBusy] = useState(false);
   const [actionError, setActionError] = useState<string>();
   const effectiveScope: ExtensionScope = scope === 'project' && !activeProjectPath ? 'general' : scope;
@@ -51,14 +48,11 @@ export function ExtensionsSection({ workspace }: { workspace: WorkspaceTarget })
   useEffect(() => { void refresh().catch(() => undefined); }, [refresh]);
 
   function save(action: () => Promise<void>) {
-    const perform = () => { void action().catch((failure) => setActionError(getErrorMessage(failure))); };
     setActionError(undefined);
-    if (effectiveScope === 'general' && !generalConfirmed) {
-      confirmAction(t('settings:extensions.generalConfirmTitle'), t('settings:extensions.generalConfirmMessage', { path: data?.target?.path || '' }), t('settings:extensions.generalConfirmAction'), t('common:actions.cancel'), () => { setGeneralConfirmed(true); perform(); });
-    } else perform();
+    void action().catch((failure) => setActionError(getErrorMessage(failure)));
   }
   function remove(message: string, action: () => Promise<void>) {
-    confirmAction(t('settings:extensions.removeTitle'), message, t('common:actions.remove'), t('common:actions.cancel'), () => { void action().catch((failure) => setActionError(getErrorMessage(failure))); });
+    void action().catch((failure) => setActionError(getErrorMessage(failure)));
   }
   function runMcp(action: () => Promise<void>) {
     setMcpBusy(true); setActionError(undefined);
@@ -68,7 +62,7 @@ export function ExtensionsSection({ workspace }: { workspace: WorkspaceTarget })
   const editorProps = { workspace, scope: effectiveScope, context: `${settings.serverUrl} · ${t(`settings:extensions.scope.${effectiveScope}`)}${effectiveScope === 'project' ? ` · ${activeProjectPath}` : ''}`, save, onClose: () => setSelection(undefined) };
   return <View className="gap-3 px-4 pb-8">
     <Text variant="description" className="text-muted-foreground">{t('settings:extensions.description')}</Text>
-    <ToggleGroup type="single" value={effectiveScope} onValueChange={(value) => { if (value && !busy) { setScope(value as ExtensionScope); setGeneralConfirmed(false); } }} className="flex-row flex-wrap">
+    <ToggleGroup type="single" value={effectiveScope} onValueChange={(value) => { if (value && !busy) { setScope(value as ExtensionScope); } }} className="flex-row flex-wrap">
       <ToggleGroupItem value="project" disabled={!activeProjectPath || busy}><Text>{t('settings:extensions.scope.project')}</Text></ToggleGroupItem>
       <ToggleGroupItem value="general" disabled={busy}><Text>{t('settings:extensions.scope.general')}</Text></ToggleGroupItem>
     </ToggleGroup>
@@ -100,6 +94,6 @@ export function ExtensionsSection({ workspace }: { workspace: WorkspaceTarget })
       {selection?.type === 'mcp' ? <McpEditor {...editorProps} row={selection.row} remote={target?.group === 'extensions-mcp-remote'} /> : null}
       {selection?.type === 'plugins' ? <PluginEditor {...editorProps} /> : null}
     </>}
-    {authentication.dialog}{confirmation}
+    {authentication.dialog}
   </View>;
 }

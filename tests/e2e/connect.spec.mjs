@@ -1,7 +1,7 @@
 import { expect, test } from './helpers/fixtures.mjs';
 import { Buffer } from 'node:buffer';
 
-import { respondToConfirmation, fakeV2Origin, pauseClockBefore } from './helpers/flows.mjs';
+import { fakeV2Origin, pauseClockBefore } from './helpers/flows.mjs';
 
 // Native APIs/SecureStore are substituted only in the development E2E build.
 const CONTROL_PLANE = 'https://api.opencodecloud.link';
@@ -1039,14 +1039,11 @@ test('a paired device adds, edits and removes an exposed service', async ({ page
   await expect(page.getByTestId('service-site2')).toContainText(':2083/', { timeout: 15_000 });
 
   await page.getByTestId('service-site2').getByRole('button', { name: 'Remove' }).click();
-  await respondToConfirmation(page);
   await expect(page.getByTestId('service-site2')).toHaveCount(0);
   await page.getByTestId('service-site').getByRole('button', { name: 'Remove' }).click();
-  await respondToConfirmation(page);
   await expect(page.getByTestId('service-site')).toHaveCount(0);
 
   await page.getByTestId('service-api').getByRole('button', { name: 'Remove' }).click();
-  await respondToConfirmation(page);
   await expect(page.getByTestId('service-api')).toHaveCount(0);
   await expect(page.getByTestId('services-feedback')).toContainText('Removed');
 });
@@ -1173,7 +1170,6 @@ test('a public share can be copied, extended and revoked', async ({ page, reques
   expect(extendedShare.access_policy.share_token).toBe(stored.access_policy.share_token);
 
   await page.getByTestId('service-revoke-share').click();
-  await respondToConfirmation(page);
   await expect(page.getByTestId('service-access-share')).toContainText('Private');
   await expect(page.getByTestId('service-expiration-share')).toHaveCount(0);
   await expect(row).not.toContainText('cl_share=');

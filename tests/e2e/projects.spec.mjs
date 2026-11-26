@@ -1,6 +1,6 @@
 import { expect, test } from './helpers/fixtures.mjs';
 
-import { respondToConfirmation, backendOrigin, chatAction, chatWorkspaceContext, connectToServer, expectConnectedTo, getFreePort, goToTab, openChatLibrary, openReadyChat, reconnectActiveConnection, resetScenario, seedOnboarding, sendPrompt, spawnV1Server, spawnV2Server, waitForServer, workspaceProjectButton, workspaceWorktreeButton } from './helpers/flows.mjs';
+import { backendOrigin, chatAction, chatWorkspaceContext, connectToServer, expectConnectedTo, getFreePort, goToTab, openChatLibrary, openReadyChat, reconnectActiveConnection, resetScenario, seedOnboarding, sendPrompt, spawnV1Server, spawnV2Server, waitForServer, workspaceProjectButton, workspaceWorktreeButton } from './helpers/flows.mjs';
 
 test.beforeEach(async ({ page }, info) => {
   await seedOnboarding(page, info);
@@ -41,7 +41,6 @@ test('file swipe actions rename, copy, cut, paste and confirm replacement', asyn
   await expect(page.getByTestId('project-entry-renamed.ts')).toBeVisible();
   await expect(page.getByTestId('project-file-clipboard')).toBeVisible();
   await page.getByTestId('project-file-paste').click();
-  await respondToConfirmation(page);
   await expect(page.getByTestId('project-file-paste')).toBeEnabled();
   await entryActions(page, 'renamed.ts'); await page.getByTestId('project-entry-action-cut').click();
   await entryActions(page, 'assets', true); await page.getByTestId('project-entry-action-paste').click();
@@ -420,7 +419,6 @@ for (const contract of ['v1', 'v2']) {
       await workspaceWorktreeButton(page).click();
       await page.getByTestId('worktree-picker').getByRole('button', { name: 'Manage worktrees' }).click();
       await page.getByRole('button', { name: 'Remove scoped-task' }).click();
-  await respondToConfirmation(page, true);
       await expect(page.getByTestId('worktree-picker')).not.toBeVisible();
       await expect(workspaceWorktreeButton(page)).toHaveCount(0);
 
@@ -471,7 +469,7 @@ for (const contract of ['v1', 'v2']) {
   });
 }
 
-test('project editor confirms discarded edits and keeps conflict failures recoverable', async ({ page, request }) => {
+test('project editor discards edits on close and keeps conflict failures recoverable', async ({ page, request }) => {
   await resetScenario(request, 'happy-path');
   await openReadyChat(page);
   await goToTab(page, 'Projects');
@@ -480,14 +478,15 @@ test('project editor confirms discarded edits and keeps conflict failures recove
   await page.getByRole('button', { name: 'Edit', exact: true }).click();
   await page.getByTestId('project-file-editor').fill('unsaved draft');
   await page.getByLabel('Close file').click();
-  await respondToConfirmation(page, false);
-  await expect(page.getByTestId('project-file-editor')).toHaveValue('unsaved draft');
+  await expect(page.getByTestId('project-entry-src/demo.ts')).toBeVisible();
+  await page.getByTestId('project-entry-src/demo.ts').click();
+  await page.getByRole('button', { name: 'Edit', exact: true }).click();
+  await page.getByTestId('project-file-editor').fill('unsaved draft');
   await page.route('**/api/fs/read/**', (route) => route.fulfill({ contentType: 'text/plain', body: 'changed on server' }));
   await page.getByTestId('project-file-save-button').click();
   await expect(page.getByText('The file changed on the server. Reopen it before saving.')).toBeVisible();
   await expect(page.getByTestId('project-file-editor')).toHaveValue('unsaved draft');
   await page.getByLabel('Close file').click();
-  await respondToConfirmation(page, true);
   await expect(page.getByTestId('project-entry-src/demo.ts')).toBeVisible();
 });
 

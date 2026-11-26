@@ -2,13 +2,13 @@ import { setTimeout as sleep } from 'node:timers/promises';
 
 import { expect, test } from './helpers/fixtures.mjs';
 
-import { respondToConfirmation, addConnection, backendOrigin, chatAction, chatWorkspaceContext, connectToSavedConnection, connectToServer, ensureAiSection, expectConnectedTo, fakeV2Origin, getFreePort, goToTab, openChatLibrary, openReadyChat, resetScenario, seedOnboarding, sendPrompt, spawnV1Server, waitForServer } from './helpers/flows.mjs';
+import { addConnection, backendOrigin, chatAction, chatWorkspaceContext, connectToSavedConnection, connectToServer, ensureAiSection, expectConnectedTo, fakeV2Origin, getFreePort, goToTab, openChatLibrary, openReadyChat, resetScenario, seedOnboarding, sendPrompt, spawnV1Server, waitForServer } from './helpers/flows.mjs';
 
 test.beforeEach(async ({ page }, info) => {
   await seedOnboarding(page, info);
 });
 
-test('sessions can be renamed and require confirmation before deletion', async ({ page, request }) => {
+test('sessions can be renamed and deleted', async ({ page, request }) => {
   await resetScenario(request, 'happy-path');
   await openReadyChat(page);
 
@@ -23,7 +23,6 @@ test('sessions can be renamed and require confirmation before deletion', async (
   await page.reload({ waitUntil: 'domcontentloaded' });
   await openChatLibrary(page);
   await chatAction(page, 'Renamed from Playwright', 'Delete');
-  await respondToConfirmation(page, true);
   await expect(page.getByText('Renamed from Playwright', { exact: true }).nth(1)).not.toBeVisible();
 });
 

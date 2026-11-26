@@ -8,7 +8,7 @@ import { Spacing } from '@/shared/ui/theme/design-tokens';
  *
  * A percentage width (`w-full`, `width: '100%'`) inside the portal overlay
  * collapses to the panel padding on some Android devices, so native panels take
- * an explicit width from the window instead. Pass `maxWidth` for dialogs that
+ * an explicit width from the window instead. Pass `maxWidth` for panels that
  * need a cap; popovers use the available width.
  */
 export function useOverlayWidth(maxWidth = Infinity) {

@@ -28,7 +28,7 @@ Responsibility:
 
 ## Shared onboarding settings
 
-- `features/ai/ui/ai-settings-panel.tsx` composes the existing AI section, auth dialog, model/account callbacks, removal confirmation and feedback for Settings and onboarding
+- `features/ai/ui/ai-settings-panel.tsx` composes the existing AI section, auth dialog, model/account callbacks, removal and feedback for Settings and onboarding
 - `general-settings.tsx` reuses the shared accent color field, language and chat preference fields; explicit model choice belongs to the active session's composer
 - `privacy` reuses the existing diagnostics switches: local recording always, master remote telemetry only when the build has an OTLP backend; the step is onboarding-only and is not a Settings category
 - `voice-settings.tsx` reuses `VoiceSection` in its onboarding view and `ResponsesSection`, with the existing voice/TTS setup hooks; on-device model downloads, enrollment and preview are explicit actions. The route unmounts the panel on blur to release audio.

@@ -1,4 +1,3 @@
-import { useUpdateBlockingConfirmation as useConfirmation } from '@/features/updates/index';
 import { cn } from '@/shared/ui/cn';
 import { TextField } from '@/shared/ui/text-field';
 import { Button } from '@/shared/ui/button';
@@ -34,7 +33,6 @@ export function FilesPanel({ statuses, browser, projectLabel, onOpen, header, co
   projectLabel: string;
   onOpen: (path: string) => void;
 }) {
-  const { confirmAction, confirmation } = useConfirmation();
   const { t } = useTranslation();
   const palette = usePalette();
   const [query, setQuery] = useState(browser.query || '');
@@ -54,8 +52,7 @@ export function FilesPanel({ statuses, browser, projectLabel, onOpen, header, co
     if (!expected) return;
     const run = () => { void actions.paste(path, expected).then((ok) => { if (ok) closeSelection(); }); };
     if (expected === 'missing') run();
-    else confirmAction(t('project:files.actions.replaceTitle'), t('project:files.actions.replaceMessage', { name: actions.clipboard?.path.split('/').pop() }),
-      t('project:files.actions.replace'), t('common:actions.cancel'), run);
+    else run();
   }
   useEffect(() => { if (!initialized) void openDirectory(''); }, [initialized, openDirectory]);
   const busy = browser.loading || browser.searching;
@@ -92,7 +89,7 @@ export function FilesPanel({ statuses, browser, projectLabel, onOpen, header, co
     ? statuses.map((file) => ({ kind: 'changed' as const, file }))
     : !busy && !browser.error ? entries.map((entry) => ({ kind: 'entry' as const, entry })) : [],
   [activeView, browser.error, busy, entries, statuses]);
-  return <>{confirmation}{<><FlashList style={{ flex: 1, backgroundColor: palette.background }} contentContainerStyle={contentStyle}
+  return <><FlashList style={{ flex: 1, backgroundColor: palette.background }} contentContainerStyle={contentStyle}
     data={rows} extraData={actions} ListHeaderComponent={listHeader} keyboardDismissMode="on-drag" keyboardShouldPersistTaps="handled"
     maintainVisibleContentPosition={{ disabled: true }}
     keyExtractor={(row) => row.kind === 'entry' ? `entry:${row.entry.path}` : `changed:${row.file.path}`}
@@ -125,5 +122,5 @@ export function FilesPanel({ statuses, browser, projectLabel, onOpen, header, co
       onCopyPath={() => { void actions.copyPath(selection.entry); closeSelection(); }}
       onRename={(name) => { if (name === undefined) show(selection.entry, 'rename'); else void actions.rename(selection.entry, name).then((ok) => { if (ok) closeSelection(); }); }}
       onSelect={(mode) => { actions.select(selection.entry, mode); closeSelection(); }} onPaste={() => void paste(selection.entry.path)} /> : null}
-  </>}</>;
+  </>;
 }

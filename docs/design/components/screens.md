@@ -127,7 +127,7 @@ reply/request excerpts and step text while preserving titles, counts and status.
 `terminal-screen.tsx` composes the existing picker, header, creation and termination
 actions, reconnect errors, and padding keyboard layout. `terminal-view.tsx`
 registers renderers with the provider and adapts Expo DOM acknowledgements,
-clipboard operations, and multiline/control-character paste confirmation.
+clipboard operations, and multiline/control-character paste.
 
 `terminal-dom.tsx` retains xterm instances inside one DOM surface, receives
 imperative output batches, reports fit dimensions, and sends ordered input.
@@ -163,7 +163,7 @@ screen-reader mode is enabled. Native screen-reader/input validation remains req
   selection are local; listing/search state and actions come from the provider's
   `browser` member. Android back walks up the folder tree before leaving the tab.
 - `features/projects/ui/file-preview.tsx` renders the full-screen text preview,
-  local edit draft, save feedback and discard confirmation. It calls the existing
+  local edit draft and save feedback. It calls the existing
   provider save action; unsupported editing is capability-gated.
 - `features/projects/ui/worktree-picker.tsx` renders the selection-only
   `WorktreeSwitcher`, with a separate management mode for removal. It reads the

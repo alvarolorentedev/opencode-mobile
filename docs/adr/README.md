@@ -87,6 +87,7 @@ All current decisions are `Accepted`.
 | [0052](0052-explicit-overlay-dependencies.md) | Feature ownership and explicit overlay dependencies |
 | [0053](0053-cloud-link-device-credential-renewal.md) | Cloud Link device-credential renewal and session step-up |
 | [0054](0054-session-chat-configuration-inheritance.md) | Session chat configuration inheritance |
+| [0055](0055-immediate-destructive-actions.md) | Immediate destructive actions without confirmation dialogs |
 
 ## Superseded history
 

@@ -129,7 +129,7 @@ must never trigger one of these actions.
   A disclosure with an error or active required setup stays expanded.
 - **Success:** update the current value/status immediately; use existing snackbars
   for completed requests. A preference switch does not need a success toast.
-- **Destructive:** use `danger` with a clear action label; retain confirmation.
+- **Destructive:** use `danger` with a clear action label; actions run immediately without confirmation.
 
 Animate through existing sheet primitives only. Do not add decorative motion.
 Respect platform reduced-motion behavior and do not require gestures: Close and
@@ -282,11 +282,10 @@ Failed submissions retain values; form identity changes reset drafts. Simple
 preferences, searches, pairing-link fields, editor buffers and chat drafts
 keep their existing local/provider ownership. Validation messages are localized.
 
-Generic confirmations use the shared AlertDialog and local useConfirmation
-hook. Native overlay panels never size with percentage classes: sheets stretch
-through flex layout, and dialogs and popovers take an explicit window width from
-`useOverlayWidth` (the dialog caps it at `max-w-lg` on wide screens). Web keeps
-the Tailwind widths. OS permission and store dialogs
+Generic destructive actions run immediately without a confirmation dialog.
+The shared AlertDialog and local useConfirmation hook were removed after the
+dialog collapsed on some Android devices; sheets, popovers and native modals
+keep their existing behavior. OS permission and store dialogs
 remain native integrations. Full-screen
 native modals preserve their window behavior and provide a named local portal
 host; nested overlays dismiss before the containing form. Sheets share the

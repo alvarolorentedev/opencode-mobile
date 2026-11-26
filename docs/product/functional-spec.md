@@ -221,7 +221,7 @@ The Chats overlay opened from the Chat title provides lifecycle operations throu
 - open a session
 - create a new session
 - rename a session
-- permanently delete a session after confirmation
+- permanently delete a session immediately
 
 Session list behavior:
 
@@ -272,7 +272,7 @@ with a success haptic. Copy/Cut staging also acknowledges with a selection
 haptic. Copy/Cut stage one internal entry per connection; the strip below
 breadcrumbs shows its source with Paste and Clear. Paste targets the browsed
 directory or selected folder. It can cross projects/worktrees on the same
-connection. File replacement requires confirmation; folder collisions and type
+connection. File replacement runs immediately; folder collisions and type
 mismatches are rejected. Cut removes the source only after a verified paste;
 Copy remains reusable. Mutations require V2 and supported server shell
 utilities. Errors preserve input and clipboard state; uncertain results instruct
@@ -280,11 +280,11 @@ the user to inspect both paths.
 
 ### 10. Manage Worktrees
 
-Projects uses a two-level workspace selector in one header line. The project picker lists projects only; a worktree selector appears beside it only when the project has more than one checkout. The Chat header reports the selected project/worktree as read-only context and does not attach selection actions. Worktree creation happens in New chat and accepts an optional name. Removal is in a separate management mode in the worktree switcher and requires destructive confirmation. These SDK operations use OpenCode's experimental worktree endpoints, so server availability and response stability are not guaranteed like the non-experimental contract.
+Projects uses a two-level workspace selector in one header line. The project picker lists projects only; a worktree selector appears beside it only when the project has more than one checkout. The Chat header reports the selected project/worktree as read-only context and does not attach selection actions. Worktree creation happens in New chat and accepts an optional name. Removal is in a separate management mode in the worktree switcher and runs immediately. These SDK operations use OpenCode's experimental worktree endpoints, so server availability and response stability are not guaranteed like the non-experimental contract.
 
 ### 11. Use The Terminal Tab
 
-The fourth tab uses a content-sized terminal selector overlay. The plus action creates a PTY with the server default shell (which falls back to bash on the fake server); tapping a row opens it, and swiping left reveals its Close action. Rows show a short terminal ID to distinguish terminals with the same title and command, mark the active terminal, and show an inline spinner while another row is opening. The close confirmation repeats the terminal identity (title and short ID) with its server and project. Copying a selection confirms with a snackbar. Users type directly into xterm; each committed input is sent immediately. The remote shell handles history, completion, editing, and Enter.
+The fourth tab uses a content-sized terminal selector overlay. The plus action creates a PTY with the server default shell (which falls back to bash on the fake server); tapping a row opens it, and swiping left reveals its Close action. Rows show a short terminal ID to distinguish terminals with the same title and command, mark the active terminal, and show an inline spinner while another row is opening. Closing a terminal runs immediately. Copying a selection confirms with a snackbar. Users type directly into xterm; each committed input is sent immediately. The remote shell handles history, completion, editing, and Enter.
 
 The provider requests a short-lived PTY connect ticket and opens a project-scoped `ws:`/`wss:` connection. The UI uses xterm for ANSI/VT cursor behavior, alternate-screen programs, and 10,000-line scrollback. A system-keyboard accessory provides Esc, Tab, sticky modifiers, arrows, and an expandable function/navigation/paste row. Opened displays survive tab and terminal switches; reconnect uses acknowledged cursors and fresh tickets.
 
@@ -333,9 +333,9 @@ Starter prompts appear only after a successful empty transcript read. A failed c
 
 ## Overlay and Back Navigation
 
-Overlays are dismissible with the platform back action. On Android, pressing the hardware back button while an overlay is open dismisses that overlay and keeps the current screen in place; a second back press then performs the underlying navigation. Overlay sheets (chat library, session usage, project and terminal pickers) share this behavior through `OverlaySheet`, and the conversation-mode overlay stops the mode on back. Native modal surfaces (dialogs, model picker, file details, select pickers) follow the same dismiss-first rule through their own back handling.
+Overlays are dismissible with the platform back action. On Android, pressing the hardware back button while an overlay is open dismisses that overlay and keeps the current screen in place; a second back press then performs the underlying navigation. Overlay sheets (chat library, session usage, project and terminal pickers) share this behavior through `OverlaySheet`, and the conversation-mode overlay stops the mode on back. Native modal surfaces (model picker, file details, select pickers) follow the same dismiss-first rule through their own back handling.
 
-Overlay sheets also dismiss on a downward drag of their header (the grabber/title strip), which uses `react-native-gesture-handler` and honors the same `dismissible` flag as the backdrop. The bottom-sheet style is consistent: the shared `OverlaySheet` and the transparent `Modal` sheets (model picker, select pickers) all share one `useSwipeDismiss` gesture, sheet-height measurement, and threshold set. Scrollable sheet content keeps its own scroll gesture, so dragging the list does not dismiss. Opening an overlay sheet or a select sheet dismisses a keyboard raised by the screen behind it through the shared `useDismissKeyboardOnOpen` hook; a sheet that auto-focuses its own field on mount (project rename) opts out. The terminal's WebView-raised keyboard is blurred through the terminal DOM bridge by the selector, new-terminal sheet, and paste confirmation instead, since the shared hook only reaches RN inputs. There is no pull-to-refresh anywhere in the app; the project keeps its header refresh button, and the transcript and diff views rely on SSE/polling updates.
+Overlay sheets also dismiss on a downward drag of their header (the grabber/title strip), which uses `react-native-gesture-handler` and honors the same `dismissible` flag as the backdrop. The bottom-sheet style is consistent: the shared `OverlaySheet` and the transparent `Modal` sheets (model picker, select pickers) all share one `useSwipeDismiss` gesture, sheet-height measurement, and threshold set. Scrollable sheet content keeps its own scroll gesture, so dragging the list does not dismiss. Opening an overlay sheet or a select sheet dismisses a keyboard raised by the screen behind it through the shared `useDismissKeyboardOnOpen` hook; a sheet that auto-focuses its own field on mount (project rename) opts out. The terminal's WebView-raised keyboard is blurred through the terminal DOM bridge by the selector and new-terminal sheet instead, since the shared hook only reaches RN inputs. There is no pull-to-refresh anywhere in the app; the project keeps its header refresh button, and the transcript and diff views rely on SSE/polling updates.
 
 ## Transcript Behavior
 
@@ -511,7 +511,7 @@ Behavior:
 - manual connections can also use OpenID Connect, with or without the server password. The form takes an issuer URL, client ID, scopes, the request header that carries the token (default `X-Auth-Request-Access-Token`, raw JWT) and an optional redirect URI; the redirect URI defaults to the app's own scheme and is shown so it can be registered with the provider. When a password is also set, requests keep Basic `Authorization` and add the JWT header; a passwordless connection uses `Authorization: Bearer` plus the token header. `Sign in` opens the system browser (never the in-app WebView) with PKCE, and the form reports signed-in, expired and signed-out states. The token renews silently. Temporary provider failures preserve the session; only an invalid or revoked refresh grant requires `Sign in again`. OIDC requires HTTPS (with explicit HTTP loopback development exceptions) and the registered app callback scheme. Tokens are encrypted at rest and never appear in the profile metadata. Cloud Link connections keep their device credentials and do not offer this option
 - `Edit` opens the same form for that connection: for a saved connection it updates the stored profile (and the live settings when it is active), for the current unsaved connection it updates the live settings only
 - editing the active connection never reconnects on its own; the row's Reconnect action does that, so an in-flight session is not dropped
-- the active connection cannot be deleted; other connections offer Delete with a confirmation
+- the active connection cannot be deleted; other connections offer Delete
 - selecting Connect on another connection switches through `switchConnection()`, which persists the outgoing profile's catalog and routing preferences, restores the target profile's, clears all server-derived state, and reconnects with the target credentials
 - if the focused connection errors or is disconnected while another enabled connection is healthy, chat focus moves automatically to the last healthy server (or the next connected server) and is persisted; the failed connection remains available in Connection management for Reconnect, but disconnected, connecting and unavailable servers are omitted from server and project selectors
 - retryable connect failures retry automatically (1/2/5/10/20 s) while the workspace is visible and online; auth, entitlement, and incompatible-server failures require the user's action
@@ -621,7 +621,7 @@ Behavior:
 - records structured logs, spans and metrics locally by default, bounded to about 7 days or 10 MB; normal/verbose levels are selectable
 - shows local storage usage, retention, recent events filtered by severity, key metric summaries and the most recent failure
 - exposes a master remote-telemetry switch plus separate crash-report and usage categories when an OTLP backend is configured; defaults are enabled, but FOSS and unconfigured builds hide remote controls
-- exports a sanitized ZIP report on explicit action and clears local history after confirmation; neither action uploads anything
+- exports a sanitized ZIP report on explicit action and clears local history immediately; neither action uploads anything
 - each diagnostic request fails independently and can be refreshed manually; Refresh also re-reads the recorded error
 
 ### MCP Servers Section
@@ -637,8 +637,8 @@ Behavior:
 Related decision: [ADR 0023](../adr/0023-focused-extension-editors.md).
 
 - manages MCPs, plugins, agents, skills, and slash commands for either the active project or the user-global configuration
-- shows installed extensions before add/edit forms; focused editor sheets preserve drafts across Setup/Instructions tabs, confirm unsaved dismissal, and retain inputs after failed saves
-- labels scope as This project or All projects and keeps its server/project context visible; the global-edit confirmation remains once per scope visit
+- shows installed extensions before add/edit forms; focused editor sheets preserve drafts across Setup/Instructions tabs, discard unsaved changes on close, and retain inputs after failed saves
+- labels scope as This project or All projects and keeps its server/project context visible; global edits save immediately
 - shows read-only safety warnings immediately and groups config paths, Markdown directories and backup recovery under Configuration details
 - agents choose models through a searchable, provider-grouped picker with inheritance and variants, independently of chat model visibility; Advanced retains custom IDs and frontmatter
 - permissions use ordered action/resource/decision rows for V2 rules; legacy/custom shapes retain source editing without conversion

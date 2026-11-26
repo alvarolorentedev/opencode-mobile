@@ -27,7 +27,3 @@ export function encodeTerminalKey(key: string, modifiers: Modifiers, application
   }
   return `${alt ? '\x1b' : ''}${text}`;
 }
-
-export function pasteNeedsConfirmation(text: string) {
-  return /[\x00-\x1f\x7f]/.test(text);
-}

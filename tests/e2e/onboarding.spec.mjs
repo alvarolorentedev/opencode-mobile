@@ -1,6 +1,6 @@
 import { expect, test } from './helpers/fixtures.mjs';
 
-import { respondToConfirmation, resetScenario, fakeV1Origin, fakeV2Origin } from './helpers/flows.mjs';
+import { resetScenario, fakeV1Origin, fakeV2Origin } from './helpers/flows.mjs';
 
 // First-run setup coverage. Unlike the flow specs, these tests intentionally do
 // NOT seed `opencode-mobile.onboarding-version`, so the assistant is exercised.
@@ -418,7 +418,6 @@ test('provider removal clears onboarding provider selections before review', asy
   await enterAiStep(page);
   await addOpenRouter(page);
   await page.getByRole('button', { name: 'Remove OpenRouter credentials', exact: true }).click();
-  await respondToConfirmation(page, true);
   await expect(page.getByRole('button', { name: 'Remove OpenRouter credentials', exact: true })).toHaveCount(0);
   await page.getByTestId('onboarding-ai-continue').click();
   await page.getByTestId('onboarding-project-skip').click();

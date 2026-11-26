@@ -1,4 +1,4 @@
-import { UpdateBlockingSheet as OverlaySheet, useUpdateBlockingConfirmation as useConfirmation } from '@/features/updates/index';
+import { UpdateBlockingSheet as OverlaySheet } from '@/features/updates/index';
 import type { WorkspaceTarget } from '@/shared/contracts/workspace';
 import { useState, type ReactNode } from 'react';
 import { View } from 'react-native';
@@ -18,18 +18,16 @@ export type EditorProps = {
   save: (action: () => Promise<void>) => void;
 };
 
-export function ExtensionEditor({ title, context, dirty, busy, error, onClose, onSubmit, setup, instructions, section = 'setup', onSectionChange, saveID, readOnly = false }: {
+export function ExtensionEditor({ title, context, busy, error, onClose, onSubmit, setup, instructions, section = 'setup', onSectionChange, saveID, readOnly = false }: {
   title: string; context: string; dirty: boolean; busy: boolean; error?: string;
   onClose: () => void; onSubmit: () => void; setup: ReactNode; instructions?: ReactNode;
   section?: string; onSectionChange?: (section: string) => void; saveID?: string; readOnly?: boolean;
 }) {
   const { t } = useTranslation();
   const target = useSettingsTarget();
-  const { confirmAction, confirmation } = useConfirmation();
   function close() {
     if (busy) return;
-    if (!dirty) { onClose(); return; }
-    confirmAction(t('settings:extensions.editor.discardTitle'), t('settings:extensions.editor.discardHint'), t('settings:extensions.editor.discard'), t('common:actions.cancel'), onClose);
+    onClose();
   }
   return <><OverlaySheet visible title={title} onClose={close} scrollable={false} testID="extension-editor"
     headerAction={<Button variant="ghost" disabled={busy} onPress={close} accessibilityLabel={t('settings:extensions.editor.back')}><Icon name="arrow-left" /></Button>}>
@@ -40,7 +38,7 @@ export function ExtensionEditor({ title, context, dirty, busy, error, onClose, o
     </Tabs> : <View className="flex-1 min-h-0"><SettingsPanel target={target}>{setup}</SettingsPanel></View>}
     {error ? <FieldDescription invalid testID="extension-editor-error">{error}</FieldDescription> : null}
     {!readOnly ? <Button testID={saveID} disabled={busy} onPress={onSubmit}><Text>{t(busy ? 'settings:extensions.saving' : 'common:actions.save')}</Text></Button> : null}
-  </OverlaySheet>{confirmation}</>;
+  </OverlaySheet></>;
 }
 
 export function useEditorSection(instructionsLabel: string) {

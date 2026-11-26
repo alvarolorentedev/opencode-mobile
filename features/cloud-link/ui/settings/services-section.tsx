@@ -1,4 +1,4 @@
-import { useUpdateBlockingConfirmation as useConfirmation, UpdateBlockingSettingSelectField as SettingSelectField } from '@/features/updates/index';
+import { UpdateBlockingSettingSelectField as SettingSelectField } from '@/features/updates/index';
 import { cn } from '@/shared/ui/cn';
 import { Text } from '@/shared/ui/text';
 import { FieldDescription } from '@/shared/ui/text-field';
@@ -41,7 +41,6 @@ export function ServicesSection({ api, palette, onAddService, onEditService }: {
   onAddService: () => void;
   onEditService: (service: ManagedService) => void;
 }) {
-  const { confirmAction, confirmation } = useConfirmation();
   const { t } = useTranslation();
   const [feedback, setFeedback] = useState<{ type: 'error' | 'info'; message: string }>();
   const [busyId, setBusyId] = useState<string>();
@@ -74,40 +73,34 @@ export function ServicesSection({ api, palette, onAddService, onEditService }: {
     }
   }
 
-  async function confirmRemove(service: ManagedService) {
+  async function removeService(service: ManagedService) {
     const label = service.name || service.id;
-    const remove = async () => {
-      setBusyId(service.id);
-      setFeedback(undefined);
-      try {
-        await api.remove(service.id);
-        setFeedback({ type: 'info', message: t('settings:services.removed', { name: label }) });
-      } catch (error) {
-        setFeedback({ type: 'error', message: error instanceof Error ? error.message : t('settings:services.removeFailed') });
-      } finally {
-        setBusyId(undefined);
-      }
-    };
-    confirmAction(t('settings:services.removeTitle', { name: label }), t('settings:services.removeMessage'), t('common:actions.remove'), t('common:actions.cancel'), () => void remove());
+    setBusyId(service.id);
+    setFeedback(undefined);
+    try {
+      await api.remove(service.id);
+      setFeedback({ type: 'info', message: t('settings:services.removed', { name: label }) });
+    } catch (error) {
+      setFeedback({ type: 'error', message: error instanceof Error ? error.message : t('settings:services.removeFailed') });
+    } finally {
+      setBusyId(undefined);
+    }
   }
 
   // Revocation stops external access immediately but leaves the service routed
-  // for paired devices, so the confirmation says both halves out loud.
-  function confirmRevoke(service: ManagedService) {
+  // for paired devices.
+  async function revokeService(service: ManagedService) {
     const label = service.name || service.id;
-    const revoke = async () => {
-      setBusyId(service.id);
-      setFeedback(undefined);
-      try {
-        await api.revoke(service.id);
-        setFeedback({ type: 'info', message: t('settings:services.revoked', { name: label }) });
-      } catch (error) {
-        setFeedback({ type: 'error', message: error instanceof Error ? error.message : t('settings:services.revokeFailed') });
-      } finally {
-        setBusyId(undefined);
-      }
-    };
-    confirmAction(t('settings:services.revokeTitle', { name: label }), t('settings:services.revokeMessage'), t('settings:services.revoke'), t('common:actions.cancel'), () => void revoke());
+    setBusyId(service.id);
+    setFeedback(undefined);
+    try {
+      await api.revoke(service.id);
+      setFeedback({ type: 'info', message: t('settings:services.revoked', { name: label }) });
+    } catch (error) {
+      setFeedback({ type: 'error', message: error instanceof Error ? error.message : t('settings:services.revokeFailed') });
+    } finally {
+      setBusyId(undefined);
+    }
   }
 
   function shareUrl(service: ManagedService) {
@@ -146,7 +139,7 @@ export function ServicesSection({ api, palette, onAddService, onEditService }: {
     }
   }
 
-  return <>{confirmation}{(
+  return (
     <View testID="services-section" className={cn(stylesClasses.section)}>
       <Text className={cn(stylesClasses.title, "text-foreground")} variant="heading">{t('settings:services.title')}</Text>
       <Text className={cn("text-muted-foreground")} variant="description">{t('settings:services.description')}</Text>
@@ -219,8 +212,8 @@ export function ServicesSection({ api, palette, onAddService, onEditService }: {
                 <Button testID={`service-open-${service.id}`} disabled={api.isSaving || !url} onPress={() => void openLink(service)} variant="ghost"><Text>{t('settings:services.open')}</Text></Button>
                 <Button testID={`service-copy-${service.id}`} disabled={api.isSaving || !url} onPress={() => void copyLink(service)} variant="ghost"><Text>{t('settings:services.copyLink')}</Text></Button>
                 <Button testID={`service-edit-${service.id}`} disabled={api.isSaving} onPress={() => onEditService(service)} variant="ghost"><Text>{t('common:actions.edit')}</Text></Button>
-                <Button disabled={api.isSaving} onPress={() => void confirmRemove(service)} variant="ghost">{busyId === service.id ? <Spinner size="small" /> : null}<Text>{t('common:actions.remove')}</Text></Button>
-                {canRevoke ? <Button testID={`service-revoke-${service.id}`} disabled={api.isSaving || busyId === service.id} onPress={() => void confirmRevoke(service)} variant="ghost"><Text>{t('settings:services.revoke')}</Text></Button> : null}
+                <Button disabled={api.isSaving} onPress={() => void removeService(service)} variant="ghost">{busyId === service.id ? <Spinner size="small" /> : null}<Text>{t('common:actions.remove')}</Text></Button>
+                {canRevoke ? <Button testID={`service-revoke-${service.id}`} disabled={api.isSaving || busyId === service.id} onPress={() => void revokeService(service)} variant="ghost"><Text>{t('settings:services.revoke')}</Text></Button> : null}
               </View>
             </View>
           );
@@ -228,7 +221,7 @@ export function ServicesSection({ api, palette, onAddService, onEditService }: {
 
       {feedback ? <FieldDescription testID="services-feedback" invalid={feedback.type === 'error'}>{feedback.message}</FieldDescription> : null}
     </View>
-  )}</>;
+  );
 }
 
 const stylesClasses = {

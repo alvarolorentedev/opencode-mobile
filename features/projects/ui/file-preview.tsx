@@ -1,4 +1,3 @@
-import { useUpdateBlockingConfirmation as useConfirmation } from '@/features/updates/index';
 import { cn } from '@/shared/ui/cn';
 import { ModalSurface } from '@/shared/ui/portal';
 import { Button } from '@/shared/ui/button';
@@ -35,7 +34,6 @@ export function FilePreview({ file, projectPath, branch, canSave, onClose, onSav
   onSave: (path: string, original: string, value: string) => Promise<void>;
   onDownload: (path: string, signal?: AbortSignal) => Promise<void>;
 }) {
-  const { confirmAction, confirmation } = useConfirmation();
   const { t } = useTranslation();
   const insets = useSafeAreaInsets();
   const { height } = useWindowDimensions();
@@ -84,8 +82,7 @@ export function FilePreview({ file, projectPath, branch, canSave, onClose, onSav
 
   function leave(run: () => void) {
     if (saving) return;
-    if (dirty) confirmAction(t('project:files.discardTitle'), t('project:files.discardMessage'), t('project:files.discard'), t('common:actions.cancel'), run);
-    else run();
+    run();
   }
   const close = () => leave(() => { setDraft(undefined); onClose(); });
 
@@ -179,6 +176,5 @@ export function FilePreview({ file, projectPath, branch, canSave, onClose, onSav
         </>}
       </ScrollView>
     </KeyboardAvoidingView>
-    {confirmation}
   </ModalSurface>;
 }

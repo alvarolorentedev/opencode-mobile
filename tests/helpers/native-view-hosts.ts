@@ -40,7 +40,6 @@ vi.mock('@expo/vector-icons/MaterialCommunityIcons', () => ({
 vi.mock('@rn-primitives/toast', () => ({}));
 vi.mock('@rn-primitives/toggle', () => ({ Root: 'ToggleRoot' }));
 vi.mock('@rn-primitives/toggle-group', () => ({ Root: 'ToggleGroupRoot', Item: 'ToggleGroupItem' }));
-vi.mock('@rn-primitives/alert-dialog', () => ({ Root: 'AlertDialogRoot', Trigger: 'AlertDialogTrigger', Portal: 'AlertDialogPortal' }));
 vi.mock('@rn-primitives/separator', () => ({ Root: 'SeparatorRoot' }));
 vi.mock('expo-image', () => ({ Image: 'Image' }));
 vi.mock('expo-video', () => ({ VideoView: 'VideoView', useVideoPlayer: () => undefined }));

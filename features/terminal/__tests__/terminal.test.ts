@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { readFile } from 'node:fs/promises';
 import { createTerminalDecoder, createTerminalOutputQueue, MAX_TERMINAL_PENDING_BYTES } from '@/shared/protocol/opencode/terminal-stream';
-import { encodeTerminalKey, NO_MODIFIERS, pasteNeedsConfirmation } from '@/features/terminal/ui/terminal-keys';
+import { encodeTerminalKey, NO_MODIFIERS } from '@/features/terminal/ui/terminal-keys';
 import { createTerminalConnection, type TerminalConnectionContext } from '@/features/terminal/services/terminal-connection';
 import type { TerminalInstance } from '@/features/terminal/model/terminal-types';
 import type { ScopedOpencodeClient } from '@/shared/protocol/opencode/client';
@@ -61,11 +61,6 @@ describe('terminal input encoding', () => {
     expect(encodeTerminalKey('F1', NO_MODIFIERS)).toBe('\x1bOP');
     expect(encodeTerminalKey('F12', { ...NO_MODIFIERS, ctrl: true })).toBe('\x1b[24;5~');
     expect(encodeTerminalKey('é', { ...NO_MODIFIERS, ctrl: true })).toBeUndefined();
-  });
-  it('requires confirmation for multiline or control-character paste', () => {
-    expect(pasteNeedsConfirmation('echo 中文')).toBe(false);
-    expect(pasteNeedsConfirmation('echo first\necho second')).toBe(true);
-    expect(pasteNeedsConfirmation('\x1b[2J')).toBe(true);
   });
 });
 

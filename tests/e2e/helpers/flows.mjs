@@ -399,13 +399,6 @@ export async function exerciseInteractiveTerminal(page, request, origin, command
     element.dispatchEvent(new ClipboardEvent('paste', { clipboardData, bubbles: true, cancelable: true }));
   }, pasteText);
   await dispatchPaste();
-  await respondToConfirmation(page, false);
-  const beforeCancel = (await snapshot())[0].input.length;
-  await input.press('Control+c');
-  await expect.poll(async () => (await snapshot())[0].input.length).toBeGreaterThan(beforeCancel);
-  expect((await snapshot())[0].input.join('')).not.toContain('echo paste');
-  await dispatchPaste();
-  await respondToConfirmation(page, true);
   await expect.poll(async () => (await snapshot())[0].input.join('')).toContain('\x1b[200~echo paste\recho second\x1b[201~');
   await input.press('Control+c');
   await page.getByRole('button', { name: 'Ctrl, off', exact: true }).click();
@@ -428,10 +421,4 @@ export async function seedOnboarding(page) {
   });
 }
 
-// App confirmations are accessible AlertDialogs; exercise their actual actions.
-export async function respondToConfirmation(page, accept = true) {
-  const dialog = page.getByRole('alertdialog');
-  await expect(dialog).toBeVisible();
-  await dialog.getByRole('button').nth(accept ? 1 : 0).click();
-  await expect(dialog).not.toBeVisible();
-}
+

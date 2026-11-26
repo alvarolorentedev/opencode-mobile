@@ -113,8 +113,7 @@
       "UpdateBlockingSheet",
       "UpdateBlockingCatalogSelect",
       "UpdateBlockingWorkspaceSelect",
-      "UpdateBlockingSettingSelectField",
-      "useUpdateBlockingConfirmation"
+      "UpdateBlockingSettingSelectField"
     ],
     "features/chat/index.ts": [
       "ChatContextValue",

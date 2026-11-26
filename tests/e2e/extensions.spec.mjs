@@ -1,6 +1,6 @@
 import { expect, test } from './helpers/fixtures.mjs';
 
-import { respondToConfirmation, backendOrigin, goToTab, openReadyChat, resetScenario, seedOnboarding } from './helpers/flows.mjs';
+import { backendOrigin, goToTab, openReadyChat, resetScenario, seedOnboarding } from './helpers/flows.mjs';
 
 test.beforeEach(async ({ page }, info) => {
   await seedOnboarding(page, info);
@@ -61,8 +61,11 @@ test('project extensions add plugins, skills and slash commands', async ({ page,
   await page.getByTestId('settings-extension-skill-id').fill('review-helper');
   await page.getByTestId('settings-extension-skill-description').fill('Review a change');
   await page.getByRole('button', { name: 'Back to extensions', exact: true }).click();
-  await respondToConfirmation(page, false);
-  await expect(page.getByTestId('settings-extension-skill-name')).toHaveValue('Review Helper');
+  await expect(page.getByTestId('settings-extension-skill-open')).toBeVisible();
+  await page.getByTestId('settings-extension-skill-open').click();
+  await page.getByTestId('settings-extension-skill-name').fill('Review Helper');
+  await page.getByTestId('settings-extension-skill-id').fill('review-helper');
+  await page.getByTestId('settings-extension-skill-description').fill('Review a change');
   await page.getByRole('tab', { name: 'Instructions', exact: true }).click();
   await page.getByTestId('settings-extension-skill-instructions').fill('Read the diff and report risks.');
   await page.getByTestId('settings-extension-skill-add').click();
@@ -139,7 +142,6 @@ test('project extensions can be removed and leave no active entries', async ({ p
   await page.getByTestId('settings-extension-mcp-add').click();
   await expect(page.getByText('removable', { exact: true })).toBeVisible();
   await page.getByTestId('settings-extension-mcp-remove-removable').click();
-  await respondToConfirmation(page, true);
   await expect(page.getByText('removable', { exact: true })).toHaveCount(0);
 
   await page.getByRole('tab', { name: 'Plugins', exact: true }).click();
@@ -148,7 +150,6 @@ test('project extensions can be removed and leave no active entries', async ({ p
   await page.getByTestId('settings-extension-plugin-add').click();
   await expect(page.getByText('remove-me', { exact: true })).toBeVisible();
   await page.getByTestId('settings-extension-plugin-remove-remove-me').click();
-  await respondToConfirmation(page, true);
   await expect(page.getByText('remove-me', { exact: true })).toHaveCount(0);
 
   await page.getByRole('tab', { name: 'Skills', exact: true }).click();
@@ -160,7 +161,6 @@ test('project extensions can be removed and leave no active entries', async ({ p
   await page.getByTestId('settings-extension-skill-add').click();
   await expect(page.getByText('remove-me-skill', { exact: true })).toBeVisible();
   await page.getByTestId('settings-extension-skill-remove-remove-me-skill').click();
-  await respondToConfirmation(page, true);
   await expect.poll(async () => {
     const skills = await (await request.get(`${backendOrigin()}/api/skill?location[directory]=${encodeURIComponent('/workspace/demo-project')}`)).json();
     return skills.data.some((skill) => skill.id === 'remove-me-skill');
@@ -193,7 +193,6 @@ test('project extensions can be removed and leave no active entries', async ({ p
   await page.getByTestId('settings-extension-agent-save').click();
   await expect.poll(async () => (await agentsFor(request, projectDirectory)).data.find((agent) => agent.id === 'remove-me-agent')?.description).toBe('Edited agent');
   await page.getByTestId('settings-extension-agent-remove-remove-me-agent').click();
-  await respondToConfirmation(page, true);
   await expect.poll(async () => (await agentsFor(request, projectDirectory)).data.some((agent) => agent.id === 'remove-me-agent')).toBe(false);
 
   await page.getByRole('tab', { name: 'Commands', exact: true }).click();
@@ -204,7 +203,6 @@ test('project extensions can be removed and leave no active entries', async ({ p
   await page.getByTestId('settings-extension-command-save').click();
   await expect(page.getByText('/remove-me', { exact: true })).toBeVisible();
   await page.getByTestId('settings-extension-command-remove-remove-me').click();
-  await respondToConfirmation(page, true);
   await expect(page.getByText('/remove-me', { exact: true })).toHaveCount(0);
 
   const commands = await commandsFor(request, projectDirectory);
@@ -221,7 +219,6 @@ test('general extensions are shared with the project and can be restored from ba
   await page.getByTestId('settings-extension-plugin-open').click();
   await page.getByTestId('settings-extension-plugin-target').fill('global-plugin');
   await page.getByTestId('settings-extension-plugin-add').click();
-  await respondToConfirmation(page, true);
   await expect(page.getByText('global-plugin', { exact: true })).toBeVisible();
 
   await page.getByRole('tab', { name: 'Agents', exact: true }).click();
@@ -231,8 +228,6 @@ test('general extensions are shared with the project and can be restored from ba
   await page.getByRole('tab', { name: 'Instructions', exact: true }).click();
   await page.getByTestId('settings-extension-agent-instructions').fill('Review every project.');
   await page.getByTestId('settings-extension-agent-save').click();
-  // General-scope writes confirm once per scope visit: the plugin add above
-  // already confirmed, so the agent save proceeds without another dialog.
   await expect(page.getByText('global-reviewer', { exact: true })).toBeVisible();
 
   const entries = await configFor(page, request, '/workspace/demo-project');
@@ -249,6 +244,5 @@ test('general extensions are shared with the project and can be restored from ba
   await page.getByRole('button', { name: 'All projects', exact: true }).click();
   await page.getByRole('button', { name: 'Configuration details', exact: true }).click();
   await page.getByRole('button', { name: 'Restore last backup', exact: true }).click();
-  await respondToConfirmation(page, true);
   await expect(page.getByText('global-plugin', { exact: true })).toHaveCount(0);
 });

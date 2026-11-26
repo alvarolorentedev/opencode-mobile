@@ -1,4 +1,3 @@
-import { useUpdateBlockingConfirmation as useConfirmation } from '@/features/updates/index';
 import type { WorkspaceTarget } from '@/shared/contracts/workspace';
 import { Feedback } from '@/shared/ui/feedback';
 import { Portal } from '@/shared/ui/portal';
@@ -7,7 +6,6 @@ import { useTranslation } from 'react-i18next';
 import { useIsFocused } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { findMatchingProfile } from '@/shared/contracts/connection-profiles';
 import { AiDefaultsSection } from '@/features/ai/ui/settings/ai-defaults-section';
 import { AutoModelSection } from '@/features/ai/ui/settings/auto-model-section';
 import { getProviderCopy } from '@/features/ai/model/settings-utils';
@@ -18,13 +16,12 @@ import { useWorkspacePreferences } from '@/runtime/workspace';
 import { usePalette } from '@/shared/ui/theme/use-palette';
 
 export function AiSettingsPanel({ workspace }: { workspace?: WorkspaceTarget }) {
-  const { confirmAction, confirmation } = useConfirmation();
   const { t } = useTranslation();
   const focused = useIsFocused();
   const insets = useSafeAreaInsets();
   const palette = usePalette();
   const { currentConfig, availableModels, availableProviders, configuredProviders, providerAccounts, providerAuthMethodsById, removeProvider, modelRouting } = useCapabilities(workspace);
-  const { serverCapabilities, settings, connectionProfiles } = useConnection(workspace);
+  const { serverCapabilities } = useConnection(workspace);
   const { chatPreferences, updateChatPreferences } = useWorkspacePreferences(workspace);
   const providerConfig = useProviderConfiguration(workspace);
   const [expandedProviderIds, setExpandedProviderIds] = useState<Set<string>>(() => new Set());
@@ -48,16 +45,12 @@ export function AiSettingsPanel({ workspace }: { workspace?: WorkspaceTarget }) 
   }
 
   function handleRemoveProvider(providerId: string) {
-    const label = getProviderCopy(providerId, providerId, t).label;
-    const remove = () => void removeProvider(providerId)
-      .then(() => providerConfig.setFeedback({ type: 'success', message: t('settings:providers.credentialsRemoved', { provider: label }) }))
+    void removeProvider(providerId)
+      .then(() => providerConfig.setFeedback({ type: 'success', message: t('settings:providers.credentialsRemoved', { provider: getProviderCopy(providerId, providerId, t).label }) }))
       .catch((error) => providerConfig.setFeedback({ type: 'error', message: error instanceof Error ? error.message : t('settings:providers.couldNotRemove') }));
-    const server = findMatchingProfile(connectionProfiles.profiles, settings)?.name ?? settings.serverUrl;
-    confirmAction(t('settings:providers.removeTitle', { provider: label }), `${server}\n\n${t('settings:providers.removeMessage')}`,
-      t('common:actions.remove'), t('common:actions.cancel'), remove);
   }
 
-  return <>{confirmation}{(
+  return (
     <>
       <AiDefaultsSection
         availableModels={availableModels}
@@ -90,5 +83,5 @@ export function AiSettingsPanel({ workspace }: { workspace?: WorkspaceTarget }) 
       {providerConfig.dialog}
       <Portal><Feedback duration={4000} open={focused && Boolean(providerConfig.feedback)} onOpenChange={() => (providerConfig.clearFeedback)()} style={{ bottom: 64 + insets.bottom }}>{providerConfig.feedback?.message}</Feedback></Portal>
     </>
-  )}</>;
+  );
 }

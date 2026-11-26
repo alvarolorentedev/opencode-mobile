@@ -311,7 +311,7 @@ Responsibility:
 - render the app-diagnostics controls: local recording, normal/verbose level,
   storage/retention usage, remote master/crash/usage switches when a backend is
   configured, recent-event severity filter, metrics, recent failure, ZIP export
-  and clear-history confirmation
+  and clear-history action
 - report server, stream, network and app state only; there is no project context selector in this section
 - keep local history and remote consent independent; remote controls are hidden
   in FOSS and builds without an OTLP backend
@@ -322,7 +322,7 @@ Responsibility:
 Responsibility:
 
 - V2-only Settings view of server-persisted "always allow" rules
-- show each rule's resource and action, confirm-remove one
+- show each rule's resource and action, remove one immediately
 - read the list when the section opens and after an "always allow" reply; the
   surface has no manual refresh action
 - reads and mutates provider-owned `savedPermissions` through the chat
@@ -390,7 +390,7 @@ Main relevant props:
 - keep only form drafts, selected scope/tab, editing state, and local action feedback
 - reuse the MCP authentication dialog and keep MCP runtime lifecycle actions in the existing MCP domain
 - expose test IDs for the add/remove/edit controls used by the extension flows
-- compose `agent-editor.tsx`, `command-editor.tsx`, `skill-editor.tsx`, `mcp-editor.tsx` and `plugin-editor.tsx` inside the existing overlay host; `extension-editor.tsx` preserves drafts between Setup/Instructions tabs, confirms dirty dismissal and keeps Save outside the scrolling body
+- compose `agent-editor.tsx`, `command-editor.tsx`, `skill-editor.tsx`, `mcp-editor.tsx` and `plugin-editor.tsx` inside the existing overlay host; `extension-editor.tsx` preserves drafts between Setup/Instructions tabs, closes without a dirty check and keeps Save outside the scrolling body
 - agents reuse the public AI `ModelPicker` with inheritance, provider search and variants; unavailable/custom IDs remain editable under Advanced without changing chat preferences
 - `permission-fields.tsx` edits ordered V2 rules; legacy/custom shapes retain source editing. Its colocated story covers inherited, ordered and disabled states; the AI picker story covers empty catalogs and unavailable selections
 - skills retain unknown frontmatter/comments through protocol codecs; commands and agents retain their storage format and unknown fields

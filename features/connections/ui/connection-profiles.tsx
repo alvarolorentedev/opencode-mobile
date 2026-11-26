@@ -1,4 +1,4 @@
-import { useUpdateBlockingConfirmation as useConfirmation, UpdateBlockingSheet as OverlaySheet } from '@/features/updates/index';
+import { UpdateBlockingSheet as OverlaySheet } from '@/features/updates/index';
 import type { WorkspaceTarget } from '@/shared/contracts/workspace';
 import { cn } from '@/shared/ui/cn';
 import { Icon } from '@/shared/ui/icon';
@@ -17,7 +17,7 @@ import { ConnectionMethodChooser } from '@/features/connections/ui/connection-me
 import { ConnectionScanFlow } from '@/features/connections/ui/connection-scan-flow';
 import { Colors } from '@/shared/ui/theme/theme';
 import { findMatchingProfile, type ConnectionProfile } from '@/shared/contracts/connection-profiles';
-import { hasWorkspaceDrafts , useWorkspacePresentation, useWorkspaces } from '@/runtime/workspace';
+import { useWorkspaces } from '@/runtime/workspace';
 import { getConnectionUiScope } from '@/shared/contracts/connection-scope';
 import { getErrorMessage } from '@/shared/utilities/error-message';
 import { useConnection, useConnectionLifecycles } from '@/features/connections/context';
@@ -40,11 +40,9 @@ function connectionHost(serverUrl: string) {
 }
 
 export function ConnectionProfiles({ workspace, palette, onManageConnect, onPair }: { workspace: WorkspaceTarget; palette: Palette; onManageConnect?: () => void; onPair?: () => void }) {
-  const { confirmAction, confirmation } = useConfirmation();
   const { t } = useTranslation();
   const registry = useWorkspaces();
   const lifecycles = useConnectionLifecycles();
-  const presentation = useWorkspacePresentation();
   const { settings, connection, connect, updateSettings, connectSetup, connectionProfiles } = useConnection(workspace);
   const { profiles, refresh, connect: connectProfile, passwordForEditing, headersForEditing, certificateForEditing, save, remove, signIn } = connectionProfiles;
   const [error, setError] = useState<string>();
@@ -117,13 +115,7 @@ export function ConnectionProfiles({ workspace, palette, onManageConnect, onPair
   }
 
   function handleDelete(profile: ConnectionProfile) {
-    const message = [t('settings:connection.deleteMessage', { name: profile.name }),
-      hasWorkspaceDrafts(presentation, getConnectionUiScope(profile)) ? t('common:servers.discardDrafts') : undefined].filter(Boolean).join('\n\n');
-    const confirmRemoval = () => {
-      void remove(profile.id).catch((reason) => setError(getErrorMessage(reason)));
-    };
-
-    confirmAction(t('settings:connection.deleteTitle'), message, t('common:actions.delete'), t('common:actions.cancel'), confirmRemoval);
+    void remove(profile.id).catch((reason) => setError(getErrorMessage(reason)));
   }
 
   async function addAndConnect(values: ConnectionProfileFormValues) {
@@ -287,7 +279,7 @@ export function ConnectionProfiles({ workspace, palette, onManageConnect, onPair
     }));
   });
 
-  return <>{confirmation}{(
+  return (
     <>
       <View className={cn(stylesClasses.list)}>{rows}</View>
       {error ? <Text className={cn("text-destructive")}>{error}</Text> : null}
@@ -332,7 +324,7 @@ export function ConnectionProfiles({ workspace, palette, onManageConnect, onPair
         />
       ) : null}
     </>
-  )}</>;
+  );
 }
 
 const stylesClasses = {
