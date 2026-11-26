@@ -1,0 +1,1 @@
+- Destructive actions now run immediately on tap, without the confirmation dialog that broke on some Android devices.
