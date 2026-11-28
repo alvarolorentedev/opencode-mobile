@@ -28,7 +28,12 @@ export function sessionCatalogAccess(cache: QueryClient, identity: QueryIdentity
     catalogKey,
     readSessions: () => cache.getQueryData<Session[]>(projectKey) ?? EMPTY_SESSIONS,
     readStatuses: () => cache.getQueryData<SessionCatalogData>(catalogKey)?.statuses ?? EMPTY_STATUSES,
+    readCatalog: () => cache.getQueryData<SessionCatalogData>(catalogKey),
     removeCatalogSession: (id: string) => removeCatalogSession(cache, catalogKey, id),
+    restoreCatalogSession(session: Session) {
+      cache.setQueryData<SessionCatalogData>(catalogKey, (current) => current && !current.sessions.some(({ id }) => id === session.id)
+        ? { ...current, sessions: [session, ...current.sessions] } : current);
+    },
     setSessions(value: Update<Session[]>) {
       cache.setQueryData<Session[]>(projectKey, (current = EMPTY_SESSIONS) => typeof value === 'function' ? value(current) : value);
     },

@@ -1,4 +1,5 @@
 import { QueryClient } from '@tanstack/react-query';
+import { vi } from 'vitest';
 
 import type { PromptCommandInput } from '@/features/chat/runtime';
 import { createPromptCommands } from '@/runtime/core/commands/prompt';
@@ -10,9 +11,10 @@ import { settleReact } from '../../tests/helpers/controlled-clock';
 
 export function promptFixture(overrides: Partial<PromptCommandInput>, scopeKey = 'submission-scope') {
   const settingsRef = { current: { serverUrl: 'http://server', username: '', password: '', directory: '/repo' } };
+  const api = { session: { interrupt: async () => {}, switchModel: vi.fn(async () => {}) } };
   const client = {
     __opencode: { contract: 'v2', directory: '/repo' },
-    api: { session: { interrupt: async () => {} } },
+    api,
   } as unknown as ScopedOpencodeClient;
   const currentClient = { current: client };
   const store = createAppStore({ settings: settingsRef.current, chatPreferences: defaultChatPreferences, controlPlaneUrl: '' });
@@ -24,14 +26,14 @@ export function promptFixture(overrides: Partial<PromptCommandInput>, scopeKey =
     sessions: [{ id: 's', title: 'chat' }] as PromptCommandInput['sessions'],
     availableAgents: [{ id: 'build', label: 'Build', mode: 'primary' }], availableModels: [], availableProviders: [],
     sessionStatuses: {}, messagesBySession: {}, chatPreferences: defaultChatPreferences,
-    submitPrompt: async () => undefined, refreshSessions: async () => {},
+    submitPrompt: async () => undefined, refreshSessions: async () => {}, setSessions: () => {},
     refreshSessionDiff: async () => {}, refreshSessionTodos: async () => {}, scheduleSessionRefresh: () => {},
     ...overrides,
   };
   let current = input;
   const submission = { get current() { return store.getState().prompt[scopeKey]?.sending ?? { active: false }; } };
   return {
-    store, scopeKey, settingsRef, currentClient, input, submission,
+    store, scopeKey, settingsRef, currentClient, input, submission, api,
     runtime: {
       get value() {
         const state = store.getState().prompt[scopeKey];

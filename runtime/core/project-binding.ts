@@ -129,7 +129,7 @@ export function createProjectBinding(dependencies: ProjectRuntimeDependencies, m
     return promptWorkspace.actions({
       ...commandContext(), ...refreshActions, submitPrompt, client, isCurrentClient,
       activeProjectPath: directory || undefined, connectionScope: identity.connectionScope, readSettings, scheduleSessionRefresh,
-      sessions: sessions.readSessions(), sessionStatuses: sessions.readStatuses(),
+      sessions: sessions.readSessions(), sessionStatuses: sessions.readStatuses(), setSessions: sessions.setSessions,
       messagesBySession: { [id]: transcript.readDisplayedSession(id) },
     });
   }

@@ -33,6 +33,7 @@ export type PromptCommandInput = {
   chatPreferences: ChatPreferences;
   readSettings: () => OpencodeConnectionSettings;
   refreshSessions: () => Promise<unknown>;
+  setSessions: (value: Session[] | ((current: Session[]) => Session[])) => void;
   refreshSessionDiff: (sessionId: string, silent?: boolean, messageId?: string, records?: SessionMessageRecord[]) => Promise<unknown>;
   refreshSessionTodos: (sessionId: string) => Promise<unknown>;
   scheduleSessionRefresh: (sessionId: string, options?: SessionRefreshOptions) => void;
@@ -53,8 +54,8 @@ type PromptOperations = {
 
 export function createPromptSubmissionActions({
   submitPrompt, client, isCurrentClient, activeProjectPath, connectionScope, sessions, availableAgents,
-  currentConfig, availableModels, availableProviders, chatPreferences, readSettings, sessionStatuses, messagesBySession, refreshSessions,
-  refreshSessionDiff, refreshSessionTodos, scheduleSessionRefresh,
+  currentConfig, availableModels, availableProviders, chatPreferences, readSettings, sessionStatuses, messagesBySession,
+  refreshSessions, setSessions, refreshSessionDiff, refreshSessionTodos, scheduleSessionRefresh,
 }: PromptCommandInput, operations: PromptOperations) {
   async function sendPrompt(
     sessionId: string,
@@ -245,7 +246,21 @@ export function createPromptSubmissionActions({
 
   async function switchSessionModel(sessionId: string, model: NonNullable<Session['model']>) {
     if (!isCurrentClient(client)) throw new Error('The connection changed before updating the session model.');
-    await switchSessionModelService(client, sessionId, model);
+    // Echo the model and reasoning variant immediately; a rejected switch
+    // restores the previous choice only if it is still the selected one.
+    const previous = sessions.find((session) => session.id === sessionId)?.model;
+    const isSelected = (current: Session['model']) =>
+      current?.providerID === model.providerID && current.id === model.id && current.variant === model.variant;
+    setSessions((current) => current.map((session) => session.id === sessionId ? { ...session, model } : session));
+    try {
+      await switchSessionModelService(client, sessionId, model);
+    } catch (error) {
+      if (isCurrentClient(client)) {
+        setSessions((current) => current.map((session) => session.id === sessionId && isSelected(session.model)
+          ? { ...session, model: previous } : session));
+      }
+      throw error;
+    }
     if (!isCurrentClient(client)) throw new Error('The connection changed before refreshing the session model.');
     await refreshSessions().catch(() => undefined);
   }

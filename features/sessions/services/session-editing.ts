@@ -22,6 +22,7 @@ type SessionEditContext = {
   client: ScopedOpencodeClient;
   isCurrent: () => boolean;
   clearSession: (sessionId: string) => void;
+  removeFavorite: (sessionId: string) => () => void;
   runRename: (key: string, rename: () => Promise<void>) => Promise<void>;
   refreshSessions: () => Promise<unknown>;
   refreshSessionDiff: (sessionId: string, silent: boolean) => Promise<unknown>;
@@ -37,7 +38,7 @@ function without<T>(entries: Record<string, T>, id: string) {
 }
 
 export function sessionEditCommands({
-  cache, identity, client, isCurrent, clearSession, runRename, refreshSessions, refreshSessionDiff,
+  cache, identity, client, isCurrent, clearSession, removeFavorite, runRename, refreshSessions, refreshSessionDiff,
   refreshMessages, refreshActiveSessions,
 }: SessionEditContext) {
   const catalog = sessionCatalogAccess(cache, identity, client);
@@ -46,7 +47,32 @@ export function sessionEditCommands({
 
   async function deleteSession(sessionId: string) {
     check();
-    await deleteRemoteSession(client, sessionId);
+    // Remove the row, its status and its pin on the tap so the library does not
+    // wait for the server; restore them when the delete is rejected.
+    const previousSessions = catalog.readSessions();
+    const previousSession = previousSessions.find(({ id }) => id === sessionId);
+    const previousCatalog = catalog.readCatalog();
+    const previousCatalogSession = previousCatalog?.sessions.find(({ id }) => id === sessionId);
+    const previousStatus = previousCatalog?.statuses[sessionId];
+    const restoreFavorite = removeFavorite(sessionId);
+    catalog.setSessions((current) => current.filter(({ id }) => id !== sessionId));
+    catalog.removeCatalogSession(sessionId);
+    catalog.setSessionStatuses((current) => without(current, sessionId));
+    try {
+      await deleteRemoteSession(client, sessionId);
+    } catch (error) {
+      restoreFavorite();
+      if (isCurrent()) {
+        if (previousSession) {
+          catalog.setSessions((current) => current.some(({ id }) => id === sessionId) ? current : [previousSession, ...current]);
+        }
+        if (previousCatalogSession) catalog.restoreCatalogSession(previousCatalogSession);
+        if (previousStatus) {
+          catalog.setSessionStatuses((current) => sessionId in current ? current : { ...current, [sessionId]: previousStatus });
+        }
+      }
+      throw error;
+    }
     if (!isCurrent()) return;
     clearSession(sessionId);
     approvals.setPermissions((current) => without(current, sessionId));

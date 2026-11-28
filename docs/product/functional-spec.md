@@ -221,7 +221,7 @@ The Chats overlay opened from the Chat title provides lifecycle operations throu
 - open a session
 - create a new session
 - rename a session
-- permanently delete a session immediately
+- permanently delete a session immediately; the row disappears on the tap and returns if the server rejects the delete
 
 Session list behavior:
 
@@ -443,7 +443,7 @@ Behavior:
 - model choices are also filtered by the enabled-model list from Settings
 - the picker shows the provider alongside the selected model, groups results by provider, and searches provider/model names and IDs
 - the picker pins the currently selected model and the recently used models at the top; these sections hide while a search query is active
-- the picker reflects the active session's model and variant. Choosing a model keeps the sheet open so its reasoning level stays reachable; the staged model and variant are applied together through `session.switchModel` once the sheet is dismissed, and the chosen model is recorded in the recent list
+- the picker reflects the active session's model and variant. Choosing a model keeps the sheet open so its reasoning level stays reachable; the staged model and variant are applied together through `session.switchModel` once the sheet is dismissed, and the chosen model is recorded in the recent list. The session row shows the new model and variant immediately and restores the previous choice if the server rejects the switch
 - when the session has no explicit model, the picker reflects the server's effective agent/config default. New sessions inherit the newest same-project session's agent, model/variant and (unless auto-approve is on) permission rules; otherwise they keep the server default
 - legacy app-level model defaults are ignored; they are not copied into a session because they cannot be assigned safely across existing sessions
 - OpenCode 1 does not expose the supported session model-switch operation, so manual model and variant selection is available on OpenCode 2 only

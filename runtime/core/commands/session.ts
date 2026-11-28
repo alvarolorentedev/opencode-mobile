@@ -1,6 +1,7 @@
 import type { CommandContext } from '@/runtime/core/commands/context';
 import { agentsOptions, capabilitiesOptions } from '@/features/ai/runtime';
 import { forgetSessionContent } from '@/features/chat/runtime';
+import type { FavoriteSession } from '@/features/sessions/index';
 import { approvalsAccess, createInteractionCommands, forgetSessionCreation, pendingInteractionsKey, projectSessionsKey, resolveNewSessionConfig, savedPermissionOptions, sessionCatalogOptions, sessionCreationCommands, sessionEditCommands, sessionRefreshCommands } from '@/features/sessions/runtime';
 import type { PendingQuestionAnswer, ScopedOpencodeClient } from '@/shared/protocol/opencode/client';
 import type { WorkspaceTarget } from '@/shared/contracts/workspace';
@@ -100,6 +101,16 @@ export function createSessionCommands(context: CommandContext) {
           const state = store.getState();
           state.setShellValue('favoriteSessions', (items) => items.filter((item) => item.connectionScope !== identity.connectionScope || item.sessionId !== sessionId));
           if (state.selection[scopeKey]?.currentSessionId === sessionId) state.setSelection(scopeKey, { currentSessionId: undefined, explicitSessionId: undefined });
+        },
+        removeFavorite(sessionId) {
+          const { setShellValue } = store.getState();
+          const scope = identity.connectionScope;
+          let removed: FavoriteSession[] = [];
+          setShellValue('favoriteSessions', (items) => {
+            removed = items.filter((item) => item.connectionScope === scope && item.sessionId === sessionId);
+            return items.filter((item) => item.connectionScope !== scope || item.sessionId !== sessionId);
+          });
+          return () => setShellValue('favoriteSessions', (items) => [...items, ...removed]);
         },
       });
     }

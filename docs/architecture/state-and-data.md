@@ -385,7 +385,7 @@ Current fields:
 
 The TTS engine, pack, and speaker are device-local and also excluded from `serverPreferences`. Downloaded voice models live under `opencode-tts/<packId>/` in the document directory and are not represented in preferences; Settings derives their status from the filesystem. Removing a pack deletes that directory, releases the native TTS model, and switches to the system engine when it was active. Temporary synthesis WAVs live in the cache directory and are deleted after playback, on cancel, and on the next Settings visit.
 
-These values combine application behavior settings and output-style preferences that are sent to the model as prompt instructions. An explicit model and variant belong to `Session.model`; the composer changes them with the V2 `session.switchModel` operation, and session refresh/event updates restore each choice when switching sessions. Session `agent` and model/variant are the first source for an open chat, with the newest user message as a field-level fallback. A new session is created with the newest same-project root session's agent, model/variant and, unless auto-approve is on, its V2 permission ruleset. Legacy app-level model/provider/variant selections are ignored during preference hydration; they are not migrated because one old value cannot determine choices for multiple sessions. See [ADR 0054](../adr/0054-session-chat-configuration-inheritance.md).
+These values combine application behavior settings and output-style preferences that are sent to the model as prompt instructions. An explicit model and variant belong to `Session.model`; the composer changes them with the V2 `session.switchModel` operation, echoes the choice in the project session list before the server confirms it, restores the previous choice when the switch is rejected, and session refresh/event updates restore each choice when switching sessions. Session `agent` and model/variant are the first source for an open chat, with the newest user message as a field-level fallback. A new session is created with the newest same-project root session's agent, model/variant and, unless auto-approve is on, its V2 permission ruleset. Legacy app-level model/provider/variant selections are ignored during preference hydration; they are not migrated because one old value cannot determine choices for multiple sessions. See [ADR 0054](../adr/0054-session-chat-configuration-inheritance.md).
 
 `autoModel` is server-scoped with the rest of the catalog and routing preferences. Its tier
 values are `auto` or a model ID; `tierVariants` adds an optional thinking level
@@ -568,9 +568,11 @@ The app-core session commands publish the server's created or forked session
 immediately. Query retains the mutation's session ID for up to ten seconds so
 an older list response cannot drop the new chat before the catalog catches up.
 The project list remains the single cached session record.
-The same command path serializes title changes per session. A confirmed
-deletion clears the session's selection, favorites, approvals and cached
-content from its owning scope. Reverting waits for execution to settle and
+The same command path serializes title changes per session. A deletion removes
+the session's row, catalog entry, status and favorite pin locally as soon as it
+is chosen, then clears its selection, approvals and cached content when the
+server confirms it. A rejected delete restores the row, catalog entry, status
+and pin. Reverting waits for execution to settle and
 then reloads the session's message window and diff.
 Session-list workflow refreshes and connection-owned routine Query invalidations are
 coalesced independently; `session.deleted` removes its row immediately before reconciliation.

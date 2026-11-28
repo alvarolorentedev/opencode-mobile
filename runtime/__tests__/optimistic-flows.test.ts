@@ -63,11 +63,14 @@ function sessionCreationFixture({ inherited = {} }: { inherited?: SessionChatCon
 function sessionEditFixture() {
   const { cache, catalog, client, identity, api } = sessionCreationFixture();
   const refreshMessages = vi.fn(async (..._args: unknown[]) => []);
+  const clearSession = vi.fn();
+  const removeFavorite = vi.fn(() => vi.fn());
+  const refreshActiveSessions = vi.fn(async () => {});
   const commands = sessionEditCommands({ cache, client, identity, isCurrent: () => true,
-    clearSession: vi.fn(), runRename: (_key, rename) => rename(), refreshSessions: async () => [],
-    refreshSessionDiff: async () => [], refreshMessages, refreshActiveSessions: async () => {},
+    clearSession, removeFavorite, runRename: (_key, rename) => rename(), refreshSessions: async () => [],
+    refreshSessionDiff: async () => [], refreshMessages, refreshActiveSessions,
   });
-  return { cache, catalog, client, ...commands, refreshMessages, api };
+  return { cache, catalog, client, ...commands, clearSession, removeFavorite, refreshActiveSessions, refreshMessages, api };
 }
 
 function sessionNavigationFixture(sessions: { id: string }[] = [], overrides: Partial<RealtimeScopeInput> = {}) {
@@ -309,6 +312,56 @@ describe('local-first session selection', () => {
     fixture.cache.clear();
   });
 
+  it('deleteSession hides the row and status immediately and clears the session after the server confirms', async () => {
+    const fixture = sessionEditFixture();
+    const remove = deferredGate<void>();
+    fixture.api.session.remove.mockReturnValueOnce(remove.promise);
+    fixture.catalog.setSessions([sessionData('delete'), sessionData('keep')]);
+    fixture.cache.setQueryData(fixture.catalog.catalogKey, {
+      sessions: [sessionData('delete'), sessionData('keep')], statuses: { delete: { type: 'busy' } },
+    });
+
+    const deleting = fixture.deleteSession('delete');
+    expect(fixture.catalog.readSessions()).toEqual([sessionData('keep')]);
+    expect(fixture.cache.getQueryData(fixture.catalog.catalogKey)).toEqual({ sessions: [sessionData('keep')], statuses: {} });
+    expect(fixture.clearSession).not.toHaveBeenCalled();
+    expect(fixture.refreshActiveSessions).not.toHaveBeenCalled();
+
+    remove.resolve();
+    await expect(deleting).resolves.toBeUndefined();
+    expect(fixture.clearSession).toHaveBeenCalledExactlyOnceWith('delete');
+    expect(fixture.refreshActiveSessions).toHaveBeenCalledOnce();
+    fixture.cache.clear();
+  });
+
+  it('deleteSession restores the row, catalog entry, status and favorite when the server rejects', async () => {
+    const fixture = sessionEditFixture();
+    const restoreFavorite = vi.fn();
+    fixture.removeFavorite.mockReturnValueOnce(restoreFavorite);
+    const remove = deferredGate<void>();
+    fixture.api.session.remove.mockReturnValueOnce(remove.promise);
+    const catalogSession = { ...sessionData('delete'), directory: '/repo' };
+    fixture.catalog.setSessions([sessionData('delete'), sessionData('keep')]);
+    fixture.cache.setQueryData(fixture.catalog.catalogKey, {
+      sessions: [catalogSession, sessionData('keep')], statuses: { delete: { type: 'busy' } },
+    });
+
+    const deleting = fixture.deleteSession('delete');
+    expect(fixture.removeFavorite).toHaveBeenCalledExactlyOnceWith('delete');
+    expect(fixture.catalog.readSessions()).toEqual([sessionData('keep')]);
+    expect(fixture.cache.getQueryData(fixture.catalog.catalogKey)).toEqual({ sessions: [sessionData('keep')], statuses: {} });
+
+    remove.reject(new Error('delete failed'));
+    await expect(deleting).rejects.toThrow('delete failed');
+    expect(restoreFavorite).toHaveBeenCalledOnce();
+    expect(fixture.catalog.readSessions()).toEqual([sessionData('delete'), sessionData('keep')]);
+    expect(fixture.cache.getQueryData(fixture.catalog.catalogKey)).toEqual({
+      sessions: [catalogSession, sessionData('keep')], statuses: { delete: { type: 'busy' } },
+    });
+    expect(fixture.clearSession).not.toHaveBeenCalled();
+    fixture.cache.clear();
+  });
+
   it('revertSession stops and settles a running session before staging', async () => {
     const fixture = sessionEditFixture();
     const order: string[] = [];
@@ -377,6 +430,31 @@ describe('non-blocking prompt reconciliation', () => {
     expect(markLocalSend).toHaveBeenCalledOnce();
     expect(refreshSessionDiff).not.toHaveBeenCalled();
     expect(refreshSessionTodos).not.toHaveBeenCalled();
+    runtime.unmount();
+  });
+});
+
+describe('optimistic session configuration', () => {
+  it('applies the selected model and reasoning variant immediately and restores it when the switch fails', async () => {
+    const previous = { providerID: 'old-provider', id: 'old-model' };
+    const sessions = [{ id: 's', title: 'chat', model: previous }] as PromptCommandInput['sessions'];
+    const setSessions = vi.fn((value: Parameters<PromptCommandInput['setSessions']>[0]) => {
+      sessions.splice(0, sessions.length, ...(typeof value === 'function' ? value(sessions) : value));
+    });
+    const { runtime, api } = promptFixture({ sessions, setSessions });
+    const model = { providerID: 'provider', id: 'model', variant: 'high' };
+    const fail = deferredGate<void>();
+    api.session.switchModel.mockReturnValueOnce(fail.promise);
+
+    const switching = runtime.value.switchSessionModel('s', model);
+    expect(sessions[0].model).toEqual(model);
+    fail.reject(new Error('switch failed'));
+    await expect(switching).rejects.toThrow('switch failed');
+    expect(sessions[0].model).toEqual(previous);
+
+    api.session.switchModel.mockResolvedValueOnce(undefined);
+    await runtime.value.switchSessionModel('s', model);
+    expect(sessions[0].model).toEqual(model);
     runtime.unmount();
   });
 });

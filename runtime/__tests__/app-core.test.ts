@@ -395,7 +395,7 @@ describe('app core', () => {
     queryClient.clear();
   });
 
-  it('serializes competing titles and deletes content only from the originating credential partition', async () => {
+  it('serializes competing titles, deletes only from the originating partition, and restores a rejected delete', async () => {
     const core = newCore();
     const { queryClient, commands, store } = core;
     const target = { connectionId: 'server', projectPath: '/a' };
@@ -455,6 +455,20 @@ describe('app core', () => {
     }
     expect(store.getState().shell.favoriteSessions.map(({ connectionScope }) => connectionScope)).toEqual(['another server']);
     expect(store.getState().selection[scopeKey]).toMatchObject({ currentSessionId: undefined, explicitSessionId: undefined });
+
+    store.getState().setShellValue('favoriteSessions', [{ sessionId: 'other', connectionScope: 'scope', projectPath: '/a', favoritedAt: 3 }]);
+    queryClient.setQueryData(statusesKey, { sessions: [{ id: 'other', title: 'Keep', directory: '/a' }], statuses: { other: { type: 'busy' } } });
+    let rejectDelete: (reason: Error) => void = () => {};
+    protocol.deleteSession.mockReset().mockReturnValueOnce(new Promise<void>((_, reject) => { rejectDelete = reject; }));
+    const rejected = expect(editing.deleteSession('other')).rejects.toThrow('delete failed');
+    expect(queryClient.getQueryData(sessionsKey)).toEqual([]);
+    expect(queryClient.getQueryData(statusesKey)).toEqual({ sessions: [], statuses: {} });
+    expect(store.getState().shell.favoriteSessions).toEqual([]);
+    rejectDelete(new Error('delete failed'));
+    await rejected;
+    expect(queryClient.getQueryData(sessionsKey)).toEqual([{ id: 'other', title: 'Keep' }]);
+    expect(queryClient.getQueryData(statusesKey)).toEqual({ sessions: [{ id: 'other', title: 'Keep', directory: '/a' }], statuses: { other: { type: 'busy' } } });
+    expect(store.getState().shell.favoriteSessions.map(({ sessionId }) => sessionId)).toEqual(['other']);
     commands.workspace.dispose();
     queryClient.clear();
   });
