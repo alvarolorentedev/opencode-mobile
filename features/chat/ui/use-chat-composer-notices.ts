@@ -33,26 +33,35 @@ export function useChatComposerNotices({
   const [isCancelingRevert, setIsCancelingRevert] = useState(false);
   const currentSessionIdRef = useRef(currentSessionId);
   const revertPrefillRef = useRef<RevertPrefill | undefined>(undefined);
+  const revertingSessionIdsRef = useRef(new Set<string>());
 
   useEffect(() => {
     currentSessionIdRef.current = currentSessionId;
   }, [currentSessionId]);
 
   const handleRevertMessage = useCallback(async (sessionId: string, messageId: string) => {
+    if (revertingSessionIdsRef.current.has(sessionId)) {
+      return;
+    }
     const entry = transcript.find((item) => item.id === messageId);
     if (!entry || entry.role !== 'user') {
       return;
     }
-    await revertSession(sessionId, messageId);
-    if (currentSessionIdRef.current !== sessionId) {
-      return;
+    revertingSessionIdsRef.current.add(sessionId);
+    try {
+      await revertSession(sessionId, messageId);
+      if (currentSessionIdRef.current !== sessionId) {
+        return;
+      }
+      const attachments = entry.details.flatMap((detail) => detail.kind === 'file' && detail.uri
+        ? [{ uri: detail.uri, mime: detail.mime, filename: detail.filename }]
+        : []);
+      revertPrefillRef.current = { sessionId, text: entry.text, attachments };
+      setDraft(entry.text);
+      setAttachments(attachments);
+    } finally {
+      revertingSessionIdsRef.current.delete(sessionId);
     }
-    const attachments = entry.details.flatMap((detail) => detail.kind === 'file' && detail.uri
-      ? [{ uri: detail.uri, mime: detail.mime, filename: detail.filename }]
-      : []);
-    revertPrefillRef.current = { sessionId, text: entry.text, attachments };
-    setDraft(entry.text);
-    setAttachments(attachments);
   }, [revertSession, setAttachments, setDraft, transcript]);
 
   const handleCancelRevert = useCallback(async (sessionId: string) => {

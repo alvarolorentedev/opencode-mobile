@@ -60,6 +60,28 @@ describe('composer notices', () => {
     expect(inputRef.current.attachments).toEqual([attachment]);
   });
 
+  it('leaves the composer unchanged when the revert fails', async () => {
+    const { runtime, setAttachments, setDraft, revertSession } = mount();
+    revertSession.mockRejectedValueOnce(new Error('stage failed'));
+
+    await expect(act(() => runtime.result.current.handleRevertMessage('s', 'm1'))).rejects.toThrow('stage failed');
+    expect(setDraft).not.toHaveBeenCalled();
+    expect(setAttachments).not.toHaveBeenCalled();
+  });
+
+  it('ignores a second revert request while the first is in flight', async () => {
+    const { runtime, revertSession } = mount();
+    let resolve!: (value: undefined) => void;
+    revertSession.mockReturnValueOnce(new Promise<undefined>((done) => { resolve = done; }));
+
+    const first = runtime.result.current.handleRevertMessage('s', 'm1');
+    const second = runtime.result.current.handleRevertMessage('s', 'm1');
+    expect(revertSession).toHaveBeenCalledTimes(1);
+
+    resolve(undefined);
+    await act(() => Promise.all([first, second]));
+  });
+
   it('clears an unchanged reverted draft and attachments when the revert is canceled', async () => {
     const { runtime, inputRef, setAttachments, setDraft, unrevertSession } = mount();
     await act(() => runtime.result.current.handleRevertMessage('s', 'm1'));

@@ -573,7 +573,11 @@ the session's row, catalog entry, status and favorite pin locally as soon as it
 is chosen, then clears its selection, approvals and cached content when the
 server confirms it. A rejected delete restores the row, catalog entry, status
 and pin. Reverting waits for execution to settle and
-then reloads the session's message window and diff.
+then reloads the session's message window and diff. The staged
+`session.revert.messageID` stays the authoritative visibility boundary: the
+presentation projects the retained transcript up to that record, without
+deleting or rewriting cached messages, so clearing the revert restores the
+timeline from the same cache.
 Session-list workflow refreshes and connection-owned routine Query invalidations are
 coalesced independently; `session.deleted` removes its row immediately before reconciliation.
 The focused workspace's overridden domains are memoized independently, so a

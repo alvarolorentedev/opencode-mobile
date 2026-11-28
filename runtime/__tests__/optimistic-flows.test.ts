@@ -387,6 +387,16 @@ describe('local-first session selection', () => {
     fixture.cache.clear();
   });
 
+  it('keeps a staged revert successful when the follow-up refresh fails', async () => {
+    const fixture = sessionEditFixture();
+    fixture.refreshMessages.mockRejectedValueOnce(new Error('refresh failed'));
+
+    await expect(fixture.revertSession('s', 'm1')).resolves.toBeUndefined();
+
+    expect(fixture.api.session.revert.stage).toHaveBeenCalledExactlyOnceWith({ sessionID: 's', messageID: 'm1' });
+    fixture.cache.clear();
+  });
+
   it('unrevert replaces the displayed transcript after the server clears the rewind', async () => {
     const fixture = sessionEditFixture();
     await fixture.unrevertSession('s');

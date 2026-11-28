@@ -6,7 +6,7 @@ import type { DiffScope } from '@/features/projects/index';
 import type { DiffTurn , ChatContextValue } from '@/features/chat/model/types';
 import { deriveTodosFromMessages, type SessionMessageRecord } from '@/shared/presentation/format';
 import { getTranscript } from '@/shared/presentation/selectors';
-import { getDiffTurnMessages, resolveDiffTurn } from '@/shared/presentation/transcript';
+import { getDiffTurnMessages, resolveDiffTurn, visibleSessionMessages } from '@/shared/presentation/transcript';
 import { aggregateUsageSteps, getLatestAssistantTurnUsage, getSessionUsage, type SessionUsageStep } from '@/shared/presentation/usage';
 import type { PendingPermissionRequest, PendingQuestionRequest, ServerContract } from '@/shared/protocol/opencode/client';
 import type { PendingNotice, PendingPrompt } from '@/shared/protocol/opencode/prompt-inbox';
@@ -110,19 +110,25 @@ export function useChatPresentation({
   promptError,
   clearPromptError,
 }: ChatPresentationInput) {
+  const revertMessageID = activeSession?.revert?.messageID;
   const currentMessages = useMemo(() => {
     if (!currentSessionId) return [];
     const records = messagesBySession[currentSessionId] || [];
+    const visible = visibleSessionMessages(records, revertMessageID);
     const delivered = new Set(records.map((record) => record.info.id));
     // Inbox notices stay display-only until the session's next turn promotes
     // them to durable synthetic messages.
     const notices = (pendingNoticesBySession?.[currentSessionId] ?? []).filter((notice) => !delivered.has(notice.id));
-    return notices.length === 0 ? records : [...records, ...notices.map(pendingNoticeRecord)];
-  }, [currentSessionId, messagesBySession, pendingNoticesBySession]);
+    return notices.length === 0 ? visible : [...visible, ...notices.map(pendingNoticeRecord)];
+  }, [currentSessionId, messagesBySession, pendingNoticesBySession, revertMessageID]);
   const pendingPrompts = useMemo(() => {
-    const delivered = new Set(currentMessages.map((record) => record.info.id));
-    return (pendingPromptsBySession?.[currentSessionId ?? ''] ?? []).filter((prompt) => !delivered.has(prompt.id));
-  }, [currentMessages, currentSessionId, pendingPromptsBySession]);
+    const sessionId = currentSessionId ?? '';
+    const delivered = new Set([
+      ...(messagesBySession[currentSessionId ?? ''] ?? []).map((record) => record.info.id),
+      ...(pendingNoticesBySession?.[sessionId] ?? []).map((notice) => notice.id),
+    ]);
+    return (pendingPromptsBySession?.[sessionId] ?? []).filter((prompt) => !delivered.has(prompt.id));
+  }, [currentSessionId, messagesBySession, pendingNoticesBySession, pendingPromptsBySession]);
   const currentDiffScope = useMemo<DiffScope>(
     () => (currentSessionId ? diffScopeBySession[currentSessionId] ?? 'turn' : 'turn'),
     [currentSessionId, diffScopeBySession],
@@ -158,8 +164,8 @@ export function useChatPresentation({
     }
 
     const todoRecords = todoRecordsBySession[currentSessionId];
-    return todoRecords ? deriveTodosFromMessages(todoRecords) : [];
-  }, [currentSessionId, serverContract, todoRecordsBySession, todosBySession]);
+    return todoRecords ? deriveTodosFromMessages(visibleSessionMessages(todoRecords, revertMessageID)) : [];
+  }, [currentSessionId, revertMessageID, serverContract, todoRecordsBySession, todosBySession]);
   const relatedInteractionSessionIds = useMemo(
     () => collectDescendantSessionIds(sessions, [currentSessionId, sendingState.sessionId]),
     [sessions, currentSessionId, sendingState.sessionId],
@@ -201,10 +207,11 @@ export function useChatPresentation({
   // A cached or retained transcript can paint before any read establishes its
   // paging window. Offer scroll-up so the transcript layer can repair the
   // window, but only once the held records look like a full page.
+  const heldMessageCount = currentSessionId ? (messagesBySession[currentSessionId]?.length ?? 0) : 0;
   const hasOlderMessages = currentSessionId
     ? messageWindows[currentSessionId]
       ? messageWindows[currentSessionId].hasMore
-      : currentMessages.length >= TRANSCRIPT_PAGE_LIMIT
+      : heldMessageCount >= TRANSCRIPT_PAGE_LIMIT
     : false;
   const isLoadingOlderMessages = currentSessionId ? loadingOlderBySession[currentSessionId] === true : false;
   // Hydration is session-scoped so switching chats quickly cannot let an older

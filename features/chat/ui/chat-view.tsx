@@ -106,7 +106,7 @@ export function ChatView() {
             currentSessionId={content.currentSessionId}
             transcriptRows={content.transcriptRows}
             flatTranscript={composer.chatPreferences.flatTranscript === true}
-            hasMessages={content.hasTranscriptMessages}
+            hasMessages={content.hasTranscriptMessages || Boolean(content.activeSession?.revert)}
             hasOlderMessages={content.transcriptPaging.hasOlder}
             isBootstrappingChat={content.isBootstrappingChat}
             isLoadingOlderMessages={content.transcriptPaging.isLoadingOlder}

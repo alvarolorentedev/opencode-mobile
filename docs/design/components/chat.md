@@ -36,6 +36,10 @@ composer. Sending entries keep the action disabled until admission completes.
 while a revert is staged. Selecting a message's revert action stops any
 in-flight reply, settles it, then stages the revert immediately without a
 confirmation dialog. Its close action cancels the revert.
+The transcript presentation ends before the server-provided revert boundary:
+the selected message and every later message, activity row, tool call, subagent
+and patch stay in the retained cache but leave the visible timeline. When the
+projection is empty, the notice remains without starter prompts.
 The reverted prompt text and attachments are restored to the composer for
 editing, so the notice only carries status and the cancel affordance.
 
@@ -81,7 +85,7 @@ setup review without clearing settings.
 - coordinate draft speech recognition
 - attach files through the current platform picker; iOS offers Photo Library or Choose Files, while Android and web keep the document picker
 - route prompt send / abort actions
-- provide the complete filtered transcript to the virtualized chat list
+- provide the complete filtered transcript to the virtualized chat list, ending at the server-provided revert boundary while a revert is staged
 - open/create sessions and toggle conversation mode
 - execute exact server-provided slash commands and the V2 `/compact` and `/btw` built-ins
 - route fork, revert, and revert-cancel actions

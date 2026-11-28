@@ -73,7 +73,9 @@ test('reverting a running reply stops it before staging the rewind', async ({ pa
   const composer = page.getByTestId('chat-composer-card').locator('xpath=..');
   await attachFile(page, 'revert-notes.txt', 'text/plain', Buffer.from('Keep this attachment'));
   await expect(composer.getByTestId('attachment-tile')).toHaveCount(1);
+  const admission = page.waitForResponse((response) => response.url().endsWith('/prompt') && response.request().method() === 'POST');
   await sendPrompt(page, 'Keep working on the revert');
+  const sessionID = (await (await admission).json()).data.sessionID;
   await expect(page.getByTestId('transcript-activity-session-status')).toContainText('OpenCode is working…');
   await expect(page.getByText('Working on: Keep working on the revert', { exact: true }).first()).toBeVisible({ timeout: 20_000 });
 
@@ -81,11 +83,36 @@ test('reverting a running reply stops it before staging the rewind', async ({ pa
   await userMessage.getByRole('button', { name: 'Revert from this message' }).click();
 
   await expect(page.getByTestId('chat-revert-notice')).toBeVisible();
+  await expect(userMessage).toHaveCount(0);
+  await expect(page.getByText('Working on: Keep working on the revert', { exact: true })).toHaveCount(0);
+  await expect(page.getByTestId('transcript-activity-session-status')).toHaveCount(0);
   await expect(page.getByText('Action failed', { exact: true })).toHaveCount(0);
   await expect(page.getByPlaceholder('Ask anything...')).toHaveValue('Keep working on the revert');
   await expect(composer.getByTestId('attachment-tile')).toHaveCount(1);
   await composer.getByTestId('attachment-tile').click();
   await expect(page.getByTestId('attachment-text-preview')).toHaveText('Keep this attachment');
+  await page.getByTestId('attachment-preview').getByRole('button', { name: 'Close', exact: true }).first().click();
+
+  await page.getByTestId('chat-revert-cancel').click();
+  await expect(page.getByTestId('chat-revert-notice')).toHaveCount(0);
+  await expect(userMessage).toBeVisible();
+  await expect(page.getByPlaceholder('Ask anything...')).toHaveValue('');
+
+  // Staging from another client and reopening the session must keep the same
+  // boundary: hidden transcript, notice, and no composer prefilling.
+  const messageID = (await userMessage.getAttribute('data-testid')).replace('transcript-message-', '');
+  const staged = await request.post(`${backendOrigin()}/api/session/${sessionID}/revert/stage`, { data: { messageID } });
+  expect(staged.ok()).toBeTruthy();
+  await expect(page.getByTestId('chat-revert-notice')).toBeVisible();
+  await expect(userMessage).toHaveCount(0);
+
+  await page.reload();
+  await expect(page.getByTestId('chat-revert-notice')).toBeVisible({ timeout: 20_000 });
+  await expect(page.getByText('Keep working on the revert', { exact: true })).toHaveCount(0);
+  await expect(page.getByPlaceholder('Ask anything...')).toHaveValue('');
+  await page.getByTestId('chat-revert-cancel').click();
+  await expect(page.getByTestId('chat-revert-notice')).toHaveCount(0);
+  await expect(page.getByText('Keep working on the revert', { exact: true }).first()).toBeVisible();
 });
 
 test('OpenCode 2 keeps steer and append prompts pinned until delivery and recovers them after reload', async ({ page, request }) => {

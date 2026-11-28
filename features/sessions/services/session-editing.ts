@@ -108,7 +108,9 @@ export function sessionEditCommands({
 
   async function refreshAfterRevert(sessionId: string) {
     if (!isCurrent()) return;
-    await Promise.all([refreshSessions(), refreshMessages(sessionId, true, { mode: 'replace' }), refreshSessionDiff(sessionId, true)]);
+    // The server already accepted the rewind; a stale cache read must not turn
+    // that success into a failure or skip the composer restore.
+    await Promise.allSettled([refreshSessions(), refreshMessages(sessionId, true, { mode: 'replace' }), refreshSessionDiff(sessionId, true)]);
   }
 
   async function revertSession(sessionId: string, messageId: string) {

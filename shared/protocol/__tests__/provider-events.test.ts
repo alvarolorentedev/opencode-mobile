@@ -98,6 +98,19 @@ describe('handleProviderEvent', () => {
     const { actions, calls } = createActions();
     handleProviderEvent({ id: 'e', type: 'session.compaction.started', data: { sessionID: 's1' } } as never, actions);
     expect(calls.scheduleSessionRefresh).toHaveBeenCalledWith('s1', expect.objectContaining({ messages: true, messageMode: 'replace' }));
+    calls.scheduleSessionRefresh.mockClear();
+    handleProviderEvent({
+      id: 'e2',
+      type: 'session.revert.staged',
+      data: { sessionID: 's1', revert: { messageID: 'm1' } },
+    } as never, actions);
+    expect(calls.scheduleSessionRefresh).toHaveBeenCalledWith('s1', expect.objectContaining({
+      messages: true,
+      messageMode: 'replace',
+      diff: true,
+      todos: true,
+      sessions: true,
+    }));
   });
 
   it('refreshes the project catalog when project directories change', () => {

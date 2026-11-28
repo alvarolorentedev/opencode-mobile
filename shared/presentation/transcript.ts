@@ -275,6 +275,15 @@ export function buildTranscriptRows(entries: TranscriptEntry[], timelineDetail: 
   return rows;
 }
 
+// The staged revert boundary is authoritative: the selected message and every
+// record after it stay cached but leave the presented transcript.
+export function visibleSessionMessages(messages: SessionMessageRecord[], revertMessageID?: string) {
+  if (!revertMessageID) return messages;
+  const index = messages.findIndex(({ info }) => info.id === revertMessageID);
+  if (index >= 0) return messages.slice(0, index);
+  return messages.filter(({ info }) => info.id < revertMessageID);
+}
+
 export function getTranscriptActivityLabel(entry: TranscriptEntry) {
   const runningTool = entry.details.find((detail): detail is ToolDetail => detail.kind === 'tool' && detail.status === 'running');
   if (runningTool) {
