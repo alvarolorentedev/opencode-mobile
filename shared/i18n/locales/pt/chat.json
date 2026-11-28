@@ -225,7 +225,10 @@
     "modelTokensLabel": "{{input}} tokens de entrada, {{output}} tokens de saída, {{reasoning}} tokens de raciocínio, {{cacheRead}} tokens de leitura de cache, {{cacheWrite}} tokens de escrita de cache, {{steps}} etapas concluídas",
     "modelTokens": "{{input}} entrada  {{output}} saída  {{reasoning}} raciocínio  {{cacheRead}} leitura de cache  {{cacheWrite}} escrita de cache  {{steps}} etapas",
     "partialTotals": "Alguns totais incluem apenas o histórico carregado.",
-    "partialBreakdown": "Os detalhes por modelo e as chamadas incluem apenas o histórico carregado."
+    "partialBreakdown": "Os detalhes por modelo e as chamadas incluem apenas o histórico carregado.",
+    "nextChat": "Chat seguinte",
+    "previousChat": "Chat anterior",
+    "switchFailed": "Não foi possível abrir esse chat."
   },
   "library": {
     "title": "Chats",

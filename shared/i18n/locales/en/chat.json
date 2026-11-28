@@ -225,7 +225,10 @@
     "modelTokensLabel": "{{input}} input tokens, {{output}} output tokens, {{reasoning}} reasoning tokens, {{cacheRead}} cache read tokens, {{cacheWrite}} cache write tokens, {{steps}} completed steps",
     "modelTokens": "{{input}} in  {{output}} out  {{reasoning}} reasoning  {{cacheRead}} cache read  {{cacheWrite}} cache write  {{steps}} steps",
     "partialTotals": "Some totals cover loaded history only.",
-    "partialBreakdown": "Model breakdown and call counts cover loaded history only."
+    "partialBreakdown": "Model breakdown and call counts cover loaded history only.",
+    "nextChat": "Next chat",
+    "previousChat": "Previous chat",
+    "switchFailed": "Could not open that chat."
   },
   "library": {
     "title": "Chats",

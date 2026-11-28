@@ -225,7 +225,10 @@
     "modelTokensLabel": "{{input}} jetons d'entrée, {{output}} jetons de sortie, {{reasoning}} jetons de raisonnement, {{cacheRead}} jetons lus en cache, {{cacheWrite}} jetons écrits en cache, {{steps}} étapes terminées",
     "modelTokens": "{{input}} entrée  {{output}} sortie  {{reasoning}} raisonnement  {{cacheRead}} lecture cache  {{cacheWrite}} écriture cache  {{steps}} étapes",
     "partialTotals": "Certains totaux couvrent uniquement l’historique chargé.",
-    "partialBreakdown": "Le détail par modèle et les appels couvrent uniquement l’historique chargé."
+    "partialBreakdown": "Le détail par modèle et les appels couvrent uniquement l’historique chargé.",
+    "nextChat": "Chat suivant",
+    "previousChat": "Chat précédent",
+    "switchFailed": "Impossible d’ouvrir ce chat."
   },
   "library": {
     "title": "Chats",

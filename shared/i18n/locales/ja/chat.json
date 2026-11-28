@@ -225,7 +225,10 @@
     "modelTokensLabel": "{{input}} 入力トークン、{{output}} 出力トークン、{{reasoning}} 推論トークン、{{cacheRead}} キャッシュ読み取りトークン、{{cacheWrite}} キャッシュ書き込みトークン、{{steps}} 完了ステップ",
     "modelTokens": "{{input}} 入力  {{output}} 出力  {{reasoning}} 推論  {{cacheRead}} キャッシュ読み取り  {{cacheWrite}} キャッシュ書き込み  {{steps}} ステップ",
     "partialTotals": "一部の合計は読み込まれた履歴のみです。",
-    "partialBreakdown": "モデル別の内訳と呼び出し回数は読み込まれた履歴のみです。"
+    "partialBreakdown": "モデル別の内訳と呼び出し回数は読み込まれた履歴のみです。",
+    "nextChat": "次のチャット",
+    "previousChat": "前のチャット",
+    "switchFailed": "そのチャットを開けませんでした。"
   },
   "library": {
     "title": "チャット",

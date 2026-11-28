@@ -229,7 +229,10 @@
     "modelTokensLabel": "אסימוני קלט {{input}}, אסימוני פלט {{output}}, אסימוני חשיבה {{reasoning}}, אסימוני קריאת מטמון {{cacheRead}}, אסימוני כתיבה של מטמון {{cacheWrite}}, שלבים שהושלמו {{steps}}",
     "modelTokens": "{{input}} ב-{{output}} החוצה {{reasoning}} הנמקה {{cacheRead}} מטמון קרא {{cacheWrite}} מטמון כתוב {{steps}} שלבים",
     "partialTotals": "חלק מהסיכומים מכסים רק היסטוריה נטענת.",
-    "partialBreakdown": "פירוט דגמים וספירת שיחות מכסים רק את ההיסטוריה הטעונה."
+    "partialBreakdown": "פירוט דגמים וספירת שיחות מכסים רק את ההיסטוריה הטעונה.",
+    "nextChat": "הצ׳אט הבא",
+    "previousChat": "הצ׳אט הקודם",
+    "switchFailed": "לא ניתן לפתוח את הצ׳אט הזה."
   },
   "library": {
     "title": "צ'אטים",

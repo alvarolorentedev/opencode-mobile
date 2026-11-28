@@ -225,7 +225,10 @@
     "modelTokensLabel": "{{input}} 个输入 token，{{output}} 个输出 token，{{reasoning}} 个推理 token，{{cacheRead}} 个缓存读取 token，{{cacheWrite}} 个缓存写入 token，{{steps}} 个已完成步骤",
     "modelTokens": "{{input}} 输入  {{output}} 输出  {{reasoning}} 推理  {{cacheRead}} 缓存读取  {{cacheWrite}} 缓存写入  {{steps}} 步骤",
     "partialTotals": "部分总计仅包含已加载的历史记录。",
-    "partialBreakdown": "模型明细和调用次数仅包含已加载的历史记录。"
+    "partialBreakdown": "模型明细和调用次数仅包含已加载的历史记录。",
+    "nextChat": "下一个聊天",
+    "previousChat": "上一个聊天",
+    "switchFailed": "无法打开该聊天。"
   },
   "library": {
     "title": "聊天",

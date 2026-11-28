@@ -225,7 +225,10 @@
     "modelTokensLabel": "{{input}} Eingabe-Token, {{output}} Ausgabe-Token, {{reasoning}} Reasoning-Token, {{cacheRead}} Cache-Lese-Token, {{cacheWrite}} Cache-Schreib-Token, {{steps}} abgeschlossene Schritte",
     "modelTokens": "{{input}} rein  {{output}} raus  {{reasoning}} Reasoning  {{cacheRead}} Cache lesen  {{cacheWrite}} Cache schreiben  {{steps}} Schritte",
     "partialTotals": "Einige Summen umfassen nur den geladenen Verlauf.",
-    "partialBreakdown": "Modellübersicht und Aufrufzahlen umfassen nur den geladenen Verlauf."
+    "partialBreakdown": "Modellübersicht und Aufrufzahlen umfassen nur den geladenen Verlauf.",
+    "nextChat": "Nächster Chat",
+    "previousChat": "Vorheriger Chat",
+    "switchFailed": "Dieser Chat konnte nicht geöffnet werden."
   },
   "library": {
     "title": "Chats",

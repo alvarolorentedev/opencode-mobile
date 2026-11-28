@@ -21,6 +21,7 @@ import { ConversationOverlay } from '@/features/chat/ui/chat-overlay';
 import { PluginGuiLauncher } from '@/features/extensions/index';
 import { ChatWorkspaceContext } from '@/features/chat/ui/chat-workspace-context';
 import { styles, stylesClasses } from '@/features/chat/ui/chat-view-styles';
+import type { SessionSwipeDirection } from '@/features/chat/model/session-swipe';
 import type { ConversationConfirmationState, ConversationInputPhase, ConversationPhase, ConversationReadbackPhase } from '@/features/voice/index';
 
 type Palette = typeof Colors.light;
@@ -42,6 +43,7 @@ type ChatHeaderProps = {
   onStopConversation: () => void;
   onCreateSession: () => void;
   onOpenSessionMenu: () => void;
+  onSwitchSession: (direction: SessionSwipeDirection) => void;
   palette: Palette;
   selectedSession?: Session;
   contextLimit?: number;
@@ -59,6 +61,7 @@ export function ChatHeader({
   onStopConversation,
   onCreateSession,
   onOpenSessionMenu,
+  onSwitchSession,
   palette,
   selectedSession,
   latestAssistantTurnUsage,
@@ -87,7 +90,15 @@ export function ChatHeader({
             <Pressable
               accessibilityRole="button"
               accessibilityLabel={t('chat:header.openChats', { title: selectedSession?.title || t('chat:header.untitledChat') })}
+              accessibilityActions={[
+                { name: 'decrement', label: t('chat:header.previousChat') },
+                { name: 'increment', label: t('chat:header.nextChat') },
+              ]}
               hitSlop={{ top: 6, left: 6, right: 6 }}
+              onAccessibilityAction={(event) => {
+                if (event.nativeEvent.actionName === 'increment') onSwitchSession('next');
+                else if (event.nativeEvent.actionName === 'decrement') onSwitchSession('previous');
+              }}
               onPress={onOpenSessionMenu}
               style={({ pressed }) => [styles.headerSessionAnchor, pressed && styles.headerSessionAnchorPressed]}>
               <View className={cn(stylesClasses.headerCopy)}>

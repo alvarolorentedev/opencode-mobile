@@ -5,9 +5,10 @@ import { Keyboard } from 'react-native';
 
 import { getEffectiveSessionModel, getInitialMode, getSelectedModelVariant, getVisibleModels, recordRecentModelId } from '@/features/ai/index';
 import { mergeSharedDraft } from '@/features/sharing/index';
+import { adjacentSessionId, type SessionSwipeDirection } from '@/features/chat/model/session-swipe';
 import { workspaceKey } from '@/shared/contracts/workspace';
 import { getConnectionScope, getConnectionUiScope } from '@/shared/contracts/connection-scope';
-import { copyHaptic } from '@/shared/platform/haptics';
+import { copyHaptic, selectionAsync } from '@/shared/platform/haptics';
 import { replaceComposerTrigger } from '@/features/chat/model/composer';
 import type { TranscriptEntry } from '@/shared/presentation/format';
 import type { ModelOption } from '@/shared/contracts/model-options';
@@ -376,6 +377,13 @@ export function useChatViewController() {
     void openSession(sessionId).catch(() => setSendFeedback(t('chat:view.couldNotOpenSubagent')));
   }, [currentSessionId, openSession, t]);
 
+  const switchSession = useCallback((direction: SessionSwipeDirection) => {
+    const sessionId = adjacentSessionId(sessions, currentSessionId, direction);
+    if (!sessionId) return;
+    void selectionAsync().catch(() => undefined);
+    void openSession(sessionId).catch(() => setSendFeedback(t('chat:header.switchFailed')));
+  }, [currentSessionId, openSession, sessions, t]);
+
   return {
     sharedDraft: { connectionScope, projectPath: activeProject?.path, sessionId: currentSessionId, apply: applySharedDraft },
     header: {
@@ -426,7 +434,7 @@ export function useChatViewController() {
       replyToQuestion, selectDiffMessage, setAttachments, setAutoApprove, setChangesVisible,
       setCopiedMessageId, setDiffScope, setDraft, setExpandedDiffId, setIsUpdatingAutoApprove,
       setProgressVisible, setSendFeedback, setSessionMenuVisible, setVoiceFeedback,
-      toggleConversationMode, updateChatPreferences,
+      switchSession, toggleConversationMode, updateChatPreferences,
     },
   };
 }

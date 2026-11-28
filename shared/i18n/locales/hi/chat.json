@@ -225,7 +225,10 @@
     "modelTokensLabel": "{{input}} इनपुट टोकन, {{output}} आउटपुट टोकन, {{reasoning}} तर्क टोकन, {{cacheRead}} कैश रीड टोकन, {{cacheWrite}} कैश राइट टोकन, {{steps}} पूर्ण चरण",
     "modelTokens": "{{input}} इन  {{output}} आउट  {{reasoning}} तर्क  {{cacheRead}} कैश रीड  {{cacheWrite}} कैश राइट  {{steps}} चरण",
     "partialTotals": "कुछ कुल में केवल लोड किया गया इतिहास शामिल है।",
-    "partialBreakdown": "मॉडल विवरण और कॉल की संख्या में केवल लोड किया गया इतिहास शामिल है।"
+    "partialBreakdown": "मॉडल विवरण और कॉल की संख्या में केवल लोड किया गया इतिहास शामिल है।",
+    "nextChat": "अगला चैट",
+    "previousChat": "पिछला चैट",
+    "switchFailed": "वह चैट नहीं खोला जा सका।"
   },
   "library": {
     "title": "चैट",

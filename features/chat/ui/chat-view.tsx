@@ -10,6 +10,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { useIsFocused, usePathname } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { KeyboardAvoidingView, Linking, Pressable, View } from 'react-native';
+import { GestureDetector } from 'react-native-gesture-handler';
 
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -24,6 +25,7 @@ import { SideQuestionOverlay } from '@/features/chat/ui/side-question-overlay';
 import { PendingInteractions } from '@/features/chat/ui/content/pending-interactions';
 import { TranscriptList } from '@/features/chat/ui/content/transcript-list';
 import { useChatViewController } from '@/features/chat/ui/use-chat-view-controller';
+import { useSessionSwipe } from '@/features/chat/ui/use-session-swipe';
 import { ConnectionStatusBanner } from '@/features/connections/index';
 import { useSharedInput, useWorkspaceActions, useWorkspacePresentation } from '@/runtime/workspace';
 import { normalizeTranscriptFontSize } from '@/shared/preferences/opencode-preferences';
@@ -46,6 +48,7 @@ export function ChatView() {
     setSendFeedback,
     handleSpeakEntry,
   } = actions;
+  const sessionSwipe = useSessionSwipe(actions.switchSession);
   const [newChatVisible, setNewChatVisible] = useState(false);
 
   const handleCopyMessage = useCallback((entry: TranscriptEntry) => {
@@ -75,6 +78,8 @@ export function ChatView() {
 
   return (
     <><ShareDraftReceiver {...sharedDraft} />
+      <GestureDetector gesture={sessionSwipe}>
+        <View collapsable={false} className={cn(stylesClasses.screen, "bg-background")}>
       <KeyboardAvoidingView
         className={cn(stylesClasses.screen, "bg-background")}
         behavior="padding">
@@ -87,6 +92,7 @@ export function ChatView() {
           onStopConversation={actions.handleStopConversation}
           onCreateSession={() => setNewChatVisible(true)}
           onOpenSessionMenu={() => actions.setSessionMenuVisible(true)}
+          onSwitchSession={actions.switchSession}
           palette={palette}
           selectedSession={header.selectedSession}
           latestAssistantTurnUsage={header.latestAssistantTurnUsage}
@@ -304,6 +310,8 @@ export function ChatView() {
           visibleModels={composer.visibleModels}
         />
       </KeyboardAvoidingView>
+        </View>
+      </GestureDetector>
 
       <ChatLibrary
         visible={overlay.sessionMenuVisible}

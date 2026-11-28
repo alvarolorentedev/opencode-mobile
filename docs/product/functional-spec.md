@@ -243,6 +243,7 @@ Additional session actions are available in Chat:
 - send the edited prompt to commit the staged revert and continue from that point
 - discard the current revert from the composer notice; an unchanged reverted prompt and its attachments are cleared from the composer
 - discard a waiting steer/queue prompt; when the composer is empty, its text is restored for editing
+- switch to the adjacent session with a two-finger horizontal swipe anywhere on the chat screen: sessions in the current project are ordered by most recently updated, archived and subagent chats are skipped, and the ends have no wrap. One-finger scrolling, text selection, code/table horizontal scrolling and OS edge-back are unchanged; the gesture has no visible affordance. Screen readers use the title's `Previous chat` and `Next chat` actions
 
 ### 9. Inspect And Edit Project Files
 

@@ -86,6 +86,7 @@ setup review without clearing settings.
 - attach files through the current platform picker; iOS offers Photo Library or Choose Files, while Android and web keep the document picker
 - route prompt send / abort actions
 - provide the complete filtered transcript to the virtualized chat list, ending at the server-provided revert boundary while a revert is staged
+- switch to the adjacent session on a two-finger horizontal swipe through `use-session-swipe.ts`; the gesture is mounted only on the chat screen so one-finger transcript, code/table scrolling and OS edge-back keep their native behavior ([ADR 0056](../../adr/0056-two-finger-session-switching.md))
 - open/create sessions and toggle conversation mode
 - execute exact server-provided slash commands and the V2 `/compact` and `/btw` built-ins
 - route fork, revert, and revert-cancel actions
@@ -118,6 +119,7 @@ declared once, at the leaves.
 
 #### Behavior notes
 
+- A two-finger horizontal swipe switches to the adjacent session in the current project. Sessions are ordered by most recently updated, archived and subagent chats are skipped, and the ends stop. The title also exposes `Previous chat` and `Next chat` accessibility actions. One-finger scrolling, code/table horizontal scrolling, text selection and OS edge-back are untouched; a deliberate two-finger drag starting on a wide table or code block may still be consumed by that block's native scroll view. The gesture is native-only and has no visible affordance ([ADR 0056](../../adr/0056-two-finger-session-switching.md)).
 - Chat keeps its transcript and pending cards mounted while changes are reviewed.
 - On Android, a change to the visible transcript height keeps the latest content in view when the reader is already following it. Opening the keyboard or growing the composer preserves the reader's place in older messages.
 - transcript messages use FlashList virtualization; it starts at the bottom, follows additions only from the bottom, and preserves the visible position otherwise. Because FlashList measures progressively, the tail is re-asserted across a few frames on a session switch or data change, and the list re-applies its tail/offset when the Chat tab regains focus or the app returns to the foreground, so an Android detach or background/lock cannot leave it at the top or undrawn. A starter-prompt card is shown only for a session with no transcript content (native model/agent switch markers do not count); the skeleton is shown for target bootstrap or a cold fetch with no held records. The initial pull is one newest window of up to 200 records, and each scroll-to-top loads one older 200-record batch without a backfill loop.
